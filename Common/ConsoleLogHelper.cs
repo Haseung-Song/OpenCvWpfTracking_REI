@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Threading;
 
 namespace OpenCvWpfTracking.Common
@@ -15,6 +17,15 @@ namespace OpenCvWpfTracking.Common
     {
         private static readonly object ConsoleLock =
             new object();
+
+        /// <summary>
+        /// Console 출력 가능 여부.
+        ///
+        /// 프로그램 종료 또는 Console 창이 먼저 닫힌 경우
+        /// 잘못된 출력 Handle에 반복 접근하지 않도록 사용한다.
+        /// </summary>
+        private static bool _isConsoleOutputAvailable =
+            true;
 
         /*
          * TODO(LOGGING-NEXT):
@@ -34,7 +45,8 @@ namespace OpenCvWpfTracking.Common
         {
             lock (ConsoleLock)
             {
-                Console.WriteLine(LogLine);
+                WriteConsoleSafe(
+                    LogLine);
             }
 
         }
@@ -232,7 +244,7 @@ namespace OpenCvWpfTracking.Common
 
             lock (ConsoleLock)
             {
-                Console.WriteLine(
+                WriteConsoleSafe(
                     $"[{DateTime.Now:HH:mm:ss.fff}] " +
                     $"[{level}] " +
                     $"[T{Thread.CurrentThread.ManagedThreadId:00}] " +
@@ -268,23 +280,74 @@ namespace OpenCvWpfTracking.Common
         {
             lock (ConsoleLock)
             {
-                Console.WriteLine(LogLine);
-                Console.WriteLine(header);
+                WriteConsoleSafe(
+                    LogLine);
+
+                WriteConsoleSafe(
+                    header);
 
                 if (lines != null)
                 {
                     foreach (string line in lines)
                     {
-                        Console.WriteLine(
+                        WriteConsoleSafe(
                             line ?? string.Empty);
                     }
 
                 }
 
-                Console.WriteLine(LogLine);
-                Console.WriteLine();
+                WriteConsoleSafe(
+                    LogLine);
+
+                WriteConsoleSafe();
             }
 
+        }
+
+        /// <summary>
+        /// Console Handle 종료 상태를 고려한 안전 출력 함수.
+        ///
+        /// 영상 Capture, 통신 수신 등 Background Thread가
+        /// 프로그램 종료 시점에 로그를 출력하더라도
+        /// IOException이 작업 Thread 밖으로 전파되지 않도록 처리한다.
+        /// </summary>
+        private static void WriteConsoleSafe(
+            string message = null)
+        {
+            if (!_isConsoleOutputAvailable)
+            {
+                return;
+            }
+
+            try
+            {
+                Console.WriteLine(
+                    message ??
+                    string.Empty);
+            }
+            catch (IOException)
+            {
+                /*
+                 * Console 창 또는 표준 출력 Handle이 먼저 종료된 경우이다.
+                 * 영상 및 통신 동작과 무관한 로그 출력 오류이므로
+                 * 이후 Console 출력을 중지한다.
+                 */
+                _isConsoleOutputAvailable =
+                    false;
+
+                Debug.WriteLine(
+                    message ??
+                    string.Empty);
+            }
+            catch (ObjectDisposedException)
+            {
+                _isConsoleOutputAvailable =
+                    false;
+
+                Debug.WriteLine(
+                    message ??
+                    string.Empty);
+            }
         }
 
         private sealed class ConsoleLogScope : IDisposable

@@ -49,7 +49,7 @@
 
             수평선과 수직선이 화면 중심에서 교차하며,
             검정 외곽선 위에 선택된 색상의 본선을 겹쳐 표시하여
-        밝은 EO 영상과 흑백 IR 영상에서 모두 식별 가능하도록 한다. -->
+            밝은 EO 영상과 흑백 IR 영상에서 모두 식별 가능하도록 한다. -->
         <ControlTemplate x:Key="CenterCrosshairTemplate"
                          TargetType="Control">
             <Grid Width="72"

@@ -182,8 +182,8 @@ namespace OpenCvWpfTracking
         ///
         /// 영상 Decoder, RTSP 연결, BitmapSource는 변경하지 않는다.
         ///
-        /// EO / IR 영상 Container의 Grid.Column 위치만 교환하여
-        /// 선택한 영상이 폭 1.6*의 큰 주화면 영역에 배치되도록 한다.
+        /// EO / IR 영상 Container의 위치, 높이와 정렬을 함께 교환하여
+        /// 선택한 영상이 큰 주화면 영역 전체에 배치되도록 한다.
         ///
         /// R:
         /// EO  -> Grid.Column 0
@@ -209,59 +209,13 @@ namespace OpenCvWpfTracking
                 cameraType ==
                 VideoPopoutCameraType.Eo;
 
-            /// <summary>
-            /// Column 0:
-            /// Width 1.6*의 큰 주화면
-            ///
-            /// Column 1:
-            /// Width 1*의 보조 화면
-            /// </summary>
-            Grid.SetColumn(
+            ApplyPrimaryVideoLayout(
                 EoVideoBorder,
-                isEoPrimary
-                    ? 0
-                    : 1);
+                isEoPrimary);
 
-            Grid.SetColumn(
+            ApplyPrimaryVideoLayout(
                 IrVideoContainer,
-                isEoPrimary
-                    ? 1
-                    : 0);
-
-            /// <summary>
-            /// 영상 위치가 교환되면 좌측 / 우측 Margin도 함께 교환한다.
-            ///
-            /// 좌측 영상:
-            /// 왼쪽 외곽 여백 5
-            ///
-            /// 우측 영상:
-            /// 왼쪽 외곽 여백 0
-            /// </summary>
-            EoVideoBorder.Margin =
-                isEoPrimary
-                    ? new Thickness(
-                        5,
-                        5,
-                        10,
-                        0)
-                    : new Thickness(
-                        0,
-                        5,
-                        10,
-                        0);
-
-            IrVideoContainer.Margin =
-                isEoPrimary
-                    ? new Thickness(
-                        0,
-                        5,
-                        10,
-                        0)
-                    : new Thickness(
-                        5,
-                        5,
-                        10,
-                        0);
+                !isEoPrimary);
 
             Console.WriteLine();
 
@@ -272,6 +226,60 @@ namespace OpenCvWpfTracking
                     : "IR"));
 
             ConsoleLogHelper.PrintLine();
+        }
+
+        /// <summary>
+        /// EO / IR 영상 Container를 주화면 또는 보조화면 규격으로 배치한다.
+        ///
+        /// 주화면:
+        /// - Grid.Column 0
+        /// - 영상 행의 전체 높이 사용
+        /// - 중앙 십자선과 AI Overlay가 주화면 중앙에 배치됨
+        ///
+        /// 보조화면:
+        /// - Grid.Column 1
+        /// - 기존 IR 보조화면 높이 365 유지
+        /// - 상단 정렬
+        ///
+        /// R / T 전환 시 위치만 바꾸면 IR의 고정 높이가 주화면에도 남아
+        /// 영상 아래에 빈 공간이 생기고 십자선 기준이 어긋나므로,
+        /// 높이와 정렬까지 동일한 시점에 함께 갱신한다.
+        /// </summary>
+        private static void ApplyPrimaryVideoLayout(
+            FrameworkElement videoContainer,
+            bool isPrimary)
+        {
+            Grid.SetColumn(
+                videoContainer,
+                isPrimary
+                    ? 0
+                    : 1);
+
+            videoContainer.Height =
+                isPrimary
+                    ? double.NaN
+                    : 365;
+
+            videoContainer.HorizontalAlignment =
+                HorizontalAlignment.Stretch;
+
+            videoContainer.VerticalAlignment =
+                isPrimary
+                    ? VerticalAlignment.Stretch
+                    : VerticalAlignment.Top;
+
+            videoContainer.Margin =
+                isPrimary
+                    ? new Thickness(
+                        5,
+                        5,
+                        10,
+                        0)
+                    : new Thickness(
+                        0,
+                        5,
+                        10,
+                        0);
         }
 
         #endregion

@@ -1241,10 +1241,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     if (!cancellationToken
                         .IsCancellationRequested)
                     {
-                        Console.WriteLine(
-                            $"[{streamName}] " +
-                            $"[FFmpeg Capture Error] " +
-                            ex.Message);
+                        ConsoleLogHelper.Error(
+                            $"{streamName} VIDEO",
+                            "FFmpeg Capture Error",
+                            ex);
                     }
 
                     break;
@@ -1262,8 +1262,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ReleaseFrameDispatch(
                 streamName);
 
-            Console.WriteLine(
-                $"[{streamName}] FFmpeg Capture Loop End");
+            ConsoleLogHelper.Info(
+                $"{streamName} VIDEO",
+                "FFmpeg Capture Loop End");
         }
 
 
