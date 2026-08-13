@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using Serilog;
 
 namespace OpenCvWpfTracking.Common
 {
@@ -244,9 +245,17 @@ namespace OpenCvWpfTracking.Common
 
             lock (ConsoleLock)
             {
-                WriteConsoleSafe(
+                string formattedMessage =
                     $"[{DateTime.Now:HH:mm:ss.fff}] " +
                     $"[{level}] " +
+                    $"[T{Thread.CurrentThread.ManagedThreadId:00}] " +
+                    $"[{safeCategory}] {safeMessage}";
+
+                WriteConsoleSafe(
+                    formattedMessage);
+
+                WriteSerilog(
+                    level,
                     $"[T{Thread.CurrentThread.ManagedThreadId:00}] " +
                     $"[{safeCategory}] {safeMessage}");
             }
@@ -300,6 +309,18 @@ namespace OpenCvWpfTracking.Common
                     LogLine);
 
                 WriteConsoleSafe();
+
+                string sectionMessage =
+                    header +
+                    (lines == null || lines.Length == 0
+                        ? string.Empty
+                        : Environment.NewLine + string.Join(
+                            Environment.NewLine,
+                            lines));
+
+                Log.Information(
+                    "{SectionMessage}",
+                    sectionMessage);
             }
 
         }
@@ -347,6 +368,41 @@ namespace OpenCvWpfTracking.Common
                 Debug.WriteLine(
                     message ??
                     string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Console 로그 레벨을 Serilog 파일 로그 레벨로 변환한다.
+        ///
+        /// 기존 ViewModel과 Service의 호출부는 변경하지 않고,
+        /// 이 Helper를 통과하는 운용 로그를 날짜별 파일에도 함께 남긴다.
+        /// </summary>
+        private static void WriteSerilog(
+            string level,
+            string message)
+        {
+            switch (level)
+            {
+                case "WARN":
+                    Log.Warning(
+                        "{LogMessage}",
+                        message);
+                    break;
+
+                case "ERROR":
+                    Log.Error(
+                        "{LogMessage}",
+                        message);
+                    break;
+
+                case "CMD ":
+                case "STATE":
+                case "INFO":
+                default:
+                    Log.Information(
+                        "{LogMessage}",
+                        message);
+                    break;
             }
         }
 

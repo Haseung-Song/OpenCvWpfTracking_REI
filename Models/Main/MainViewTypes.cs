@@ -237,6 +237,11 @@
         public bool UseHttps { get; }
 
         /// <summary>
+        /// 사전 등록되지 않은 RTSP 주소를 사용자가 직접 입력하는 항목인지 여부
+        /// </summary>
+        public bool IsDirectInput { get; }
+
+        /// <summary>
         /// RTSP 선택 항목 생성
         ///
         /// 별도 직접 제어 정보가 없으면
@@ -250,7 +255,8 @@
             string controlIp = null,
             string controlUserName = null,
             string controlPassword = null,
-            bool useHttps = false)
+            bool useHttps = false,
+            bool isDirectInput = false)
         {
             DisplayName =
                 displayName;
@@ -272,6 +278,9 @@
 
             UseHttps =
                 useHttps;
+
+            IsDirectInput =
+                isDirectInput;
         }
 
     }

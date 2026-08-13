@@ -1,0 +1,69 @@
+<Window x:Class="FireCandidateValidator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="IR FIRE DETECTOR TEST PROGRAM"
+        Width="1500" Height="900" MinWidth="1100" MinHeight="700"
+        Background="#20262D" WindowStartupLocation="CenterScreen"
+        Closing="Window_Closing">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#34566A"/>
+            <Setter Property="BorderBrush" Value="#7FB3E6"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E8EEF4"/></Style>
+        <Style TargetType="Slider"><Setter Property="Margin" Value="4,2"/></Style>
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Border Grid.Row="0" Padding="10" Background="#343D46" BorderBrush="#7F96A8" BorderThickness="1" CornerRadius="5">
+            <DockPanel>
+                <TextBlock Margin="6,0,18,0" VerticalAlignment="Center" Text="IR FIRE DETECTOR TEST PROGRAM" Foreground="#FF5252" FontSize="18" FontWeight="Bold"/>
+                <Button Content="OPEN IMAGE" Click="OpenImage_Click"/>
+                <Button Content="OPEN VIDEO" Click="OpenVideo_Click"/>
+                <Button Content="IR TEST PATTERN" Click="CreateTestPattern_Click"/>
+                <Button Content="RESET" Background="#7A3434" Click="Reset_Click"/>
+                <Button Content="SAVE IMAGE" Click="SaveResult_Click"/>
+                <Button x:Name="SaveVideoButton" Content="START VIDEO SAVE" Click="SaveVideo_Click"/>
+            </DockPanel>
+        </Border>
+        <Grid Grid.Row="1" Margin="0,10">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Padding="6" Background="Black" BorderBrush="#7FB3E6" BorderThickness="1" CornerRadius="5">
+                <Grid><Image x:Name="ResultImage" Stretch="Uniform"/><TextBlock Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top" Text="IR PALETTE / FIRE DETECTOR OVERLAY" Foreground="#FF5252" FontWeight="Bold"/></Grid>
+            </Border>
+            <Border Grid.Column="2" Padding="6" Background="Black" BorderBrush="#FFD166" BorderThickness="1" CornerRadius="5">
+                <Grid><Image x:Name="MaskImage" Stretch="Uniform"/><TextBlock Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top" Text="PALETTE-INDEPENDENT FIRE DETECTOR MASK" Foreground="#FF5252" FontWeight="Bold"/></Grid>
+            </Border>
+        </Grid>
+        <Border Grid.Row="2" Padding="12" Background="#343D46" BorderBrush="#7F96A8" BorderThickness="1" CornerRadius="5">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="20"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="20"/><ColumnDefinition Width="1.5*"/></Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="HOT PIXEL THRESHOLD" FontWeight="Bold"/>
+                    <Slider x:Name="ThresholdSlider" Minimum="0.05" Maximum="0.99" Value="0.82" TickFrequency="0.01" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                    <TextBlock x:Name="ThresholdText" HorizontalAlignment="Right" Text="0.82"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="MINIMUM FIRE DETECTOR AREA RATIO" FontWeight="Bold"/>
+                    <Slider x:Name="AreaSlider" Minimum="0.0001" Maximum="0.05" Value="0.003" TickFrequency="0.0001" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                    <TextBlock x:Name="AreaText" HorizontalAlignment="Right" Text="0.0030"/>
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="IR DISPLAY PALETTE" FontWeight="Bold"/>
+                    <ComboBox x:Name="PaletteComboBox" Margin="4,4,4,8" SelectionChanged="PaletteComboBox_SelectionChanged">
+                        <ComboBoxItem Content="BLACK HOT"/><ComboBoxItem Content="WHITE HOT"/><ComboBoxItem Content="IRON"/><ComboBoxItem Content="BLUE RED"/><ComboBoxItem Content="MEDICAL"/><ComboBoxItem Content="PURPLE"/><ComboBoxItem Content="PURPLE YELLOW"/><ComboBoxItem Content="DARK BLUE"/><ComboBoxItem Content="CYAN"/><ComboBoxItem Content="RAINBOW"/>
+                    </ComboBox>
+                    <TextBlock Text="VIDEO CONFIRM FRAMES" FontWeight="Bold"/>
+                    <Slider x:Name="ConfirmationSlider" Minimum="1" Maximum="15" Value="6" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                    <TextBlock x:Name="ConfirmationText" HorizontalAlignment="Right" Text="6 frames"/>
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Grid.ColumnSpan="5" Margin="0,92,0,0" HorizontalAlignment="Center" Text="Open an image or IR video." Foreground="#9FE870" FontSize="14" FontWeight="Bold"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

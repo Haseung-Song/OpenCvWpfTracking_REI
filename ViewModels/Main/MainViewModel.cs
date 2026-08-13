@@ -214,6 +214,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private readonly WebAgentZoomControlService _webAgentZoomControlService;
 
+        private readonly WebAgentThermalPaletteService _webAgentThermalPaletteService;
+
         /// <summary>
         /// [옥상 GOP EO] [XV-Z4850HC] CTEC CGI 직접 제어 서비스
         ///
@@ -1965,6 +1967,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// </summary>
             _controlCommandService = new ControlCommandService(_laTcpService);
 
+
             /// <summary>
             /// MCB 유지보수 직접 명령 서비스 생성
             /// </summary>
@@ -1976,6 +1979,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// </summary>
             _webAgentZoomControlService =
                 new WebAgentZoomControlService(
+                    _controlCommandService);
+
+            _webAgentThermalPaletteService =
+                new WebAgentThermalPaletteService(
                     _controlCommandService);
 
             /// <summary>
@@ -2062,6 +2069,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// AI Detector 설정 기본값 초기화
             /// </summary>
             InitializeAiDetectorSetting();
+            InitializeThermalFeatures();
 
             ConsoleLogHelper.PrintSection(
                 "[CONTROL AGENT]",

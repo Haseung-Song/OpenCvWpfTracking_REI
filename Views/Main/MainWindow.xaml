@@ -28,7 +28,7 @@
 
         기본 Title Bar를 숨긴 상태에서도 창 가장자리와 네 모서리에서
         마우스로 크기를 조절할 수 있도록 WindowChrome을 적용한다.
-    
+
         외곽 모서리와 내부 Title Bar의 반경을 동일하게 사용하여
         서로 다른 배경색이 모서리 밖으로 돌출되어 보이지 않게 한다.
     -->
@@ -49,7 +49,7 @@
 
             수평선과 수직선이 화면 중심에서 교차하며,
             검정 외곽선 위에 선택된 색상의 본선을 겹쳐 표시하여
-            밝은 EO 영상과 흑백 IR 영상에서 모두 식별 가능하도록 한다. -->
+        밝은 EO 영상과 흑백 IR 영상에서 모두 식별 가능하도록 한다. -->
         <ControlTemplate x:Key="CenterCrosshairTemplate"
                          TargetType="Control">
             <Grid Width="72"
@@ -1613,15 +1613,33 @@
                                                                                 </StackPanel>
                                                                             </Grid>
 
-                                                                            <ComboBox Grid.Row="2"
-                                                                                      Style="{StaticResource CommunicationComboBoxStyle}"
-                                                                                      ItemsSource="{Binding EoRtspSourceOptions}"
-                                                                                      DisplayMemberPath="DisplayName"
-                                                                                      SelectedItem="{Binding SelectedEoRtspSource,
-                                                                                              Mode=TwoWay,
-                                                                                              UpdateSourceTrigger=PropertyChanged}"
-                                                                                      IsEditable="False"
-                                                                                      MaxDropDownHeight="180"/>
+                                                                            <StackPanel Grid.Row="2">
+                                                                                <ComboBox Style="{StaticResource CommunicationComboBoxStyle}"
+                                                                                          ItemsSource="{Binding EoRtspSourceOptions}"
+                                                                                          DisplayMemberPath="DisplayName"
+                                                                                          SelectedItem="{Binding SelectedEoRtspSource,
+                                                                                                  Mode=TwoWay,
+                                                                                                  UpdateSourceTrigger=PropertyChanged}"
+                                                                                          IsEditable="False"
+                                                                                          MaxDropDownHeight="180"/>
+
+                                                                                <TextBox Margin="0,6,0,0"
+                                                                                         Text="{Binding EoSourceAddress,
+                                                                                                 Mode=TwoWay,
+                                                                                                 UpdateSourceTrigger=PropertyChanged}">
+                                                                                    <TextBox.Style>
+                                                                                        <Style TargetType="TextBox"
+                                                                                               BasedOn="{StaticResource CommunicationTextBoxStyle}">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding IsEoRtspDirectInput}" Value="True">
+                                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBox.Style>
+                                                                                </TextBox>
+                                                                            </StackPanel>
 
                                                                             <!-- [IR RTSP] 카메라 선택 제목 및 연결 상태 -->
                                                                             <Grid Grid.Row="3"
@@ -1663,16 +1681,33 @@
                                                                                 </StackPanel>
                                                                             </Grid>
 
-                                                                            <ComboBox Grid.Row="4"
-                                                                                      Style="{StaticResource CommunicationComboBoxStyle}"
-                                                                                      ItemsSource="{Binding IrRtspSourceOptions}"
-                                                                                      DisplayMemberPath="DisplayName"
-                                                                                      SelectedValuePath="Address"
-                                                                                      SelectedValue="{Binding IrSourceAddress,
-                                                                                              Mode=TwoWay,
-                                                                                              UpdateSourceTrigger=PropertyChanged}"
-                                                                                      IsEditable="False"
-                                                                                      MaxDropDownHeight="180"/>
+                                                                            <StackPanel Grid.Row="4">
+                                                                                <ComboBox Style="{StaticResource CommunicationComboBoxStyle}"
+                                                                                          ItemsSource="{Binding IrRtspSourceOptions}"
+                                                                                          DisplayMemberPath="DisplayName"
+                                                                                          SelectedItem="{Binding SelectedIrRtspSource,
+                                                                                                  Mode=TwoWay,
+                                                                                                  UpdateSourceTrigger=PropertyChanged}"
+                                                                                          IsEditable="False"
+                                                                                          MaxDropDownHeight="180"/>
+
+                                                                                <TextBox Margin="0,6,0,0"
+                                                                                         Text="{Binding IrSourceAddress,
+                                                                                                 Mode=TwoWay,
+                                                                                                 UpdateSourceTrigger=PropertyChanged}">
+                                                                                    <TextBox.Style>
+                                                                                        <Style TargetType="TextBox"
+                                                                                               BasedOn="{StaticResource CommunicationTextBoxStyle}">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding IsIrRtspDirectInput}" Value="True">
+                                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBox.Style>
+                                                                                </TextBox>
+                                                                            </StackPanel>
                                                                         </Grid>
 
                                                                         <!-- 선택값 적용 시점 안내 -->
@@ -1708,7 +1743,7 @@
                                                             </TabItem>
 
                                                             <!-- AI Detector 연결 및 분석 설정 하위 탭 -->
-                                                            <TabItem Header="AI DETECTOR">
+                                                            <TabItem Header="AI / FIRE DETECTOR">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled">
                                                                     <StackPanel Margin="7">
@@ -1720,207 +1755,351 @@
                                                                             통신 설정 탭 내부로 이동하여 데모 화면의 빈 공간을
                                                                             줄이고 모든 연결 설정을 한 화면에서 관리한다.
                                                                         -->
-                                                                        <TextBlock Text="3. AI DETECTOR SETTING"
-                                                                                   Foreground="White"
-                                                                                   FontWeight="Bold"
-                                                                                   Margin="0,0,0,8"/>
+                                                                        <Border Padding="10"
+                                                                                Background="#464D54"
+                                                                                BorderBrush="#81909A"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="3. AI DETECTOR SETTING"
+                                                                                           Foreground="#A9D6E5"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"
+                                                                                           Margin="0,0,0,10"/>
 
-                                                                        <!-- [AI Agent] IP / Port -->
-                                                                        <Grid Margin="0,0,0,10">
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="85"/>
-                                                                            </Grid.ColumnDefinitions>
+                                                                                <!-- [AI Agent] IP / Port -->
+                                                                                <Grid Margin="0,0,0,10">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="85"/>
+                                                                                    </Grid.ColumnDefinitions>
 
-                                                                            <TextBox Grid.Column="0"
-                                                                                     Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                     Text="{Binding AiControlAgentIp,
-                                                                                             Mode=TwoWay,
-                                                                                             UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    <TextBox Grid.Column="0"
+                                                                                             Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                             Text="{Binding AiControlAgentIp,
+                                                                                                     Mode=TwoWay,
+                                                                                                     UpdateSourceTrigger=PropertyChanged}"/>
 
-                                                                            <TextBox Grid.Column="1"
-                                                                                     Margin="6,0,0,0"
-                                                                                     Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                     Text="{Binding AiAgentPort,
-                                                                                             Mode=TwoWay,
-                                                                                             UpdateSourceTrigger=PropertyChanged}"/>
-                                                                        </Grid>
+                                                                                    <TextBox Grid.Column="1"
+                                                                                             Margin="6,0,0,0"
+                                                                                             Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                             Text="{Binding AiAgentPort,
+                                                                                                     Mode=TwoWay,
+                                                                                                     UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                </Grid>
+
+                                                                                <!--
+                                                                                    AI Agent 수동 연결 / 연결 해제
+
+                                                                                    프로그램 시작 시에는 AI Agent에 자동 연결하지 않으며,
+                                                                                    사용자가 각 버튼을 누른 경우에만 연결 상태를 변경한다.
+                                                                                -->
+                                                                                <UniformGrid Columns="2"
+                                                                                             Margin="0,0,0,12">
+
+                                                                                    <Button Content="AI CONNECT"
+                                                                                            Height="30"
+                                                                                            Margin="0,0,3,0"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#1F4F4A"
+                                                                                            Command="{Binding ConnectAiAgentCommand}"/>
+
+                                                                                    <Button Content="AI DISCONNECT"
+                                                                                            Height="30"
+                                                                                            Margin="3,0,0,0"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#5A3030"
+                                                                                            Command="{Binding DisconnectAiAgentCommand}"/>
+
+                                                                                </UniformGrid>
+
+                                                                                <!-- [AI Detector] 분석 대상 EO / IR RTSP 프리셋 -->
+                                                                                <ComboBox Height="28"
+                                                                                          Margin="0,0,0,6"
+                                                                                          ItemsSource="{Binding EoRtspSourceOptions}"
+                                                                                          DisplayMemberPath="DisplayName"
+                                                                                          SelectedItem="{Binding SelectedAiEoRtspSource,
+                                                                                                  Mode=TwoWay}"/>
+
+                                                                                <TextBox Height="28"
+                                                                                         Margin="0,0,0,8"
+                                                                                         Text="{Binding AiRtsp0Address,
+                                                                                                 Mode=TwoWay,
+                                                                                                 UpdateSourceTrigger=PropertyChanged}">
+                                                                                    <TextBox.Style>
+                                                                                        <Style TargetType="TextBox">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding IsAiEoRtspDirectInput}" Value="True">
+                                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBox.Style>
+                                                                                </TextBox>
+
+                                                                                <ComboBox Height="28"
+                                                                                          Margin="0,0,0,6"
+                                                                                          ItemsSource="{Binding IrRtspSourceOptions}"
+                                                                                          DisplayMemberPath="DisplayName"
+                                                                                          SelectedItem="{Binding SelectedAiIrRtspSource,
+                                                                                                  Mode=TwoWay}"/>
+
+                                                                                <TextBox Height="28"
+                                                                                         Margin="0,0,0,10"
+                                                                                         Text="{Binding AiRtsp1Address,
+                                                                                                 Mode=TwoWay,
+                                                                                                 UpdateSourceTrigger=PropertyChanged}">
+                                                                                    <TextBox.Style>
+                                                                                        <Style TargetType="TextBox">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding IsAiIrRtspDirectInput}" Value="True">
+                                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBox.Style>
+                                                                                </TextBox>
+
+                                                                                <Button Content="APPLY AI RTSP"
+                                                                                        Height="30"
+                                                                                        Margin="0,0,0,12"
+                                                                                        Style="{StaticResource AiSettingButtonStyle}"
+                                                                                        Background="#263B4A"
+                                                                                        Command="{Binding ApplyAiRtspCommand}"/>
+
+                                                                                <!-- [AI Detector] ONNX Mapping -->
+                                                                                <Grid Margin="0,0,0,10">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="8"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                    </Grid.ColumnDefinitions>
+
+                                                                                    <ComboBox Grid.Column="0"
+                                                                                              Height="28"
+                                                                                              ItemsSource="{Binding AiOnnxList}"
+                                                                                              DisplayMemberPath="FileName"
+                                                                                              SelectedValuePath="Index"
+                                                                                              SelectedValue="{Binding AiRtsp0OnnxIndex,
+                                                                                                      Mode=TwoWay}"/>
+
+                                                                                    <ComboBox Grid.Column="2"
+                                                                                              Height="28"
+                                                                                              ItemsSource="{Binding AiOnnxList}"
+                                                                                              DisplayMemberPath="FileName"
+                                                                                              SelectedValuePath="Index"
+                                                                                              SelectedValue="{Binding AiRtsp1OnnxIndex,
+                                                                                                      Mode=TwoWay}"/>
+                                                                                </Grid>
+
+                                                                                <!-- Confidence / IOU / Box Filter -->
+                                                                                <Grid Margin="0,2,0,4">
+                                                                                    <Grid.RowDefinitions>
+                                                                                        <RowDefinition Height="Auto"/>
+                                                                                        <RowDefinition Height="Auto"/>
+                                                                                        <RowDefinition Height="Auto"/>
+                                                                                    </Grid.RowDefinitions>
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="80"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="42"/>
+                                                                                    </Grid.ColumnDefinitions>
+
+                                                                                    <TextBlock Grid.Row="0"
+                                                                                               Text="Confidence"
+                                                                                               Foreground="White"
+                                                                                               VerticalAlignment="Center"/>
+                                                                                    <Slider Grid.Row="0"
+                                                                                            Grid.Column="1"
+                                                                                            Margin="0,2"
+                                                                                            Minimum="0"
+                                                                                            Maximum="1"
+                                                                                            TickFrequency="0.05"
+                                                                                            IsSnapToTickEnabled="True"
+                                                                                            Value="{Binding AiMappingConfidence,
+                                                                                                    Mode=TwoWay}"/>
+                                                                                    <TextBlock Grid.Row="0"
+                                                                                               Grid.Column="2"
+                                                                                               Text="{Binding AiMappingConfidenceText}"
+                                                                                               Foreground="White"
+                                                                                               VerticalAlignment="Center"/>
+
+                                                                                    <TextBlock Grid.Row="1"
+                                                                                               Text="IOU"
+                                                                                               Foreground="White"
+                                                                                               VerticalAlignment="Center"/>
+                                                                                    <Slider Grid.Row="1"
+                                                                                            Grid.Column="1"
+                                                                                            Margin="0,2"
+                                                                                            Minimum="0"
+                                                                                            Maximum="1"
+                                                                                            TickFrequency="0.05"
+                                                                                            IsSnapToTickEnabled="True"
+                                                                                            Value="{Binding AiMappingIou,
+                                                                                                    Mode=TwoWay}"/>
+                                                                                    <TextBlock Grid.Row="1"
+                                                                                               Grid.Column="2"
+                                                                                               Text="{Binding AiMappingIouText}"
+                                                                                               Foreground="White"
+                                                                                               VerticalAlignment="Center"/>
+
+                                                                                    <TextBlock Grid.Row="2"
+                                                                                               Text="Box Filter"
+                                                                                               Foreground="White"
+                                                                                               VerticalAlignment="Center"/>
+                                                                                    <Slider Grid.Row="2"
+                                                                                            Grid.Column="1"
+                                                                                            Margin="0,2"
+                                                                                            Minimum="0"
+                                                                                            Maximum="1"
+                                                                                            TickFrequency="0.05"
+                                                                                            IsSnapToTickEnabled="True"
+                                                                                            Value="{Binding AiDisplayConfidenceThreshold,
+                                                                                                    Mode=TwoWay}"/>
+                                                                                    <TextBlock Grid.Row="2"
+                                                                                               Grid.Column="2"
+                                                                                               Text="{Binding AiDisplayConfidenceThresholdText}"
+                                                                                               Foreground="White"
+                                                                                               VerticalAlignment="Center"/>
+                                                                                </Grid>
+
+                                                                                <Grid Margin="0,12,0,0">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="8"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                    </Grid.ColumnDefinitions>
+
+                                                                                    <Button Grid.Column="0"
+                                                                                            Content="APPLY MAPPING"
+                                                                                            Height="30"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#34505F"
+                                                                                            Command="{Binding ApplyAiMappingCommand}"/>
+
+                                                                                    <Button Grid.Column="2"
+                                                                                            Content="REFRESH AI INFO"
+                                                                                            Height="30"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#3A4058"
+                                                                                            Command="{Binding RefreshAiSettingCommand}"/>
+                                                                                </Grid>
+
+                                                                                <CheckBox Content="AUTO TRACKING"
+                                                                                          Foreground="#00E676"
+                                                                                          FontWeight="Bold"
+                                                                                          IsChecked="{Binding IsAutoTrackingEnabled}"
+                                                                                          Margin="0,12,0,0"/>
+
+                                                                                <TextBlock Text="{Binding AiSettingStatusText}"
+                                                                                           Foreground="#00E676"
+                                                                                           FontSize="11"
+                                                                                           FontWeight="Bold"
+                                                                                           TextWrapping="Wrap"
+                                                                                           Margin="0,6,0,0"/>
+                                                                            </StackPanel>
+                                                                        </Border>
 
                                                                         <!--
-                                                                            AI Agent 수동 연결 / 연결 해제
+                                                                            [열영상 팔레트 / 화재 후보 검출 시험]
 
-                                                                            프로그램 시작 시에는 AI Agent에 자동 연결하지 않으며,
-                                                                            사용자가 각 버튼을 누른 경우에만 연결 상태를 변경한다.
+                                                                            팔레트 제어는 ThermalCamCon 실장비 명령의
+                                                                            Address 0x0E / Palette 0x00 ~ 0x09를 사용한다.
+
+                                                                            화재 후보 검출은 방사 온도값이 아닌
+                                                                            IR 영상의 밝기 및 적색 계열 픽셀을 분석하는
+                                                                            시험 기능이므로 FIRE CANDIDATE로 표시한다.
                                                                         -->
-                                                                        <UniformGrid Columns="2"
-                                                                                     Margin="0,0,0,12">
+                                                                        <Border Margin="0,14,0,0"
+                                                                                Padding="10"
+                                                                                Background="#464D54"
+                                                                                BorderBrush="#81909A"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="4. FIRE DETECTOR SETTING"
+                                                                                           Foreground="#A9D6E5"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"
+                                                                                           Margin="0,0,0,10"/>
 
-                                                                            <Button Content="AI CONNECT"
-                                                                                    Height="30"
-                                                                                    Margin="0,0,3,0"
-                                                                                    Style="{StaticResource AiSettingButtonStyle}"
-                                                                                    Background="#1F4F4A"
-                                                                                    Command="{Binding ConnectAiAgentCommand}"/>
+                                                                                <UniformGrid Columns="3" Margin="0,0,0,6">
+                                                                                    <Button Content="BLACK HOT" Height="30" Margin="0,0,3,0" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalBlackHotCommand}"/>
+                                                                                    <Button Content="WHITE HOT" Height="30" Margin="3,0" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalWhiteHotCommand}"/>
+                                                                                    <Button Content="RAINBOW" Height="30" Margin="3,0,0,0" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalRainbowCommand}"/>
+                                                                                </UniformGrid>
 
-                                                                            <Button Content="AI DISCONNECT"
-                                                                                    Height="30"
-                                                                                    Margin="3,0,0,0"
-                                                                                    Style="{StaticResource AiSettingButtonStyle}"
-                                                                                    Background="#5A3030"
-                                                                                    Command="{Binding DisconnectAiAgentCommand}"/>
+                                                                                <UniformGrid Columns="3"
+                                                                                             Margin="0,0,0,12">
+                                                                                    <Button Content="PREV"
+                                                                                            Height="30"
+                                                                                            Margin="0,0,3,0"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#3E515E"
+                                                                                            Command="{Binding PreviousThermalPaletteCommand}"/>
 
-                                                                        </UniformGrid>
+                                                                                    <Button Content="NEXT"
+                                                                                            Height="30"
+                                                                                            Margin="3,0"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#3E515E"
+                                                                                            Command="{Binding NextThermalPaletteCommand}"/>
 
-                                                                        <!-- [AI Detector] 분석 대상 RTSP 주소 -->
-                                                                        <TextBox Height="28"
-                                                                                 Margin="0,0,0,8"
-                                                                                 Text="{Binding AiRtsp0Address,
-                                                                                         Mode=TwoWay,
-                                                                                         UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    <Button Content="NUC"
+                                                                                            Height="30"
+                                                                                            Margin="3,0,0,0"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#665637"
+                                                                                            Command="{Binding RequestThermalNucCommand}"/>
+                                                                                </UniformGrid>
 
-                                                                        <TextBox Height="28"
-                                                                                 Margin="0,0,0,10"
-                                                                                 Text="{Binding AiRtsp1Address,
-                                                                                         Mode=TwoWay,
-                                                                                         UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                <Button Content="TEST PROGRAM"
+                                                                                        Height="30"
+                                                                                        Margin="0,0,0,8"
+                                                                                        Style="{StaticResource AiSettingButtonStyle}"
+                                                                                        Background="#7A3434"
+                                                                                        Click="FireDetectorTestProgram_Click"/>
 
-                                                                        <Button Content="APPLY AI RTSP"
-                                                                                Height="30"
-                                                                                Margin="0,0,0,12"
-                                                                                Style="{StaticResource AiSettingButtonStyle}"
-                                                                                Background="#263B4A"
-                                                                                Command="{Binding ApplyAiRtspCommand}"/>
+                                                                                <CheckBox Content="FIRE DETECTOR"
+                                                                                          Foreground="#FF8A80"
+                                                                                          FontWeight="Bold"
+                                                                                          IsChecked="{Binding IsThermalFireDetectionEnabled,
+                                                                                                  Mode=TwoWay}"
+                                                                                          Margin="0,0,0,8"/>
 
-                                                                        <!-- [AI Detector] ONNX Mapping -->
-                                                                        <Grid Margin="0,0,0,10">
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="8"/>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                            </Grid.ColumnDefinitions>
+                                                                                <TextBlock Text="HOT PIXEL THRESHOLD"
+                                                                                           Foreground="White"/>
+                                                                                <Slider Minimum="0"
+                                                                                        Maximum="1"
+                                                                                        TickFrequency="0.01"
+                                                                                        IsSnapToTickEnabled="True"
+                                                                                        Value="{Binding ThermalHotThresholdRatio,
+                                                                                                Mode=TwoWay}"
+                                                                                        Margin="0,3,0,0"/>
+                                                                                <TextBlock Text="{Binding ThermalHotThresholdRatio,
+                                                                                                   StringFormat=THRESHOLD : {0:F2}}"
+                                                                                           Foreground="#D0D7DE"
+                                                                                           HorizontalAlignment="Right"
+                                                                                           Margin="0,0,0,8"/>
 
-                                                                            <ComboBox Grid.Column="0"
-                                                                                      Height="28"
-                                                                                      ItemsSource="{Binding AiOnnxList}"
-                                                                                      DisplayMemberPath="FileName"
-                                                                                      SelectedValuePath="Index"
-                                                                                      SelectedValue="{Binding AiRtsp0OnnxIndex,
-                                                                                              Mode=TwoWay}"/>
+                                                                                <TextBlock Text="MINIMUM FIRE DETECTOR AREA"
+                                                                                           Foreground="White"/>
+                                                                                <Slider Minimum="0.001"
+                                                                                        Maximum="0.25"
+                                                                                        TickFrequency="0.01"
+                                                                                        IsSnapToTickEnabled="True"
+                                                                                        Value="{Binding ThermalMinimumAreaRatio,
+                                                                                                Mode=TwoWay}"
+                                                                                        Margin="0,3,0,0"/>
+                                                                                <TextBlock Text="{Binding ThermalMinimumAreaRatio,
+                                                                                                   StringFormat=MIN AREA RATIO : {0:F2}}"
+                                                                                           Foreground="#D0D7DE"
+                                                                                           HorizontalAlignment="Right"/>
 
-                                                                            <ComboBox Grid.Column="2"
-                                                                                      Height="28"
-                                                                                      ItemsSource="{Binding AiOnnxList}"
-                                                                                      DisplayMemberPath="FileName"
-                                                                                      SelectedValuePath="Index"
-                                                                                      SelectedValue="{Binding AiRtsp1OnnxIndex,
-                                                                                              Mode=TwoWay}"/>
-                                                                        </Grid>
-
-                                                                        <!-- Confidence / IOU / Box Filter -->
-                                                                        <Grid Margin="0,2,0,4">
-                                                                            <Grid.RowDefinitions>
-                                                                                <RowDefinition Height="Auto"/>
-                                                                                <RowDefinition Height="Auto"/>
-                                                                                <RowDefinition Height="Auto"/>
-                                                                            </Grid.RowDefinitions>
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="80"/>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="42"/>
-                                                                            </Grid.ColumnDefinitions>
-
-                                                                            <TextBlock Grid.Row="0"
-                                                                                       Text="Confidence"
-                                                                                       Foreground="White"
-                                                                                       VerticalAlignment="Center"/>
-                                                                            <Slider Grid.Row="0"
-                                                                                    Grid.Column="1"
-                                                                                    Margin="0,2"
-                                                                                    Minimum="0"
-                                                                                    Maximum="1"
-                                                                                    TickFrequency="0.05"
-                                                                                    IsSnapToTickEnabled="True"
-                                                                                    Value="{Binding AiMappingConfidence,
-                                                                                            Mode=TwoWay}"/>
-                                                                            <TextBlock Grid.Row="0"
-                                                                                       Grid.Column="2"
-                                                                                       Text="{Binding AiMappingConfidenceText}"
-                                                                                       Foreground="White"
-                                                                                       VerticalAlignment="Center"/>
-
-                                                                            <TextBlock Grid.Row="1"
-                                                                                       Text="IOU"
-                                                                                       Foreground="White"
-                                                                                       VerticalAlignment="Center"/>
-                                                                            <Slider Grid.Row="1"
-                                                                                    Grid.Column="1"
-                                                                                    Margin="0,2"
-                                                                                    Minimum="0"
-                                                                                    Maximum="1"
-                                                                                    TickFrequency="0.05"
-                                                                                    IsSnapToTickEnabled="True"
-                                                                                    Value="{Binding AiMappingIou,
-                                                                                            Mode=TwoWay}"/>
-                                                                            <TextBlock Grid.Row="1"
-                                                                                       Grid.Column="2"
-                                                                                       Text="{Binding AiMappingIouText}"
-                                                                                       Foreground="White"
-                                                                                       VerticalAlignment="Center"/>
-
-                                                                            <TextBlock Grid.Row="2"
-                                                                                       Text="Box Filter"
-                                                                                       Foreground="White"
-                                                                                       VerticalAlignment="Center"/>
-                                                                            <Slider Grid.Row="2"
-                                                                                    Grid.Column="1"
-                                                                                    Margin="0,2"
-                                                                                    Minimum="0"
-                                                                                    Maximum="1"
-                                                                                    TickFrequency="0.05"
-                                                                                    IsSnapToTickEnabled="True"
-                                                                                    Value="{Binding AiDisplayConfidenceThreshold,
-                                                                                            Mode=TwoWay}"/>
-                                                                            <TextBlock Grid.Row="2"
-                                                                                       Grid.Column="2"
-                                                                                       Text="{Binding AiDisplayConfidenceThresholdText}"
-                                                                                       Foreground="White"
-                                                                                       VerticalAlignment="Center"/>
-                                                                        </Grid>
-
-                                                                        <Grid Margin="0,12,0,0">
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="8"/>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                            </Grid.ColumnDefinitions>
-
-                                                                            <Button Grid.Column="0"
-                                                                                    Content="APPLY MAPPING"
-                                                                                    Height="30"
-                                                                                    Style="{StaticResource AiSettingButtonStyle}"
-                                                                                    Background="#34505F"
-                                                                                    Command="{Binding ApplyAiMappingCommand}"/>
-
-                                                                            <Button Grid.Column="2"
-                                                                                    Content="REFRESH AI INFO"
-                                                                                    Height="30"
-                                                                                    Style="{StaticResource AiSettingButtonStyle}"
-                                                                                    Background="#3A4058"
-                                                                                    Command="{Binding RefreshAiSettingCommand}"/>
-                                                                        </Grid>
-
-                                                                        <CheckBox Content="AUTO TRACKING"
-                                                                                  Foreground="#00E676"
-                                                                                  FontWeight="Bold"
-                                                                                  IsChecked="{Binding IsAutoTrackingEnabled}"
-                                                                                  Margin="0,12,0,0"/>
-
-                                                                        <TextBlock Text="{Binding AiSettingStatusText}"
-                                                                                   Foreground="#00E676"
-                                                                                   FontSize="11"
-                                                                                   FontWeight="Bold"
-                                                                                   TextWrapping="Wrap"
-                                                                                   Margin="0,6,0,0"/>
+                                                                            </StackPanel>
+                                                                        </Border>
                                                                     </StackPanel>
                                                                 </ScrollViewer>
                                                             </TabItem>
@@ -1947,70 +2126,28 @@
                                                             BorderBrush="#76818B"
                                                             BorderThickness="1"
                                                             Padding="9">
-                                                        <Grid>
-                                                            <Grid.RowDefinitions>
-                                                                <RowDefinition Height="Auto"/>
-                                                            </Grid.RowDefinitions>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="70"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                            </Grid.ColumnDefinitions>
-
-                                                            <TextBlock Grid.Row="0"
-                                                                       Text="POWER"
-                                                                       Foreground="#D0D7DE"
-                                                                       FontWeight="Bold"
-                                                                       HorizontalAlignment="Center"
-                                                                       VerticalAlignment="Center"
-                                                                       Margin="0,2,0,2"/>
-                                                            <TextBlock Grid.Row="0"
-                                                                       Grid.Column="1"
-                                                                       FontSize="10.5"
-                                                                       FontWeight="Bold"
-                                                                       HorizontalAlignment="Left"
-                                                                       VerticalAlignment="Center"
-                                                                       Margin="14,2,0,2">
-
-                                                                <Run Text="CONTROL:"
-                                                                     Foreground="#4FD1C5"/>
-
-                                                                <Run Text="{Binding CurrentControlPowerText,
-                                                                             Mode=OneWay}"
-                                                                     Foreground="#9FE870"/>
-
-                                                                <Run Text=" / "
-                                                                     Foreground="#D0D7DE"/>
-
-                                                                <Run Text="EO:"
-                                                                     Foreground="#7DD3FC"/>
-
-                                                                <Run Text="{Binding CurrentEoPowerText,
-                                                                             Mode=OneWay}"
-                                                                     Foreground="#9FE870"/>
-
-                                                                <Run Text=" / "
-                                                                     Foreground="#D0D7DE"/>
-
-                                                                <Run Text="IR:"
-                                                                     Foreground="#C4B5FD"/>
-
-                                                                <Run Text="{Binding CurrentIrPowerText,
-                                                                             Mode=OneWay}"
-                                                                     Foreground="#9FE870"/>
-
-                                                                <Run Text=" / "
-                                                                     Foreground="#D0D7DE"/>
-
-                                                                <Run Text="AI:"
-                                                                     Foreground="#FFD166"/>
-
-                                                                <Run Text="{Binding AiPowerStatusText,
-                                                                             Mode=OneWay}"
-                                                                     Foreground="#9FE870"/>
-
-                                                            </TextBlock>
-                                                        </Grid>
-
+                                                        <TextBlock FontSize="10.5"
+                                                                   FontWeight="Bold"
+                                                                   HorizontalAlignment="Center"
+                                                                   TextAlignment="Center"
+                                                                   VerticalAlignment="Center">
+                                                            <Run Text="POWER" Foreground="#D0D7DE"/>
+                                                            <Run Text=" / " Foreground="#D0D7DE"/>
+                                                            <Run Text="TCP:" Foreground="#4FD1C5"/>
+                                                            <Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#9FE870"/>
+                                                            <Run Text=" / " Foreground="#D0D7DE"/>
+                                                            <Run Text="EO:" Foreground="#7DD3FC"/>
+                                                            <Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#9FE870"/>
+                                                            <Run Text=" / " Foreground="#D0D7DE"/>
+                                                            <Run Text="IR:" Foreground="#C4B5FD"/>
+                                                            <Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#9FE870"/>
+                                                            <Run Text=" / " Foreground="#D0D7DE"/>
+                                                            <Run Text="AI:" Foreground="#A9D6E5"/>
+                                                            <Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
+                                                            <Run Text=" / " Foreground="#D0D7DE"/>
+                                                            <Run Text="FIRE:" Foreground="#A9D6E5"/>
+                                                            <Run Text="{Binding FirePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
+                                                        </TextBlock>
                                                     </Border>
                                                 </StackPanel>
                                             </Border>
@@ -2394,9 +2531,9 @@
                                                                                     <DataTrigger Binding="{Binding IsCrosshairVisible}"
                                                                                                  Value="True">
                                                                                         <Setter Property="Background"
-                                                                                                Value="#2F6F5E"/>
+                                                                                                Value="{Binding CrosshairBrush}"/>
                                                                                         <Setter Property="BorderBrush"
-                                                                                                Value="#72D6B3"/>
+                                                                                                Value="{Binding CrosshairBrush}"/>
                                                                                     </DataTrigger>
                                                                                     <Trigger Property="IsMouseOver"
                                                                                              Value="True">

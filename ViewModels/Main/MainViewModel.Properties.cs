@@ -350,6 +350,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsRooftopStatusSelected));
                 OnPropertyChanged(nameof(IsEnvironmentStatusSelected));
+                OnPropertyChanged(nameof(IsRooftopThermalPaletteVisible));
+                OnPropertyChanged(nameof(IsEnvironmentThermalPaletteVisible));
                 OnPropertyChanged(nameof(CurrentStatusEquipmentText));
                 OnPropertyChanged(nameof(IsHomeZeroVisible));
                 OnPropertyChanged(nameof(CurrentIrZoomText));
@@ -360,6 +362,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(EnvironmentIrFocusStatusText));
                 OnPropertyChanged(nameof(CurrentLaPresetSnapshotText));
                 OnPropertyChanged(nameof(CurrentPresetSnapshotText));
+
             }
 
         }
@@ -369,6 +372,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public bool IsEnvironmentStatusSelected =>
             SelectedEquipmentStatusMode == EquipmentStatusMode.Environment;
+
+        public bool IsRooftopThermalPaletteVisible => IsRooftopStatusSelected;
+
+        public bool IsEnvironmentThermalPaletteVisible => IsEnvironmentStatusSelected;
 
         public string CurrentStatusEquipmentText =>
             IsRooftopStatusSelected
@@ -1412,17 +1419,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 옥상 GOP EO 카메라의 CTEC CGI 직접 제어 여부까지 판단해야 하므로
         /// 선택 항목 전체를 SelectedItem으로 바인딩한다.
         /// </summary>
+        private RtspSourceOption _selectedEoRtspSource;
+        private RtspSourceOption _selectedIrRtspSource;
+        private RtspSourceOption _selectedAiEoRtspSource;
+        private RtspSourceOption _selectedAiIrRtspSource;
+
         public RtspSourceOption SelectedEoRtspSource
         {
             get
             {
-                return EoRtspSourceOptions
+                return _selectedEoRtspSource ?? EoRtspSourceOptions
                     .FirstOrDefault(
                         option =>
                             string.Equals(
                                 option.Address,
                                 EoSourceAddress,
-                                StringComparison.OrdinalIgnoreCase));
+                                StringComparison.OrdinalIgnoreCase))
+                    ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             }
 
             set
@@ -1432,10 +1445,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                EoSourceAddress =
-                    value.Address;
+                _selectedEoRtspSource = value;
+
+                if (!value.IsDirectInput)
+                {
+                    EoSourceAddress =
+                        value.Address;
+                }
 
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsEoRtspDirectInput));
             }
 
         }
@@ -1461,9 +1480,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     value;
 
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedIrRtspSource));
+                OnPropertyChanged(nameof(IsIrRtspDirectInput));
             }
 
         }
+
+        /// <summary>
+        /// 통신 설정 탭에서 선택된 IR RTSP 프리셋
+        /// </summary>
+        public RtspSourceOption SelectedIrRtspSource
+        {
+            get => _selectedIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(
+                       option => string.Equals(
+                           option.Address,
+                           IrSourceAddress,
+                           StringComparison.OrdinalIgnoreCase))
+                   ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            set
+            {
+                if (value == null)
+                {
+                    return;
+                }
+
+                _selectedIrRtspSource = value;
+
+                if (!value.IsDirectInput)
+                {
+                    IrSourceAddress =
+                        value.Address;
+                }
+
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsIrRtspDirectInput));
+            }
+        }
+
+        public bool IsEoRtspDirectInput =>
+            SelectedEoRtspSource?.IsDirectInput == true;
+
+        public bool IsIrRtspDirectInput =>
+            SelectedIrRtspSource?.IsDirectInput == true;
 
         #endregion
 
@@ -1709,6 +1767,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _aiRtsp0Address = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(SelectedAiEoRtspSource));
+                    OnPropertyChanged(nameof(IsAiEoRtspDirectInput));
                 }
 
             }
@@ -1727,11 +1787,73 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _aiRtsp1Address = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(SelectedAiIrRtspSource));
+                    OnPropertyChanged(nameof(IsAiIrRtspDirectInput));
                 }
 
             }
 
         }
+
+        public RtspSourceOption SelectedAiEoRtspSource
+        {
+            get => _selectedAiEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(
+                       option => string.Equals(
+                           option.Address,
+                           AiRtsp0Address,
+                           StringComparison.OrdinalIgnoreCase))
+                   ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            set
+            {
+                if (value == null)
+                {
+                    return;
+                }
+
+                _selectedAiEoRtspSource = value;
+
+                if (!value.IsDirectInput)
+                {
+                    AiRtsp0Address = value.Address;
+                }
+
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsAiEoRtspDirectInput));
+            }
+        }
+
+        public RtspSourceOption SelectedAiIrRtspSource
+        {
+            get => _selectedAiIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(
+                       option => string.Equals(
+                           option.Address,
+                           AiRtsp1Address,
+                           StringComparison.OrdinalIgnoreCase))
+                   ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            set
+            {
+                if (value == null)
+                {
+                    return;
+                }
+
+                _selectedAiIrRtspSource = value;
+
+                if (!value.IsDirectInput)
+                {
+                    AiRtsp1Address = value.Address;
+                }
+
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsAiIrRtspDirectInput));
+            }
+        }
+
+        public bool IsAiEoRtspDirectInput =>
+            SelectedAiEoRtspSource?.IsDirectInput == true;
+
+        public bool IsAiIrRtspDirectInput =>
+            SelectedAiIrRtspSource?.IsDirectInput == true;
 
         /// <summary>
         /// [RTSP Index 0]에 적용할 [ONNX Index]
@@ -2607,7 +2729,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 new RtspSourceOption(
                     "4층 환경부 PTZ 주간(EO)",
-                    MoeEoRtspAddress)
+                    MoeEoRtspAddress),
+
+                new RtspSourceOption(
+                    "직접 입력",
+                    string.Empty,
+                    isDirectInput: true)
             };
 
         /// <summary>
@@ -2629,7 +2756,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 new RtspSourceOption(
                     "4층 환경부 PTZ 열상(IR)",
-                    MoeIrRtspAddress)
+                    MoeIrRtspAddress),
+
+                new RtspSourceOption(
+                    "직접 입력",
+                    string.Empty,
+                    isDirectInput: true)
             };
 
         /// <summary>

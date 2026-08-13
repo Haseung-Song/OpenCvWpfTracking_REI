@@ -2,6 +2,7 @@
 using Microsoft.Win32;
 using OpenCvWpfTracking.ViewModels.Main;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -60,6 +61,32 @@ namespace OpenCvWpfTracking
 
             DataContext =
                 vm;
+        }
+
+        private void FireDetectorTestProgram_Click(
+            object sender,
+            RoutedEventArgs e)
+        {
+            string testProgramPath = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "FireCandidateValidator.exe");
+
+            if (!File.Exists(testProgramPath))
+            {
+                MessageBox.Show(
+                    "Fire detector test program was not found. Rebuild the solution and run it from the output folder.",
+                    "TEST PROGRAM",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = testProgramPath,
+                WorkingDirectory = Path.GetDirectoryName(testProgramPath),
+                UseShellExecute = true
+            });
         }
 
         #endregion

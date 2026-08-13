@@ -31,6 +31,15 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private readonly byte _unitId = 0x01;
 
+        private readonly object _irPaletteSync =
+            new object();
+
+        private const int IrPaletteCount = 10;
+
+        private int _currentIrPaletteIndex;
+
+        private bool _isIrPaletteSynchronized;
+
         public ControlCommandService(TcpClientService tcpClientService)
         {
             _tcpClientService = tcpClientService;
@@ -1276,6 +1285,153 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x02,
                 0x00);
         }
+
+        #region [IR Thermal Image Control]
+
+        private bool SendIrImageControlCommand(byte operation)
+        {
+            return SendCommand(0x00, 0x31, operation, 0x00);
+        }
+
+        /// <summary>
+        /// 실제 장비 Palette를 BLACK HOT으로 초기화하고
+        /// 프로그램의 현재 Palette Index를 동기화한다.
+        /// </summary>
+        public bool InitializeIrPaletteToBlackHot()
+        {
+            lock (_irPaletteSync)
+            {
+                // 실제 장비에서 F4 적용 결과는 BLACK HOT이다.
+                if (!SendIrImageControlCommand(0xF4))
+                {
+                    _isIrPaletteSynchronized = false;
+                    return false;
+                }
+
+                _currentIrPaletteIndex = 0;
+                _isIrPaletteSynchronized = true;
+
+                return true;
+            }
+
+        }
+
+        /// <summary>
+        /// 동기화된 현재 Palette에서 선택한 Palette까지
+        /// 필요한 NEXT 또는 PREV 명령만 송신한다.
+        /// 이미 선택된 Palette를 다시 적용하면 명령을 송신하지 않는다.
+        /// </summary>
+        public bool SelectIrPalette(byte paletteIndex)
+        {
+            if (paletteIndex >= IrPaletteCount)
+            {
+                return false;
+            }
+
+            lock (_irPaletteSync)
+            {
+                if (!_isIrPaletteSynchronized)
+                {
+                    return false;
+                }
+
+                int targetIndex = paletteIndex;
+
+                if (targetIndex == _currentIrPaletteIndex)
+                {
+                    return true;
+                }
+
+                int nextCount =
+                    (targetIndex - _currentIrPaletteIndex +
+                     IrPaletteCount) % IrPaletteCount;
+
+                int previousCount =
+                    (_currentIrPaletteIndex - targetIndex +
+                     IrPaletteCount) % IrPaletteCount;
+
+                byte operation;
+                int moveCount;
+
+                if (nextCount <= previousCount)
+                {
+                    operation = 0x0D;
+                    moveCount = nextCount;
+                }
+                else
+                {
+                    operation = 0x0E;
+                    moveCount = previousCount;
+                }
+
+                for (int index = 0; index < moveCount; index++)
+                {
+                    if (!SendIrImageControlCommand(operation))
+                    {
+                        // 일부 명령만 적용됐을 수 있으므로 추적값을 폐기한다.
+                        _isIrPaletteSynchronized = false;
+                        return false;
+                    }
+
+                    if (index + 1 < moveCount)
+                    {
+                        System.Threading.Thread.Sleep(75);
+                    }
+                }
+
+                _currentIrPaletteIndex = targetIndex;
+                return true;
+            }
+        }
+
+        public bool SelectNextIrPalette()
+        {
+            return SendEnvironmentIrPaletteCommand(0x0D);
+        }
+
+        public bool SelectPreviousIrPalette()
+        {
+            return SendEnvironmentIrPaletteCommand(0x0E);
+        }
+
+        public bool SelectIrBlackHot()
+        {
+            return SendEnvironmentIrPaletteCommand(0xF4);
+        }
+
+        public bool SelectIrWhiteHot()
+        {
+            return SendEnvironmentIrPaletteCommand(0xF3);
+        }
+
+        public bool SelectIrRainbow()
+        {
+            return SendEnvironmentIrPaletteCommand(0xF5);
+        }
+
+        private bool SendEnvironmentIrPaletteCommand(byte operation)
+        {
+            lock (_irPaletteSync)
+            {
+                bool result = SendIrImageControlCommand(operation);
+
+                // ENVIRONMENT 상대/직접 명령은 ROOFTOP의 10단계 추적값과
+                // 독립적이므로 다음 ROOFTOP 진입 시 반드시 재동기화한다.
+                _isIrPaletteSynchronized = false;
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// 열영상 NUC 잔열 보정을 요청한다.
+        /// </summary>
+        public bool RequestIrNuc()
+        {
+            return SendCommand(0x00, 0x31, 0x0F, 0x00);
+        }
+
+        #endregion
 
         /// <summary>
         /// 거리측정기 [1회] 측정 요청

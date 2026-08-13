@@ -140,6 +140,12 @@ namespace OpenCvWpfTracking
 
             base.OnStartup(e);
 
+            /*
+             * Debug / Release 환경과 관계없이 Serilog 파일 로그를 먼저 초기화한다.
+             * 이후 초기화 과정에서 발생하는 FFmpeg 및 장비 연결 로그도 Logs 폴더에 남는다.
+             */
+            AppLogger.Initialize();
+
             InitializeFFmpeg();
 
 #if DEBUG
@@ -251,10 +257,11 @@ namespace OpenCvWpfTracking
             /// [Debug] 콘솔 창 해제
             /// </summary>
             FreeConsole();
+#endif
+
+            AppLogger.Shutdown();
 
             base.OnExit(e);
-
-#endif
 
         }
         #endregion

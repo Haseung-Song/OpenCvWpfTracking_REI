@@ -183,6 +183,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 /*
                  * [LA AGENT] 최초 장비 연결 완료 후 HOME POSITION 자동 실행
+                */
+
+                /*
+                 * [LA AGENT] 최초 장비 연결 완료 후 HOME POSITION 자동 실행
                  *
                  * Vertiport 운용 흐름과 동일하게 다음 순서를 보장한다.
                  *
@@ -1119,6 +1123,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     try
                     {
+                        ThermalFireDetectionResult thermalResult =
+                            default(ThermalFireDetectionResult);
+
+                        if (streamName == "IR")
+                        {
+                            thermalResult =
+                                _thermalFireDetectionService.Process(
+                                    frame,
+                                    IsThermalFireDetectionEnabled,
+                                    ThermalHotThresholdRatio,
+                                    ThermalMinimumAreaRatio);
+                        }
+
                         /// <summary>
                         /// OpenCV Mat → WPF BitmapSource 변환
                         /// </summary>
@@ -1197,6 +1214,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     /// </summary>
                                     setImageAction(
                                         bitmap);
+
+                                    if (streamName == "IR" &&
+                                        thermalResult.StateChanged)
+                                    {
+                                        UpdateThermalFireCandidateState(
+                                            thermalResult.IsDetected);
+                                    }
                                 }
                                 catch (Exception ex)
                                 {

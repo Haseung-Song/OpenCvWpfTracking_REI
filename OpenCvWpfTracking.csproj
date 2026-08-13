@@ -75,11 +75,26 @@
     <Reference Include="OpenCvSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6adad1e807fea099, processorArchitecture=MSIL">
       <HintPath>packages\OpenCvSharp4.4.7.0.20230115\lib\netstandard2.0\OpenCvSharp.dll</HintPath>
     </Reference>
+    <Reference Include="Serilog, Version=4.1.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
+      <HintPath>packages\Serilog.4.1.0\lib\net471\Serilog.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog.Sinks.Async, Version=2.1.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
+      <HintPath>packages\Serilog.Sinks.Async.2.1.0\lib\net471\Serilog.Sinks.Async.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog.Sinks.Debug, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
+      <HintPath>packages\Serilog.Sinks.Debug.2.0.0\lib\net46\Serilog.Sinks.Debug.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog.Sinks.File, Version=5.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
+      <HintPath>packages\Serilog.Sinks.File.5.0.0\lib\net45\Serilog.Sinks.File.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Buffers, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
     </Reference>
     <Reference Include="System.Data" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=8.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Diagnostics.DiagnosticSource.8.0.1\lib\net462\System.Diagnostics.DiagnosticSource.dll</HintPath>
+    </Reference>
     <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
     </Reference>
@@ -89,6 +104,12 @@
     </Reference>
     <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Channels, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Threading.Channels.8.0.0\lib\net462\System.Threading.Channels.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
@@ -104,19 +125,27 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="FireCandidateValidator\FireCandidateValidator.csproj">
+      <Project>{F8D14D31-A9C8-4D47-9E1A-5D4411308B6A}</Project>
+      <Name>FireCandidateValidator</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Common\AppLogger.cs" />
     <Compile Include="Models\Main\MainViewTypes.cs" />
     <Compile Include="Services\Communication\MCB\McbMaintenanceCommandService.cs" />
     <Compile Include="Services\Control\HomePositionStabilityTracker.cs" />
+    <Compile Include="Services\Video\ThermalFireDetectionService.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Ai.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.ContinuousControl.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.ControlAgent.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.MoveControl.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Properties.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Sync.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.Thermal.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Video.cs" />
     <Compile Include="Views\Main\MainWindow.MoveControlInput.cs" />
     <Compile Include="Views\Video\VideoPopoutWindow.xaml.cs">
@@ -150,6 +179,7 @@
     <Compile Include="Services\Communication\LA\LaResponsePacket.cs" />
     <Compile Include="Services\Communication\LA\TcpClientService.cs" />
     <Compile Include="Services\Communication\WebAgent\WebAgentZoomControlService.cs" />
+    <Compile Include="Services\Communication\WebAgent\WebAgentThermalPaletteService.cs" />
     <Compile Include="Services\Video\FFmpegDecoderService.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.cs" />
     <Compile Include="Views\Main\MainWindow.xaml.cs">
@@ -213,6 +243,14 @@
     <Resource Include="Images\Demo\TorussLogo.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="CopyFireDetectorTestProgram" AfterTargets="Build">
+    <ItemGroup>
+      <FireDetectorProgramFiles Include="FireCandidateValidator\bin\$(Platform)\$(Configuration)\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FireDetectorProgramFiles)"
+          DestinationFiles="@(FireDetectorProgramFiles->'$(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>이 프로젝트는 이 컴퓨터에 없는 NuGet 패키지를 참조합니다. 해당 패키지를 다운로드하려면 NuGet 패키지 복원을 사용하십시오. 자세한 내용은 http://go.microsoft.com/fwlink/?LinkID=322105를 참조하십시오. 누락된 파일은 {0}입니다.</ErrorText>
