@@ -69,7 +69,7 @@ namespace FireCandidateValidator
                 double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
 
                 // 넓은 건물 외벽, 수평 띠 및 작은 점 노이즈를 후보에서 제외한다.
-                if (fillRatio < 0.10 || fillRatio > 0.92 ||
+                if (fillRatio < 0.03 || fillRatio > 0.96 ||
                     aspectRatio < 0.15 || aspectRatio > 5.0 ||
                     rect.Width > source.Width * 0.60 ||
                     rect.Height > source.Height * 0.60)
@@ -207,7 +207,24 @@ namespace FireCandidateValidator
                 Cv2.Threshold(grayscale, intensityMask, threshold, 255, ThresholdTypes.Binary);
 
                 // 팔레트 색상과 무관하게 원본 IR의 상대 밝기와 국부 대비만 분석한다.
-                Cv2.BitwiseAnd(intensityMask, contrastMask, colorMask);
+                // Offline validation must work without a device connection:
+                // retain locally bright targets even when they are not above
+                // the absolute threshold selected for another palette.
+                Cv2.BitwiseOr(intensityMask, contrastMask, colorMask);
+
+                // BLACK HOT target: dark compared with its local background.
+                Cv2.Subtract(blurred, grayscale, localContrast);
+                Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
+                Cv2.BitwiseOr(colorMask, contrastMask, colorMask);
+
+                // RAINBOW and other colour thermal images: red/orange target.
+                Cv2.CvtColor(bgr, hsv, ColorConversionCodes.BGR2HSV);
+                Cv2.InRange(hsv, new Scalar(0, 90, 120), new Scalar(12, 255, 255), redLow);
+                Cv2.InRange(hsv, new Scalar(165, 90, 120), new Scalar(179, 255, 255), redHigh);
+                Cv2.InRange(hsv, new Scalar(13, 90, 150), new Scalar(35, 255, 255), orange);
+                Cv2.BitwiseOr(redLow, redHigh, intensityMask);
+                Cv2.BitwiseOr(intensityMask, orange, intensityMask);
+                Cv2.BitwiseOr(colorMask, intensityMask, colorMask);
                 return colorMask.Clone();
             }
         }

@@ -34,7 +34,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _isThermalFireDetectionEnabled = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(ThermalFireDetectionStatusText));
                 OnPropertyChanged(nameof(FirePowerStatusText));
 
                 ConsoleLogHelper.State(
@@ -89,19 +88,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        public string ThermalFireDetectionStatusText =>
-            !IsThermalFireDetectionEnabled
-                ? "FIRE DETECTOR : DISABLED"
-                : _isThermalFireCandidateDetected
-                    ? "FIRE DETECTOR : DETECTED"
-                    : "FIRE DETECTOR : MONITORING";
-
         public string FirePowerStatusText =>
-            !IsThermalFireDetectionEnabled
-                ? "OFF"
-                : _isThermalFireCandidateDetected
-                    ? "DETECTED"
-                    : "ON";
+            IsThermalFireDetectionEnabled
+                ? "ON"
+                : "OFF";
 
         private void InitializeThermalFeatures()
         {
@@ -238,7 +228,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             _isThermalFireCandidateDetected = isDetected;
-            OnPropertyChanged(nameof(ThermalFireDetectionStatusText));
             OnPropertyChanged(nameof(FirePowerStatusText));
         }
     }

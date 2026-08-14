@@ -46,6 +46,10 @@ namespace OpenCvWpfTracking
         private VideoPopoutCameraType _primaryVideoType =
             VideoPopoutCameraType.Eo;
 
+        // TEST PROGRAM is a separate executable. Keep its process so it can
+        // be stopped when the viewer closes.
+        private Process _fireDetectorTestProgram;
+
         #endregion
 
         #region [Constructor]
@@ -81,12 +85,50 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            Process.Start(new ProcessStartInfo
+            if (_fireDetectorTestProgram != null &&
+                !_fireDetectorTestProgram.HasExited)
             {
-                FileName = testProgramPath,
-                WorkingDirectory = Path.GetDirectoryName(testProgramPath),
-                UseShellExecute = true
-            });
+                _fireDetectorTestProgram.Refresh();
+                return;
+            }
+
+            try
+            {
+                _fireDetectorTestProgram = Process.Start(new ProcessStartInfo
+                {
+                    FileName = testProgramPath,
+                    WorkingDirectory = Path.GetDirectoryName(testProgramPath),
+                    UseShellExecute = false
+                });
+
+                _fireDetectorTestProgram.EnableRaisingEvents = true;
+                _fireDetectorTestProgram.Exited +=
+                    (s, args) => Dispatcher.BeginInvoke(
+                        new Action(() =>
+                        {
+                            _fireDetectorTestProgram = null;
+                        }));
+            }
+            catch (Exception ex)
+            {
+                _fireDetectorTestProgram = null;
+                MessageBox.Show(
+                    "Could not start the fire detector test program.\n" + ex.Message,
+                    "TEST PROGRAM",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            if (_fireDetectorTestProgram != null &&
+                !_fireDetectorTestProgram.HasExited)
+            {
+                _fireDetectorTestProgram.Kill();
+            }
+
+            base.OnClosed(e);
         }
 
         #endregion
