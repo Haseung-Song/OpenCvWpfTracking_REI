@@ -18,7 +18,8 @@ namespace FireCandidateValidator
             Mat source,
             double thresholdRatio,
             double minimumAreaRatio,
-            int confirmationFrameCount)
+            int confirmationFrameCount,
+            int fireBoxGroupingMode)
         {
             if (source == null || source.Empty())
             {
@@ -30,13 +31,16 @@ namespace FireCandidateValidator
             int threshold = (int)Math.Round(safeThreshold * 255.0);
             double frameArea = Math.Max(1.0, source.Width * source.Height);
             double minimumArea = Math.Max(16.0, frameArea * safeAreaRatio);
-            double maximumArea = frameArea * 0.20;
+            // 2026-08-14: 큰 화염도 하나의 검출 영역으로 유지한다.
+            // 2026-08-14: Accept a fire covering almost the entire still image.
+            double maximumArea = frameArea * 0.95;
 
             Mat mask = CreateCandidateMask(source, threshold);
             Mat cleanedMask = new Mat();
 
             using (Mat openKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(3, 3)))
-            using (Mat closeKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(7, 7)))
+            // 2026-08-14: 분리된 불꽃을 연결해 전체 화염 BBox를 만든다.
+            using (Mat closeKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(9, 9)))
             {
                 Cv2.MorphologyEx(mask, cleanedMask, MorphTypes.Open, openKernel);
                 Cv2.MorphologyEx(cleanedMask, cleanedMask, MorphTypes.Close, closeKernel);
@@ -67,12 +71,18 @@ namespace FireCandidateValidator
                 double rectangleArea = Math.Max(1.0, rect.Width * rect.Height);
                 double fillRatio = area / rectangleArea;
                 double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
+                double rectangleAreaRatio = rectangleArea / frameArea;
+                Point[] convexHull = Cv2.ConvexHull(contour);
+                double hullArea = Math.Max(1.0, Cv2.ContourArea(convexHull));
+                double solidity = area / hullArea;
 
                 // 넓은 건물 외벽, 수평 띠 및 작은 점 노이즈를 후보에서 제외한다.
-                if (fillRatio < 0.03 || fillRatio > 0.96 ||
-                    aspectRatio < 0.15 || aspectRatio > 5.0 ||
-                    rect.Width > source.Width * 0.60 ||
-                    rect.Height > source.Height * 0.60)
+                // 2026-08-14: The former 60% size limit rejected the real large fire.
+                if (fillRatio < 0.005 ||
+                    (rectangleAreaRatio > 0.75 && fillRatio > 0.30) ||
+                    (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 &&
+                     fillRatio > 0.18 && solidity > 0.72) ||
+                    aspectRatio < 0.05 || aspectRatio > 20.0)
                 {
                     continue;
                 }
@@ -84,7 +94,8 @@ namespace FireCandidateValidator
             List<Rect> candidates = MergeCandidates(
                 rawCandidates,
                 source.Width,
-                source.Height);
+                source.Height,
+                fireBoxGroupingMode);
 
             if (candidates.Count > 0)
             {
@@ -115,11 +126,76 @@ namespace FireCandidateValidator
         private static List<Rect> MergeCandidates(
             IList<Rect> source,
             int frameWidth,
-            int frameHeight)
+            int frameHeight,
+            int fireBoxGroupingMode)
         {
+            if (source == null || source.Count == 0)
+            {
+                return new List<Rect>();
+            }
+
+            // 2026-08-14: Mode 1 encloses all detected flame candidates in one BBox.
+            if (fireBoxGroupingMode == 1)
+            {
+                Rect unified = source[0];
+                for (int index = 1; index < source.Count; index++)
+                {
+                    unified = Union(unified, source[index]);
+                }
+
+                return new List<Rect>
+                {
+                    Expand(unified, 4, 4, frameWidth, frameHeight)
+                };
+            }
+
+            // 2026-08-14: Merge only nearby flame fragments and preserve separated fires.
+            List<Rect> grouped = new List<Rect>(source);
+            int horizontalGap = Math.Max(6, frameWidth / 120);
+            int verticalGap = Math.Max(8, frameHeight / 100);
+            bool mergedAny;
+
+            do
+            {
+                mergedAny = false;
+                for (int first = 0; first < grouped.Count && !mergedAny; first++)
+                {
+                    Rect expanded = Expand(grouped[first], horizontalGap, verticalGap, frameWidth, frameHeight);
+                    for (int second = first + 1; second < grouped.Count; second++)
+                    {
+                        if (!Intersects(expanded, grouped[second]))
+                        {
+                            continue;
+                        }
+
+                        grouped[first] = Union(grouped[first], grouped[second]);
+                        grouped.RemoveAt(second);
+                        mergedAny = true;
+                        break;
+                    }
+                }
+            }
+            while (mergedAny);
+
+            for (int index = 0; index < grouped.Count; index++)
+            {
+                grouped[index] = Expand(grouped[index], 4, 4, frameWidth, frameHeight);
+            }
+
+            grouped.Sort((left, right) =>
+                (right.Width * right.Height).CompareTo(left.Width * left.Height));
+            if (grouped.Count > 8)
+            {
+                grouped.RemoveRange(8, grouped.Count - 8);
+            }
+
+            return grouped;
+
+            /* Legacy proximity merge retained below for reference only.
             List<Rect> merged = new List<Rect>(source);
-            int xPadding = Math.Max(10, frameWidth / 70);
-            int yPadding = Math.Max(10, frameHeight / 55);
+            // 2026-08-14: 같은 화염의 인접 후보를 병합한다.
+            int xPadding = Math.Max(16, frameWidth / 28);
+            int yPadding = Math.Max(16, frameHeight / 24);
             bool changed;
 
             do
@@ -162,6 +238,7 @@ namespace FireCandidateValidator
             }
 
             return new List<Rect> { largest };
+            */
         }
 
         private static Rect Expand(Rect rect, int x, int y, int width, int height)
@@ -224,7 +301,54 @@ namespace FireCandidateValidator
                 Cv2.InRange(hsv, new Scalar(13, 90, 150), new Scalar(35, 255, 255), orange);
                 Cv2.BitwiseOr(redLow, redHigh, intensityMask);
                 Cv2.BitwiseOr(intensityMask, orange, intensityMask);
-                Cv2.BitwiseOr(colorMask, intensityMask, colorMask);
+                // 2026-08-14: 색상 화염이 충분하면 배경 전체를 포함하는
+                // 밝기/대비 마스크 대신 온색 영역만 사용한다.
+                if (Cv2.CountNonZero(intensityMask) >= Math.Max(32, source.Width * source.Height / 5000))
+                {
+                    intensityMask.CopyTo(colorMask);
+                }
+                else
+                {
+                    Cv2.BitwiseOr(colorMask, intensityMask, colorMask);
+                }
+
+                // 2026-08-14: For grayscale IR, select the sparser hot polarity.
+                // This prevents a bright or dark background from becoming one full-frame box.
+                if (Cv2.Mean(hsv).Val1 < 35)
+                {
+                    Cv2.Subtract(grayscale, blurred, localContrast);
+                    Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
+                    Cv2.Threshold(grayscale, intensityMask, threshold, 255, ThresholdTypes.Binary);
+                    if (Cv2.CountNonZero(intensityMask) > source.Width * source.Height * 0.45)
+                    {
+                        contrastMask.CopyTo(redLow);
+                    }
+                    else
+                    {
+                        Cv2.BitwiseOr(intensityMask, contrastMask, redLow);
+                    }
+
+                    Cv2.Subtract(blurred, grayscale, localContrast);
+                    Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
+                    Cv2.Threshold(grayscale, intensityMask, 255 - threshold, 255, ThresholdTypes.BinaryInv);
+                    if (Cv2.CountNonZero(intensityMask) > source.Width * source.Height * 0.45)
+                    {
+                        contrastMask.CopyTo(redHigh);
+                    }
+                    else
+                    {
+                        Cv2.BitwiseOr(intensityMask, contrastMask, redHigh);
+                    }
+
+                    if (Cv2.CountNonZero(redLow) <= Cv2.CountNonZero(redHigh))
+                    {
+                        redLow.CopyTo(colorMask);
+                    }
+                    else
+                    {
+                        redHigh.CopyTo(colorMask);
+                    }
+                }
                 return colorMask.Clone();
             }
         }

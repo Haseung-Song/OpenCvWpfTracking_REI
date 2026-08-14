@@ -21,12 +21,15 @@ namespace OpenCvWpfTracking.Services.Video
         private int _clearFrameCount;
         private bool _isFireCandidateDetected;
         private Rect _trackedCandidateRect = Rect.Empty;
+        // 2026-08-14: Static hot roofs/ground are rejected using inter-frame motion.
+        private Mat _previousGray = new Mat();
 
         internal ThermalFireDetectionResult Process(
             Mat frame,
             bool isEnabled,
             double hotThresholdRatio,
-            double minimumAreaRatio)
+            double minimumAreaRatio,
+            int fireBoxGroupingMode)
         {
             if (!isEnabled || frame == null || frame.Empty())
             {
@@ -38,8 +41,11 @@ namespace OpenCvWpfTracking.Services.Video
 
             double frameArea = frame.Width * frame.Height;
             double minimumArea = Math.Max(64, frameArea * minimumAreaRatio);
-            double maximumArea = frameArea * 0.18;
+            // 2026-08-14: 큰 실제 화염이 분할되어 누락되지 않도록 상한을 확장한다.
+            double maximumArea = frameArea * 0.95;
 
+            using (Mat currentGray = new Mat())
+            using (Mat motionMask = new Mat())
             using (Mat mask = CreateHotPixelMask(
                        frame,
                        threshold))
@@ -49,8 +55,28 @@ namespace OpenCvWpfTracking.Services.Video
                        new Size(3, 3)))
             using (Mat closeKernel = Cv2.GetStructuringElement(
                        MorphShapes.Ellipse,
-                       new Size(5, 5)))
+                       new Size(9, 9)))
             {
+                if (frame.Channels() == 1)
+                {
+                    frame.CopyTo(currentGray);
+                }
+                else
+                {
+                    Cv2.CvtColor(frame, currentGray, ColorConversionCodes.BGR2GRAY);
+                }
+
+                bool hasMotionReference =
+                    _previousGray != null && !_previousGray.Empty() &&
+                    _previousGray.Size() == currentGray.Size();
+                double globalMotionRatio = 0;
+                if (hasMotionReference)
+                {
+                    Cv2.Absdiff(currentGray, _previousGray, motionMask);
+                    Cv2.Threshold(motionMask, motionMask, 12, 255, ThresholdTypes.Binary);
+                    globalMotionRatio = Cv2.CountNonZero(motionMask) / frameArea;
+                }
+
                 Cv2.MorphologyEx(mask, cleanedMask, MorphTypes.Open, openKernel);
                 Cv2.MorphologyEx(cleanedMask, cleanedMask, MorphTypes.Close, closeKernel);
 
@@ -78,11 +104,26 @@ namespace OpenCvWpfTracking.Services.Video
                     double rectangleArea = Math.Max(1, rect.Width * rect.Height);
                     double fillRatio = area / rectangleArea;
                     double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
+                    double rectangleAreaRatio = rectangleArea / frameArea;
+                    Point[] convexHull = Cv2.ConvexHull(contour);
+                    double hullArea = Math.Max(1.0, Cv2.ContourArea(convexHull));
+                    double solidity = area / hullArea;
+                    double motionRatio = 1.0;
+                    if (hasMotionReference)
+                    {
+                        using (Mat motionRoi = new Mat(motionMask, rect))
+                        {
+                            motionRatio = Cv2.CountNonZero(motionRoi) / rectangleArea;
+                        }
+                    }
 
-                    if (fillRatio < 0.12 || fillRatio > 0.88 ||
-                        aspectRatio < 0.20 || aspectRatio > 5.0 ||
-                        rect.Width > frame.Width * 0.65 ||
-                        rect.Height > frame.Height * 0.65)
+                    // 2026-08-14: Reject static/wide hot surfaces and camera-wide motion.
+                    if (fillRatio < 0.005 ||
+                        (rectangleAreaRatio > 0.75 && fillRatio > 0.30) ||
+                        (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 &&
+                         fillRatio > 0.18 && solidity > 0.72) ||
+                        (hasMotionReference && (globalMotionRatio > 0.35 || motionRatio < 0.012)) ||
+                        aspectRatio < 0.05 || aspectRatio > 20.0)
                     {
                         continue;
                     }
@@ -93,7 +134,8 @@ namespace OpenCvWpfTracking.Services.Video
                 List<Rect> mergedRects = MergeNearbyRects(
                     candidateRects,
                     frame.Width,
-                    frame.Height);
+                    frame.Height,
+                    fireBoxGroupingMode);
 
                 Rect selectedRect = Rect.Empty;
 
@@ -132,17 +174,21 @@ namespace OpenCvWpfTracking.Services.Video
                 bool previousState = _isFireCandidateDetected;
                 UpdateConfirmation(selectedRect != Rect.Empty);
 
+                currentGray.CopyTo(_previousGray);
+
                 if (_isFireCandidateDetected && selectedRect != Rect.Empty)
                 {
-                    Cv2.Rectangle(frame, selectedRect, new Scalar(0, 0, 255), 3);
-                    Cv2.PutText(
-                        frame,
-                        "FIRE DETECTOR",
-                        new Point(selectedRect.X, Math.Max(24, selectedRect.Y - 8)),
-                        HersheyFonts.HersheySimplex,
-                        0.8,
-                        new Scalar(0, 0, 255),
-                        2);
+                    if (mergedRects.Count == 1)
+                    {
+                        DrawDetectionBox(frame, selectedRect);
+                    }
+                    else
+                    {
+                        foreach (Rect rect in mergedRects)
+                        {
+                            DrawDetectionBox(frame, rect);
+                        }
+                    }
                 }
 
                 return new ThermalFireDetectionResult(
@@ -155,11 +201,28 @@ namespace OpenCvWpfTracking.Services.Video
         private static List<Rect> MergeNearbyRects(
             IList<Rect> source,
             int frameWidth,
-            int frameHeight)
+            int frameHeight,
+            int fireBoxGroupingMode)
         {
             List<Rect> merged = new List<Rect>(source);
-            int horizontalGap = Math.Max(8, frameWidth / 80);
-            int verticalGap = Math.Max(8, frameHeight / 60);
+
+            // 2026-08-14: Mode 1 encloses every detected flame candidate in one BBox.
+            if (fireBoxGroupingMode == 1 && merged.Count > 0)
+            {
+                Rect unified = merged[0];
+                for (int index = 1; index < merged.Count; index++)
+                {
+                    unified = Union(unified, merged[index]);
+                }
+
+                return new List<Rect>
+                {
+                    ExpandRect(unified, 4, 4, frameWidth, frameHeight)
+                };
+            }
+            // 2026-08-14: 인접한 고온 화염 조각은 하나의 BBox로 병합한다.
+            int horizontalGap = Math.Max(6, frameWidth / 120);
+            int verticalGap = Math.Max(8, frameHeight / 100);
 
             bool changed;
 
@@ -192,7 +255,32 @@ namespace OpenCvWpfTracking.Services.Video
             }
             while (changed);
 
+            for (int index = 0; index < merged.Count; index++)
+            {
+                merged[index] = ExpandRect(merged[index], 4, 4, frameWidth, frameHeight);
+            }
+
+            merged.Sort((left, right) =>
+                (right.Width * right.Height).CompareTo(left.Width * left.Height));
+            if (merged.Count > 8)
+            {
+                merged.RemoveRange(8, merged.Count - 8);
+            }
+
             return merged;
+        }
+
+        private static void DrawDetectionBox(Mat frame, Rect rect)
+        {
+            Cv2.Rectangle(frame, rect, new Scalar(0, 0, 255), 3);
+            Cv2.PutText(
+                frame,
+                "FIRE DETECTION",
+                new Point(rect.X, Math.Max(24, rect.Y - 8)),
+                HersheyFonts.HersheySimplex,
+                0.8,
+                new Scalar(0, 0, 255),
+                2);
         }
 
         private Rect SmoothTrackedRect(Rect current, int width, int height)
@@ -283,13 +371,15 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     Mat brightIntensityMask = new Mat();
                     Mat darkIntensityMask = new Mat();
-                    Mat intensityMask = new Mat();
                     Cv2.Threshold(grayscale, brightIntensityMask, threshold, 255, ThresholdTypes.Binary);
                     Cv2.Threshold(grayscale, darkIntensityMask, 255 - threshold, 255, ThresholdTypes.BinaryInv);
-                    Cv2.BitwiseOr(brightIntensityMask, darkIntensityMask, intensityMask);
+                    Cv2.BitwiseAnd(brightIntensityMask, brightContrastMask, brightIntensityMask);
+                    Cv2.BitwiseAnd(darkIntensityMask, darkContrastMask, darkIntensityMask);
+                    Mat intensityMask = Cv2.CountNonZero(brightIntensityMask) <= Cv2.CountNonZero(darkIntensityMask)
+                        ? brightIntensityMask.Clone()
+                        : darkIntensityMask.Clone();
                     brightIntensityMask.Dispose();
                     darkIntensityMask.Dispose();
-                    Cv2.BitwiseAnd(intensityMask, contrastMask, intensityMask);
                     return intensityMask;
                 }
 
@@ -354,6 +444,11 @@ namespace OpenCvWpfTracking.Services.Video
             _clearFrameCount = 0;
             _isFireCandidateDetected = false;
             _trackedCandidateRect = Rect.Empty;
+            if (_previousGray != null)
+            {
+                _previousGray.Dispose();
+            }
+            _previousGray = new Mat();
 
             return new ThermalFireDetectionResult(false, changed, 0);
         }

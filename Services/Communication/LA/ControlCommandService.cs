@@ -1301,7 +1301,7 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             lock (_irPaletteSync)
             {
-                // 실제 장비에서 F4 적용 결과는 BLACK HOT이다.
+                // 2026-08-14: BLACK HOT is the inverse grayscale command (0xF4).
                 if (!SendIrImageControlCommand(0xF4))
                 {
                     _isIrPaletteSynchronized = false;
@@ -1396,16 +1396,19 @@ namespace OpenCvWpfTracking.Services.Communication
 
         public bool SelectIrBlackHot()
         {
+            // 2026-08-14: BLACK HOT = inverse grayscale palette (0xF4).
             return SendEnvironmentIrPaletteCommand(0xF4);
         }
 
         public bool SelectIrWhiteHot()
         {
+            // 2026-08-14: WHITE HOT = normal grayscale palette (0xF3).
             return SendEnvironmentIrPaletteCommand(0xF3);
         }
 
         public bool SelectIrRainbow()
         {
+            // 2026-08-14: RAINBOW direct selection = 0xF5.
             return SendEnvironmentIrPaletteCommand(0xF5);
         }
 
@@ -1428,6 +1431,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public bool RequestIrNuc()
         {
+            // 2026-08-14: 규격서 2.7 기준 NUC = Command2 0x31, Data1 0x0F.
             return SendCommand(0x00, 0x31, 0x0F, 0x00);
         }
 

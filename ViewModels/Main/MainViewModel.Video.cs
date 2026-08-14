@@ -85,20 +85,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IrSourceAddress =
                 irRtspAddress;
 
-            /// <summary>
-            /// [EO/IR] 영상 재연결 시작 전 [AI Detector] 화면 표시 상태 초기화
-            /// </summary>
-            _isEoFrameDisplayed = false;
-            _isIrFrameDisplayed = false;
-
-            App.Current.Dispatcher.Invoke(() =>
-            {
-                EoDetectionBoxes.Clear();
-                IrDetectionBoxes.Clear();
-            });
-
             if (IsAllVideoConnected())
             {
+                // 2026-08-14: 이미 재생 중인 RTSP 프레임과 BBox를 절대 초기화하지 않는다.
                 EoStatusText =
                     "Already Connected...";
 
@@ -111,6 +100,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.PrintLine();
                 return;
             }
+
+            // 2026-08-14: 실제 재연결을 시작할 때만 이전 화면 상태를 초기화한다.
+            _isEoFrameDisplayed = false;
+            _isIrFrameDisplayed = false;
+
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                EoDetectionBoxes.Clear();
+                IrDetectionBoxes.Clear();
+            });
 
             _isVideoConnecting = true; // 연결 시도 중 상태 설정
 
@@ -146,6 +145,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 /// </summary>
                 bool isControlAgentConnected =
                     await ConnectLaAsync();
+
+                if (isControlAgentConnected)
+                {
+                    InitializeThermalBlackHotAfterDeviceConnected();
+                }
 
                 /// <summary>
                 /// 선택된 EO 카메라가 [옥상 GOP CTEC] 직접 제어 장비이면
@@ -590,8 +594,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private bool IsAllVideoConnected()
         {
-            return _eoDecoder.IsOpened &&
-                   _irDecoder.IsOpened;
+            // 2026-08-14: A decoder can briefly report a transitional state while
+            // its capture loop is still displaying frames. Treat two displayed
+            // streams as an active session so a duplicate click cannot cancel it.
+            return (_eoDecoder.IsOpened && _irDecoder.IsOpened) ||
+                   (_isEoFrameDisplayed && _isIrFrameDisplayed);
         }
 
         /// <summary>
@@ -1133,7 +1140,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     frame,
                                     IsThermalFireDetectionEnabled,
                                     ThermalHotThresholdRatio,
-                                    ThermalMinimumAreaRatio);
+                                    ThermalMinimumAreaRatio,
+                                    ThermalFireBoxGroupingMode);
                         }
 
                         /// <summary>

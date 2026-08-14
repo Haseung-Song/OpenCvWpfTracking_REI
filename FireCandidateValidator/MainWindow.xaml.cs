@@ -25,6 +25,12 @@ namespace FireCandidateValidator
         private bool _isVideoMode;
         private bool _loadedVideo;
         private VideoWriter _videoWriter;
+        // 2026-08-14: 0=BLACK HOT, 1=WHITE HOT, 2=RAINBOW. 장비와 무관한 화면 표시 상태다.
+        // 2026-08-14: Ten display palettes are cycled independently of equipment.
+        private const int DisplayPaletteCount = 10;
+        private int _displayPaletteIndex;
+        // 2026-08-14: 1=전체 단일 BBox, 2=화염별 분리 BBox.
+        private int _fireBoxGroupingMode = 2;
 
         public MainWindow()
         {
@@ -41,7 +47,6 @@ namespace FireCandidateValidator
                     Dispatcher);
 
             _videoTimer.Stop();
-            PaletteComboBox.SelectedIndex = 0;
             UpdateSettingText();
         }
 
@@ -342,26 +347,27 @@ namespace FireCandidateValidator
                        _currentSource,
                        ThresholdSlider.Value,
                        AreaSlider.Value,
-                       confirmationFrames))
+                       confirmationFrames,
+                       _fireBoxGroupingMode))
             {
                 using (Mat displaySource = ApplySelectedPalette(_currentSource))
                 {
                     Mat rendered = displaySource.Clone();
 
-                foreach (CvRect candidate in analysis.Candidates)
-                {
-                    Scalar color = new Scalar(0, 0, 255);
+                    foreach (CvRect candidate in analysis.Candidates)
+                    {
+                        Scalar color = new Scalar(0, 0, 255);
 
-                    Cv2.Rectangle(rendered, candidate, color, 3);
-                    Cv2.PutText(
-                        rendered,
-                        "FIRE DETECTOR",
-                        new CvPoint(candidate.X, Math.Max(28, candidate.Y - 8)),
-                        HersheyFonts.HersheySimplex,
-                        0.8,
-                        color,
-                        2);
-                }
+                        Cv2.Rectangle(rendered, candidate, color, 3);
+                        Cv2.PutText(
+                            rendered,
+                            "FIRE DETECTION",
+                            new CvPoint(candidate.X, Math.Max(28, candidate.Y - 8)),
+                            HersheyFonts.HersheySimplex,
+                            0.8,
+                            color,
+                            2);
+                    }
 
                     ReplaceRendered(rendered);
                 }
@@ -388,10 +394,42 @@ namespace FireCandidateValidator
             }
         }
 
-        private void PaletteComboBox_SelectionChanged(
-            object sender,
-            System.Windows.Controls.SelectionChangedEventArgs e)
+        private void FireBoxMode1_Click(object sender, RoutedEventArgs e)
         {
+            SetFireBoxGroupingMode(1);
+        }
+
+        private void FireBoxMode2_Click(object sender, RoutedEventArgs e)
+        {
+            SetFireBoxGroupingMode(2);
+        }
+
+        private void SetFireBoxGroupingMode(int mode)
+        {
+            _fireBoxGroupingMode = mode == 1 ? 1 : 2;
+            FireBoxMode1Button.Background = new SolidColorBrush(
+                _fireBoxGroupingMode == 1 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            FireBoxMode2Button.Background = new SolidColorBrush(
+                _fireBoxGroupingMode == 2 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            ProcessCurrentFrame(_isVideoMode ? false : true);
+        }
+
+        // 2026-08-14: 콤보박스 대신 메인 Viewer와 같은 직접/상대 팔레트 버튼을 사용한다.
+        private void BlackHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(0);
+        private void WhiteHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(1);
+        private void RandomPalette_Click(object sender, RoutedEventArgs e)
+        {
+            // 2026-08-14: RANDOM은 장비와 동일하게 다음 팔레트를 1회 선택한다.
+            SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
+            HighlightRandomPaletteButton();
+        }
+        private void PreviousPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex - 1 + DisplayPaletteCount) % DisplayPaletteCount);
+        private void NextPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
+
+        private void SetDisplayPalette(int paletteIndex)
+        {
+            _displayPaletteIndex = paletteIndex;
+            UpdatePaletteButtonVisuals();
             if (IsLoaded && !_isVideoMode && _currentSource != null)
             {
                 _analyzer.Reset();
@@ -411,11 +449,10 @@ namespace FireCandidateValidator
                 Cv2.CvtColor(source, gray, ColorConversionCodes.BGR2GRAY);
             }
 
-            int index = PaletteComboBox == null ? 0 : Math.Max(0, PaletteComboBox.SelectedIndex);
+            int index = _displayPaletteIndex;
 
             if (index == 0)
             {
-                Cv2.BitwiseNot(gray, gray);
                 Mat blackHot = new Mat();
                 Cv2.CvtColor(gray, blackHot, ColorConversionCodes.GRAY2BGR);
                 gray.Dispose();
@@ -424,6 +461,8 @@ namespace FireCandidateValidator
 
             if (index == 1)
             {
+                // 2026-08-14: WHITE HOT display is the inverse of BLACK HOT.
+                Cv2.BitwiseNot(gray, gray);
                 Mat whiteHot = new Mat();
                 Cv2.CvtColor(gray, whiteHot, ColorConversionCodes.GRAY2BGR);
                 gray.Dispose();
@@ -446,6 +485,45 @@ namespace FireCandidateValidator
             Cv2.ApplyColorMap(gray, colored, maps[Math.Min(maps.Length - 1, index - 2)]);
             gray.Dispose();
             return colored;
+        }
+
+        // 2026-08-14: Initially neutral; show a palette colour after user selection only.
+        private void UpdatePaletteButtonVisuals()
+        {
+            SolidColorBrush neutral = new SolidColorBrush(Color.FromRgb(244, 244, 244));
+            SolidColorBrush darkText = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+            BlackHotPaletteButton.Background = neutral;
+            BlackHotPaletteButton.Foreground = darkText;
+            WhiteHotPaletteButton.Background = neutral;
+            WhiteHotPaletteButton.Foreground = darkText;
+            RandomPaletteButton.Background = neutral;
+            RandomPaletteButton.Foreground = darkText;
+
+            if (_displayPaletteIndex == 0)
+            {
+                BlackHotPaletteButton.Background = Brushes.Black;
+                BlackHotPaletteButton.Foreground = Brushes.White;
+            }
+            else if (_displayPaletteIndex == 1)
+            {
+                WhiteHotPaletteButton.Background = Brushes.White;
+            }
+            else if (_displayPaletteIndex == 9)
+            {
+                HighlightRandomPaletteButton();
+            }
+        }
+
+        private void HighlightRandomPaletteButton()
+        {
+            LinearGradientBrush rainbow = new LinearGradientBrush { StartPoint = new System.Windows.Point(0, 0), EndPoint = new System.Windows.Point(1, 0) };
+            rainbow.GradientStops.Add(new GradientStop(Colors.Red, 0));
+            rainbow.GradientStops.Add(new GradientStop(Colors.Yellow, 0.35));
+            rainbow.GradientStops.Add(new GradientStop(Colors.LimeGreen, 0.60));
+            rainbow.GradientStops.Add(new GradientStop(Colors.DodgerBlue, 0.82));
+            rainbow.GradientStops.Add(new GradientStop(Colors.MediumPurple, 1));
+            RandomPaletteButton.Background = rainbow;
+            RandomPaletteButton.Foreground = Brushes.White;
         }
 
         private void UpdateSettingText()

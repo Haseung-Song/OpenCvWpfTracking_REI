@@ -2204,17 +2204,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [PAN / TILT] 속도제어 현재 속도 [Level]
         ///
         /// [XAML] [UI]와 바인딩하여 현재 속도값을 표시하거나 변경할 때 사용한다.
-        /// UI 운용 범위는 [0 ~ 50]이며 Pelco-D 허용 범위 [0 ~ 63] 안에서 사용한다.
+        /// 2026-08-14: UI 운용 범위는 [5 ~ 50], 5단위이며 Pelco-D 허용 범위 안에서 사용한다.
         /// </summary>
         public byte PanTiltSpeedLevel
         {
             get => _panTiltSpeedLevel;
             set
             {
-                byte normalizedValue =
-                    value > 50
-                        ? (byte)50
-                        : value;
+                byte normalizedValue = (byte)Math.Max(5, Math.Min(50, ((value + 2) / 5) * 5));
 
                 if (_panTiltSpeedLevel !=
                     normalizedValue)

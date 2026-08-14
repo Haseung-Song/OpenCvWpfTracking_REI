@@ -917,6 +917,10 @@
                                                     <Setter Property="Visibility"
                                                             Value="Collapsed"/>
                                                 </DataTrigger>
+                                                <!-- 2026-08-14: Keep video visible for duplicate connection requests. -->
+                                                <DataTrigger Binding="{Binding EoStatusText}" Value="Already Connected...">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
@@ -1063,12 +1067,16 @@
                                                         Value="Visible"/>
 
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IrStatusText,
-                                                                         Mode=OneWay}"
-                                                                 Value="[IR] Connected">
-                                                        <Setter Property="Visibility"
-                                                                Value="Collapsed"/>
-                                                    </DataTrigger>
+                                                <DataTrigger Binding="{Binding IrStatusText,
+                                                                     Mode=OneWay}"
+                                                             Value="[IR] Connected">
+                                                    <Setter Property="Visibility"
+                                                            Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <!-- 2026-08-14: Keep video visible for duplicate connection requests. -->
+                                                <DataTrigger Binding="{Binding IrStatusText}" Value="Already Connected...">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
@@ -1393,11 +1401,11 @@
                                         </Grid>
 
                                         <Slider Grid.Row="1"
-                                                Minimum="0"
+                                                Minimum="5"
                                                 Maximum="50"
                                                 TickFrequency="5"
                                                 SmallChange="5"
-                                                LargeChange="10"
+                                                LargeChange="5"
                                                 TickPlacement="BottomRight"
                                                 IsSnapToTickEnabled="True"
                                                 Value="{Binding PanTiltSpeedLevel,
@@ -2026,9 +2034,11 @@
                                                                                            Margin="0,0,0,10"/>
 
                                                                                 <UniformGrid Columns="3" Margin="0,0,0,6">
-                                                                                    <Button Content="BLACK HOT" Height="30" Margin="0,0,3,0" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalBlackHotCommand}"/>
-                                                                                    <Button Content="WHITE HOT" Height="30" Margin="3,0" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalWhiteHotCommand}"/>
-                                                                                    <Button Content="RAINBOW" Height="30" Margin="3,0,0,0" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalRainbowCommand}"/>
+                                                                                    <!-- 2026-08-14: 명령 팔레트와 같은 색으로 식별한다. -->
+                                                                                    <!-- 2026-08-14: Neutral initially; color changes only after a successful command. -->
+                                                                                    <Button Content="BLACK HOT" Height="30" Margin="0,0,3,0" Foreground="{Binding ThermalBlackHotButtonForeground}" Background="{Binding ThermalBlackHotButtonBackground}" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalBlackHotCommand}"/>
+                                                                                    <Button Content="WHITE HOT" Height="30" Margin="3,0" Foreground="{Binding ThermalWhiteHotButtonForeground}" Background="{Binding ThermalWhiteHotButtonBackground}" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalWhiteHotCommand}"/>
+                                                                                    <Button Content="RANDOM" Height="30" Margin="3,0,0,0" Foreground="{Binding ThermalRainbowButtonForeground}" Background="{Binding ThermalRainbowButtonBackground}" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalRandomCommand}"/>
                                                                                 </UniformGrid>
 
                                                                                 <UniformGrid Columns="3"
@@ -2069,9 +2079,26 @@
                                                                                                   Mode=TwoWay}"
                                                                                           Margin="0,0,0,8"/>
 
+                                                                                <!-- 2026-08-14: FIRE DETECTION BBox grouping can be changed at runtime. -->
+                                                                                <TextBlock Text="FIRE DETECTION 구분 방식"
+                                                                                           Foreground="White"
+                                                                                           FontWeight="Bold"/>
+                                                                                <UniformGrid Columns="2" Margin="0,4,0,8">
+                                                                                    <Button Content="구분 방식 1"
+                                                                                            ToolTip="검출된 전체 화염을 하나의 박스로 표시"
+                                                                                            Command="{Binding SelectThermalFireBoxMode1Command}"
+                                                                                            Background="{Binding ThermalFireBoxMode1Background}"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"/>
+                                                                                    <Button Content="구분 방식 2"
+                                                                                            ToolTip="떨어진 화염을 각각의 박스로 표시"
+                                                                                            Command="{Binding SelectThermalFireBoxMode2Command}"
+                                                                                            Background="{Binding ThermalFireBoxMode2Background}"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"/>
+                                                                                </UniformGrid>
+
                                                                                 <TextBlock Text="HOT PIXEL THRESHOLD"
                                                                                            Foreground="White"/>
-                                                                                <Slider Minimum="0"
+                                                                                <Slider Minimum="0.05"
                                                                                         Maximum="1"
                                                                                         TickFrequency="0.01"
                                                                                         IsSnapToTickEnabled="True"
@@ -2086,15 +2113,15 @@
 
                                                                                 <TextBlock Text="MINIMUM FIRE DETECTOR AREA"
                                                                                            Foreground="White"/>
-                                                                                <Slider Minimum="0.001"
+                                                                                <Slider Minimum="0.0005"
                                                                                         Maximum="0.25"
-                                                                                        TickFrequency="0.01"
+                                                                                        TickFrequency="0.0005"
                                                                                         IsSnapToTickEnabled="True"
                                                                                         Value="{Binding ThermalMinimumAreaRatio,
                                                                                                 Mode=TwoWay}"
                                                                                         Margin="0,3,0,0"/>
                                                                                 <TextBlock Text="{Binding ThermalMinimumAreaRatio,
-                                                                                                   StringFormat=MIN AREA RATIO : {0:F2}}"
+                                                                                                   StringFormat=MIN AREA RATIO : {0:F4}}"
                                                                                            Foreground="#D0D7DE"
                                                                                            HorizontalAlignment="Right"/>
 

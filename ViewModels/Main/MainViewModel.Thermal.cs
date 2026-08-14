@@ -1,5 +1,6 @@
 ﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Services.Video;
+using System.Windows.Media;
 using System.Windows.Input;
 
 namespace OpenCvWpfTracking.ViewModels.Main
@@ -12,15 +13,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _isThermalFireDetectionEnabled;
         private bool _isThermalFireCandidateDetected;
-        private double _thermalHotThresholdRatio = 0.82;
-        private double _thermalMinimumAreaRatio = 0.01;
+        // 2026-08-14: 컬러/흑백 IR 시험 영상 공통 초기값.
+        private double _thermalHotThresholdRatio = 0.72;
+        private double _thermalMinimumAreaRatio = 0.0015;
+        // 2026-08-14: 1=전체 화염 단일 BBox, 2=분리 화염별 BBox(기본값).
+        private int _thermalFireBoxGroupingMode = 2;
+        private Brush _thermalFireBoxMode1Background = new SolidColorBrush(Color.FromRgb(62, 81, 94));
+        private Brush _thermalFireBoxMode2Background = new SolidColorBrush(Color.FromRgb(42, 111, 151));
+
+        // 2026-08-14: Direct palette buttons remain neutral until a command succeeds.
+        private Brush _thermalBlackHotButtonBackground = Brushes.WhiteSmoke;
+        private Brush _thermalBlackHotButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+        private Brush _thermalWhiteHotButtonBackground = Brushes.WhiteSmoke;
+        private Brush _thermalWhiteHotButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+        private Brush _thermalRainbowButtonBackground = Brushes.WhiteSmoke;
+        private Brush _thermalRainbowButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+
+        public Brush ThermalBlackHotButtonBackground { get => _thermalBlackHotButtonBackground; private set { _thermalBlackHotButtonBackground = value; OnPropertyChanged(); } }
+        public Brush ThermalBlackHotButtonForeground { get => _thermalBlackHotButtonForeground; private set { _thermalBlackHotButtonForeground = value; OnPropertyChanged(); } }
+        public Brush ThermalWhiteHotButtonBackground { get => _thermalWhiteHotButtonBackground; private set { _thermalWhiteHotButtonBackground = value; OnPropertyChanged(); } }
+        public Brush ThermalWhiteHotButtonForeground { get => _thermalWhiteHotButtonForeground; private set { _thermalWhiteHotButtonForeground = value; OnPropertyChanged(); } }
+        public Brush ThermalRainbowButtonBackground { get => _thermalRainbowButtonBackground; private set { _thermalRainbowButtonBackground = value; OnPropertyChanged(); } }
+        public Brush ThermalRainbowButtonForeground { get => _thermalRainbowButtonForeground; private set { _thermalRainbowButtonForeground = value; OnPropertyChanged(); } }
 
         public ICommand PreviousThermalPaletteCommand { get; private set; }
         public ICommand NextThermalPaletteCommand { get; private set; }
         public ICommand RequestThermalNucCommand { get; private set; }
         public ICommand SelectThermalBlackHotCommand { get; private set; }
         public ICommand SelectThermalWhiteHotCommand { get; private set; }
-        public ICommand SelectThermalRainbowCommand { get; private set; }
+        public ICommand SelectThermalRandomCommand { get; private set; }
+        public ICommand SelectThermalFireBoxMode1Command { get; private set; }
+        public ICommand SelectThermalFireBoxMode2Command { get; private set; }
+
+        public int ThermalFireBoxGroupingMode => _thermalFireBoxGroupingMode;
+        public Brush ThermalFireBoxMode1Background { get => _thermalFireBoxMode1Background; private set { _thermalFireBoxMode1Background = value; OnPropertyChanged(); } }
+        public Brush ThermalFireBoxMode2Background { get => _thermalFireBoxMode2Background; private set { _thermalFireBoxMode2Background = value; OnPropertyChanged(); } }
 
         public bool IsThermalFireDetectionEnabled
         {
@@ -107,37 +134,83 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             RequestThermalNucCommand =
                 new RelayCommand(() =>
-                    SendThermalCommand(
-                        "NUC",
-                        _controlCommandService.RequestIrNuc));
+                    SendThermalNucCommand());
 
             SelectThermalBlackHotCommand =
                 new RelayCommand(() =>
-                    SendThermalPaletteDirectCommand(
-                        "BLACK HOT",
-                        _controlCommandService.SelectIrBlackHot));
+                    SendThermalPaletteDirectCommand("BLACK HOT", 0));
 
             SelectThermalWhiteHotCommand =
                 new RelayCommand(() =>
-                    SendThermalPaletteDirectCommand(
-                        "WHITE HOT",
-                        _controlCommandService.SelectIrWhiteHot));
+                    SendThermalPaletteDirectCommand("WHITE HOT", 1));
 
-            SelectThermalRainbowCommand =
+            // 2026-08-14: RANDOM은 지원되지 않는 직접 RAINBOW 명령 대신 NEXT를 1회 전송한다.
+            SelectThermalRandomCommand =
                 new RelayCommand(() =>
-                    SendThermalPaletteDirectCommand(
-                        "RAINBOW",
-                        _controlCommandService.SelectIrRainbow));
+                    ChangeThermalPalette(1, true));
+
+            SelectThermalFireBoxMode1Command =
+                new RelayCommand(() => SetThermalFireBoxGroupingMode(1));
+            SelectThermalFireBoxMode2Command =
+                new RelayCommand(() => SetThermalFireBoxGroupingMode(2));
 
         }
 
-        private static void SendThermalPaletteDirectCommand(
-            string paletteName,
-            System.Func<bool> sendCommand)
+        private void SetThermalFireBoxGroupingMode(int mode)
         {
+            _thermalFireBoxGroupingMode = mode == 1 ? 1 : 2;
+            ThermalFireBoxMode1Background = new SolidColorBrush(
+                _thermalFireBoxGroupingMode == 1 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            ThermalFireBoxMode2Background = new SolidColorBrush(
+                _thermalFireBoxGroupingMode == 2 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            OnPropertyChanged(nameof(ThermalFireBoxGroupingMode));
+            ConsoleLogHelper.State("THERMAL FIRE", "BBox grouping mode=" + _thermalFireBoxGroupingMode);
+        }
+
+        private void SendThermalPaletteDirectCommand(string paletteName, int paletteType)
+        {
+            // 2026-08-14: REI는 ROOFTOP과 ENVIRONMENT가 각각의 제어 경로를 사용한다.
+            bool result = IsEnvironmentStatusSelected
+                ? (paletteType == 0 ? _webAgentThermalPaletteService.SelectBlackHot()
+                    : paletteType == 1 ? _webAgentThermalPaletteService.SelectWhiteHot()
+                    : _webAgentThermalPaletteService.SelectRainbow())
+                : (paletteType == 0 ? _controlCommandService.SelectIrBlackHot()
+                    : paletteType == 1 ? _controlCommandService.SelectIrWhiteHot()
+                    : _controlCommandService.SelectIrRainbow());
             LogThermalControlCommandResult(
                 "PALETTE " + paletteName,
-                sendCommand());
+                result);
+
+            if (result)
+            {
+                UpdateThermalPaletteButtonVisual(paletteType);
+            }
+        }
+
+        private void SendThermalNucCommand()
+        {
+            // 2026-08-14: C# 7.3에서는 조건식에 메서드 그룹을 직접 사용할 수 없다.
+            System.Func<bool> sendCommand;
+
+            if (IsEnvironmentStatusSelected)
+            {
+                sendCommand = _webAgentThermalPaletteService.RequestNuc;
+            }
+            else
+            {
+                sendCommand = _controlCommandService.RequestIrNuc;
+            }
+
+            SendThermalCommand(
+                "NUC",
+                sendCommand);
+        }
+
+        private void InitializeThermalBlackHotAfterDeviceConnected()
+        {
+            // 2026-08-14: Do not reuse the palette retained by the IR camera from
+            // the previous run. Every new device connection starts in BLACK HOT.
+            SendThermalPaletteDirectCommand("INITIAL BLACK HOT", 0);
         }
 
         /// <summary>
@@ -145,7 +218,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 정확히 한 번만 전송한다.
         /// </summary>
         private void ChangeThermalPalette(
-            int offset)
+            int offset,
+            bool highlightRandomButton = false)
         {
             if (IsEnvironmentStatusSelected)
             {
@@ -160,6 +234,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         : "ENVIRONMENT PALETTE NEXT",
                     environmentResult);
 
+                if (environmentResult)
+                {
+                    if (highlightRandomButton)
+                    {
+                        UpdateThermalPaletteButtonVisual(2);
+                    }
+                    else
+                    {
+                        ResetThermalPaletteButtonVisuals();
+                    }
+                }
+
                 return;
             }
 
@@ -173,6 +259,56 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ? "PALETTE PREV"
                     : "PALETTE NEXT",
                 result);
+
+            if (result)
+            {
+                if (highlightRandomButton)
+                {
+                    UpdateThermalPaletteButtonVisual(2);
+                }
+                else
+                {
+                    ResetThermalPaletteButtonVisuals();
+                }
+            }
+        }
+
+        // 2026-08-14: Highlight a direct palette only after the device write succeeds.
+        private void UpdateThermalPaletteButtonVisual(int paletteType)
+        {
+            ResetThermalPaletteButtonVisuals();
+
+            if (paletteType == 0)
+            {
+                ThermalBlackHotButtonBackground = Brushes.Black;
+                ThermalBlackHotButtonForeground = Brushes.White;
+            }
+            else if (paletteType == 1)
+            {
+                ThermalWhiteHotButtonBackground = Brushes.White;
+            }
+            else
+            {
+                LinearGradientBrush rainbow = new LinearGradientBrush { StartPoint = new System.Windows.Point(0, 0), EndPoint = new System.Windows.Point(1, 0) };
+                rainbow.GradientStops.Add(new GradientStop(Colors.Red, 0));
+                rainbow.GradientStops.Add(new GradientStop(Colors.Yellow, 0.35));
+                rainbow.GradientStops.Add(new GradientStop(Colors.LimeGreen, 0.60));
+                rainbow.GradientStops.Add(new GradientStop(Colors.DodgerBlue, 0.82));
+                rainbow.GradientStops.Add(new GradientStop(Colors.MediumPurple, 1));
+                ThermalRainbowButtonBackground = rainbow;
+                ThermalRainbowButtonForeground = Brushes.White;
+            }
+        }
+
+        private void ResetThermalPaletteButtonVisuals()
+        {
+            Brush neutralForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+            ThermalBlackHotButtonBackground = Brushes.WhiteSmoke;
+            ThermalBlackHotButtonForeground = neutralForeground;
+            ThermalWhiteHotButtonBackground = Brushes.WhiteSmoke;
+            ThermalWhiteHotButtonForeground = neutralForeground;
+            ThermalRainbowButtonBackground = Brushes.WhiteSmoke;
+            ThermalRainbowButtonForeground = neutralForeground;
         }
 
         private static void LogThermalControlCommandResult(

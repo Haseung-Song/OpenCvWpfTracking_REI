@@ -28,5 +28,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
 
         public bool SelectRainbow() =>
             _controlCommandService.SelectIrRainbow();
+
+        // 2026-08-14: ENVIRONMENT Web Agent도 규격서 NUC 명령을 같은 경로로 송신한다.
+        public bool RequestNuc() =>
+            _controlCommandService.RequestIrNuc();
     }
 }
