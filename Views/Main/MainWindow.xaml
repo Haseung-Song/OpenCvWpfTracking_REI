@@ -19,7 +19,11 @@
         WindowStartupLocation="CenterScreen"
         Focusable="True"
         Loaded="Window_Loaded"
+        StateChanged="Window_StateChanged"
         Deactivated="Window_Deactivated"
+        PreviewMouseLeftButtonDown="WindowFrame_PreviewMouseLeftButtonDown"
+        PreviewMouseLeftButtonUp="WindowFrame_PreviewMouseLeftButtonUp"
+        PreviewMouseMove="WindowFrame_PreviewMouseMove"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewKeyUp="Window_PreviewKeyUp">
 
@@ -33,7 +37,7 @@
         서로 다른 배경색이 모서리 밖으로 돌출되어 보이지 않게 한다.
     -->
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="0"
+        <shell:WindowChrome CaptionHeight="34"
                             ResizeBorderThickness="8"
                             CornerRadius="8"
                             GlassFrameThickness="0"
@@ -695,7 +699,8 @@
         우측/하단 내부 ScrollViewer는 그대로 동작하므로
         탭과 메뉴가 화면 밖으로 잘리지 않는다.
     -->
-    <Border Background="#2C313A"
+    <Border x:Name="WindowFrameBorder"
+            Background="#2C313A"
             BorderBrush="Transparent"
             BorderThickness="0"
             CornerRadius="8"
@@ -716,8 +721,7 @@
                     Background="#46515A"
                     BorderBrush="#71808A"
                     BorderThickness="0,0,0,1"
-                    CornerRadius="7,7,0,0"
-                    MouseLeftButtonDown="WindowTitleBar_MouseLeftButtonDown">
+                    CornerRadius="7,7,0,0">
                 <Grid>
                     <TextBlock Text="[REI] EO/IR VIDEO MONITORING &amp; PTZF CONTROL VIEWER"
                                Margin="12,0,0,0"
@@ -727,21 +731,51 @@
                                VerticalAlignment="Center"/>
 
                     <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Right">
-                        <Button Content="─"
-                                Width="48"
+                                HorizontalAlignment="Right"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Width="48"
+                                ToolTip="최소화"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Foreground="White"
-                                FontSize="15"
-                                Click="MinimizeWindowButton_Click"/>
-                        <Button Content="□"
+                                Click="MinimizeWindowButton_Click">
+                            <Border Width="11"
+                                    Height="1"
+                                    Background="White"
+                                    VerticalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="MaximizeRestoreWindowButton"
                                 Width="48"
+                                ToolTip="최대화"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Foreground="White"
-                                FontSize="15"
-                                Click="MaximizeRestoreWindowButton_Click"/>
+                                Click="MaximizeRestoreWindowButton_Click">
+                            <Grid Width="14" Height="14">
+                                <Border x:Name="MaximizeWindowGlyph"
+                                        Width="10" Height="10"
+                                        BorderBrush="White"
+                                        BorderThickness="1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"/>
+                                <Grid x:Name="RestoreWindowGlyph"
+                                      Visibility="Collapsed">
+                                    <Border Width="9" Height="9"
+                                            BorderBrush="White"
+                                            BorderThickness="1"
+                                            Margin="0,0,3,3"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"/>
+                                    <Border Width="9" Height="9"
+                                            BorderBrush="White"
+                                            BorderThickness="1"
+                                            Background="#46515A"
+                                            Margin="3,3,0,0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"/>
+                                </Grid>
+                            </Grid>
+                        </Button>
                         <Button Content="×"
                                 Width="48"
                                 Background="#8E3030"
@@ -808,6 +842,7 @@
                                 BorderBrush="#5A5A5A"
                                 BorderThickness="2"
                                 PreviewMouseLeftButtonDown="EoVideoBorder_PreviewMouseLeftButtonDown"
+                                MouseLeave="VideoBorder_MouseLeave"
                                 ToolTip="더블클릭: EO 영상 분리 창 열기">
                             <Grid ClipToBounds="True">
 
@@ -964,6 +999,7 @@
                                     BorderBrush="#5A5A5A"
                                     BorderThickness="2"
                                     PreviewMouseLeftButtonDown="IrVideoBorder_PreviewMouseLeftButtonDown"
+                                    MouseLeave="VideoBorder_MouseLeave"
                                     ToolTip="더블클릭: IR 영상 분리 창 열기">
 
                                 <Grid ClipToBounds="True">
@@ -1257,9 +1293,16 @@
 
                                 <Image x:Name="PanoramaImage"
                                        Source="/Images/Demo/DefaultRooftopPanorama.jpg"
-                                       Stretch="UniformToFill"
+                                       Stretch="Uniform"
+                                       Cursor="Hand"
+                                       ToolTip="더블 클릭하여 파노라마 확대 보기"
+                                       MouseLeftButtonDown="PanoramaImage_MouseLeftButtonDown"
                                        RenderOptions.BitmapScalingMode="HighQuality">
                                     <!--
+                                        2026-08-18: 초광폭 파노라마를 UniformToFill로
+                                        표시하면 좌우가 잘리므로 전체 이미지가 보이는
+                                        Uniform 방식으로 변경한다.
+
                                         파노라마 Source는 유지하되 장비 연결 상태에 따라
                                         화면 표시만 제어한다. 연결 해제 후 다시 연결하면
                                         사용자가 불러온 파노라마도 그대로 다시 표시된다.
@@ -1294,18 +1337,45 @@
 
                                         <StackPanel Orientation="Horizontal"
                                                     HorizontalAlignment="Right">
-                                            <Button Content="새 파노라마 만들기"
-                                                    Width="145"
+                                            <StackPanel.Resources>
+                                                <!--
+                                                    2026-08-18: 촬영/정합 중 비활성 버튼도
+                                                    밝은 배경 위에 문구가 명확히 보이도록
+                                                    비활성 Foreground와 Opacity를 고정한다.
+                                                -->
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Foreground"
+                                                            Value="White"/>
+                                                    <Setter Property="Background"
+                                                            Value="#315D77"/>
+                                                    <Setter Property="BorderBrush"
+                                                            Value="#7FB3E6"/>
+                                                    <Setter Property="Opacity"
+                                                            Value="1"/>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsEnabled"
+                                                                 Value="False">
+                                                            <Setter Property="Foreground"
+                                                                    Value="#26343D"/>
+                                                            <Setter Property="Background"
+                                                                    Value="#DCE2E6"/>
+                                                            <Setter Property="BorderBrush"
+                                                                    Value="#8797A1"/>
+                                                            <Setter Property="Opacity"
+                                                                    Value="1"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Resources>
+                                            <!-- 2026-08-18: 파일 선택 중복 기능을 실제 EO 360도 자동 촬영으로 교체 -->
+                                            <Button x:Name="NewPanoramaButton"
+                                                    Content="360° 파노라마 촬영"
+                                                    Width="165"
                                                     Margin="0,0,8,0"
-                                                    Foreground="White"
-                                                    Background="#315D77"
-                                                    BorderBrush="#7FB3E6"
                                                     Click="NewPanoramaButton_Click"/>
-                                            <Button Content="이미지 불러오기"
-                                                    Width="125"
-                                                    Foreground="White"
-                                                    Background="#315D77"
-                                                    BorderBrush="#7FB3E6"
+                                            <Button x:Name="LoadPanoramaImageButton"
+                                                    Content="파노라마 불러오기"
+                                                    Width="145"
                                                     Click="LoadPanoramaImageButton_Click"/>
                                         </StackPanel>
                                     </Grid>
@@ -1430,8 +1500,7 @@
                                             ItemContainerStyle="{StaticResource TopRightPanelTabItemStyle}">
 
                                     <!-- Control Agent 통신 연결 설정 -->
-                                    <TabItem Header="통신 설정"
-                                             IsEnabled="{Binding IsOperationCommandEnabled}">
+                                    <TabItem Header="통신 설정">
                                         <Grid Margin="5">
                                             <Grid.RowDefinitions>
                                                 <!-- 통신 설정 하위 탭 영역 -->
@@ -1443,6 +1512,7 @@
 
                                             <!-- Control Agent 및 EO / IR RTSP 통합 설정 카드 -->
                                             <Border Grid.Row="0"
+                                                    IsEnabled="{Binding IsOperationCommandEnabled}"
                                                     Background="#5F666D"
                                                     BorderBrush="#95A5B0"
                                                     BorderThickness="1.5"
@@ -2231,7 +2301,6 @@
                                                                     Content="ROOFTOP"
                                                                     Height="28"
                                                                     Margin="2"
-                                                                    IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                     Command="{Binding ShowRooftopStatusCommand}"/>
 
                                                             <Button x:Name="EnvironmentStatusButton"
@@ -2239,7 +2308,6 @@
                                                                     Content="ENVIRONMENT"
                                                                     Height="28"
                                                                     Margin="2"
-                                                                    IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                     Command="{Binding ShowEnvironmentStatusCommand}"/>
                                                         </Grid>
 
@@ -2510,6 +2578,7 @@
                                                 LENS   : EO / IR 연속 Zoom 및 Focus 수동 제어
                                             SYNC   : Web Agent 기준 EO / IR Zoom / Focus 단계 동기화 -->
                                             <TabControl Grid.Row="1"
+                                                        IsEnabled="{Binding IsOperationCommandEnabled}"
                                                         Margin="0,8,0,0"
                                                         Background="#5F666D"
                                                         BorderBrush="#95A5B0"

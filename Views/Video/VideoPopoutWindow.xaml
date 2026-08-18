@@ -193,6 +193,27 @@
 
                 </TextBlock>
 
+                <!-- 2026-08-18: 파노라마 촬영·정합·블렌딩·저장 중 EO/IR 분리 창 키 입력 잠금 안내 -->
+                <TextBlock Margin="0,7,0,0"
+                           Text="360° PANORAMA 작업 중이므로 키 입력이 비활성화됩니다."
+                           Foreground="#FFFF6B6B"
+                           FontSize="13"
+                           FontWeight="Bold">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility"
+                                    Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPanoramaProcessingRunning}"
+                                             Value="True">
+                                    <Setter Property="Visibility"
+                                            Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
             </StackPanel>
 
         </Border>

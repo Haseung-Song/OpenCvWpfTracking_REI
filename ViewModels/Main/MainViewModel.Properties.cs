@@ -544,15 +544,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public bool IsControlInputLocked =>
             IsHomePositionMoving ||
-            IsPresetScanControlLocked;
+            IsPresetScanControlLocked ||
+            IsPanoramaCaptureRunning ||
+            IsPanoramaProcessingRunning;
 
         public string ControlLockTitle =>
-            IsPresetScanControlLocked
+            IsPanoramaProcessingRunning
+                ? "360° PANORAMA OPERATION"
+                : IsPresetScanControlLocked
                 ? "AUTO SCAN OPERATION"
                 : HomeZeroLockTitle;
 
         public string ControlLockMessage =>
-            IsLaPresetScanRunning
+            IsPanoramaProcessingRunning
+                ? IsPanoramaCaptureRunning
+                    ? "EO CAMERA AUTO PAN / CAPTURING..."
+                    : "FEATURE MATCHING / BLENDING / SAVING..."
+                : IsLaPresetScanRunning
                 ? "PRESET L AUTO SCAN RUNNING"
                 : IsPresetScanRunning
                     ? "PRESET W AUTO SCAN RUNNING"

@@ -126,6 +126,27 @@ namespace OpenCvWpfTracking
         /// </summary>
         protected override void OnStartup(StartupEventArgs e)
         {
+            /*
+             * 2026-08-18: OpenCV Stitcher가 일부 Intel/NVIDIA OpenCL Driver에서
+             * CL_INVALID_COMMAND_QUEUE(-36)를 발생시키는 문제를 방지한다.
+             * OpenCV Native Runtime이 최초 초기화되기 전에 CPU 경로로 고정해야
+             * Stitch 실행 및 Stitcher Dispose 양쪽에서 동일 예외가 발생하지 않는다.
+             */
+            Environment.SetEnvironmentVariable(
+                "OPENCV_OPENCL_RUNTIME",
+                "disabled",
+                EnvironmentVariableTarget.Process);
+
+            Environment.SetEnvironmentVariable(
+                "OPENCV_OPENCL_DEVICE",
+                "disabled",
+                EnvironmentVariableTarget.Process);
+
+            Environment.SetEnvironmentVariable(
+                "OPENCV_OPENCL_CACHE_ENABLE",
+                "0",
+                EnvironmentVariableTarget.Process);
+
             /// <summary>
             /// [OpenCV] [FFmpeg] 디버그 로그 출력 비활성화
             /// </summary>

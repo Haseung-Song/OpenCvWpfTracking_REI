@@ -1,12 +1,19 @@
 ﻿using OpenCvWpfTracking.Common;
 using Microsoft.Win32;
 using OpenCvWpfTracking.ViewModels.Main;
+using OpenCvWpfTracking.Services.Video;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace OpenCvWpfTracking
@@ -50,6 +57,26 @@ namespace OpenCvWpfTracking
         // be stopped when the viewer closes.
         private Process _fireDetectorTestProgram;
 
+        /// <summary>
+        /// 2026-08-18: EO 360도 촬영 프레임 합성 서비스와 취소 상태.
+        /// </summary>
+        private readonly EoPanoramaStitchingService _eoPanoramaStitchingService =
+            new EoPanoramaStitchingService();
+
+        private CancellationTokenSource _panoramaCaptureCts;
+
+        private string _currentPanoramaFilePath;
+
+        private PanoramaPreviewWindow _panoramaPreviewWindow;
+
+        private bool _isWindowDragPending;
+        private Point _windowDragStartPoint;
+
+        // 2026-08-18: 분리 창을 열지 않아도 마우스가 올라간 EO/IR 화면을
+        // 대상으로 W/S/A/D 줌·포커스 연속 제어를 수행한다.
+        private Key? _activeHoverLensKey;
+        private VideoPopoutCameraType? _activeHoverLensCameraType;
+
         #endregion
 
         #region [Constructor]
@@ -65,6 +92,8 @@ namespace OpenCvWpfTracking
 
             DataContext =
                 vm;
+
+            LoadLatestGeneratedPanoramaOrKeepDefault();
         }
 
         private void FireDetectorTestProgram_Click(
@@ -122,6 +151,9 @@ namespace OpenCvWpfTracking
 
         protected override void OnClosed(EventArgs e)
         {
+            // 2026-08-18: 메인 창 종료 시 자동 Pan 촬영도 즉시 취소한다.
+            _panoramaCaptureCts?.Cancel();
+
             if (_fireDetectorTestProgram != null &&
                 !_fireDetectorTestProgram.HasExited)
             {
@@ -355,6 +387,107 @@ namespace OpenCvWpfTracking
 
         #region [Window Title Bar Events]
 
+        private void WindowFrame_PreviewMouseLeftButtonDown(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            if (e.ClickCount != 1 ||
+                IsInteractiveWindowElement(e.OriginalSource as DependencyObject))
+            {
+                _isWindowDragPending = false;
+                return;
+            }
+
+            _windowDragStartPoint = e.GetPosition(this);
+            _isWindowDragPending = true;
+        }
+
+        private void WindowFrame_PreviewMouseMove(
+            object sender,
+            MouseEventArgs e)
+        {
+            if (!_isWindowDragPending ||
+                e.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            Point current = e.GetPosition(this);
+
+            if (Math.Abs(current.X - _windowDragStartPoint.X) <
+                    SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(current.Y - _windowDragStartPoint.Y) <
+                    SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            _isWindowDragPending = false;
+
+            try
+            {
+                DragMove();
+            }
+            catch (InvalidOperationException)
+            {
+                // Mouse button state can change between the preview event and DragMove.
+            }
+        }
+
+        private void WindowFrame_PreviewMouseLeftButtonUp(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            _isWindowDragPending = false;
+        }
+
+        private static bool IsInteractiveWindowElement(
+            DependencyObject source)
+        {
+            DependencyObject current = source;
+
+            while (current != null)
+            {
+                if (current is ButtonBase ||
+                    current is TextBoxBase ||
+                    current is Selector ||
+                    current is RangeBase ||
+                    current is ScrollViewer ||
+                    current is PasswordBox)
+                {
+                    return true;
+                }
+
+                current = current is Visual
+                    ? VisualTreeHelper.GetParent(current)
+                    : LogicalTreeHelper.GetParent(current);
+            }
+
+            return false;
+        }
+
+        private void Window_StateChanged(
+            object sender,
+            EventArgs e)
+        {
+            UpdateWindowChromeState();
+        }
+
+        private void UpdateWindowChromeState()
+        {
+            bool isMaximized =
+                WindowState == WindowState.Maximized;
+
+            MaximizeWindowGlyph.Visibility =
+                isMaximized ? Visibility.Collapsed : Visibility.Visible;
+            RestoreWindowGlyph.Visibility =
+                isMaximized ? Visibility.Visible : Visibility.Collapsed;
+            MaximizeRestoreWindowButton.ToolTip =
+                isMaximized ? "이전 크기로 복원" : "최대화";
+            WindowFrameBorder.CornerRadius =
+                isMaximized ? new CornerRadius(0) : new CornerRadius(8);
+        }
+
         /// <summary>
         /// 사용자 정의 Title Bar 마우스 입력 처리.
         ///
@@ -454,26 +587,206 @@ namespace OpenCvWpfTracking
             object sender,
             RoutedEventArgs e)
         {
+            UpdateWindowChromeState();
+
             Keyboard.Focus(
                 this);
         }
 
         /// <summary>
-        /// [Demo Panorama] 새 파노라마 이미지 선택
-        ///
-        /// 현 단계에서는 실시간 Stitching을 수행하지 않고,
-        /// 새 파노라마로 사용할 정적 JPG / PNG 파일을 선택하여 표시한다.
-        /// 추후 다중 영상 합성 기능을 추가할 때 이 진입점을 그대로 확장한다.
+        /// 2026-08-18: ROOFTOP EO 카메라를 360도 자동 회전시키고,
+        /// 정지 위치별 프레임을 OpenCV Panorama Stitcher로 합성한다.
+        /// 촬영 중 다시 누르면 안전 취소를 요청한다.
         /// </summary>
-        private void NewPanoramaButton_Click(
+        private async void NewPanoramaButton_Click(
             object sender,
             RoutedEventArgs e)
         {
-            SelectAndLoadPanoramaImage();
+            if (_panoramaCaptureCts != null)
+            {
+                ConsoleLogHelper.Warning(
+                    "EO PANORAMA / UI",
+                    "Operator requested capture cancellation");
+                _panoramaCaptureCts.Cancel();
+                PanoramaFileNameText.Text =
+                    "360° PANORAMA / 촬영 취소 요청...";
+
+                return;
+            }
+
+            string blockReason =
+                vm.GetPanoramaCaptureBlockReason();
+
+            if (blockReason != null)
+            {
+                ConsoleLogHelper.Warning(
+                    "EO PANORAMA / UI",
+                    "Start rejected / REASON=" + blockReason);
+                MessageBox.Show(
+                    this,
+                    blockReason,
+                    "360° 파노라마 촬영",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                return;
+            }
+
+            MessageBoxResult confirmation =
+                MessageBox.Show(
+                    this,
+                    "EO 카메라가 자동으로 360° 회전합니다.\n\n" +
+                    "- EO Zoom: 광각 0~100 / 1000 권장\n" +
+                    "- 촬영 중 다른 Pan/Tilt/Zoom 조작 금지\n" +
+                    "- 10° 간격, 총 36개 위치 촬영 후 자동 합성\n\n" +
+                    "촬영을 시작하시겠습니까?",
+                    "360° 파노라마 촬영",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                ConsoleLogHelper.Info(
+                    "EO PANORAMA / UI",
+                    "Operator declined capture confirmation");
+                return;
+            }
+
+            ConsoleLogHelper.Info(
+                "EO PANORAMA / UI",
+                "Operator confirmed 360-degree panorama capture");
+
+            ClosePanoramaPreview();
+
+            _panoramaCaptureCts =
+                new CancellationTokenSource();
+
+            // 2026-08-18: 촬영부터 정합/블렌딩/저장 완료까지 제어 잠금 유지.
+            vm.SetPanoramaProcessingRunning(
+                true);
+
+            NewPanoramaButton.Content =
+                "촬영 중지";
+
+            LoadPanoramaImageButton.IsEnabled =
+                false;
+
+            Progress<string> progress =
+                new Progress<string>(message =>
+                {
+                    PanoramaFileNameText.Text = message;
+                });
+
+            try
+            {
+                IList<IList<BitmapSource>> frameRows =
+                    await vm.CaptureEoPanoramaFramesAsync(
+                        progress,
+                        _panoramaCaptureCts.Token);
+
+                ConsoleLogHelper.State(
+                    "EO PANORAMA / UI",
+                    "Capture phase completed / ROWS=" + frameRows.Count +
+                    " / FRAMES=" + frameRows.Sum(row => row.Count));
+
+                PanoramaFileNameText.Text =
+                    "360° PANORAMA / 특징점 정합 및 블렌딩 중...";
+
+                NewPanoramaButton.Content =
+                    "합성 중...";
+
+                NewPanoramaButton.IsEnabled =
+                    false;
+
+                string outputPath =
+                    GetNextPanoramaOutputPath();
+
+                ConsoleLogHelper.Info(
+                    "EO PANORAMA / UI",
+                    "Stitch phase dispatched / OUTPUT=" + outputPath);
+
+                BitmapSource panorama =
+                    await Task.Run(() =>
+                        _eoPanoramaStitchingService.StitchRowsAndSave(
+                            frameRows,
+                            outputPath));
+
+                PanoramaImage.Source =
+                    panorama;
+
+                _currentPanoramaFilePath =
+                    outputPath;
+
+                PanoramaEmptyText.Visibility =
+                    Visibility.Collapsed;
+
+                PanoramaFileNameText.Text =
+                    "ROOFTOP PANORAMA / " +
+                    Path.GetFileName(outputPath);
+
+                ConsoleLogHelper.State(
+                    "EO PANORAMA / UI",
+                    "Panorama completed and displayed / OUTPUT=" + outputPath +
+                    " / SIZE=" + panorama.PixelWidth + "x" + panorama.PixelHeight);
+
+                MessageBox.Show(
+                    this,
+                    "360° EO 파노라마 생성이 완료되었습니다.\n\n" +
+                    outputPath,
+                    "파노라마 완료",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                ConsoleLogHelper.Warning(
+                    "EO PANORAMA / UI",
+                    "Panorama operation canceled");
+                PanoramaFileNameText.Text =
+                    "ROOFTOP PANORAMA / 촬영 취소됨";
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "EO PANORAMA / UI",
+                    "Panorama operation failed",
+                    ex);
+                PanoramaFileNameText.Text =
+                    "ROOFTOP PANORAMA / 생성 실패";
+
+                MessageBox.Show(
+                    this,
+                    "360° 파노라마를 생성할 수 없습니다.\n\n" +
+                    ex.Message,
+                    "파노라마 오류",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            finally
+            {
+                vm.SetPanoramaProcessingRunning(
+                    false);
+
+                _panoramaCaptureCts.Dispose();
+                _panoramaCaptureCts = null;
+
+                NewPanoramaButton.Content =
+                    "360° 파노라마 촬영";
+
+                NewPanoramaButton.IsEnabled =
+                    true;
+
+                LoadPanoramaImageButton.IsEnabled =
+                    true;
+
+                ConsoleLogHelper.Info(
+                    "EO PANORAMA / UI",
+                    "Panorama UI and control lock restored");
+            }
         }
 
         /// <summary>
-        /// [Demo Panorama] 기존 파노라마 이미지 불러오기
+        /// 2026-08-18: 기존 파노라마 이미지 불러오기
         /// </summary>
         private void LoadPanoramaImageButton_Click(
             object sender,
@@ -491,6 +804,16 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void SelectAndLoadPanoramaImage()
         {
+            string panoramaDirectory =
+                GetPanoramaDirectory();
+
+            /*
+             * 2026-08-18: 촬영 결과가 저장되는 동일한 Panoramas 폴더에서
+             * 파일 선택 창을 시작한다. 폴더가 아직 없으면 먼저 생성한다.
+             */
+            Directory.CreateDirectory(
+                panoramaDirectory);
+
             OpenFileDialog dialog =
                 new OpenFileDialog
                 {
@@ -501,7 +824,11 @@ namespace OpenCvWpfTracking
                     CheckFileExists =
                         true,
                     Multiselect =
-                        false
+                        false,
+                    InitialDirectory =
+                        panoramaDirectory,
+                    RestoreDirectory =
+                        true
                 };
 
             if (dialog.ShowDialog(this) !=
@@ -512,31 +839,9 @@ namespace OpenCvWpfTracking
 
             try
             {
-                BitmapImage bitmap =
-                    new BitmapImage();
-
-                bitmap.BeginInit();
-                bitmap.CacheOption =
-                    BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions =
-                    BitmapCreateOptions.IgnoreImageCache;
-                bitmap.UriSource =
-                    new Uri(
-                        dialog.FileName,
-                        UriKind.Absolute);
-                bitmap.EndInit();
-                bitmap.Freeze();
-
-                PanoramaImage.Source =
-                    bitmap;
-
-                PanoramaEmptyText.Visibility =
-                    Visibility.Collapsed;
-
-                PanoramaFileNameText.Text =
-                    "ROOFTOP PANORAMA / " +
-                    Path.GetFileName(
-                        dialog.FileName);
+                DisplayPanoramaFile(
+                    dialog.FileName,
+                    "Manual file selected");
             }
             catch (Exception ex)
             {
@@ -547,6 +852,293 @@ namespace OpenCvWpfTracking
                     "파노라마 이미지 오류",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>
+        /// Panoramas 폴더의 Panorama N.jpg 중 가장 큰 N을 시작 이미지로
+        /// 표시한다. 파일이 없거나 읽기에 실패하면 XAML의 기존 내장 기본
+        /// 이미지를 그대로 유지한다.
+        /// </summary>
+        private void LoadLatestGeneratedPanoramaOrKeepDefault()
+        {
+            try
+            {
+                string directory =
+                    GetPanoramaDirectory();
+
+                if (!Directory.Exists(directory))
+                {
+                    ConsoleLogHelper.Info(
+                        "EO PANORAMA / DEFAULT",
+                        "Generated panorama directory not found; bundled default retained / DIRECTORY=" +
+                        directory);
+                    return;
+                }
+
+                string latestPath =
+                    Directory
+                        .EnumerateFiles(
+                            directory,
+                            "Panorama *.jpg",
+                            SearchOption.TopDirectoryOnly)
+                        .Select(path => new
+                        {
+                            Path = path,
+                            Sequence = GetPanoramaSequence(path)
+                        })
+                        .Where(item => item.Sequence > 0)
+                        .OrderByDescending(item => item.Sequence)
+                        .Select(item => item.Path)
+                        .FirstOrDefault();
+
+                if (string.IsNullOrWhiteSpace(latestPath))
+                {
+                    ConsoleLogHelper.Info(
+                        "EO PANORAMA / DEFAULT",
+                        "No generated Panorama N.jpg found; bundled default retained / DIRECTORY=" +
+                        directory);
+                    return;
+                }
+
+                DisplayPanoramaFile(
+                    latestPath,
+                    "Latest generated panorama loaded at startup");
+            }
+            catch (Exception ex)
+            {
+                _currentPanoramaFilePath =
+                    null;
+
+                ConsoleLogHelper.Warning(
+                    "EO PANORAMA / DEFAULT",
+                    "Latest panorama load failed; bundled default retained / " + ex.Message);
+            }
+        }
+
+        private void DisplayPanoramaFile(
+            string filePath,
+            string logOperation)
+        {
+            BitmapImage bitmap =
+                new BitmapImage();
+
+            bitmap.BeginInit();
+            bitmap.CacheOption =
+                BitmapCacheOption.OnLoad;
+            bitmap.CreateOptions =
+                BitmapCreateOptions.IgnoreImageCache;
+            bitmap.UriSource =
+                new Uri(
+                    filePath,
+                    UriKind.Absolute);
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            PanoramaImage.Source =
+                bitmap;
+
+            _currentPanoramaFilePath =
+                filePath;
+
+            PanoramaEmptyText.Visibility =
+                Visibility.Collapsed;
+
+            PanoramaFileNameText.Text =
+                "ROOFTOP PANORAMA / " +
+                Path.GetFileName(filePath);
+
+            ConsoleLogHelper.State(
+                "EO PANORAMA / DEFAULT",
+                logOperation + " / FILE=" + filePath +
+                " / SIZE=" + bitmap.PixelWidth + "x" + bitmap.PixelHeight);
+        }
+
+        private static int GetPanoramaSequence(
+            string filePath)
+        {
+            string fileName =
+                Path.GetFileNameWithoutExtension(filePath);
+
+            const string Prefix =
+                "Panorama ";
+
+            if (string.IsNullOrWhiteSpace(fileName) ||
+                !fileName.StartsWith(
+                    Prefix,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return -1;
+            }
+
+            return int.TryParse(
+                       fileName.Substring(Prefix.Length),
+                       out int sequence)
+                ? sequence
+                : -1;
+        }
+
+        private void PanoramaImage_MouseLeftButtonDown(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            if (e.ClickCount != 2 ||
+                PanoramaImage.Source == null)
+            {
+                return;
+            }
+
+            if (vm.IsPanoramaCaptureRunning ||
+                vm.IsPanoramaProcessingRunning)
+            {
+                e.Handled = true;
+
+                ConsoleLogHelper.Warning(
+                    "EO PANORAMA / PREVIEW",
+                    "Preview blocked while capture, stitching, blending or saving is running");
+                return;
+            }
+
+            if (_panoramaPreviewWindow != null)
+            {
+                if (_panoramaPreviewWindow.WindowState == WindowState.Minimized)
+                {
+                    _panoramaPreviewWindow.WindowState = WindowState.Normal;
+                }
+
+                _panoramaPreviewWindow.Activate();
+                e.Handled = true;
+                return;
+            }
+
+            e.Handled = true;
+
+            try
+            {
+                PanoramaPreviewWindow previewWindow =
+                    new PanoramaPreviewWindow(
+                        PanoramaImage.Source,
+                        _currentPanoramaFilePath,
+                        string.IsNullOrWhiteSpace(_currentPanoramaFilePath)
+                            ? "기본 파노라마"
+                            : Path.GetFileName(_currentPanoramaFilePath))
+                    {
+                        Owner = this
+                    };
+
+                _panoramaPreviewWindow = previewWindow;
+                previewWindow.Closed +=
+                    (closedSender, closedArgs) =>
+                    {
+                        if (ReferenceEquals(
+                                _panoramaPreviewWindow,
+                                previewWindow))
+                        {
+                            _panoramaPreviewWindow = null;
+                        }
+                    };
+
+                previewWindow.Show();
+
+                ConsoleLogHelper.Info(
+                    "EO PANORAMA / PREVIEW",
+                    "Panorama preview opened / FILE=" +
+                    (_currentPanoramaFilePath ?? "BUNDLED_DEFAULT"));
+            }
+            catch (Exception ex)
+            {
+                _panoramaPreviewWindow = null;
+
+                ConsoleLogHelper.Error(
+                    "EO PANORAMA / PREVIEW",
+                    "Panorama preview open failed",
+                    ex);
+
+                MessageBox.Show(
+                    this,
+                    "파노라마 확대 창을 열 수 없습니다.\n\n" + ex.Message,
+                    "파노라마 확대 보기",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private void ClosePanoramaPreview()
+        {
+            PanoramaPreviewWindow previewWindow =
+                _panoramaPreviewWindow;
+
+            _panoramaPreviewWindow = null;
+
+            if (previewWindow == null)
+            {
+                return;
+            }
+
+            try
+            {
+                previewWindow.Close();
+
+                ConsoleLogHelper.Info(
+                    "EO PANORAMA / PREVIEW",
+                    "Open preview closed before panorama processing");
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "EO PANORAMA / PREVIEW",
+                    "Failed to close preview before panorama processing",
+                    ex);
+            }
+        }
+
+        /// <summary>
+        /// 2026-08-18: 생성과 불러오기가 항상 동일한 저장 폴더를 사용한다.
+        /// Visual Studio 실행 시에는 bin\x64\Debug\Panoramas 아래가 된다.
+        /// </summary>
+        private static string GetPanoramaDirectory()
+        {
+            return Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Panoramas");
+        }
+
+        /// <summary>
+        /// 2026-08-18: 기존 결과를 덮어쓰지 않고 현재 가장 큰 번호 + 1로
+        /// 저장한다. 중간 번호가 삭제되어도 새 결과가 항상 최신 번호가 된다.
+        /// </summary>
+        private static string GetNextPanoramaOutputPath()
+        {
+            string directory =
+                GetPanoramaDirectory();
+
+            Directory.CreateDirectory(
+                directory);
+
+            int sequence =
+                Directory
+                    .EnumerateFiles(
+                        directory,
+                        "Panorama *.jpg",
+                        SearchOption.TopDirectoryOnly)
+                    .Select(GetPanoramaSequence)
+                    .Where(value => value > 0)
+                    .DefaultIfEmpty(0)
+                    .Max() + 1;
+
+            while (true)
+            {
+                string candidate =
+                    Path.Combine(
+                        directory,
+                        "Panorama " + sequence + ".jpg");
+
+                if (!File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                sequence++;
             }
         }
 
@@ -581,6 +1173,7 @@ namespace OpenCvWpfTracking
             // 별도 사용자 조작 없이 자동으로 정상 입력 상태로 복귀한다.
             if (IsControlInputKeyboardLocked())
             {
+                StopActiveHoverLensMove();
                 e.Handled =
                     true;
 
@@ -618,6 +1211,27 @@ namespace OpenCvWpfTracking
                 return;
             }
 
+            // 2026-08-18: 메인 화면의 EO/IR 영상 위에 마우스를 둔 상태에서는
+            // W/S=Zoom In/Out, A/D=Focus Near/Far로 해당 카메라를 제어한다.
+            if (IsLensShortcutKey(e.Key))
+            {
+                VideoPopoutCameraType? hoveredCamera =
+                    GetHoveredCameraType();
+
+                if (hoveredCamera.HasValue)
+                {
+                    if (!_activeHoverLensKey.HasValue && !e.IsRepeat)
+                    {
+                        _activeHoverLensKey = e.Key;
+                        _activeHoverLensCameraType = hoveredCamera.Value;
+                        StartHoverLensMove(hoveredCamera.Value, e.Key);
+                    }
+
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             if (!IsPanTiltDirectionKey(
                     e.Key))
             {
@@ -652,9 +1266,18 @@ namespace OpenCvWpfTracking
             // 발생시키는 것을 방지한다.
             if (IsControlInputKeyboardLocked())
             {
+                StopActiveHoverLensMove();
                 e.Handled =
                     true;
 
+                return;
+            }
+
+            if (_activeHoverLensKey.HasValue &&
+                _activeHoverLensKey.Value == e.Key)
+            {
+                StopActiveHoverLensMove();
+                e.Handled = true;
                 return;
             }
 
@@ -682,7 +1305,97 @@ namespace OpenCvWpfTracking
             object sender,
             EventArgs e)
         {
+            StopActiveHoverLensMove();
             vm?.ResetAllKeyboardControlState();
+        }
+
+        /// <summary>
+        /// 2026-08-18: 제어 중 마우스가 EO/IR 영상 밖으로 나가면 KeyUp 유실과
+        /// 관계없이 줌·포커스 연속 명령을 즉시 정지한다.
+        /// </summary>
+        private void VideoBorder_MouseLeave(
+            object sender,
+            MouseEventArgs e)
+        {
+            StopActiveHoverLensMove();
+        }
+
+        private VideoPopoutCameraType? GetHoveredCameraType()
+        {
+            if (EoVideoBorder != null && EoVideoBorder.IsMouseOver)
+            {
+                return VideoPopoutCameraType.Eo;
+            }
+
+            if (IrVideoBorder != null && IrVideoBorder.IsMouseOver)
+            {
+                return VideoPopoutCameraType.Ir;
+            }
+
+            return null;
+        }
+
+        private static bool IsLensShortcutKey(Key key)
+        {
+            return key == Key.W || key == Key.S ||
+                   key == Key.A || key == Key.D;
+        }
+
+        private void StartHoverLensMove(
+            VideoPopoutCameraType cameraType,
+            Key key)
+        {
+            if (cameraType == VideoPopoutCameraType.Eo)
+            {
+                switch (key)
+                {
+                    case Key.W: vm?.StartEoZoomInMove(); break;
+                    case Key.S: vm?.StartEoZoomOutMove(); break;
+                    case Key.A: vm?.StartEoFocusNearMove(); break;
+                    case Key.D: vm?.StartEoFocusFarMove(); break;
+                }
+
+                return;
+            }
+
+            switch (key)
+            {
+                case Key.W: vm?.StartIrZoomInMove(); break;
+                case Key.S: vm?.StartIrZoomOutMove(); break;
+                case Key.A: vm?.StartIrFocusNearMove(); break;
+                case Key.D: vm?.StartIrFocusFarMove(); break;
+            }
+        }
+
+        private void StopActiveHoverLensMove()
+        {
+            if (!_activeHoverLensKey.HasValue ||
+                !_activeHoverLensCameraType.HasValue)
+            {
+                return;
+            }
+
+            Key key = _activeHoverLensKey.Value;
+            VideoPopoutCameraType cameraType =
+                _activeHoverLensCameraType.Value;
+
+            _activeHoverLensKey = null;
+            _activeHoverLensCameraType = null;
+
+            if (cameraType == VideoPopoutCameraType.Eo)
+            {
+                vm?.StopContinuousMove();
+                return;
+            }
+
+            if (key == Key.W || key == Key.S)
+            {
+                vm?.StopIrZoomMove();
+            }
+            else
+            {
+                vm?.StopIrFocusMove();
+            }
         }
 
         /// <summary>

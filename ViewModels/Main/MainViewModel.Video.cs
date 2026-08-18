@@ -3,6 +3,7 @@ using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Converters;
 using OpenCvWpfTracking.Services.Video;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -101,14 +102,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            // 2026-08-14: 실제 재연결을 시작할 때만 이전 화면 상태를 초기화한다.
-            _isEoFrameDisplayed = false;
-            _isIrFrameDisplayed = false;
+            // 2026-08-18: 한 채널만 연결된 상태에서 다시 연결해도
+            // 정상 채널의 프레임과 CaptureLoop는 유지하고 실패 채널만 초기화한다.
+            bool isEoStreamActive =
+                _eoDecoder.IsOpened || _isEoFrameDisplayed;
+
+            bool isIrStreamActive =
+                _irDecoder.IsOpened || _isIrFrameDisplayed;
+
+            if (!isEoStreamActive)
+            {
+                _isEoFrameDisplayed =
+                    false;
+            }
+
+            if (!isIrStreamActive)
+            {
+                _isIrFrameDisplayed =
+                    false;
+            }
 
             App.Current.Dispatcher.Invoke(() =>
             {
-                EoDetectionBoxes.Clear();
-                IrDetectionBoxes.Clear();
+                if (!isEoStreamActive)
+                {
+                    EoDetectionBoxes.Clear();
+                }
+
+                if (!isIrStreamActive)
+                {
+                    IrDetectionBoxes.Clear();
+                }
             });
 
             _isVideoConnecting = true; // 연결 시도 중 상태 설정
@@ -119,7 +143,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 현재 실제 [EO / IR] RTSP 영상만 사용하므로
              * VD 연결 상태는 갱신하지 않는다.
              */
-            EoStatusText = "[EO] Connecting...";
+            if (!isEoStreamActive)
+            {
+                EoStatusText =
+                    "[EO] Connecting...";
+            }
 
             /*
              * 최초 RTSP 연결은 EO를 우선 처리한다.
@@ -128,11 +156,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * IR 연결을 시작하므로, 초기 상태 표시 순서가
              * EO -> IR 순서로 명확하게 유지된다.
              */
-            IrStatusText = "[IR] Waiting for EO...";
+            if (!isIrStreamActive)
+            {
+                IrStatusText =
+                    "[IR] Waiting for EO...";
+            }
 
             try
             {
-                ResetCancellationToken();
+                // 2026-08-18: 살아 있는 채널의 CaptureLoop가 사용하는 Token은
+                // 취소하지 않는다. 최초 연결 또는 명시적 연결 해제 후에만 새로 만든다.
+                if (_cts == null ||
+                    _cts.IsCancellationRequested)
+                {
+                    ResetCancellationToken();
+                }
 
                 _isDeviceConnectionRequested =
                     true;
@@ -195,12 +233,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * Vertiport 운용 흐름과 동일하게 다음 순서를 보장한다.
                  *
                  * 1. Control Agent TCP 연결
-                 * 2. EO RTSP 연결 완료
-                 * 3. IR RTSP 연결 완료
-                 * 4. LA AGENT 모드에서만 HOME POSITION 실행
+                 * 2. EO/IR 두 채널이 모두 연결된 경우에만 HOME POSITION 실행
                  *
-                 * 카메라가 아직 Connecting 상태인 동안에는 HOME을 실행하지 않는다.
-                 * EO와 IR이 모두 정상 연결된 경우에만 원점 이동을 시작한다.
+                 * 한 채널만 연결된 상태에서는 자동 HOME을 실행하지 않는다.
+                 * 필요한 경우 운용자가 연결 복구 후 HOME 버튼을 직접 누른다.
                  *
                  * ENVIRONMENT / WEB AGENT에서는 HOME / ZERO가 지원 대상이 아니므로
                  * 자동 HOME을 실행하지 않는다.
@@ -209,21 +245,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 전체 우측 UI, 탭, 버튼, 방향키, WASD, Zoom/Focus 단축키가 잠기며,
                  * 정상 완료/송신 실패/예외/30초 Timeout 후 반드시 자동 해제된다.
                  */
-                bool areAllCamerasConnected =
+                bool areBothCamerasConnected =
                     result.EoResult &&
                     result.IrResult;
 
                 if (isControlAgentConnected &&
                     IsRooftopStatusSelected &&
-                    areAllCamerasConnected)
+                    areBothCamerasConnected)
                 {
                     ConsoleLogHelper.Info(
                         "CONNECT / AUTO HOME",
-                        "Eligibility passed / CONTROL AGENT + EO + IR connected / MODE=LA AGENT");
+                        "Eligibility passed / CONTROL AGENT + EO and IR connected / MODE=LA AGENT");
 
                     Console.WriteLine();
                     Console.WriteLine(
-                        "[CONNECT] LA AGENT + EO + IR CONNECTED " +
+                        "[CONNECT] LA AGENT + EO/IR VIDEO AVAILABLE " +
                         "/ AUTO HOME POSITION START");
                     ConsoleLogHelper.PrintLine();
 
@@ -646,7 +682,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 첫 번째 장비의 Connect 결과가 확정되기 전에는
              * 다음 장비 연결을 시작하지 않는다.
              */
+            bool wasEoAlreadyOpen =
+                _eoDecoder.IsOpened;
+
             eoResult =
+                wasEoAlreadyOpen ||
                 await Task.Run(() =>
                     _eoDecoder.Open(
                         EoSourceAddress));
@@ -679,19 +719,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 기존처럼 EO / IR Open이 모두 끝날 때까지 기다리지 않으므로
                  * EO Connected 상태와 영상이 IR보다 먼저 화면에 반영된다.
                  */
-                _ = Task.Run(() =>
-                    FFmpegCaptureLoop(
-                        _eoDecoder,
-                        "EO",
-                        bitmap =>
-                        {
-                            EOCameraImage =
-                                bitmap;
+                if (!wasEoAlreadyOpen)
+                {
+                    _ = Task.Run(() =>
+                        FFmpegCaptureLoop(
+                            _eoDecoder,
+                            "EO",
+                            bitmap =>
+                            {
+                                EOCameraImage =
+                                    bitmap;
 
-                            _isEoFrameDisplayed =
-                                true;
-                        },
-                        captureToken));
+                                _isEoFrameDisplayed =
+                                    true;
+                            },
+                            captureToken));
+                }
             }
             else
             {
@@ -738,7 +781,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IrStatusText =
                 "[IR] Connecting...";
 
+            bool wasIrAlreadyOpen =
+                _irDecoder.IsOpened;
+
             irResult =
+                wasIrAlreadyOpen ||
                 await Task.Run(() =>
                     _irDecoder.Open(
                         IrSourceAddress));
@@ -765,19 +812,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 IrStatusText =
                     "[IR] Connected";
 
-                _ = Task.Run(() =>
-                    FFmpegCaptureLoop(
-                        _irDecoder,
-                        "IR",
-                        bitmap =>
-                        {
-                            IRCameraImage =
-                                bitmap;
+                if (!wasIrAlreadyOpen)
+                {
+                    _ = Task.Run(() =>
+                        FFmpegCaptureLoop(
+                            _irDecoder,
+                            "IR",
+                            bitmap =>
+                            {
+                                IRCameraImage =
+                                    bitmap;
 
-                            _isIrFrameDisplayed =
-                                true;
-                        },
-                        captureToken));
+                                _isIrFrameDisplayed =
+                                    true;
+                            },
+                            captureToken));
+                }
             }
             else
             {
@@ -844,6 +894,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 개별 RTSP Stream 재연결 Loop
+        ///
+        /// 2026-08-18: EO / IR 중 전원이 꺼진 채널이 무한 재연결되지 않도록
+        /// 채널별 최대 재연결 시간을 5분으로 제한한다. 제한 시간이 지나면
+        /// 해당 채널만 Disconnected로 전환하며 다른 영상과 장비 제어는 유지한다.
         /// </summary>
         private async Task ReconnectVideoAsync(
             FFmpegDecoderService decoder,
@@ -853,14 +907,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CancellationToken token)
         {
             const int reconnectDelayMs =
-                1500;
+                5000;
+
+            TimeSpan maximumReconnectDuration =
+                TimeSpan.FromMinutes(5);
+
+            Stopwatch reconnectStopwatch =
+                Stopwatch.StartNew();
 
             int retryCount =
                 0;
 
             while (_isDeviceConnectionRequested &&
                    !token.IsCancellationRequested &&
-                   !decoder.IsOpened)
+                   !decoder.IsOpened &&
+                   reconnectStopwatch.Elapsed < maximumReconnectDuration)
             {
                 retryCount++;
 
@@ -946,6 +1007,43 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
             }
+
+            reconnectStopwatch.Stop();
+
+            if (!_isDeviceConnectionRequested ||
+                token.IsCancellationRequested ||
+                decoder.IsOpened)
+            {
+                return;
+            }
+
+            // 2026-08-18: 5분 재연결 제한에 도달한 채널만 최종 해제한다.
+            decoder.Close();
+
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                if (streamName == "EO")
+                {
+                    EoStatusText =
+                        "[EO] Disconnected";
+
+                    _isEoFrameDisplayed =
+                        false;
+                }
+                else
+                {
+                    IrStatusText =
+                        "[IR] Disconnected";
+
+                    _isIrFrameDisplayed =
+                        false;
+                }
+            });
+
+            Console.WriteLine(
+                $"[{streamName}] RTSP Reconnect Timeout / " +
+                $"ELAPSED={reconnectStopwatch.Elapsed.TotalSeconds:F1}s / " +
+                $"COUNT={retryCount}");
 
         }
 

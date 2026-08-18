@@ -23,6 +23,9 @@ namespace OpenCvWpfTracking.Services.Video
         private Rect _trackedCandidateRect = Rect.Empty;
         // 2026-08-14: Static hot roofs/ground are rejected using inter-frame motion.
         private Mat _previousGray = new Mat();
+        // 2026-08-18: 팔레트상 계속 붉게 보이는 건물/지면과 실제로 형상이
+        // 흔들리는 화염을 구분하기 위한 직전 후보 마스크이다.
+        private Mat _previousCandidateMask = new Mat();
 
         internal ThermalFireDetectionResult Process(
             Mat frame,
@@ -46,6 +49,7 @@ namespace OpenCvWpfTracking.Services.Video
 
             using (Mat currentGray = new Mat())
             using (Mat motionMask = new Mat())
+            using (Mat candidateChangeMask = new Mat())
             using (Mat mask = CreateHotPixelMask(
                        frame,
                        threshold))
@@ -66,6 +70,10 @@ namespace OpenCvWpfTracking.Services.Video
                     Cv2.CvtColor(frame, currentGray, ColorConversionCodes.BGR2GRAY);
                 }
 
+                // 2026-08-18: RTSP 압축 노이즈를 움직임으로 오인하지 않도록
+                // 프레임 차분 전 소형 Gaussian Blur를 적용한다.
+                Cv2.GaussianBlur(currentGray, currentGray, new Size(5, 5), 0);
+
                 bool hasMotionReference =
                     _previousGray != null && !_previousGray.Empty() &&
                     _previousGray.Size() == currentGray.Size();
@@ -79,6 +87,18 @@ namespace OpenCvWpfTracking.Services.Video
 
                 Cv2.MorphologyEx(mask, cleanedMask, MorphTypes.Open, openKernel);
                 Cv2.MorphologyEx(cleanedMask, cleanedMask, MorphTypes.Close, closeKernel);
+
+                bool hasCandidateReference =
+                    _previousCandidateMask != null && !_previousCandidateMask.Empty() &&
+                    _previousCandidateMask.Size() == cleanedMask.Size();
+
+                if (hasCandidateReference)
+                {
+                    Cv2.Absdiff(
+                        cleanedMask,
+                        _previousCandidateMask,
+                        candidateChangeMask);
+                }
 
                 Cv2.FindContours(
                     cleanedMask,
@@ -108,21 +128,47 @@ namespace OpenCvWpfTracking.Services.Video
                     Point[] convexHull = Cv2.ConvexHull(contour);
                     double hullArea = Math.Max(1.0, Cv2.ContourArea(convexHull));
                     double solidity = area / hullArea;
-                    double motionRatio = 1.0;
-                    if (hasMotionReference)
+                    double perimeter = Math.Max(1.0, Cv2.ArcLength(contour, true));
+                    double irregularity =
+                        perimeter * perimeter /
+                        Math.Max(1.0, 4.0 * Math.PI * area);
+                    double motionRatio = 0.0;
+                    double hotMotionRatio = 0.0;
+                    double shapeChangeRatio = 0.0;
+
+                    if (hasMotionReference && hasCandidateReference)
                     {
                         using (Mat motionRoi = new Mat(motionMask, rect))
+                        using (Mat candidateRoi = new Mat(cleanedMask, rect))
+                        using (Mat changeRoi = new Mat(candidateChangeMask, rect))
+                        using (Mat hotMotion = new Mat())
                         {
                             motionRatio = Cv2.CountNonZero(motionRoi) / rectangleArea;
+                            Cv2.BitwiseAnd(motionRoi, candidateRoi, hotMotion);
+                            hotMotionRatio =
+                                Cv2.CountNonZero(hotMotion) /
+                                Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
+                            shapeChangeRatio =
+                                Cv2.CountNonZero(changeRoi) /
+                                Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
                         }
                     }
 
-                    // 2026-08-14: Reject static/wide hot surfaces and camera-wide motion.
+                    // 2026-08-18: 색상만 고온인 고정 구조물은 후보가 아니다.
+                    // 실제 화염은 국부 픽셀 움직임과 외곽 형상 변화가 함께
+                    // 지속되어야 하며, 카메라 전체가 움직인 프레임도 제외한다.
                     if (fillRatio < 0.005 ||
                         (rectangleAreaRatio > 0.75 && fillRatio > 0.30) ||
                         (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 &&
                          fillRatio > 0.18 && solidity > 0.72) ||
-                        (hasMotionReference && (globalMotionRatio > 0.35 || motionRatio < 0.012)) ||
+                        (solidity > 0.90 && fillRatio > 0.50 && irregularity < 1.25) ||
+                        !hasMotionReference ||
+                        !hasCandidateReference ||
+                        globalMotionRatio > 0.25 ||
+                        motionRatio < 0.010 ||
+                        hotMotionRatio < 0.018 ||
+                        shapeChangeRatio < 0.020 ||
+                        (rectangleAreaRatio > 0.12 && shapeChangeRatio < 0.060) ||
                         aspectRatio < 0.05 || aspectRatio > 20.0)
                     {
                         continue;
@@ -175,6 +221,7 @@ namespace OpenCvWpfTracking.Services.Video
                 UpdateConfirmation(selectedRect != Rect.Empty);
 
                 currentGray.CopyTo(_previousGray);
+                cleanedMask.CopyTo(_previousCandidateMask);
 
                 if (_isFireCandidateDetected && selectedRect != Rect.Empty)
                 {
@@ -449,6 +496,11 @@ namespace OpenCvWpfTracking.Services.Video
                 _previousGray.Dispose();
             }
             _previousGray = new Mat();
+            if (_previousCandidateMask != null)
+            {
+                _previousCandidateMask.Dispose();
+            }
+            _previousCandidateMask = new Mat();
 
             return new ThermalFireDetectionResult(false, changed, 0);
         }
