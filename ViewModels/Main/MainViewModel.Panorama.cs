@@ -17,8 +17,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const int PanoramaCaptureFrameCount = 36;
         private const int PanoramaCaptureRowCount = 2;
         private const double PanoramaCaptureTiltOffsetDegrees = 12.0;
-        private const double PanoramaPanTolerance = 0.12;
-        private const int PanoramaPanStableSampleCount = 2;
+        private const double PanoramaPanTolerance = 0.05;
+        private const int PanoramaPanStableSampleCount = 4;
+        private const int PanoramaCapturePositionSpeed = 15;
         private const int PanoramaMaximumEoZoomPosition = 100;
 
         /// <summary>
@@ -143,15 +144,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _currentTilt;
 
             /*
-             * 2026-08-18: 촬영 도중 Slider 변경이나 다른 UI 상태에 영향을 받지
-             * 않도록 시작 순간의 PAN/TILT SPEED 값을 전체 촬영의 고정값으로 쓴다.
+             * PANORAMA 전용 PT 속도는 수동 Slider와 분리한다.
+             *
+             * 고속 이동(예: 50)은 목표 위치 도착 직후 잔진동/오버슈트가 남아
+             * 근거리 난간·건물에서 프레임별 광축 차이와 parallax가 커질 수 있다.
+             * 파노라마 촬영 중에는 안정성을 우선하여 Speed 15를 고정 사용한다.
+             * 수동 PT 조작의 PanTiltSpeedLevel 값 자체는 변경하지 않는다.
              */
             int capturePositionSpeed =
-                Math.Max(
-                    5,
-                    Math.Min(
-                        50,
-                        (int)PanTiltSpeedLevel));
+                PanoramaCapturePositionSpeed;
 
             int frameStabilizationMs =
                 GetPanoramaFrameStabilizationMs(
@@ -164,8 +165,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "EO PANORAMA",
                 "360-degree capture started / " +
                 "ROWS=2 / COUNT_PER_ROW=36 / STEP=10deg / " +
-                "TILT_OFFSET=+-12deg / SLIDER_SPEED=" + PanTiltSpeedLevel +
-                " / CAPTURE_SPEED=" + capturePositionSpeed + "deg/s" +
+                "TILT_OFFSET=+-12deg / MANUAL_SLIDER_SPEED=" + PanTiltSpeedLevel +
+                " / CAPTURE_SPEED_FIXED=" + capturePositionSpeed + "deg/s" +
                 " / STABLE=" + frameStabilizationMs + "ms / " +
                 "START_PAN=" + originalPan.ToString("F2") +
                 " / START_TILT=" + originalTilt.ToString("F2"));
@@ -418,9 +419,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 촬영 시작 시 고정한 Slider 속도에 따라 장비 정지 후 영상 안정화
-        /// 시간을 선택한다. Slider는 5단위라 구간 사이 값은 발생하지 않지만
-        /// 방어적으로 21~35는 1.2초, 36 이상은 1.5초로 처리한다.
+        /// 파노라마 전용 고정 PT 속도에 따라 도착 판정 후 추가 안정화 시간을 선택한다.
+        /// Speed 15에서는 상태 Packet 4회 연속(오차 0.05° 이하) 안정 판정 후
+        /// 1초를 더 기다려 잔진동이 영상에 남는 것을 줄인다.
         /// </summary>
         private static int GetPanoramaFrameStabilizationMs(
             int positionSpeed)

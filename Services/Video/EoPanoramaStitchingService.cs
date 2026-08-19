@@ -21,6 +21,11 @@ namespace OpenCvWpfTracking.Services.Video
     {
         private const int MaximumInputWidth = 1920;
 
+        // Legacy Panorama_View.cpp에서 사용하던 카메라 각도 개념.
+        // 실제 영상을 다시 투영하지 않고 검증/정렬 prior로만 사용한다.
+        private const double LegacyPanAovDegrees = 26.0;
+        private const double LegacyVerticalAovDegrees = 42.5;
+
         /// <summary>
         /// StitchAndSave 동작 수행 함수.
         /// </summary>
@@ -97,7 +102,7 @@ namespace OpenCvWpfTracking.Services.Video
                         cropped,
                         new ImageEncodingParam(
                             ImwriteFlags.JpegQuality,
-                            95)))
+                            97)))
                     {
                         throw new IOException(
                             "파노라마 JPG 파일 저장에 실패했습니다.");
@@ -324,7 +329,11 @@ namespace OpenCvWpfTracking.Services.Video
                     " / USED=" + keyFrames.Count +
                     " / CAPTURE_STEP=10deg" +
                     " / STITCH_STEP=" +
-                    (keyFrames.Count < frames.Count ? "20deg" : "10deg"));
+                    (keyFrames.Count == frames.Count
+                        ? "10deg"
+                        : keyFrames.Count >= 24
+                            ? "10/20deg DENSE"
+                            : "20deg"));
 
                 Stitcher.Status panoramaStatus;
 
@@ -442,25 +451,37 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// PTZ가 정확히 10° 간격으로 촬영한 프레임 중 두 장마다 한 장을 선택하여
-        /// 20° 간격의 18장만 특징점 정합한다.
+        /// PTZ가 10° 간격으로 촬영한 36장을 모두 Stitcher에 넣으면 처리시간이 크게
+        /// 증가하고, 2장마다 1장(20°)만 쓰면 근거리 사다리/기둥처럼 parallax가 큰
+        /// 구조물에서 내부 seam이 물체를 가르는 문제가 생긴다.
+        /// 따라서 3장 중 2장을 사용하여 10°/20° 간격이 번갈아 나오도록 24장을
+        /// 선택한다. 18장보다 인접 중첩 정보를 늘리되 36장 전체 정합은 피한다.
         /// </summary>
         private static IList<Mat> SelectAngleSpacedKeyFrames(
             IList<Mat> frames)
         {
-            if (frames == null || frames.Count < 24)
+            if (frames == null || frames.Count < 30)
             {
                 return frames;
             }
 
+            /*
+             * 근거리 난간/사다리/건물 모서리는 20° 간격만 연속되면
+             * parallax 때문에 seam 선택이 어려워진다.
+             * 36장 중 24장(0,1,3,4,6,7...)을 사용하여
+             * 10°/20° 간격을 번갈아 유지한다.
+             *
+             * 시간은 Stitcher 해상도를 더 낮춰 상쇄한다.
+             */
             List<Mat> selected =
-                new List<Mat>((frames.Count + 1) / 2);
+                new List<Mat>((frames.Count * 2 + 2) / 3);
 
-            for (int index = 0;
-                 index < frames.Count;
-                 index += 2)
+            for (int index = 0; index < frames.Count; index++)
             {
-                selected.Add(frames[index]);
+                if (index % 3 != 2)
+                {
+                    selected.Add(frames[index]);
+                }
             }
 
             return selected;
@@ -767,7 +788,7 @@ namespace OpenCvWpfTracking.Services.Video
             Mat previous,
             Mat current)
         {
-            const int FeatherRadius = 6;
+            const int FeatherRadius = 1;
 
             int[] seam =
                 FindLowCostVerticalSeam(
@@ -835,6 +856,11 @@ namespace OpenCvWpfTracking.Services.Video
         {
             using (Mat difference = new Mat())
             using (Mat grayDifference = new Mat())
+            using (Mat previousGray = new Mat())
+            using (Mat currentGray = new Mat())
+            using (Mat previousEdges = new Mat())
+            using (Mat currentEdges = new Mat())
+            using (Mat combinedEdges = new Mat())
             {
                 Cv2.Absdiff(
                     previous,
@@ -851,6 +877,30 @@ namespace OpenCvWpfTracking.Services.Video
                     grayDifference,
                     new Size(3, 3),
                     0);
+
+                // 사다리/안테나/건물 외곽처럼 강한 구조를 seam이 직접
+                // 통과하지 않도록 양쪽 영상의 edge 주변에 보호 비용을 준다.
+                Cv2.CvtColor(previous, previousGray, ColorConversionCodes.BGR2GRAY);
+                Cv2.CvtColor(current, currentGray, ColorConversionCodes.BGR2GRAY);
+                Cv2.Canny(previousGray, previousEdges, 55, 140);
+                Cv2.Canny(currentGray, currentEdges, 55, 140);
+
+                using (Mat kernel = Cv2.GetStructuringElement(
+                    MorphShapes.Rect,
+                    new Size(7, 7)))
+                {
+                    Cv2.Dilate(previousEdges, previousEdges, kernel);
+                    Cv2.Dilate(currentEdges, currentEdges, kernel);
+                }
+
+                Cv2.Max(previousEdges, currentEdges, combinedEdges);
+                Cv2.AddWeighted(
+                    grayDifference,
+                    1.0,
+                    combinedEdges,
+                    1.35,
+                    0.0,
+                    grayDifference);
 
                 grayDifference.GetArray(out byte[] costs);
 
@@ -876,16 +926,16 @@ namespace OpenCvWpfTracking.Services.Video
                         int bestCost = previousRow[x];
 
                         if (x > 0 &&
-                            previousRow[x - 1] < bestCost)
+                            previousRow[x - 1] + 10 < bestCost)
                         {
-                            bestCost = previousRow[x - 1];
+                            bestCost = previousRow[x - 1] + 10;
                             bestPreviousX = x - 1;
                         }
 
                         if (x + 1 < width &&
-                            previousRow[x + 1] < bestCost)
+                            previousRow[x + 1] + 10 < bestCost)
                         {
-                            bestCost = previousRow[x + 1];
+                            bestCost = previousRow[x + 1] + 10;
                             bestPreviousX = x + 1;
                         }
 
@@ -955,6 +1005,17 @@ namespace OpenCvWpfTracking.Services.Video
                 panorama.Width >= minimumWidth &&
                 aspectRatio >= 5.5;
 
+            double legacyExpectedWidth =
+                sourceWidth /
+                LegacyPanAovDegrees *
+                360.0;
+
+            double legacyWidthRatio =
+                legacyExpectedWidth <= 1.0
+                    ? 1.0
+                    : panorama.Width /
+                      legacyExpectedWidth;
+
             ConsoleLogHelper.State(
                 "EO PANORAMA / VALIDATE",
                 stage + " / Full-circle coverage validation" +
@@ -1022,16 +1083,16 @@ namespace OpenCvWpfTracking.Services.Video
                     Mat next =
                         normalizedRows[rowIndex];
 
-                    int overlap =
+                    int nominalOverlap =
                         Math.Max(
                             24,
                             (int)Math.Round(
                                 Math.Min(result.Height, next.Height) *
                                 0.38));
 
-                    overlap =
+                    nominalOverlap =
                         Math.Min(
-                            overlap,
+                            nominalOverlap,
                             Math.Min(result.Height, next.Height) - 1);
 
                     int shift =
@@ -1040,7 +1101,7 @@ namespace OpenCvWpfTracking.Services.Video
                             : EstimateCyclicHorizontalShift(
                                 result,
                                 next,
-                                overlap);
+                                nominalOverlap);
 
                     Mat alignedUpper = null;
                     Mat alignedNext = null;
@@ -1054,24 +1115,54 @@ namespace OpenCvWpfTracking.Services.Video
                             out alignedUpper,
                             out alignedNext);
 
-                        ConsoleLogHelper.State(
-                            "EO PANORAMA / SEAM",
-                            "Rows aligned / LOWER_ROW=" + (rowIndex + 1) +
-                            " / OVERLAP=" + overlap +
-                            " / HORIZONTAL_SHIFT_PX=" + shift +
-                            " / COMMON_WIDTH=" + alignedUpper.Width +
-                            " / WRAP_SEAM=REMOVED" +
-                            " / FIXED_ANGLE_FULL_CIRCLE=" +
-                            preserveFixedAngleFullCircle);
+                        int overlap =
+                            EstimateVerticalRowOverlap(
+                                alignedUpper,
+                                alignedNext,
+                                nominalOverlap);
 
-                        Mat combined =
-                            MergeRowsOnAdaptiveHorizontalSeam(
+                        /*
+                         * 근거리 난간은 상/하 Tilt에서 시차가 커서 넓게 blend하면
+                         * 두 겹으로 보인다. 영상 전체를 warp하지 않고 lower row에
+                         * 단 하나의 Y offset만 적용한다.
+                         */
+                        int verticalOffset =
+                            EstimateGlobalVerticalOffset(
                                 alignedUpper,
                                 alignedNext,
                                 overlap);
 
-                        result.Dispose();
-                        result = combined;
+                        using (Mat verticallyAlignedNext =
+                            ShiftRowVertically(
+                                alignedNext,
+                                verticalOffset))
+                        {
+                            ApplyRowExposureGain(
+                                alignedUpper,
+                                verticallyAlignedNext,
+                                overlap);
+
+                            ConsoleLogHelper.State(
+                                "EO PANORAMA / SEAM",
+                                "Rows aligned / LOWER_ROW=" + (rowIndex + 1) +
+                                " / NOMINAL_OVERLAP=" + nominalOverlap +
+                                " / ESTIMATED_OVERLAP=" + overlap +
+                                " / HORIZONTAL_SHIFT_PX=" + shift +
+                                " / VERTICAL_OFFSET_PX=" + verticalOffset +
+                                " / COMMON_WIDTH=" + alignedUpper.Width +
+                                " / WRAP_SEAM=REMOVED" +
+                                " / FIXED_ANGLE_FULL_CIRCLE=" +
+                                preserveFixedAngleFullCircle);
+
+                            Mat combined =
+                                MergeRowsOnAdaptiveHorizontalSeam(
+                                    alignedUpper,
+                                    verticallyAlignedNext,
+                                    overlap);
+
+                            result.Dispose();
+                            result = combined;
+                        }
                     }
                     finally
                     {
@@ -1113,36 +1204,52 @@ namespace OpenCvWpfTracking.Services.Video
             using (Mat lowerGray = new Mat())
             using (Mat upperSmall = new Mat())
             using (Mat lowerSmall = new Mat())
+            using (Mat upperStructure = new Mat())
+            using (Mat lowerStructure = new Mat())
             {
                 Cv2.CvtColor(upperOverlap, upperGray, ColorConversionCodes.BGR2GRAY);
                 Cv2.CvtColor(lowerOverlap, lowerGray, ColorConversionCodes.BGR2GRAY);
                 Cv2.Resize(upperGray, upperSmall, new Size(AnalysisWidth, AnalysisHeight));
                 Cv2.Resize(lowerGray, lowerSmall, new Size(AnalysisWidth, AnalysisHeight));
 
-                upperSmall.GetArray(out byte[] upperPixels);
-                lowerSmall.GetArray(out byte[] lowerPixels);
+                BuildStructuralMap(upperSmall, upperStructure);
+                BuildStructuralMap(lowerSmall, lowerStructure);
+
+                upperStructure.GetArray(out byte[] upperPixels);
+                lowerStructure.GetArray(out byte[] lowerPixels);
 
                 int bestShift = 0;
                 long bestCost = long.MaxValue;
-                int maximumShift = AnalysisWidth / 8;
+                int maximumShift = AnalysisWidth / 10;
+                int marginX = AnalysisWidth / 20;
 
                 for (int shift = -maximumShift; shift <= maximumShift; shift++)
                 {
                     long cost = 0;
+                    int sampleCount = 0;
 
-                    for (int y = 0; y < AnalysisHeight; y += 2)
+                    for (int y = 4; y < AnalysisHeight - 4; y += 2)
                     {
                         int rowOffset = y * AnalysisWidth;
 
-                        for (int x = 0; x < AnalysisWidth; x += 2)
+                        for (int x = marginX; x < AnalysisWidth - marginX; x += 3)
                         {
                             int lowerX = (x + shift + AnalysisWidth) % AnalysisWidth;
                             cost += Math.Abs(
                                 upperPixels[rowOffset + x] -
                                 lowerPixels[rowOffset + lowerX]);
+                            sampleCount++;
                         }
 
                     }
+
+                    if (sampleCount > 0)
+                    {
+                        cost /= sampleCount;
+                    }
+
+                    // 큰 이동이 거의 같은 비용이라면 0에 가까운 정합을 우선한다.
+                    cost += Math.Abs(shift) / 3;
 
                     if (cost < bestCost)
                     {
@@ -1154,6 +1261,216 @@ namespace OpenCvWpfTracking.Services.Video
 
                 return (int)Math.Round(
                     bestShift * upper.Width / (double)AnalysisWidth);
+            }
+
+        }
+
+        /// <summary>
+        /// 상/하 Tilt 행의 실제 겹침 높이를 축소 구조 영상으로 빠르게 추정한다.
+        /// 기존 38% 고정값을 중심으로 제한된 범위만 탐색하므로 처리시간 증가를
+        /// 억제하면서 Tilt 기준점 변화로 생기는 수평 seam 절단을 완화한다.
+        /// </summary>
+        private static int EstimateVerticalRowOverlap(
+            Mat upper,
+            Mat lower,
+            int nominalOverlap)
+        {
+            const int AnalysisWidth = 420;
+            const double MinimumOverlapRatio = 0.26;
+            const double MaximumOverlapRatio = 0.56;
+
+            int minimumHeight =
+                Math.Min(upper.Height, lower.Height);
+
+            if (minimumHeight < 80)
+            {
+                return Math.Max(
+                    24,
+                    Math.Min(nominalOverlap, minimumHeight - 1));
+            }
+
+            double scale =
+                AnalysisWidth / (double)Math.Max(upper.Width, lower.Width);
+
+            int upperAnalysisHeight =
+                Math.Max(80, (int)Math.Round(upper.Height * scale));
+            int lowerAnalysisHeight =
+                Math.Max(80, (int)Math.Round(lower.Height * scale));
+
+            using (Mat upperGray = new Mat())
+            using (Mat lowerGray = new Mat())
+            using (Mat upperSmall = new Mat())
+            using (Mat lowerSmall = new Mat())
+            using (Mat upperStructure = new Mat())
+            using (Mat lowerStructure = new Mat())
+            {
+                Cv2.CvtColor(upper, upperGray, ColorConversionCodes.BGR2GRAY);
+                Cv2.CvtColor(lower, lowerGray, ColorConversionCodes.BGR2GRAY);
+                Cv2.Resize(
+                    upperGray,
+                    upperSmall,
+                    new Size(AnalysisWidth, upperAnalysisHeight),
+                    0,
+                    0,
+                    InterpolationFlags.Area);
+                Cv2.Resize(
+                    lowerGray,
+                    lowerSmall,
+                    new Size(AnalysisWidth, lowerAnalysisHeight),
+                    0,
+                    0,
+                    InterpolationFlags.Area);
+
+                BuildStructuralMap(upperSmall, upperStructure);
+                BuildStructuralMap(lowerSmall, lowerStructure);
+
+                upperStructure.GetArray(out byte[] upperPixels);
+                lowerStructure.GetArray(out byte[] lowerPixels);
+
+                int analysisMinimumHeight =
+                    Math.Min(upperAnalysisHeight, lowerAnalysisHeight);
+
+                int nominalAnalysisOverlap =
+                    Math.Max(
+                        8,
+                        (int)Math.Round(
+                            nominalOverlap *
+                            analysisMinimumHeight /
+                            (double)minimumHeight));
+
+                int minimumOverlap =
+                    Math.Max(
+                        12,
+                        (int)Math.Round(
+                            analysisMinimumHeight * MinimumOverlapRatio));
+                int maximumOverlap =
+                    Math.Min(
+                        analysisMinimumHeight - 4,
+                        (int)Math.Round(
+                            analysisMinimumHeight * MaximumOverlapRatio));
+
+                double bestScore = double.MaxValue;
+                int bestOverlap = nominalAnalysisOverlap;
+                int marginX = AnalysisWidth / 12;
+
+                for (int candidate = minimumOverlap;
+                     candidate <= maximumOverlap;
+                     candidate += 2)
+                {
+                    long differenceCost = 0;
+                    long structureEnergy = 0;
+                    int sampleCount = 0;
+
+                    int upperStart = upperAnalysisHeight - candidate;
+
+                    for (int y = 2; y < candidate - 2; y += 2)
+                    {
+                        int upperOffset = (upperStart + y) * AnalysisWidth;
+                        int lowerOffset = y * AnalysisWidth;
+
+                        for (int x = marginX; x < AnalysisWidth - marginX; x += 4)
+                        {
+                            int upperValue = upperPixels[upperOffset + x];
+                            int lowerValue = lowerPixels[lowerOffset + x];
+
+                            differenceCost += Math.Abs(upperValue - lowerValue);
+                            structureEnergy += Math.Max(upperValue, lowerValue);
+                            sampleCount++;
+                        }
+
+                    }
+
+                    if (sampleCount == 0)
+                    {
+                        continue;
+                    }
+
+                    double averageDifference =
+                        differenceCost / (double)sampleCount;
+                    double averageEnergy =
+                        structureEnergy / (double)sampleCount;
+
+                    // 구조 정보가 거의 없는 하늘/평탄 영역은 정합 근거로 약하게 본다.
+                    double lowTexturePenalty =
+                        averageEnergy < 10.0
+                            ? (10.0 - averageEnergy) * 2.5
+                            : 0.0;
+
+                    // 약한 prior를 두어 저대비 장면에서 overlap이 과도하게 튀는 것을 방지한다.
+                    double nominalPenalty =
+                        Math.Abs(candidate - nominalAnalysisOverlap) * 0.10;
+
+                    double score =
+                        averageDifference +
+                        lowTexturePenalty +
+                        nominalPenalty;
+
+                    if (score < bestScore)
+                    {
+                        bestScore = score;
+                        bestOverlap = candidate;
+                    }
+
+                }
+
+                int estimatedOverlap =
+                    (int)Math.Round(
+                        bestOverlap *
+                        minimumHeight /
+                        (double)analysisMinimumHeight);
+
+                int minimumFullOverlap =
+                    Math.Max(24, (int)Math.Round(minimumHeight * MinimumOverlapRatio));
+                int maximumFullOverlap =
+                    Math.Min(
+                        minimumHeight - 1,
+                        (int)Math.Round(minimumHeight * MaximumOverlapRatio));
+
+                return Math.Max(
+                    minimumFullOverlap,
+                    Math.Min(maximumFullOverlap, estimatedOverlap));
+            }
+
+        }
+
+        /// <summary>
+        /// 밝기 변화보다 건물 윤곽/사다리/안테나 같은 구조를 우선하도록
+        /// Sobel X/Y 경사도를 결합한 저비용 구조 영상을 만든다.
+        /// </summary>
+        private static void BuildStructuralMap(
+            Mat gray,
+            Mat destination)
+        {
+            using (Mat blurred = new Mat())
+            using (Mat gradientX16 = new Mat())
+            using (Mat gradientY16 = new Mat())
+            using (Mat gradientX = new Mat())
+            using (Mat gradientY = new Mat())
+            {
+                Cv2.GaussianBlur(gray, blurred, new Size(3, 3), 0);
+                Cv2.Sobel(
+                    blurred,
+                    gradientX16,
+                    MatType.CV_16SC1,
+                    1,
+                    0,
+                    3);
+                Cv2.Sobel(
+                    blurred,
+                    gradientY16,
+                    MatType.CV_16SC1,
+                    0,
+                    1,
+                    3);
+                Cv2.ConvertScaleAbs(gradientX16, gradientX);
+                Cv2.ConvertScaleAbs(gradientY16, gradientY);
+                Cv2.AddWeighted(
+                    gradientX,
+                    0.5,
+                    gradientY,
+                    0.5,
+                    0.0,
+                    destination);
             }
 
         }
@@ -1237,6 +1554,365 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
+        /// 상/하 Tilt overlap의 중앙 구조를 축소 비교하여 lower row에 적용할
+        /// 단일 Y offset을 찾는다. Local warp를 하지 않으므로 울렁임을 만들지 않는다.
+        /// </summary>
+        private static int EstimateGlobalVerticalOffset(
+            Mat upper,
+            Mat lower,
+            int overlap)
+        {
+            if (upper == null || lower == null ||
+                upper.Empty() || lower.Empty() ||
+                overlap < 48)
+            {
+                return 0;
+            }
+
+            const int AnalysisWidth = 640;
+            const int MaxFullOffset = 8;
+
+            int analysisHeight =
+                Math.Max(
+                    72,
+                    (int)Math.Round(
+                        overlap * AnalysisWidth /
+                        (double)upper.Width));
+
+            double yScale =
+                overlap / (double)analysisHeight;
+
+            int maxOffset =
+                Math.Max(
+                    2,
+                    (int)Math.Ceiling(
+                        MaxFullOffset / yScale));
+
+            using (Mat upperRoi = new Mat(
+                upper,
+                new Rect(
+                    0,
+                    upper.Height - overlap,
+                    upper.Width,
+                    overlap)))
+            using (Mat lowerRoi = new Mat(
+                lower,
+                new Rect(
+                    0,
+                    0,
+                    lower.Width,
+                    overlap)))
+            using (Mat upperGray = new Mat())
+            using (Mat lowerGray = new Mat())
+            using (Mat upperSmall = new Mat())
+            using (Mat lowerSmall = new Mat())
+            using (Mat upperGy16 = new Mat())
+            using (Mat lowerGy16 = new Mat())
+            using (Mat upperGy = new Mat())
+            using (Mat lowerGy = new Mat())
+            {
+                Cv2.CvtColor(
+                    upperRoi,
+                    upperGray,
+                    ColorConversionCodes.BGR2GRAY);
+
+                Cv2.CvtColor(
+                    lowerRoi,
+                    lowerGray,
+                    ColorConversionCodes.BGR2GRAY);
+
+                Cv2.Resize(
+                    upperGray,
+                    upperSmall,
+                    new Size(
+                        AnalysisWidth,
+                        analysisHeight),
+                    0,
+                    0,
+                    InterpolationFlags.Area);
+
+                Cv2.Resize(
+                    lowerGray,
+                    lowerSmall,
+                    new Size(
+                        AnalysisWidth,
+                        analysisHeight),
+                    0,
+                    0,
+                    InterpolationFlags.Area);
+
+                // Horizontal structures: railing tops / roof lines / horizon.
+                Cv2.Sobel(
+                    upperSmall,
+                    upperGy16,
+                    MatType.CV_16SC1,
+                    0,
+                    1,
+                    3);
+
+                Cv2.Sobel(
+                    lowerSmall,
+                    lowerGy16,
+                    MatType.CV_16SC1,
+                    0,
+                    1,
+                    3);
+
+                Cv2.ConvertScaleAbs(
+                    upperGy16,
+                    upperGy);
+
+                Cv2.ConvertScaleAbs(
+                    lowerGy16,
+                    lowerGy);
+
+                upperGy.GetArray(
+                    out byte[] upperPixels);
+
+                lowerGy.GetArray(
+                    out byte[] lowerPixels);
+
+                long bestCost =
+                    long.MaxValue;
+
+                int bestOffset = 0;
+                int marginX = AnalysisWidth / 12;
+                int marginY = Math.Max(5, analysisHeight / 10);
+
+                for (int candidate = -maxOffset;
+                     candidate <= maxOffset;
+                     candidate++)
+                {
+                    long cost = 0;
+                    int samples = 0;
+
+                    for (int y = marginY;
+                         y < analysisHeight - marginY;
+                         y += 2)
+                    {
+                        int lowerY = y + candidate;
+
+                        if (lowerY < marginY ||
+                            lowerY >= analysisHeight - marginY)
+                        {
+                            continue;
+                        }
+
+                        int upperRow = y * AnalysisWidth;
+                        int lowerRow = lowerY * AnalysisWidth;
+
+                        for (int x = marginX;
+                             x < AnalysisWidth - marginX;
+                             x += 3)
+                        {
+                            int a = upperPixels[upperRow + x];
+                            int b = lowerPixels[lowerRow + x];
+
+                            if (Math.Max(a, b) < 28)
+                            {
+                                continue;
+                            }
+
+                            cost += Math.Abs(a - b);
+                            samples++;
+                        }
+                    }
+
+                    if (samples == 0)
+                    {
+                        continue;
+                    }
+
+                    cost /= samples;
+
+                    /*
+                     * C++ legacy의 Tilt/AOV 철학을 약한 prior로 사용:
+                     * 이미 row overlap을 찾은 뒤이므로 큰 Y 이동보다 0 근처를 우선.
+                     */
+                    cost += (long)(
+                        Math.Abs(candidate) *
+                        Math.Max(
+                            1.0,
+                            LegacyVerticalAovDegrees / 42.5));
+
+                    if (cost < bestCost)
+                    {
+                        bestCost = cost;
+                        bestOffset = candidate;
+                    }
+                }
+
+                int fullOffset =
+                    (int)Math.Round(
+                        bestOffset * yScale);
+
+                return Math.Max(
+                    -MaxFullOffset,
+                    Math.Min(
+                        MaxFullOffset,
+                        fullOffset));
+            }
+        }
+
+        /// <summary>
+        /// lower row 전체를 동일 Y offset으로 평행 이동한다.
+        /// Perspective/Remap/구간별 warp를 사용하지 않는다.
+        /// </summary>
+        private static Mat ShiftRowVertically(
+            Mat source,
+            int offset)
+        {
+            if (source == null ||
+                source.Empty() ||
+                offset == 0)
+            {
+                return source.Clone();
+            }
+
+            int safeOffset =
+                Math.Max(
+                    -source.Height + 2,
+                    Math.Min(
+                        source.Height - 2,
+                        offset));
+
+            Mat shifted =
+                new Mat(
+                    source.Size(),
+                    source.Type(),
+                    Scalar.Black);
+
+            int sourceY =
+                safeOffset < 0
+                    ? -safeOffset
+                    : 0;
+
+            int targetY =
+                safeOffset > 0
+                    ? safeOffset
+                    : 0;
+
+            int copyHeight =
+                source.Height -
+                Math.Abs(safeOffset);
+
+            using (Mat sourceRoi =
+                new Mat(
+                    source,
+                    new Rect(
+                        0,
+                        sourceY,
+                        source.Width,
+                        copyHeight)))
+            using (Mat targetRoi =
+                new Mat(
+                    shifted,
+                    new Rect(
+                        0,
+                        targetY,
+                        source.Width,
+                        copyHeight)))
+            {
+                sourceRoi.CopyTo(
+                    targetRoi);
+            }
+
+            return shifted;
+        }
+
+        /// <summary>
+        /// 상/하 row overlap의 평균 밝기만 가볍게 맞춘다.
+        /// 기하를 건드리지 않고 gain은 ±6%로 제한한다.
+        /// </summary>
+        private static void ApplyRowExposureGain(
+            Mat upper,
+            Mat lower,
+            int overlap)
+        {
+            if (upper == null || lower == null ||
+                upper.Empty() || lower.Empty() ||
+                overlap < 24)
+            {
+                return;
+            }
+
+            int margin =
+                Math.Max(
+                    4,
+                    overlap / 8);
+
+            int sampleHeight =
+                Math.Max(
+                    1,
+                    overlap -
+                    margin * 2);
+
+            using (Mat upperRoi =
+                new Mat(
+                    upper,
+                    new Rect(
+                        0,
+                        upper.Height - overlap + margin,
+                        upper.Width,
+                        sampleHeight)))
+            using (Mat lowerRoi =
+                new Mat(
+                    lower,
+                    new Rect(
+                        0,
+                        margin,
+                        lower.Width,
+                        sampleHeight)))
+            using (Mat upperGray = new Mat())
+            using (Mat lowerGray = new Mat())
+            {
+                Cv2.CvtColor(
+                    upperRoi,
+                    upperGray,
+                    ColorConversionCodes.BGR2GRAY);
+
+                Cv2.CvtColor(
+                    lowerRoi,
+                    lowerGray,
+                    ColorConversionCodes.BGR2GRAY);
+
+                double upperMean =
+                    Cv2.Mean(
+                        upperGray).Val0;
+
+                double lowerMean =
+                    Cv2.Mean(
+                        lowerGray).Val0;
+
+                if (upperMean < 12.0 ||
+                    lowerMean < 12.0)
+                {
+                    return;
+                }
+
+                double gain =
+                    upperMean /
+                    lowerMean;
+
+                gain =
+                    Math.Max(
+                        0.96,
+                        Math.Min(
+                            1.04,
+                            gain));
+
+                if (Math.Abs(gain - 1.0) >= 0.004)
+                {
+                    lower.ConvertTo(
+                        lower,
+                        lower.Type(),
+                        gain,
+                        0.0);
+                }
+            }
+        }
+
+        /// <summary>
         /// 상·하단 행에서 영상 차이와 구조물 윤곽 비용이 가장 작은 수평 이음선을
         /// 선택하고 제한된 폭만 smooth feathering하여 절단과 이중 흐림을 줄인다.
         /// </summary>
@@ -1285,10 +1961,10 @@ namespace OpenCvWpfTracking.Services.Video
             const int BlendChunkHeight = 64;
             int featherRadius =
                 Math.Max(
-                    12,
+                    1,
                     Math.Min(
-                        20,
-                        overlap / 24));
+                        2,
+                        overlap / 96));
 
             for (int chunkTop = 0;
                  chunkTop < overlap;
@@ -1405,6 +2081,7 @@ namespace OpenCvWpfTracking.Services.Video
             using (Mat lowerGray = new Mat())
             using (Mat upperEdges = new Mat())
             using (Mat lowerEdges = new Mat())
+            using (Mat parallaxMask = new Mat())
             {
                 Cv2.Resize(
                     upperOverlap,
@@ -1425,6 +2102,43 @@ namespace OpenCvWpfTracking.Services.Video
                     new Size(5, 5),
                     0);
 
+                /*
+                 * PARALLAX PROTECTION
+                 *
+                 * 난간/옥상/건물처럼 상·하 Tilt에서 위치가 달라진 구조는
+                 * 두 영상의 차이 영역이 얇은 edge가 아니라 "띠" 형태로 생긴다.
+                 * 단순 edge 비용만 주면 seam이 그 두 구조 사이를 지나면서
+                 * 위쪽 구조와 아래쪽 구조가 동시에 남아 이중상처럼 보일 수 있다.
+                 *
+                 * 따라서 큰 차이 영역을 넓게 보호하여 seam이 그 구조 자체를
+                 * 가르지 않고 위/아래의 한쪽 배경으로 우회하도록 한다.
+                 */
+                Cv2.Threshold(
+                    grayDifference,
+                    parallaxMask,
+                    30,
+                    255,
+                    ThresholdTypes.Binary);
+
+                using (Mat parallaxKernel =
+                    Cv2.GetStructuringElement(
+                        MorphShapes.Rect,
+                        new Size(11, 17)))
+                {
+                    Cv2.Dilate(
+                        parallaxMask,
+                        parallaxMask,
+                        parallaxKernel);
+                }
+
+                Cv2.AddWeighted(
+                    grayDifference,
+                    1.0,
+                    parallaxMask,
+                    1.15,
+                    0.0,
+                    grayDifference);
+
                 Cv2.CvtColor(
                     upperSmall,
                     upperGray,
@@ -1433,20 +2147,29 @@ namespace OpenCvWpfTracking.Services.Video
                     lowerSmall,
                     lowerGray,
                     ColorConversionCodes.BGR2GRAY);
-                Cv2.Canny(upperGray, upperEdges, 60, 150);
-                Cv2.Canny(lowerGray, lowerEdges, 60, 150);
+                Cv2.Canny(upperGray, upperEdges, 55, 140);
+                Cv2.Canny(lowerGray, lowerEdges, 55, 140);
+
+                using (Mat kernel = Cv2.GetStructuringElement(
+                    MorphShapes.Rect,
+                    new Size(7, 7)))
+                {
+                    Cv2.Dilate(upperEdges, upperEdges, kernel);
+                    Cv2.Dilate(lowerEdges, lowerEdges, kernel);
+                }
+
                 Cv2.AddWeighted(
                     grayDifference,
                     1.0,
                     upperEdges,
-                    0.35,
+                    1.35,
                     0.0,
                     grayDifference);
                 Cv2.AddWeighted(
                     grayDifference,
                     1.0,
                     lowerEdges,
-                    0.35,
+                    1.35,
                     0.0,
                     grayDifference);
 
@@ -1469,16 +2192,16 @@ namespace OpenCvWpfTracking.Services.Video
                         int bestPreviousY = y;
                         double bestPreviousCost = previous[y];
 
-                        if (y > 0 && previous[y - 1] + 2.0 < bestPreviousCost)
+                        if (y > 0 && previous[y - 1] + 14.0 < bestPreviousCost)
                         {
-                            bestPreviousCost = previous[y - 1] + 2.0;
+                            bestPreviousCost = previous[y - 1] + 14.0;
                             bestPreviousY = y - 1;
                         }
 
                         if (y + 1 < analysisHeight &&
-                            previous[y + 1] + 2.0 < bestPreviousCost)
+                            previous[y + 1] + 14.0 < bestPreviousCost)
                         {
-                            bestPreviousCost = previous[y + 1] + 2.0;
+                            bestPreviousCost = previous[y + 1] + 14.0;
                             bestPreviousY = y + 1;
                         }
 
@@ -1556,7 +2279,7 @@ namespace OpenCvWpfTracking.Services.Video
                 panorama,
                 new ImageEncodingParam(
                     ImwriteFlags.JpegQuality,
-                    95)))
+                    97)))
             {
                 throw new IOException(
                     "파노라마 JPG 파일 저장에 실패했습니다.");
@@ -1619,9 +2342,15 @@ namespace OpenCvWpfTracking.Services.Video
                  * Stitcher Panorama 모드는 내부적으로 구면 warping,
                  * 노출 보정, graph-cut seam 및 multi-band blending을 수행한다.
                  */
-                stitcher.RegistrationResol = 0.5;
-                stitcher.SeamEstimationResol = 0.15;
-                stitcher.CompositingResol = 0.8;
+                /*
+                 * 2026-08-19: 18장/20° 정합에서 사다리·기둥 절단이 반복되어
+                 * key frame을 24장으로 늘린다. 처리시간을 비슷하게 유지하도록
+                 * 특징점 등록/최종 합성 해상도는 소폭 낮추고, seam 해상도는
+                 * 조금 높여 가는 구조물 경계의 절단을 완화한다.
+                 */
+                stitcher.RegistrationResol = 0.22;
+                stitcher.SeamEstimationResol = 0.10;
+                stitcher.CompositingResol = 0.48;
                 stitcher.PanoConfidenceThresh =
                     mode == Stitcher.Mode.Panorama
                         ? 0.9
