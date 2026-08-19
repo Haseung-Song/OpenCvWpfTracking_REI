@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -18,6 +18,9 @@ namespace OpenCvWpfTracking.Common
          * @return
          * @exception
          */
+        /// <summary>
+        /// AsyncRelayCommand 동작 수행 함수.
+        /// </summary>
         public AsyncRelayCommand(Func<Task> executeAsync)
             : this(executeAsync, null)
         {
@@ -30,6 +33,9 @@ namespace OpenCvWpfTracking.Common
          * @return
          * @exception
          */
+        /// <summary>
+        /// AsyncRelayCommand 동작 수행 함수.
+        /// </summary>
         public AsyncRelayCommand(Func<Task> executeAsync, Func<bool> canExecute)
         {
             this.executeAsync = executeAsync ?? throw new ArgumentNullException(nameof(executeAsync));
@@ -47,6 +53,9 @@ namespace OpenCvWpfTracking.Common
          * @param object parameter
          * @return true: 실행 가능, false: 실행 불가능
          */
+        /// <summary>
+        /// CanExecute 상태 확인 함수.
+        /// </summary>
         [DebuggerStepThrough]
         public bool CanExecute(object parameter)
         {
@@ -58,6 +67,9 @@ namespace OpenCvWpfTracking.Common
          * @param object parameter
          * @return
          */
+        /// <summary>
+        /// Execute 처리 함수.
+        /// </summary>
         public async void Execute(object parameter)
         {
             await ExecuteAsync();
@@ -67,6 +79,9 @@ namespace OpenCvWpfTracking.Common
          * @brief 비동기 메서드를 직접 호출
          * @return Task
          */
+        /// <summary>
+        /// ExecuteAsync 처리 함수.
+        /// </summary>
         public async Task ExecuteAsync()
         {
             await executeAsync();
@@ -78,6 +93,9 @@ namespace OpenCvWpfTracking.Common
          * @return
          * @exception
          */
+        /// <summary>
+        /// RaiseCanExecuteChanged 동작 수행 함수.
+        /// </summary>
         public void RaiseCanExecuteChanged()
         {
             OnCanExecuteChanged();
@@ -89,6 +107,9 @@ namespace OpenCvWpfTracking.Common
          * @return
          * @exception
          */
+        /// <summary>
+        /// OnCanExecuteChanged 상태 및 이벤트 처리 함수.
+        /// </summary>
         protected virtual void OnCanExecuteChanged()
         {
             CommandManager.InvalidateRequerySuggested();

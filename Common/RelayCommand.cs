@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Windows.Input;
 
@@ -16,6 +16,9 @@ namespace OpenCvWpfTracking.Common
       * @return
       * @exception
       */
+        /// <summary>
+        /// RelayCommand 동작 수행 함수.
+        /// </summary>
         public RelayCommand(Action execute)
             : this(execute, null)
         {
@@ -28,6 +31,9 @@ namespace OpenCvWpfTracking.Common
          * @return
          * @exception
          */
+        /// <summary>
+        /// RelayCommand 동작 수행 함수.
+        /// </summary>
         public RelayCommand(Action executeAction, Func<bool> canExecuteFunc)
         {
             execute = executeAction ?? throw new ArgumentNullException("execute");
@@ -40,6 +46,9 @@ namespace OpenCvWpfTracking.Common
             remove { CommandManager.RequerySuggested -= value; }
         }
 
+        /// <summary>
+        /// CanExecute 상태 확인 함수.
+        /// </summary>
         [DebuggerStepThrough]
         public bool CanExecute(object parameter)
         {
@@ -52,6 +61,9 @@ namespace OpenCvWpfTracking.Common
         * @return  true : 실행가능 , false : 실행 불가능
         * @exception
         */
+        /// <summary>
+        /// Execute 처리 함수.
+        /// </summary>
         public void Execute(object parameter)
         {
             execute();
@@ -63,6 +75,9 @@ namespace OpenCvWpfTracking.Common
          * @return  
          * @exception
          */
+        /// <summary>
+        /// RaiseCanExecuteChanged 동작 수행 함수.
+        /// </summary>
         public void RaiseCanExecuteChanged()
         {
             OnCanExecuteChanged();
@@ -74,6 +89,9 @@ namespace OpenCvWpfTracking.Common
          * @return  
          * @exception
          */
+        /// <summary>
+        /// OnCanExecuteChanged 상태 및 이벤트 처리 함수.
+        /// </summary>
         protected virtual void OnCanExecuteChanged()
         {
             CommandManager.InvalidateRequerySuggested();

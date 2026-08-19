@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.Main;
 using OpenCvWpfTracking.Services.Communication;
 using OpenCvWpfTracking.Services.Communication.AI;

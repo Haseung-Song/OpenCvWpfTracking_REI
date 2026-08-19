@@ -1,4 +1,4 @@
-﻿namespace OpenCvWpfTracking.Models.AI
+namespace OpenCvWpfTracking.Models.AI
 {
     /// <summary>
     /// [AI Detector Agent] [RTSP] 주소 정보

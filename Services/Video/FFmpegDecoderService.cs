@@ -1,4 +1,4 @@
-﻿using FFmpeg.AutoGen;
+using FFmpeg.AutoGen;
 using OpenCvSharp;
 using OpenCvWpfTracking.Common;
 using System;

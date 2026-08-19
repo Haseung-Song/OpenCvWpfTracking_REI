@@ -43,6 +43,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(ControlLockTitle));
                 OnPropertyChanged(nameof(ControlLockMessage));
             }
+
         }
 
         /// <summary>
@@ -52,6 +53,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool IsPanoramaProcessingRunning =>
             _isPanoramaProcessingRunning;
 
+        /// <summary>
+        /// SetPanoramaProcessingRunning 설정 함수.
+        /// </summary>
         public void SetPanoramaProcessingRunning(
             bool isRunning)
         {
@@ -377,6 +381,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 IsPanoramaCaptureRunning =
                     false;
             }
+
         }
 
         /// <summary>
@@ -399,6 +404,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return pan;
         }
 
+        /// <summary>
+        /// ClampPanoramaTilt 동작 수행 함수.
+        /// </summary>
         private static double ClampPanoramaTilt(
             double tilt)
         {
@@ -524,6 +532,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds);
                     return true;
                 }
+
             }
 
             ConsoleLogHelper.Warning(
@@ -620,6 +629,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds);
                     return true;
                 }
+
             }
 
             ConsoleLogHelper.Warning(
@@ -629,5 +639,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 " / TIMEOUT_MS=" + timeoutMs);
             return false;
         }
+
     }
+
 }

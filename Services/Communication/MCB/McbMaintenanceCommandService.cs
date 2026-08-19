@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using System;
 using System.Net.Sockets;
 using System.Text;
@@ -113,6 +113,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 MotorEnableStabilizationMs);
         }
 
+        /// <summary>
+        /// SendPacketsAsync 송신 함수.
+        /// </summary>
         private async Task<bool> SendPacketsAsync(
             string ipAddress,
             int port,
@@ -249,6 +252,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 commandText + "\r\n");
         }
 
+        /// <summary>
+        /// BuildTextPacket 생성 및 변환 함수.
+        /// </summary>
         private static byte[] BuildTextPacket(
             byte command1,
             string commandText)
@@ -291,6 +297,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return packet;
         }
 
+        /// <summary>
+        /// PrintPacket 동작 수행 함수.
+        /// </summary>
         private static void PrintPacket(
             string commandName,
             byte[] packet)

@@ -1,4 +1,4 @@
-﻿namespace OpenCvWpfTracking.Models.AI
+namespace OpenCvWpfTracking.Models.AI
 {
     /// <summary>
     /// [RTSP] / [ONNX] Mapping 정보

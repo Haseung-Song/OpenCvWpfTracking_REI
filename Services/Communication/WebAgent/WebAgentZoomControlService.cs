@@ -1,4 +1,4 @@
-﻿namespace OpenCvWpfTracking.Services.Communication.WebAgent
+namespace OpenCvWpfTracking.Services.Communication.WebAgent
 {
     /// <summary>
     /// [Environment Equipment / Web Agent]
@@ -14,6 +14,9 @@
     {
         private readonly ControlCommandService _controlCommandService;
 
+        /// <summary>
+        /// WebAgentZoomControlService 동작 수행 함수.
+        /// </summary>
         public WebAgentZoomControlService(
             ControlCommandService controlCommandService)
         {
@@ -99,6 +102,9 @@
                         rawPosition));
         }
 
+        /// <summary>
+        /// ClampPosition 동작 수행 함수.
+        /// </summary>
         private static short ClampPosition(
             short position)
         {

@@ -1,4 +1,4 @@
-﻿namespace OpenCvWpfTracking.Models.Main
+namespace OpenCvWpfTracking.Models.Main
 {
     /// <summary>
     /// 카메라 제어 명령 송신 경로
@@ -79,6 +79,9 @@
         public string DisplayText =>
             $"LEVEL {Level}  /  {Position}";
 
+        /// <summary>
+        /// ZoomSyncLevelOption 동작 수행 함수.
+        /// </summary>
         public ZoomSyncLevelOption(
             int level,
             short position)
@@ -155,6 +158,9 @@
             $"IR ZOOM  : {IrZoomText} / 1000\n" +
             $"IR FOCUS : {IrFocusText} / 1000";
 
+        /// <summary>
+        /// PresetPointOption 동작 수행 함수.
+        /// </summary>
         public PresetPointOption(
             int number,
             double pan,

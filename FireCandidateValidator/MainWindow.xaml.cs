@@ -32,6 +32,9 @@ namespace FireCandidateValidator
         // 2026-08-14: 1=전체 단일 BBox, 2=화염별 분리 BBox.
         private int _fireBoxGroupingMode = 2;
 
+        /// <summary>
+        /// MainWindow 동작 수행 함수.
+        /// </summary>
         public MainWindow()
         {
             InitializeComponent();
@@ -50,6 +53,9 @@ namespace FireCandidateValidator
             UpdateSettingText();
         }
 
+        /// <summary>
+        /// OpenImage_Click 이벤트 처리 함수.
+        /// </summary>
         private void OpenImage_Click(
             object sender,
             RoutedEventArgs e)
@@ -108,6 +114,7 @@ namespace FireCandidateValidator
                     {
                         File.Delete(temporaryImagePath);
                     }
+
                 }
 
                 if (image == null || image.Empty())
@@ -129,8 +136,12 @@ namespace FireCandidateValidator
                 StatusText.Text = "이미지 열기 실패: " + ex.Message;
                 StatusText.Foreground = Brushes.OrangeRed;
             }
+
         }
 
+        /// <summary>
+        /// OpenVideo_Click 이벤트 처리 함수.
+        /// </summary>
         private void OpenVideo_Click(
             object sender,
             RoutedEventArgs e)
@@ -168,6 +179,9 @@ namespace FireCandidateValidator
             _videoTimer.Start();
         }
 
+        /// <summary>
+        /// CreateTestPattern_Click 이벤트 처리 함수.
+        /// </summary>
         private void CreateTestPattern_Click(
             object sender,
             RoutedEventArgs e)
@@ -195,6 +209,9 @@ namespace FireCandidateValidator
             ProcessCurrentFrame(true);
         }
 
+        /// <summary>
+        /// Stop_Click 이벤트 처리 함수.
+        /// </summary>
         private void Stop_Click(
             object sender,
             RoutedEventArgs e)
@@ -203,6 +220,9 @@ namespace FireCandidateValidator
             StatusText.Text = "동영상 검증을 정지했습니다.";
         }
 
+        /// <summary>
+        /// Reset_Click 이벤트 처리 함수.
+        /// </summary>
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
             StopVideo();
@@ -217,6 +237,9 @@ namespace FireCandidateValidator
             StatusText.Foreground = Brushes.LightGreen;
         }
 
+        /// <summary>
+        /// SaveResult_Click 이벤트 처리 함수.
+        /// </summary>
         private void SaveResult_Click(
             object sender,
             RoutedEventArgs e)
@@ -244,6 +267,9 @@ namespace FireCandidateValidator
             StatusText.Text = "결과 저장 완료: " + Path.GetFileName(dialog.FileName);
         }
 
+        /// <summary>
+        /// SaveVideo_Click 이벤트 처리 함수.
+        /// </summary>
         private void SaveVideo_Click(object sender, RoutedEventArgs e)
         {
             if (!_loadedVideo || _videoCapture == null)
@@ -289,6 +315,9 @@ namespace FireCandidateValidator
             StatusText.Text = "검출 영상 저장 중";
         }
 
+        /// <summary>
+        /// Setting_ValueChanged 설정 함수.
+        /// </summary>
         private void Setting_ValueChanged(
             object sender,
             RoutedPropertyChangedEventArgs<double> e)
@@ -305,8 +334,12 @@ namespace FireCandidateValidator
                 _analyzer.Reset();
                 ProcessCurrentFrame(true);
             }
+
         }
 
+        /// <summary>
+        /// VideoTimer_Tick 동작 수행 함수.
+        /// </summary>
         private void VideoTimer_Tick(
             object sender,
             EventArgs e)
@@ -330,6 +363,9 @@ namespace FireCandidateValidator
             ProcessCurrentFrame(false);
         }
 
+        /// <summary>
+        /// ProcessCurrentFrame 처리 함수.
+        /// </summary>
         private void ProcessCurrentFrame(bool singleFrame)
         {
             if (_currentSource == null || _currentSource.Empty())
@@ -392,18 +428,28 @@ namespace FireCandidateValidator
                         ? Brushes.OrangeRed
                         : Brushes.LightGreen;
             }
+
         }
 
+        /// <summary>
+        /// FireBoxMode1_Click 이벤트 처리 함수.
+        /// </summary>
         private void FireBoxMode1_Click(object sender, RoutedEventArgs e)
         {
             SetFireBoxGroupingMode(1);
         }
 
+        /// <summary>
+        /// FireBoxMode2_Click 이벤트 처리 함수.
+        /// </summary>
         private void FireBoxMode2_Click(object sender, RoutedEventArgs e)
         {
             SetFireBoxGroupingMode(2);
         }
 
+        /// <summary>
+        /// SetFireBoxGroupingMode 설정 함수.
+        /// </summary>
         private void SetFireBoxGroupingMode(int mode)
         {
             _fireBoxGroupingMode = mode == 1 ? 1 : 2;
@@ -417,6 +463,9 @@ namespace FireCandidateValidator
         // 2026-08-14: 콤보박스 대신 메인 Viewer와 같은 직접/상대 팔레트 버튼을 사용한다.
         private void BlackHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(0);
         private void WhiteHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(1);
+        /// <summary>
+        /// RandomPalette_Click 이벤트 처리 함수.
+        /// </summary>
         private void RandomPalette_Click(object sender, RoutedEventArgs e)
         {
             // 2026-08-14: RANDOM은 장비와 동일하게 다음 팔레트를 1회 선택한다.
@@ -426,6 +475,9 @@ namespace FireCandidateValidator
         private void PreviousPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex - 1 + DisplayPaletteCount) % DisplayPaletteCount);
         private void NextPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
 
+        /// <summary>
+        /// SetDisplayPalette 설정 함수.
+        /// </summary>
         private void SetDisplayPalette(int paletteIndex)
         {
             _displayPaletteIndex = paletteIndex;
@@ -435,8 +487,12 @@ namespace FireCandidateValidator
                 _analyzer.Reset();
                 ProcessCurrentFrame(true);
             }
+
         }
 
+        /// <summary>
+        /// ApplySelectedPalette 설정 함수.
+        /// </summary>
         private Mat ApplySelectedPalette(Mat source)
         {
             Mat gray = new Mat();
@@ -488,6 +544,9 @@ namespace FireCandidateValidator
         }
 
         // 2026-08-14: Initially neutral; show a palette colour after user selection only.
+        /// <summary>
+        /// UpdatePaletteButtonVisuals 갱신 함수.
+        /// </summary>
         private void UpdatePaletteButtonVisuals()
         {
             SolidColorBrush neutral = new SolidColorBrush(Color.FromRgb(244, 244, 244));
@@ -512,8 +571,12 @@ namespace FireCandidateValidator
             {
                 HighlightRandomPaletteButton();
             }
+
         }
 
+        /// <summary>
+        /// HighlightRandomPaletteButton 동작 수행 함수.
+        /// </summary>
         private void HighlightRandomPaletteButton()
         {
             LinearGradientBrush rainbow = new LinearGradientBrush { StartPoint = new System.Windows.Point(0, 0), EndPoint = new System.Windows.Point(1, 0) };
@@ -526,6 +589,9 @@ namespace FireCandidateValidator
             RandomPaletteButton.Foreground = Brushes.White;
         }
 
+        /// <summary>
+        /// UpdateSettingText 갱신 함수.
+        /// </summary>
         private void UpdateSettingText()
         {
             if (ThresholdText == null || AreaText == null || ConfirmationText == null)
@@ -538,6 +604,9 @@ namespace FireCandidateValidator
             ConfirmationText.Text = Math.Round(ConfirmationSlider.Value) + " frames";
         }
 
+        /// <summary>
+        /// ReplaceCurrentSource 동작 수행 함수.
+        /// </summary>
         private void ReplaceCurrentSource(Mat source)
         {
             if (_currentSource != null)
@@ -548,6 +617,9 @@ namespace FireCandidateValidator
             _currentSource = source;
         }
 
+        /// <summary>
+        /// ReplaceRendered 동작 수행 함수.
+        /// </summary>
         private void ReplaceRendered(Mat rendered)
         {
             if (_currentRendered != null)
@@ -558,6 +630,9 @@ namespace FireCandidateValidator
             _currentRendered = rendered;
         }
 
+        /// <summary>
+        /// StopVideo 중지 함수.
+        /// </summary>
         private void StopVideo()
         {
             _videoTimer.Stop();
@@ -569,8 +644,12 @@ namespace FireCandidateValidator
                 _videoCapture.Dispose();
                 _videoCapture = null;
             }
+
         }
 
+        /// <summary>
+        /// StopVideoWriter 중지 함수.
+        /// </summary>
         private void StopVideoWriter()
         {
             if (_videoWriter != null)
@@ -584,8 +663,12 @@ namespace FireCandidateValidator
             {
                 SaveVideoButton.Content = "영상 저장 시작";
             }
+
         }
 
+        /// <summary>
+        /// ToBitmapSource 동작 수행 함수.
+        /// </summary>
         private static BitmapSource ToBitmapSource(Mat source)
         {
             if (source == null || source.Empty())
@@ -627,8 +710,12 @@ namespace FireCandidateValidator
                 bitmap.Freeze();
                 return bitmap;
             }
+
         }
 
+        /// <summary>
+        /// Window_Closing 이벤트 처리 함수.
+        /// </summary>
         private void Window_Closing(
             object sender,
             CancelEventArgs e)
@@ -645,6 +732,9 @@ namespace FireCandidateValidator
             {
                 _currentRendered.Dispose();
             }
+
         }
+
     }
+
 }

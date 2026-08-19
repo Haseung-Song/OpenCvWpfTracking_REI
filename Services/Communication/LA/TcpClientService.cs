@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using System;
 using System.Net.Sockets;
 using System.Threading;
@@ -210,6 +210,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #region [Send]
 
+        /// <summary>
+        /// Send 송신 함수.
+        /// </summary>
         public bool Send(
             byte[] data)
         {
@@ -260,6 +263,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         }
 
+        /// <summary>
+        /// CanSend 상태 확인 함수.
+        /// </summary>
         private bool CanSend()
         {
             return _tcpClient != null &&
@@ -272,6 +278,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #region [Receive]
 
+        /// <summary>
+        /// ReceiveLoopAsync 수신 함수.
+        /// </summary>
         private async Task ReceiveLoopAsync(
             CancellationToken token)
         {
@@ -368,6 +377,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         }
 
+        /// <summary>
+        /// CopyReceivedData 동작 수행 함수.
+        /// </summary>
         private byte[] CopyReceivedData(
             byte[] buffer,
             int readSize)
@@ -383,6 +395,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return receivedData;
         }
 
+        /// <summary>
+        /// PrintReceiveLogIfNeeded 동작 수행 함수.
+        /// </summary>
         private void PrintReceiveLogIfNeeded(
             byte[] receivedData)
         {
@@ -398,6 +413,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 DateTime.Now;
         }
 
+        /// <summary>
+        /// PrintReceivePackets 동작 수행 함수.
+        /// </summary>
         private void PrintReceivePackets(
             byte[] receivedData)
         {
@@ -425,6 +443,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         }
 
+        /// <summary>
+        /// RaiseMessageReceived 동작 수행 함수.
+        /// </summary>
         private void RaiseMessageReceived(
             byte[] receivedData)
         {
@@ -437,6 +458,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #region [Log]
 
+        /// <summary>
+        /// PrintHexData 동작 수행 함수.
+        /// </summary>
         private void PrintHexData(
             string prefix,
             byte[] data)

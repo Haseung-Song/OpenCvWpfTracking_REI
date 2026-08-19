@@ -1,6 +1,8 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using Serilog;
 
@@ -38,6 +40,25 @@ namespace OpenCvWpfTracking.Common
         /// </summary>
         public const string LogLine =
             "=======================================================================================================================";
+
+        static ConsoleLogHelper()
+        {
+            try
+            {
+                if (!(Console.Out is NormalizedConsoleTextWriter))
+                {
+                    Console.SetOut(
+                        new NormalizedConsoleTextWriter(
+                            Console.Out));
+                }
+
+            }
+            catch (IOException)
+            {
+                _isConsoleOutputAvailable = false;
+            }
+
+        }
 
         /// <summary>
         /// 기존 코드와의 호환을 위한 구분선 출력.
@@ -229,6 +250,9 @@ namespace OpenCvWpfTracking.Common
                 operation);
         }
 
+        /// <summary>
+        /// Write 저장 함수.
+        /// </summary>
         private static void Write(
             string level,
             string category,
@@ -262,6 +286,9 @@ namespace OpenCvWpfTracking.Common
 
         }
 
+        /// <summary>
+        /// WriteStructuredSection 저장 함수.
+        /// </summary>
         private static void WriteStructuredSection(
             string level,
             string category,
@@ -283,6 +310,9 @@ namespace OpenCvWpfTracking.Common
                 lines);
         }
 
+        /// <summary>
+        /// WriteSection 저장 함수.
+        /// </summary>
         private static void WriteSection(
             string header,
             params string[] lines)
@@ -369,6 +399,7 @@ namespace OpenCvWpfTracking.Common
                     message ??
                     string.Empty);
             }
+
         }
 
         /// <summary>
@@ -404,6 +435,7 @@ namespace OpenCvWpfTracking.Common
                         message);
                     break;
             }
+
         }
 
         private sealed class ConsoleLogScope : IDisposable
@@ -413,6 +445,9 @@ namespace OpenCvWpfTracking.Common
             private readonly DateTime _startedAt;
             private bool _isDisposed;
 
+            /// <summary>
+            /// ConsoleLogScope 동작 수행 함수.
+            /// </summary>
             public ConsoleLogScope(
                 string category,
                 string operation)
@@ -426,6 +461,9 @@ namespace OpenCvWpfTracking.Common
                     $"START / {_operation}");
             }
 
+            /// <summary>
+            /// Dispose 종료 및 자원 해제 함수.
+            /// </summary>
             public void Dispose()
             {
                 if (_isDisposed)
@@ -442,6 +480,173 @@ namespace OpenCvWpfTracking.Common
                 Info(
                     _category,
                     $"END / {_operation} / ELAPSED={elapsed.TotalMilliseconds:F0}ms");
+            }
+
+        }
+
+        /// <summary>
+        /// 기존 모듈들이 각자 블록의 끝과 다음 블록의 시작에서 PrintLine을
+        /// 호출해 구분선이 두 번 연속 출력되는 경우를 한 줄로 정규화한다.
+        /// 직접 Console.Write/WriteLine을 사용하는 기존 로그도 함께 처리한다.
+        /// </summary>
+        private sealed class NormalizedConsoleTextWriter : TextWriter
+        {
+            private readonly TextWriter _inner;
+            private readonly object _writeLock = new object();
+            private readonly StringBuilder _pendingLine = new StringBuilder();
+            private bool _separatorSinceContent;
+            private bool _lastLineWasBlank;
+
+            /// <summary>
+            /// NormalizedConsoleTextWriter 동작 수행 함수.
+            /// </summary>
+            public NormalizedConsoleTextWriter(
+                TextWriter inner)
+            {
+                _inner = inner ?? TextWriter.Null;
+            }
+
+            public override Encoding Encoding =>
+                _inner.Encoding;
+
+            /// <summary>
+            /// Write 저장 함수.
+            /// </summary>
+            public override void Write(
+                char value)
+            {
+                lock (_writeLock)
+                {
+                    if (value == '\r')
+                    {
+                        return;
+                    }
+
+                    if (value == '\n')
+                    {
+                        FlushPendingLine();
+                        return;
+                    }
+
+                    _pendingLine.Append(value);
+                }
+
+            }
+
+            /// <summary>
+            /// Write 저장 함수.
+            /// </summary>
+            public override void Write(
+                string value)
+            {
+                if (value == null)
+                {
+                    return;
+                }
+
+                lock (_writeLock)
+                {
+                    foreach (char character in value)
+                    {
+                        if (character == '\r')
+                        {
+                            continue;
+                        }
+
+                        if (character == '\n')
+                        {
+                            FlushPendingLine();
+                        }
+                        else
+                        {
+                            _pendingLine.Append(character);
+                        }
+
+                    }
+
+                }
+
+            }
+
+            /// <summary>
+            /// WriteLine 저장 함수.
+            /// </summary>
+            public override void WriteLine(
+                string value)
+            {
+                lock (_writeLock)
+                {
+                    Write(value);
+                    FlushPendingLine();
+                }
+
+            }
+
+            /// <summary>
+            /// WriteLine 저장 함수.
+            /// </summary>
+            public override void WriteLine()
+            {
+                lock (_writeLock)
+                {
+                    FlushPendingLine();
+                }
+
+            }
+
+            /// <summary>
+            /// Flush 동작 수행 함수.
+            /// </summary>
+            public override void Flush()
+            {
+                lock (_writeLock)
+                {
+                    _inner.Flush();
+                }
+
+            }
+
+            /// <summary>
+            /// FlushPendingLine 동작 수행 함수.
+            /// </summary>
+            private void FlushPendingLine()
+            {
+                string line = _pendingLine.ToString();
+                _pendingLine.Clear();
+
+                string trimmed = line.Trim();
+                bool isSeparator =
+                    trimmed.Length >= 20 &&
+                    trimmed.All(character => character == '=');
+
+                if (isSeparator)
+                {
+                    if (_separatorSinceContent)
+                    {
+                        return;
+                    }
+
+                    _inner.WriteLine(LogLine);
+                    _separatorSinceContent = true;
+                    _lastLineWasBlank = false;
+                    return;
+                }
+
+                if (trimmed.Length == 0)
+                {
+                    if (!_separatorSinceContent &&
+                        !_lastLineWasBlank)
+                    {
+                        _inner.WriteLine();
+                        _lastLineWasBlank = true;
+                    }
+
+                    return;
+                }
+
+                _inner.WriteLine(line);
+                _separatorSinceContent = false;
+                _lastLineWasBlank = false;
             }
 
         }

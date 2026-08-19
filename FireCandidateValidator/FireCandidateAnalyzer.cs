@@ -18,6 +18,9 @@ namespace FireCandidateValidator
         private Mat _previousGray = new Mat();
         private Mat _previousCandidateMask = new Mat();
 
+        /// <summary>
+        /// Analyze 동작 수행 함수.
+        /// </summary>
         internal FireCandidateAnalysis Analyze(
             Mat source,
             double thresholdRatio,
@@ -142,6 +145,7 @@ namespace FireCandidateValidator
                             Cv2.CountNonZero(changeRoi) /
                             Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
                     }
+
                 }
 
                 // 넓은 건물 외벽, 수평 띠 및 작은 점 노이즈를 후보에서 제외한다.
@@ -201,6 +205,9 @@ namespace FireCandidateValidator
                 largestAreaRatio);
         }
 
+        /// <summary>
+        /// Reset 동작 수행 함수.
+        /// </summary>
         internal void Reset()
         {
             _continuousCandidateFrames = 0;
@@ -210,6 +217,9 @@ namespace FireCandidateValidator
             _previousCandidateMask = new Mat();
         }
 
+        /// <summary>
+        /// MergeCandidates 동작 수행 함수.
+        /// </summary>
         private static List<Rect> MergeCandidates(
             IList<Rect> source,
             int frameWidth,
@@ -260,7 +270,9 @@ namespace FireCandidateValidator
                         mergedAny = true;
                         break;
                     }
+
                 }
+
             }
             while (mergedAny);
 
@@ -305,7 +317,9 @@ namespace FireCandidateValidator
                         changed = true;
                         break;
                     }
+
                 }
+
             }
             while (changed);
 
@@ -322,12 +336,16 @@ namespace FireCandidateValidator
                 {
                     largest = merged[index];
                 }
+
             }
 
             return new List<Rect> { largest };
             */
         }
 
+        /// <summary>
+        /// Expand 동작 수행 함수.
+        /// </summary>
         private static Rect Expand(Rect rect, int x, int y, int width, int height)
         {
             int left = Math.Max(0, rect.X - x);
@@ -337,10 +355,16 @@ namespace FireCandidateValidator
             return new Rect(left, top, right - left, bottom - top);
         }
 
+        /// <summary>
+        /// Intersects 동작 수행 함수.
+        /// </summary>
         private static bool Intersects(Rect first, Rect second) =>
             first.X < second.X + second.Width && first.X + first.Width > second.X &&
             first.Y < second.Y + second.Height && first.Y + first.Height > second.Y;
 
+        /// <summary>
+        /// Union 동작 수행 함수.
+        /// </summary>
         private static Rect Union(Rect first, Rect second)
         {
             int left = Math.Min(first.X, second.X);
@@ -350,6 +374,9 @@ namespace FireCandidateValidator
             return new Rect(left, top, right - left, bottom - top);
         }
 
+        /// <summary>
+        /// CreateCandidateMask 생성 및 변환 함수.
+        /// </summary>
         private static Mat CreateCandidateMask(Mat source, int threshold)
         {
             using (Mat bgr = EnsureBgr(source))
@@ -435,11 +462,16 @@ namespace FireCandidateValidator
                     {
                         redHigh.CopyTo(colorMask);
                     }
+
                 }
                 return colorMask.Clone();
             }
+
         }
 
+        /// <summary>
+        /// EnsureBgr 동작 수행 함수.
+        /// </summary>
         private static Mat EnsureBgr(Mat source)
         {
             Mat result = new Mat();
@@ -459,6 +491,7 @@ namespace FireCandidateValidator
 
             return result;
         }
+
     }
 
     internal sealed class FireCandidateAnalysis : IDisposable
@@ -474,8 +507,12 @@ namespace FireCandidateValidator
                     0,
                     0.0);
             }
+
         }
 
+        /// <summary>
+        /// FireCandidateAnalysis 동작 수행 함수.
+        /// </summary>
         internal FireCandidateAnalysis(
             Mat mask,
             IList<Rect> candidates,
@@ -496,6 +533,9 @@ namespace FireCandidateValidator
         internal int ContinuousFrames { get; private set; }
         internal double LargestAreaRatio { get; private set; }
 
+        /// <summary>
+        /// Dispose 종료 및 자원 해제 함수.
+        /// </summary>
         public void Dispose()
         {
             if (Mask != null)
@@ -503,6 +543,9 @@ namespace FireCandidateValidator
                 Mask.Dispose();
                 Mask = null;
             }
+
         }
+
     }
+
 }

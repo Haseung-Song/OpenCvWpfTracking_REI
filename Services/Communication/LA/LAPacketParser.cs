@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace OpenCvWpfTracking.Services.Communication
 {
@@ -238,6 +238,7 @@ namespace OpenCvWpfTracking.Services.Communication
                     sum +=
                         packet[index];
                 }
+
             }
 
             return sum ==

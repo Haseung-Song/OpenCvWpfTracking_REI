@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.AI;
 using System;
 using System.Collections.Generic;
@@ -84,6 +84,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "AI DETECTOR",
                     "Connect / setting exception / " + ex.Message);
             }
+
         }
 
         /// <summary>

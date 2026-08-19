@@ -1,4 +1,4 @@
-﻿using OpenCvSharp;
+using OpenCvSharp;
 using OpenCvWpfTracking.Common;
 using System;
 using System.Collections.Generic;
@@ -27,6 +27,9 @@ namespace OpenCvWpfTracking.Services.Video
         // 흔들리는 화염을 구분하기 위한 직전 후보 마스크이다.
         private Mat _previousCandidateMask = new Mat();
 
+        /// <summary>
+        /// Process 처리 함수.
+        /// </summary>
         internal ThermalFireDetectionResult Process(
             Mat frame,
             bool isEnabled,
@@ -152,6 +155,7 @@ namespace OpenCvWpfTracking.Services.Video
                                 Cv2.CountNonZero(changeRoi) /
                                 Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
                         }
+
                     }
 
                     // 2026-08-18: 색상만 고온인 고정 구조물은 후보가 아니다.
@@ -235,7 +239,9 @@ namespace OpenCvWpfTracking.Services.Video
                         {
                             DrawDetectionBox(frame, rect);
                         }
+
                     }
+
                 }
 
                 return new ThermalFireDetectionResult(
@@ -243,8 +249,12 @@ namespace OpenCvWpfTracking.Services.Video
                     previousState != _isFireCandidateDetected,
                     selectedArea);
             }
+
         }
 
+        /// <summary>
+        /// MergeNearbyRects 동작 수행 함수.
+        /// </summary>
         private static List<Rect> MergeNearbyRects(
             IList<Rect> source,
             int frameWidth,
@@ -298,7 +308,9 @@ namespace OpenCvWpfTracking.Services.Video
                         changed = true;
                         break;
                     }
+
                 }
+
             }
             while (changed);
 
@@ -317,6 +329,9 @@ namespace OpenCvWpfTracking.Services.Video
             return merged;
         }
 
+        /// <summary>
+        /// DrawDetectionBox 동작 수행 함수.
+        /// </summary>
         private static void DrawDetectionBox(Mat frame, Rect rect)
         {
             Cv2.Rectangle(frame, rect, new Scalar(0, 0, 255), 3);
@@ -330,6 +345,9 @@ namespace OpenCvWpfTracking.Services.Video
                 2);
         }
 
+        /// <summary>
+        /// SmoothTrackedRect 동작 수행 함수.
+        /// </summary>
         private Rect SmoothTrackedRect(Rect current, int width, int height)
         {
             if (_trackedCandidateRect == Rect.Empty ||
@@ -350,6 +368,9 @@ namespace OpenCvWpfTracking.Services.Video
             return _trackedCandidateRect;
         }
 
+        /// <summary>
+        /// ExpandRect 동작 수행 함수.
+        /// </summary>
         private static Rect ExpandRect(Rect rect, int xPadding, int yPadding, int width, int height)
         {
             int left = Math.Max(0, rect.X - xPadding);
@@ -359,12 +380,18 @@ namespace OpenCvWpfTracking.Services.Video
             return new Rect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
         }
 
+        /// <summary>
+        /// Intersects 동작 수행 함수.
+        /// </summary>
         private static bool Intersects(Rect first, Rect second) =>
             first.X < second.X + second.Width &&
             first.X + first.Width > second.X &&
             first.Y < second.Y + second.Height &&
             first.Y + first.Height > second.Y;
 
+        /// <summary>
+        /// Union 동작 수행 함수.
+        /// </summary>
         private static Rect Union(Rect first, Rect second)
         {
             int left = Math.Min(first.X, second.X);
@@ -374,6 +401,9 @@ namespace OpenCvWpfTracking.Services.Video
             return new Rect(left, top, right - left, bottom - top);
         }
 
+        /// <summary>
+        /// IntersectionOverUnion 동작 수행 함수.
+        /// </summary>
         private static double IntersectionOverUnion(Rect first, Rect second)
         {
             int left = Math.Max(first.X, second.X);
@@ -385,6 +415,9 @@ namespace OpenCvWpfTracking.Services.Video
             return union <= 0 ? 0 : intersection / union;
         }
 
+        /// <summary>
+        /// CreateHotPixelMask 생성 및 변환 함수.
+        /// </summary>
         private static Mat CreateHotPixelMask(
             Mat frame,
             int threshold)
@@ -446,9 +479,14 @@ namespace OpenCvWpfTracking.Services.Video
                     Cv2.BitwiseAnd(combinedMask, contrastMask, combinedMask);
                     return combinedMask;
                 }
+
             }
+
         }
 
+        /// <summary>
+        /// UpdateConfirmation 갱신 함수.
+        /// </summary>
         private void UpdateConfirmation(bool hasCandidate)
         {
             bool previous = _isFireCandidateDetected;
@@ -462,6 +500,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     _isFireCandidateDetected = true;
                 }
+
             }
             else
             {
@@ -472,6 +511,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     _isFireCandidateDetected = false;
                 }
+
             }
 
             if (previous != _isFireCandidateDetected)
@@ -482,8 +522,12 @@ namespace OpenCvWpfTracking.Services.Video
                         ? "Candidate confirmed / PERSISTENCE=6 frames"
                         : "Candidate cleared / PERSISTENCE=8 frames");
             }
+
         }
 
+        /// <summary>
+        /// ResetDetectionState 동작 수행 함수.
+        /// </summary>
         private ThermalFireDetectionResult ResetDetectionState()
         {
             bool changed = _isFireCandidateDetected;
@@ -504,10 +548,14 @@ namespace OpenCvWpfTracking.Services.Video
 
             return new ThermalFireDetectionResult(false, changed, 0);
         }
+
     }
 
     internal struct ThermalFireDetectionResult
     {
+        /// <summary>
+        /// ThermalFireDetectionResult 동작 수행 함수.
+        /// </summary>
         internal ThermalFireDetectionResult(
             bool isDetected,
             bool stateChanged,
@@ -522,4 +570,5 @@ namespace OpenCvWpfTracking.Services.Video
         internal bool StateChanged { get; }
         internal double CandidateArea { get; }
     }
+
 }

@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Models.AI;
+using OpenCvWpfTracking.Models.AI;
 using OpenCvWpfTracking.Models.Main;
 using System;
 using System.Collections.ObjectModel;
@@ -1523,6 +1523,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsIrRtspDirectInput));
             }
+
         }
 
         public bool IsEoRtspDirectInput =>
@@ -1828,6 +1829,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsAiEoRtspDirectInput));
             }
+
         }
 
         public RtspSourceOption SelectedAiIrRtspSource
@@ -1855,6 +1857,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsAiIrRtspDirectInput));
             }
+
         }
 
         public bool IsAiEoRtspDirectInput =>
@@ -2694,6 +2697,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
         }
+        /// <summary>
+        /// ToOnOff 동작 수행 함수.
+        /// </summary>
         private static string ToOnOff(
             bool isOn)
         {

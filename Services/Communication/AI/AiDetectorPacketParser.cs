@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Models.AI;
+using OpenCvWpfTracking.Models.AI;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -278,6 +278,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                     {
                         info.Classes.Add(className);
                     }
+
                 }
                 onnxList.Add(info);
             }

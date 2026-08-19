@@ -1,4 +1,4 @@
-﻿namespace OpenCvWpfTracking.Services.Communication
+namespace OpenCvWpfTracking.Services.Communication
 {
     /// <summary>
     /// [WEB AGENT](Local Agent) 응답 [Packet] 데이터 클래스

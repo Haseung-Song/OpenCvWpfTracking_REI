@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;

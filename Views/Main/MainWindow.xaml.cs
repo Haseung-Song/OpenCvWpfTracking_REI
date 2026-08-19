@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using Microsoft.Win32;
 using OpenCvWpfTracking.ViewModels.Main;
 using OpenCvWpfTracking.Services.Video;
@@ -96,6 +96,9 @@ namespace OpenCvWpfTracking
             LoadLatestGeneratedPanoramaOrKeepDefault();
         }
 
+        /// <summary>
+        /// FireDetectorTestProgram_Click 이벤트 처리 함수.
+        /// </summary>
         private void FireDetectorTestProgram_Click(
             object sender,
             RoutedEventArgs e)
@@ -147,8 +150,12 @@ namespace OpenCvWpfTracking
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+
         }
 
+        /// <summary>
+        /// OnClosed 상태 및 이벤트 처리 함수.
+        /// </summary>
         protected override void OnClosed(EventArgs e)
         {
             // 2026-08-18: 메인 창 종료 시 자동 Pan 촬영도 즉시 취소한다.
@@ -387,6 +394,9 @@ namespace OpenCvWpfTracking
 
         #region [Window Title Bar Events]
 
+        /// <summary>
+        /// WindowFrame_PreviewMouseLeftButtonDown 동작 수행 함수.
+        /// </summary>
         private void WindowFrame_PreviewMouseLeftButtonDown(
             object sender,
             MouseButtonEventArgs e)
@@ -402,6 +412,9 @@ namespace OpenCvWpfTracking
             _isWindowDragPending = true;
         }
 
+        /// <summary>
+        /// WindowFrame_PreviewMouseMove 동작 수행 함수.
+        /// </summary>
         private void WindowFrame_PreviewMouseMove(
             object sender,
             MouseEventArgs e)
@@ -432,8 +445,12 @@ namespace OpenCvWpfTracking
             {
                 // Mouse button state can change between the preview event and DragMove.
             }
+
         }
 
+        /// <summary>
+        /// WindowFrame_PreviewMouseLeftButtonUp 동작 수행 함수.
+        /// </summary>
         private void WindowFrame_PreviewMouseLeftButtonUp(
             object sender,
             MouseButtonEventArgs e)
@@ -441,6 +458,9 @@ namespace OpenCvWpfTracking
             _isWindowDragPending = false;
         }
 
+        /// <summary>
+        /// IsInteractiveWindowElement 상태 확인 함수.
+        /// </summary>
         private static bool IsInteractiveWindowElement(
             DependencyObject source)
         {
@@ -466,6 +486,9 @@ namespace OpenCvWpfTracking
             return false;
         }
 
+        /// <summary>
+        /// Window_StateChanged 동작 수행 함수.
+        /// </summary>
         private void Window_StateChanged(
             object sender,
             EventArgs e)
@@ -473,6 +496,9 @@ namespace OpenCvWpfTracking
             UpdateWindowChromeState();
         }
 
+        /// <summary>
+        /// UpdateWindowChromeState 갱신 함수.
+        /// </summary>
         private void UpdateWindowChromeState()
         {
             bool isMaximized =
@@ -515,6 +541,7 @@ namespace OpenCvWpfTracking
             {
                 DragMove();
             }
+
         }
 
         /// <summary>
@@ -560,6 +587,7 @@ namespace OpenCvWpfTracking
             {
                 Close();
             }
+
         }
 
         /// <summary>
@@ -783,6 +811,7 @@ namespace OpenCvWpfTracking
                     "EO PANORAMA / UI",
                     "Panorama UI and control lock restored");
             }
+
         }
 
         /// <summary>
@@ -853,6 +882,7 @@ namespace OpenCvWpfTracking
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
+
         }
 
         /// <summary>
@@ -914,8 +944,12 @@ namespace OpenCvWpfTracking
                     "EO PANORAMA / DEFAULT",
                     "Latest panorama load failed; bundled default retained / " + ex.Message);
             }
+
         }
 
+        /// <summary>
+        /// DisplayPanoramaFile 화면 표시 함수.
+        /// </summary>
         private void DisplayPanoramaFile(
             string filePath,
             string logOperation)
@@ -954,6 +988,9 @@ namespace OpenCvWpfTracking
                 " / SIZE=" + bitmap.PixelWidth + "x" + bitmap.PixelHeight);
         }
 
+        /// <summary>
+        /// GetPanoramaSequence 조회 함수.
+        /// </summary>
         private static int GetPanoramaSequence(
             string filePath)
         {
@@ -978,6 +1015,9 @@ namespace OpenCvWpfTracking
                 : -1;
         }
 
+        /// <summary>
+        /// PanoramaImage_MouseLeftButtonDown 동작 수행 함수.
+        /// </summary>
         private void PanoramaImage_MouseLeftButtonDown(
             object sender,
             MouseButtonEventArgs e)
@@ -1061,8 +1101,12 @@ namespace OpenCvWpfTracking
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
+
         }
 
+        /// <summary>
+        /// ClosePanoramaPreview 종료 및 자원 해제 함수.
+        /// </summary>
         private void ClosePanoramaPreview()
         {
             PanoramaPreviewWindow previewWindow =
@@ -1090,6 +1134,7 @@ namespace OpenCvWpfTracking
                     "Failed to close preview before panorama processing",
                     ex);
             }
+
         }
 
         /// <summary>
@@ -1140,6 +1185,7 @@ namespace OpenCvWpfTracking
 
                 sequence++;
             }
+
         }
 
         /// <summary>
@@ -1230,6 +1276,7 @@ namespace OpenCvWpfTracking
                     e.Handled = true;
                     return;
                 }
+
             }
 
             if (!IsPanTiltDirectionKey(
@@ -1320,6 +1367,9 @@ namespace OpenCvWpfTracking
             StopActiveHoverLensMove();
         }
 
+        /// <summary>
+        /// GetHoveredCameraType 조회 함수.
+        /// </summary>
         private VideoPopoutCameraType? GetHoveredCameraType()
         {
             if (EoVideoBorder != null && EoVideoBorder.IsMouseOver)
@@ -1335,12 +1385,18 @@ namespace OpenCvWpfTracking
             return null;
         }
 
+        /// <summary>
+        /// IsLensShortcutKey 상태 확인 함수.
+        /// </summary>
         private static bool IsLensShortcutKey(Key key)
         {
             return key == Key.W || key == Key.S ||
                    key == Key.A || key == Key.D;
         }
 
+        /// <summary>
+        /// StartHoverLensMove 시작 함수.
+        /// </summary>
         private void StartHoverLensMove(
             VideoPopoutCameraType cameraType,
             Key key)
@@ -1365,8 +1421,12 @@ namespace OpenCvWpfTracking
                 case Key.A: vm?.StartIrFocusNearMove(); break;
                 case Key.D: vm?.StartIrFocusFarMove(); break;
             }
+
         }
 
+        /// <summary>
+        /// StopActiveHoverLensMove 중지 함수.
+        /// </summary>
         private void StopActiveHoverLensMove()
         {
             if (!_activeHoverLensKey.HasValue ||
@@ -1396,6 +1456,7 @@ namespace OpenCvWpfTracking
             {
                 vm?.StopIrFocusMove();
             }
+
         }
 
         /// <summary>

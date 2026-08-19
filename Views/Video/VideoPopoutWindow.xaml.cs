@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.ViewModels.Main;
 using System;
 using System.ComponentModel;
@@ -56,6 +56,9 @@ namespace OpenCvWpfTracking
 
         #region [Constructor]
 
+        /// <summary>
+        /// VideoPopoutWindow 동작 수행 함수.
+        /// </summary>
         public VideoPopoutWindow(
             MainViewModel viewModel,
             VideoPopoutCameraType cameraType)
@@ -80,6 +83,9 @@ namespace OpenCvWpfTracking
 
         #region [Window Events]
 
+        /// <summary>
+        /// Window_Loaded 이벤트 처리 함수.
+        /// </summary>
         private void Window_Loaded(
             object sender,
             RoutedEventArgs e)
@@ -207,6 +213,9 @@ namespace OpenCvWpfTracking
                 true;
         }
 
+        /// <summary>
+        /// Window_PreviewKeyUp 동작 수행 함수.
+        /// </summary>
         private void Window_PreviewKeyUp(
             object sender,
             KeyEventArgs e)
@@ -272,6 +281,9 @@ namespace OpenCvWpfTracking
                 .ResetKeyboardPanTiltState();
         }
 
+        /// <summary>
+        /// Window_Closing 이벤트 처리 함수.
+        /// </summary>
         private void Window_Closing(
             object sender,
             CancelEventArgs e)
@@ -483,6 +495,9 @@ namespace OpenCvWpfTracking
                    key == Key.Down;
         }
 
+        /// <summary>
+        /// IsLensShortcutKey 상태 확인 함수.
+        /// </summary>
         private static bool IsLensShortcutKey(
             Key key)
         {
@@ -492,12 +507,18 @@ namespace OpenCvWpfTracking
                    key == Key.D;
         }
 
+        /// <summary>
+        /// IsTextInputFocused 상태 확인 함수.
+        /// </summary>
         private static bool IsTextInputFocused()
         {
             return Keyboard.FocusedElement
                 is TextBox;
         }
 
+        /// <summary>
+        /// StartLensMove 시작 함수.
+        /// </summary>
         private void StartLensMove(
             Key key)
         {
@@ -571,6 +592,9 @@ namespace OpenCvWpfTracking
 
         }
 
+        /// <summary>
+        /// StopActiveLensMove 중지 함수.
+        /// </summary>
         private void StopActiveLensMove()
         {
             if (!_activeLensKey.HasValue)

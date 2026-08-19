@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using System;
 
 namespace OpenCvWpfTracking.Services.Communication
@@ -40,6 +40,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private bool _isIrPaletteSynchronized;
 
+        /// <summary>
+        /// ControlCommandService 동작 수행 함수.
+        /// </summary>
         public ControlCommandService(TcpClientService tcpClientService)
         {
             _tcpClientService = tcpClientService;
@@ -330,6 +333,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 data2);
         }
 
+        /// <summary>
+        /// NormalizeLaPresetId 동작 수행 함수.
+        /// </summary>
         private static ushort NormalizeLaPresetId(
             ushort presetId)
         {
@@ -338,6 +344,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 : presetId;
         }
 
+        /// <summary>
+        /// NormalizePresetPosition 동작 수행 함수.
+        /// </summary>
         private static ushort NormalizePresetPosition(
             ushort position)
         {
@@ -567,6 +576,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 (byte)(speedValue & 0xFF));
         }
 
+        /// <summary>
+        /// ConvertPositionSpeed 생성 및 변환 함수.
+        /// </summary>
         private static ushort ConvertPositionSpeed(
             double speedDegreesPerSecond)
         {
@@ -1288,6 +1300,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #region [IR Thermal Image Control]
 
+        /// <summary>
+        /// SendIrImageControlCommand 송신 함수.
+        /// </summary>
         private bool SendIrImageControlCommand(byte operation)
         {
             return SendCommand(0x00, 0x31, operation, 0x00);
@@ -1377,41 +1392,61 @@ namespace OpenCvWpfTracking.Services.Communication
                     {
                         System.Threading.Thread.Sleep(75);
                     }
+
                 }
 
                 _currentIrPaletteIndex = targetIndex;
                 return true;
             }
+
         }
 
+        /// <summary>
+        /// SelectNextIrPalette 동작 수행 함수.
+        /// </summary>
         public bool SelectNextIrPalette()
         {
             return SendEnvironmentIrPaletteCommand(0x0D);
         }
 
+        /// <summary>
+        /// SelectPreviousIrPalette 동작 수행 함수.
+        /// </summary>
         public bool SelectPreviousIrPalette()
         {
             return SendEnvironmentIrPaletteCommand(0x0E);
         }
 
+        /// <summary>
+        /// SelectIrBlackHot 동작 수행 함수.
+        /// </summary>
         public bool SelectIrBlackHot()
         {
             // 2026-08-14: BLACK HOT = inverse grayscale palette (0xF4).
             return SendEnvironmentIrPaletteCommand(0xF4);
         }
 
+        /// <summary>
+        /// SelectIrWhiteHot 동작 수행 함수.
+        /// </summary>
         public bool SelectIrWhiteHot()
         {
             // 2026-08-14: WHITE HOT = normal grayscale palette (0xF3).
             return SendEnvironmentIrPaletteCommand(0xF3);
         }
 
+        /// <summary>
+        /// SelectIrRainbow 동작 수행 함수.
+        /// </summary>
         public bool SelectIrRainbow()
         {
             // 2026-08-14: RAINBOW direct selection = 0xF5.
             return SendEnvironmentIrPaletteCommand(0xF5);
         }
 
+        /// <summary>
+        /// SendEnvironmentIrPaletteCommand 송신 함수.
+        /// </summary>
         private bool SendEnvironmentIrPaletteCommand(byte operation)
         {
             lock (_irPaletteSync)
@@ -1424,6 +1459,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
                 return result;
             }
+
         }
 
         /// <summary>

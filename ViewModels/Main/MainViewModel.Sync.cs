@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.Main;
 using System;
 using System.Diagnostics;
@@ -17,6 +17,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         #region [Equipment Status / Zoom Synchronization Methods]
 
+        /// <summary>
+        /// SelectPreviousZoomSyncLevel 동작 수행 함수.
+        /// </summary>
         private void SelectPreviousZoomSyncLevel()
         {
             int currentIndex =
@@ -31,6 +34,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         }
 
+        /// <summary>
+        /// SelectNextZoomSyncLevel 동작 수행 함수.
+        /// </summary>
         private void SelectNextZoomSyncLevel()
         {
             int currentIndex =
@@ -300,6 +306,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         }
 
+        /// <summary>
+        /// StopZoomSyncAsync 중지 함수.
+        /// </summary>
         private async Task StopZoomSyncAsync()
         {
             CancellationTokenSource cts =
@@ -331,6 +340,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "STOPPED";
         }
 
+        /// <summary>
+        /// ConvertStandardZoomToCtecRaw 생성 및 변환 함수.
+        /// </summary>
         private static int ConvertStandardZoomToCtecRaw(
             int standardPosition)
         {

@@ -29,6 +29,9 @@ namespace OpenCvWpfTracking
         private double _dragStartY;
         private bool _isDragging;
 
+        /// <summary>
+        /// PanoramaPreviewWindow 동작 수행 함수.
+        /// </summary>
         public PanoramaPreviewWindow(
             ImageSource source,
             string filePath,
@@ -86,6 +89,9 @@ namespace OpenCvWpfTracking
             SizeChanged += OnSizeChanged;
         }
 
+        /// <summary>
+        /// CreatePreviewSource 생성 및 변환 함수.
+        /// </summary>
         private static ImageSource CreatePreviewSource(
             ImageSource source,
             string filePath)
@@ -137,8 +143,12 @@ namespace OpenCvWpfTracking
                 reduced.Freeze();
                 return reduced;
             }
+
         }
 
+        /// <summary>
+        /// OnSourceInitialized 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnSourceInitialized(
             object sender,
             EventArgs e)
@@ -151,8 +161,12 @@ namespace OpenCvWpfTracking
                 hwndSource.CompositionTarget.RenderMode =
                     RenderMode.SoftwareOnly;
             }
+
         }
 
+        /// <summary>
+        /// OnPreviewMouseWheel 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnPreviewMouseWheel(
             object sender,
             MouseWheelEventArgs e)
@@ -188,6 +202,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// OnPreviewMouseLeftButtonDown 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnPreviewMouseLeftButtonDown(
             object sender,
             MouseButtonEventArgs e)
@@ -207,6 +224,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// OnPreviewMouseMove 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnPreviewMouseMove(
             object sender,
             MouseEventArgs e)
@@ -230,6 +250,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// OnPreviewMouseLeftButtonUp 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnPreviewMouseLeftButtonUp(
             object sender,
             MouseButtonEventArgs e)
@@ -237,6 +260,9 @@ namespace OpenCvWpfTracking
             EndDrag();
         }
 
+        /// <summary>
+        /// OnLostMouseCapture 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnLostMouseCapture(
             object sender,
             MouseEventArgs e)
@@ -245,6 +271,9 @@ namespace OpenCvWpfTracking
             Cursor = Cursors.Arrow;
         }
 
+        /// <summary>
+        /// EndDrag 중지 함수.
+        /// </summary>
         private void EndDrag()
         {
             if (!_isDragging)
@@ -259,8 +288,12 @@ namespace OpenCvWpfTracking
             {
                 Mouse.Capture(null);
             }
+
         }
 
+        /// <summary>
+        /// ClampPanTranslation 동작 수행 함수.
+        /// </summary>
         private void ClampPanTranslation()
         {
             if (_zoomTransform.ScaleX <= 1.0 ||
@@ -295,6 +328,7 @@ namespace OpenCvWpfTracking
                 {
                     contentWidth = _root.ActualHeight * imageRatio;
                 }
+
             }
 
             double maximumX =
@@ -308,6 +342,9 @@ namespace OpenCvWpfTracking
                 Math.Max(-maximumY, Math.Min(maximumY, _panTransform.Y));
         }
 
+        /// <summary>
+        /// OnSizeChanged 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnSizeChanged(
             object sender,
             SizeChangedEventArgs e)
@@ -315,6 +352,9 @@ namespace OpenCvWpfTracking
             ClampPanTranslation();
         }
 
+        /// <summary>
+        /// OnMouseRightButtonDown 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnMouseRightButtonDown(
             object sender,
             MouseButtonEventArgs e)
@@ -326,6 +366,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// OnMouseDoubleClick 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnMouseDoubleClick(
             object sender,
             MouseButtonEventArgs e)
@@ -338,6 +381,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// OnPreviewKeyDown 상태 및 이벤트 처리 함수.
+        /// </summary>
         private void OnPreviewKeyDown(
             object sender,
             KeyEventArgs e)
@@ -350,5 +396,7 @@ namespace OpenCvWpfTracking
             Close();
             e.Handled = true;
         }
+
     }
+
 }

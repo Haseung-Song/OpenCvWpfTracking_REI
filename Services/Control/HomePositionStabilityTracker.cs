@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace OpenCvWpfTracking.Services.Control
 {
@@ -26,6 +26,9 @@ namespace OpenCvWpfTracking.Services.Control
 
         public bool IsStableSample { get; private set; }
 
+        /// <summary>
+        /// HomePositionStabilityTracker 동작 수행 함수.
+        /// </summary>
         public HomePositionStabilityTracker(
             double initialPan,
             double initialTilt,

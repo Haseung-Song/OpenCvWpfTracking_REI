@@ -1,4 +1,4 @@
-﻿namespace OpenCvWpfTracking.Models.AI
+namespace OpenCvWpfTracking.Models.AI
 {
     /// <summary>
     /// [AI Detector] 객체 1개 [Bounding Box] 정보

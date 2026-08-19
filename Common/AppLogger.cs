@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Serilog;
 using Serilog.Events;
@@ -15,6 +15,9 @@ namespace OpenCvWpfTracking.Common
     {
         private static bool _isInitialized;
 
+        /// <summary>
+        /// Initialize 초기화 함수.
+        /// </summary>
         internal static void Initialize()
         {
             if (_isInitialized)
@@ -60,6 +63,9 @@ namespace OpenCvWpfTracking.Common
                 "[SYSTEM] Logger Initialize Complete");
         }
 
+        /// <summary>
+        /// Shutdown 동작 수행 함수.
+        /// </summary>
         internal static void Shutdown()
         {
             if (!_isInitialized)
@@ -75,5 +81,7 @@ namespace OpenCvWpfTracking.Common
             _isInitialized =
                 false;
         }
+
     }
+
 }
