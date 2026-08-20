@@ -153,16 +153,14 @@ namespace OpenCvWpfTracking.Services.Video
             List<List<Mat>> frameRows =
                 new List<List<Mat>>();
 
-            List<Mat> stitchedRows =
-                new List<Mat>();
-
             Mat panorama = null;
 
             try
             {
                 ConsoleLogHelper.Info(
                     "EO PANORAMA / STITCH",
-                    "Row panorama processing started / OUTPUT=" + outputPath);
+                    "Panorama processing started / MODE=COLUMN_FIRST" +
+                    " / OUTPUT=" + outputPath);
 
                 int sourceRowIndex = 0;
 
@@ -199,76 +197,76 @@ namespace OpenCvWpfTracking.Services.Video
                         "세로 화각 파노라마에는 서로 다른 Tilt 촬영 행이 2개 이상 필요합니다.");
                 }
 
-                bool useFixedAngleForAllRows = false;
+                /*
+                 * COLUMN-FIRST PRIMARY PATH
+                 *
+                 * Upper/Lower 360 파노라마를 각각 독립적으로 만든 뒤 마지막에 붙이면
+                 * 두 Stitcher의 카메라 추정 결과가 달라져 같은 건물이 서로 다른
+                 * 위치/스케일/곡률로 만들어질 수 있다.
+                 *
+                 * 현재 촬영 구조는 두 Row가 같은 Pan index(0,10,...350°)를 가지므로
+                 * 같은 Pan의 +Tilt/-Tilt 두 프레임을 먼저 세로로 결합한다.
+                 *
+                 * 중요한 안정성 원칙:
+                 *  - column마다 별도의 Y warp를 하지 않는다.
+                 *  - 모든 36개 column에 동일 overlap과 동일 Global Y offset을 적용한다.
+                 *  - Perspective / Remap / Piecewise / Per-frame pose를 사용하지 않는다.
+                 */
+                bool canUseColumnFirst =
+                    frameRows.Count == 2 &&
+                    frameRows[0].Count == frameRows[1].Count &&
+                    frameRows[0].Count >= 24;
 
-                for (int rowIndex = 0;
-                     rowIndex < frameRows.Count;
-                     rowIndex++)
+                if (canUseColumnFirst)
                 {
-                    ConsoleLogHelper.Info(
-                        "EO PANORAMA / STITCH",
-                        "Horizontal row stitching started / ROW=" + (rowIndex + 1) +
-                        " / FRAMES=" + frameRows[rowIndex].Count);
-
-                    bool rowUsedFixedAngleFallback;
-                    stitchedRows.Add(
-                        StitchMatsWithFallback(
-                            frameRows[rowIndex],
-                            "ROW=" + (rowIndex + 1),
-                            out rowUsedFixedAngleFallback));
-
-                    useFixedAngleForAllRows |=
-                        rowUsedFixedAngleFallback;
-
-                    Mat stitchedRow =
-                        stitchedRows[stitchedRows.Count - 1];
-
-                    ConsoleLogHelper.State(
-                        "EO PANORAMA / STITCH",
-                        "Horizontal row stitching completed / ROW=" + (rowIndex + 1) +
-                        " / RESULT=" + stitchedRow.Width + "x" + stitchedRow.Height);
-                }
-
-                if (useFixedAngleForAllRows)
-                {
-                    DisposeAll(stitchedRows);
-                    stitchedRows.Clear();
-
-                    ConsoleLogHelper.Warning(
-                        "EO PANORAMA / FALLBACK",
-                        "At least one row required fixed-angle recovery; " +
-                        "all rows are rebuilt with identical 10-degree geometry");
-
-                    for (int rowIndex = 0;
-                         rowIndex < frameRows.Count;
-                         rowIndex++)
+                    try
                     {
-                        stitchedRows.Add(
-                            ComposeFixedAngleFullCircle(
-                                frameRows[rowIndex],
-                                "ROW=" + (rowIndex + 1),
-                                "ROW_GEOMETRY_NORMALIZATION"));
-                    }
+                        bool columnUsedFixedAngleFallback;
 
+                        panorama =
+                            ComposeColumnFirstFullCircle(
+                                frameRows[0],
+                                frameRows[1],
+                                out columnUsedFixedAngleFallback);
+
+                        ConsoleLogHelper.State(
+                            "EO PANORAMA / COLUMN",
+                            "Column-first panorama completed" +
+                            " / COLUMNS=" + frameRows[0].Count +
+                            " / FALLBACK=" + columnUsedFixedAngleFallback +
+                            " / RESULT=" + panorama.Width + "x" + panorama.Height);
+                    }
+                    catch (Exception columnException)
+                    {
+                        ConsoleLogHelper.Warning(
+                            "EO PANORAMA / COLUMN",
+                            "Column-first path failed; " +
+                            "falling back to legacy row-first merge" +
+                            " / TYPE=" + columnException.GetType().Name +
+                            " / MESSAGE=" + columnException.Message);
+
+                        panorama?.Dispose();
+                        panorama = null;
+                    }
                 }
 
-                ConsoleLogHelper.Info(
-                    "EO PANORAMA / SEAM",
-                    "Vertical row alignment and optimal seam search started");
+                /*
+                 * 안전 복구 경로:
+                 * Column-first가 장면 특징 부족/OpenCV 예외 등으로 실패한 경우에만
+                 * 기존 Row-first 로직을 그대로 사용한다.
+                 */
+                if (panorama == null ||
+                    panorama.Empty())
+                {
+                    panorama =
+                        ComposeLegacyRowFirstPanorama(
+                            frameRows);
+                }
 
-                panorama =
-                    BlendRowsVertically(
-                        stitchedRows,
-                        useFixedAngleForAllRows);
-
-                ConsoleLogHelper.State(
-                    "EO PANORAMA / SEAM",
-                    "Vertical row merge completed / RESULT=" +
-                    panorama.Width + "x" + panorama.Height);
-
-                BitmapSource result = SaveAndConvert(
-                    panorama,
-                    outputPath);
+                BitmapSource result =
+                    SaveAndConvert(
+                        panorama,
+                        outputPath);
 
                 ConsoleLogHelper.State(
                     "EO PANORAMA / SAVE",
@@ -289,7 +287,6 @@ namespace OpenCvWpfTracking.Services.Video
             finally
             {
                 panorama?.Dispose();
-                DisposeAll(stitchedRows);
 
                 foreach (List<Mat> row in frameRows)
                 {
@@ -301,7 +298,383 @@ namespace OpenCvWpfTracking.Services.Video
                     "Panorama processing resources released / ELAPSED_MS=" +
                     totalStopwatch.ElapsedMilliseconds);
             }
+        }
 
+        /// <summary>
+        /// 같은 Pan index의 Upper/Lower Tilt Frame을 먼저 하나의 세로 Column으로 만든 뒤
+        /// 36개의 Column을 Pan 순서대로 360° 정합한다.
+        /// Column별 독립 Y 보정은 하지 않고 모든 Column에 공통 Geometry만 적용한다.
+        /// </summary>
+        private static Mat ComposeColumnFirstFullCircle(
+            IList<Mat> upperFrames,
+            IList<Mat> lowerFrames,
+            out bool usedFixedAngleFallback)
+        {
+            usedFixedAngleFallback = false;
+
+            if (upperFrames == null ||
+                lowerFrames == null ||
+                upperFrames.Count != lowerFrames.Count ||
+                upperFrames.Count < 24)
+            {
+                throw new InvalidOperationException(
+                    "Column-first 파노라마에는 동일 개수의 Upper/Lower Pan 프레임이 필요합니다.");
+            }
+
+            int frameCount =
+                upperFrames.Count;
+
+            ValidateColumnPairFrameSizes(
+                upperFrames,
+                lowerFrames);
+
+            int nominalOverlap =
+                Math.Max(
+                    24,
+                    (int)Math.Round(
+                        Math.Min(
+                            upperFrames[0].Height,
+                            lowerFrames[0].Height) *
+                        0.38));
+
+            nominalOverlap =
+                Math.Min(
+                    nominalOverlap,
+                    Math.Min(
+                        upperFrames[0].Height,
+                        lowerFrames[0].Height) - 1);
+
+            int stableOverlap;
+            int stableVerticalOffset;
+
+            EstimateStableColumnPairGeometry(
+                upperFrames,
+                lowerFrames,
+                nominalOverlap,
+                out stableOverlap,
+                out stableVerticalOffset);
+
+            ConsoleLogHelper.State(
+                "EO PANORAMA / COLUMN",
+                "Shared Upper/Lower geometry estimated" +
+                " / COLUMNS=" + frameCount +
+                " / NOMINAL_OVERLAP=" + nominalOverlap +
+                " / STABLE_OVERLAP=" + stableOverlap +
+                " / GLOBAL_Y_OFFSET_PX=" + stableVerticalOffset +
+                " / LOCAL_WARP=DISABLED");
+
+            List<Mat> columns =
+                new List<Mat>(frameCount);
+
+            try
+            {
+                for (int index = 0;
+                     index < frameCount;
+                     index++)
+                {
+                    Mat column =
+                        MergeTiltPairAtSamePan(
+                            upperFrames[index],
+                            lowerFrames[index],
+                            stableOverlap,
+                            stableVerticalOffset);
+
+                    columns.Add(column);
+
+                    if (index == 0 ||
+                        index == frameCount - 1 ||
+                        index % 6 == 0)
+                    {
+                        ConsoleLogHelper.State(
+                            "EO PANORAMA / COLUMN",
+                            "Tilt pair merged" +
+                            " / INDEX=" + index +
+                            " / PAN_STEP_INDEX=" + index +
+                            " / RESULT=" + column.Width + "x" + column.Height);
+                    }
+                }
+
+                /*
+                 * 모든 Column은 같은 Pan 순서의 10° 촬영 결과다.
+                 * 기존 행별 Stitch와 동일한 24장 핵심 프레임 선택/정합/Fallback을 재사용한다.
+                 */
+                Mat panorama =
+                    StitchMatsWithFallback(
+                        columns,
+                        "COLUMN_FIRST",
+                        out usedFixedAngleFallback);
+
+                return panorama;
+            }
+            finally
+            {
+                DisposeAll(columns);
+            }
+        }
+
+        /// <summary>
+        /// Column-first에서 36개 Pan 방향 모두 같은 세로 geometry를 사용하도록
+        /// 여러 방향에서 overlap/Y offset을 측정하고 중앙값 하나만 선택한다.
+        /// 방향별 독립 보정값은 적용하지 않는다.
+        /// </summary>
+        private static void EstimateStableColumnPairGeometry(
+            IList<Mat> upperFrames,
+            IList<Mat> lowerFrames,
+            int nominalOverlap,
+            out int stableOverlap,
+            out int stableVerticalOffset)
+        {
+            List<int> overlapSamples =
+                new List<int>();
+
+            int sampleStep =
+                Math.Max(
+                    1,
+                    upperFrames.Count / 9);
+
+            for (int index = 0;
+                 index < upperFrames.Count;
+                 index += sampleStep)
+            {
+                try
+                {
+                    int overlap =
+                        EstimateVerticalRowOverlap(
+                            upperFrames[index],
+                            lowerFrames[index],
+                            nominalOverlap);
+
+                    overlapSamples.Add(overlap);
+                }
+                catch
+                {
+                    // 한 방향의 저대비/특징 부족은 전체 geometry 추정을 중단시키지 않는다.
+                }
+            }
+
+            if (overlapSamples.Count == 0)
+            {
+                stableOverlap =
+                    nominalOverlap;
+            }
+            else
+            {
+                overlapSamples.Sort();
+                stableOverlap =
+                    overlapSamples[overlapSamples.Count / 2];
+            }
+
+            List<int> offsetSamples =
+                new List<int>();
+
+            for (int index = 0;
+                 index < upperFrames.Count;
+                 index += sampleStep)
+            {
+                try
+                {
+                    int offset =
+                        EstimateGlobalVerticalOffset(
+                            upperFrames[index],
+                            lowerFrames[index],
+                            stableOverlap);
+
+                    offsetSamples.Add(offset);
+                }
+                catch
+                {
+                    // Global Y는 방향별로 적용하지 않으므로 실패 샘플은 제외한다.
+                }
+            }
+
+            if (offsetSamples.Count == 0)
+            {
+                stableVerticalOffset =
+                    0;
+            }
+            else
+            {
+                offsetSamples.Sort();
+                stableVerticalOffset =
+                    offsetSamples[offsetSamples.Count / 2];
+            }
+
+            stableVerticalOffset =
+                Math.Max(
+                    -8,
+                    Math.Min(
+                        8,
+                        stableVerticalOffset));
+        }
+
+        /// <summary>
+        /// 동일 Pan에서 촬영한 Upper/Lower 두 프레임을 하나의 세로 Column으로 합친다.
+        /// Horizontal/Perspective/Local Warp 없이 공통 overlap + 공통 Y offset만 사용한다.
+        /// </summary>
+        private static Mat MergeTiltPairAtSamePan(
+            Mat upper,
+            Mat lower,
+            int overlap,
+            int verticalOffset)
+        {
+            if (upper == null ||
+                lower == null ||
+                upper.Empty() ||
+                lower.Empty())
+            {
+                throw new InvalidOperationException(
+                    "Column-first Tilt pair 입력 영상이 비어 있습니다.");
+            }
+
+            if (upper.Width != lower.Width ||
+                upper.Height != lower.Height ||
+                upper.Type() != lower.Type())
+            {
+                throw new InvalidOperationException(
+                    "Column-first Upper/Lower Frame 크기 또는 형식이 서로 다릅니다.");
+            }
+
+            int safeOverlap =
+                Math.Max(
+                    24,
+                    Math.Min(
+                        overlap,
+                        Math.Min(
+                            upper.Height,
+                            lower.Height) - 1));
+
+            using (Mat shiftedLower =
+                ShiftRowVertically(
+                    lower,
+                    verticalOffset))
+            {
+                /*
+                 * 같은 Pan pair에서 exposure만 가볍게 맞춘다.
+                 * geometry에는 영향을 주지 않는다.
+                 */
+                ApplyRowExposureGain(
+                    upper,
+                    shiftedLower,
+                    safeOverlap);
+
+                return
+                    MergeRowsOnAdaptiveHorizontalSeam(
+                        upper,
+                        shiftedLower,
+                        safeOverlap);
+            }
+        }
+
+        /// <summary>
+        /// Column-first 입력이 일정한 Frame geometry인지 확인한다.
+        /// Fixed-angle fallback도 동일 크기 입력을 요구하므로 사전에 검증한다.
+        /// </summary>
+        private static void ValidateColumnPairFrameSizes(
+            IList<Mat> upperFrames,
+            IList<Mat> lowerFrames)
+        {
+            Mat reference =
+                upperFrames[0];
+
+            for (int index = 0;
+                 index < upperFrames.Count;
+                 index++)
+            {
+                Mat upper =
+                    upperFrames[index];
+
+                Mat lower =
+                    lowerFrames[index];
+
+                if (upper.Width != reference.Width ||
+                    upper.Height != reference.Height ||
+                    upper.Type() != reference.Type() ||
+                    lower.Width != reference.Width ||
+                    lower.Height != reference.Height ||
+                    lower.Type() != reference.Type())
+                {
+                    throw new InvalidOperationException(
+                        "Column-first 입력 Frame의 해상도/형식이 일정하지 않습니다. INDEX=" +
+                        index);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 기존 Upper 360 + Lower 360을 마지막에 합치는 Row-first 로직.
+        /// Column-first 실패 시 안전 복구용으로 그대로 유지한다.
+        /// </summary>
+        private static Mat ComposeLegacyRowFirstPanorama(
+            IList<List<Mat>> frameRows)
+        {
+            List<Mat> stitchedRows =
+                new List<Mat>();
+
+            try
+            {
+                bool useFixedAngleForAllRows =
+                    false;
+
+                for (int rowIndex = 0;
+                     rowIndex < frameRows.Count;
+                     rowIndex++)
+                {
+                    ConsoleLogHelper.Info(
+                        "EO PANORAMA / STITCH",
+                        "Legacy horizontal row stitching started / ROW=" +
+                        (rowIndex + 1) +
+                        " / FRAMES=" + frameRows[rowIndex].Count);
+
+                    bool rowUsedFixedAngleFallback;
+
+                    stitchedRows.Add(
+                        StitchMatsWithFallback(
+                            frameRows[rowIndex],
+                            "ROW=" + (rowIndex + 1),
+                            out rowUsedFixedAngleFallback));
+
+                    useFixedAngleForAllRows |=
+                        rowUsedFixedAngleFallback;
+                }
+
+                if (useFixedAngleForAllRows)
+                {
+                    DisposeAll(stitchedRows);
+                    stitchedRows.Clear();
+
+                    ConsoleLogHelper.Warning(
+                        "EO PANORAMA / FALLBACK",
+                        "Legacy row-first: at least one row required fixed-angle recovery; " +
+                        "all rows are rebuilt with identical 10-degree geometry");
+
+                    for (int rowIndex = 0;
+                         rowIndex < frameRows.Count;
+                         rowIndex++)
+                    {
+                        stitchedRows.Add(
+                            ComposeFixedAngleFullCircle(
+                                frameRows[rowIndex],
+                                "ROW=" + (rowIndex + 1),
+                                "ROW_GEOMETRY_NORMALIZATION"));
+                    }
+                }
+
+                Mat result =
+                    BlendRowsVertically(
+                        stitchedRows,
+                        useFixedAngleForAllRows);
+
+                ConsoleLogHelper.State(
+                    "EO PANORAMA / SEAM",
+                    "Legacy row-first merge completed" +
+                    " / RESULT=" + result.Width + "x" + result.Height);
+
+                return result;
+            }
+            finally
+            {
+                DisposeAll(stitchedRows);
+            }
         }
 
         /// <summary>
