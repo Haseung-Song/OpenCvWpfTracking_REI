@@ -22,6 +22,20 @@ namespace OpenCvWpfTracking.Common
             new object();
 
         /// <summary>
+        /// 연속 로그의 시각적 그룹을 구분하기 위한 마지막 Category.
+        /// MOVE/FRAME처럼 반복 빈도가 높은 로그는 별도 공백을 넣지 않고,
+        /// 작업 종류가 바뀔 때만 한 줄을 띄운다.
+        /// </summary>
+        private static string _lastConsoleCategory =
+            string.Empty;
+
+        private static string _lastConsoleRootCategory =
+            string.Empty;
+
+        private static string _lastConsoleMessage =
+            string.Empty;
+
+        /// <summary>
         /// Console 출력 가능 여부.
         ///
         /// 프로그램 종료 또는 Console 창이 먼저 닫힌 경우
@@ -267,23 +281,257 @@ namespace OpenCvWpfTracking.Common
                 message ??
                 string.Empty;
 
+            int threadId =
+                Thread.CurrentThread.ManagedThreadId;
+
+            string rootCategory =
+                GetRootCategory(
+                    safeCategory);
+
+            bool isHighFrequency =
+                IsHighFrequencyCategory(
+                    safeCategory);
+
+            bool shouldInsertBlankLine =
+                ShouldInsertBlankLine(
+                    safeCategory,
+                    rootCategory,
+                    isHighFrequency);
+
+            string consoleMessage =
+                FormatReadableMessage(
+                    safeCategory,
+                    safeMessage,
+                    isHighFrequency);
+
             lock (ConsoleLock)
             {
+                if (shouldInsertBlankLine)
+                {
+                    WriteConsoleSafe();
+                }
+
                 string formattedMessage =
                     $"[{DateTime.Now:HH:mm:ss.fff}] " +
                     $"[{level}] " +
-                    $"[T{Thread.CurrentThread.ManagedThreadId:00}] " +
-                    $"[{safeCategory}] {safeMessage}";
+                    $"[T{threadId:00}] " +
+                    $"[{safeCategory}] " +
+                    consoleMessage;
 
                 WriteConsoleSafe(
                     formattedMessage);
 
+                _lastConsoleCategory =
+                    safeCategory;
+
+                _lastConsoleRootCategory =
+                    rootCategory;
+
+                _lastConsoleMessage =
+                    safeMessage;
+
+                /*
+                 * Serilog 자체가 Timestamp/Level을 붙이므로
+                 * Console용 Timestamp/Level을 Message 안에 다시 넣지 않는다.
+                 * 상세값이 많은 주요 이벤트는 줄바꿈/들여쓰기를 유지한다.
+                 */
                 WriteSerilog(
                     level,
-                    $"[T{Thread.CurrentThread.ManagedThreadId:00}] " +
-                    $"[{safeCategory}] {safeMessage}");
+                    $"[T{threadId:00}] " +
+                    $"[{safeCategory}] " +
+                    consoleMessage);
             }
 
+        }
+
+        /// <summary>
+        /// Category의 최상위 그룹을 반환한다.
+        /// "EO PANORAMA / MOVE" -> "EO PANORAMA"
+        /// </summary>
+        private static string GetRootCategory(
+            string category)
+        {
+            if (string.IsNullOrWhiteSpace(category))
+            {
+                return "GENERAL";
+            }
+
+            int separatorIndex =
+                category.IndexOf(
+                    " / ",
+                    StringComparison.Ordinal);
+
+            return separatorIndex < 0
+                ? category.Trim()
+                : category.Substring(
+                    0,
+                    separatorIndex).Trim();
+        }
+
+        /// <summary>
+        /// 프레임/이동처럼 초당 또는 반복 횟수가 많은 로그는
+        /// 각 줄 사이에 공백을 넣지 않아 세로 길이가 과도하게 늘어나는 것을 막는다.
+        /// </summary>
+        private static bool IsHighFrequencyCategory(
+            string category)
+        {
+            if (string.IsNullOrWhiteSpace(category))
+            {
+                return false;
+            }
+
+            string upper =
+                category.ToUpperInvariant();
+
+            return
+                upper.Contains("/ MOVE") ||
+                upper.Contains("/ FRAME") ||
+                upper.Contains("/ STATUS") ||
+                upper.Contains("/ RX") ||
+                upper.Contains("/ TX");
+        }
+
+        /// <summary>
+        /// 작업 그룹이 바뀌거나 주요 이벤트가 시작될 때만 한 줄 공백을 추가한다.
+        /// 같은 Panorama MOVE/FRAME 반복 구간에는 공백을 추가하지 않는다.
+        /// </summary>
+        private static bool ShouldInsertBlankLine(
+            string category,
+            string rootCategory,
+            bool isHighFrequency)
+        {
+            if (string.IsNullOrEmpty(
+                _lastConsoleCategory))
+            {
+                return false;
+            }
+
+            /*
+             * Panorama 촬영 반복 로그는 한 Frame 단위를 눈으로 구분할 수 있게 한다.
+             *
+             *   ... FRAME captured
+             *
+             *   MOVE sent
+             *   MOVE stable
+             *   MOVE arrived
+             *   FRAME captured
+             *
+             * 즉 "이전 FRAME -> 다음 MOVE" 경계에만 공백 한 줄을 추가한다.
+             * MOVE 내부의 sent/stable/arrived 사이에는 공백을 넣지 않는다.
+             */
+            if (string.Equals(
+                    rootCategory,
+                    "EO PANORAMA",
+                    StringComparison.Ordinal) &&
+                string.Equals(
+                    _lastConsoleRootCategory,
+                    "EO PANORAMA",
+                    StringComparison.Ordinal))
+            {
+                bool previousWasFrame =
+                    _lastConsoleCategory.IndexOf(
+                        "/ FRAME",
+                        StringComparison.OrdinalIgnoreCase) >= 0;
+
+                bool currentIsMove =
+                    category.IndexOf(
+                        "/ MOVE",
+                        StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (previousWasFrame &&
+                    currentIsMove)
+                {
+                    return true;
+                }
+            }
+
+            if (isHighFrequency)
+            {
+                return !string.Equals(
+                    _lastConsoleRootCategory,
+                    rootCategory,
+                    StringComparison.Ordinal);
+            }
+
+            if (!string.Equals(
+                _lastConsoleRootCategory,
+                rootCategory,
+                StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return !string.Equals(
+                _lastConsoleCategory,
+                category,
+                StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// "/ KEY=VALUE / KEY=VALUE"가 길게 붙는 주요 로그를
+        /// 첫 문장 + 들여쓴 상세값 형태로 바꾼다.
+        /// MOVE/FRAME 같은 고빈도 로그는 기존 한 줄 형태를 유지한다.
+        /// </summary>
+        private static string FormatReadableMessage(
+            string category,
+            string message,
+            bool isHighFrequency)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return message ??
+                    string.Empty;
+            }
+
+            string[] parts =
+                message.Split(
+                    new[] { " / " },
+                    StringSplitOptions.None);
+
+            if (parts.Length < 4)
+            {
+                return message;
+            }
+
+            /*
+             * 첫 부분은 이벤트 설명, 나머지는 KEY=VALUE 상세값으로 본다.
+             * KEY=VALUE가 2개 미만이면 일반 문장일 가능성이 높아 원문 유지.
+             */
+            int detailCount =
+                parts
+                    .Skip(1)
+                    .Count(
+                        part => part.Contains("="));
+
+            if (detailCount < 2)
+            {
+                return message;
+            }
+
+            StringBuilder builder =
+                new StringBuilder();
+
+            builder.Append(
+                parts[0].Trim());
+
+            for (int index = 1;
+                 index < parts.Length;
+                 index++)
+            {
+                string part =
+                    parts[index].Trim();
+
+                if (part.Length == 0)
+                {
+                    continue;
+                }
+
+                builder.AppendLine();
+                builder.Append("    ");
+                builder.Append(part);
+            }
+
+            return builder.ToString();
         }
 
         /// <summary>
@@ -307,7 +555,9 @@ namespace OpenCvWpfTracking.Common
 
             WriteSection(
                 header,
-                lines);
+                lines,
+                level,
+                safeCategory);
         }
 
         /// <summary>
@@ -316,6 +566,23 @@ namespace OpenCvWpfTracking.Common
         private static void WriteSection(
             string header,
             params string[] lines)
+        {
+            WriteSection(
+                header,
+                lines,
+                "INFO",
+                null);
+        }
+
+        /// <summary>
+        /// Console에는 사람이 읽기 좋은 Section Header를 출력하고,
+        /// Serilog에는 중복 Timestamp/Level이 없는 정리된 Section을 기록한다.
+        /// </summary>
+        private static void WriteSection(
+            string header,
+            string[] lines,
+            string level,
+            string category)
         {
             lock (ConsoleLock)
             {
@@ -330,9 +597,9 @@ namespace OpenCvWpfTracking.Common
                     foreach (string line in lines)
                     {
                         WriteConsoleSafe(
-                            line ?? string.Empty);
+                            "    " +
+                            (line ?? string.Empty));
                     }
-
                 }
 
                 WriteConsoleSafe(
@@ -340,17 +607,33 @@ namespace OpenCvWpfTracking.Common
 
                 WriteConsoleSafe();
 
+                string serilogHeader =
+                    string.IsNullOrWhiteSpace(category)
+                        ? header
+                        : $"[{category}]";
+
                 string sectionMessage =
-                    header +
+                    serilogHeader +
                     (lines == null || lines.Length == 0
                         ? string.Empty
-                        : Environment.NewLine + string.Join(
-                            Environment.NewLine,
-                            lines));
+                        : Environment.NewLine +
+                          string.Join(
+                              Environment.NewLine,
+                              lines.Select(
+                                  line => "    " + (line ?? string.Empty))));
 
-                Log.Information(
-                    "{SectionMessage}",
+                WriteSerilog(
+                    level,
                     sectionMessage);
+
+                _lastConsoleCategory =
+                    category ??
+                    string.Empty;
+
+                _lastConsoleRootCategory =
+                    string.IsNullOrWhiteSpace(category)
+                        ? string.Empty
+                        : GetRootCategory(category);
             }
 
         }
