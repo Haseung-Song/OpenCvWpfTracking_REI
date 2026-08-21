@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using Microsoft.Win32;
 using OpenCvWpfTracking.ViewModels.Main;
 using OpenCvWpfTracking.Services.Video;
@@ -15,6 +15,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Serilog;
 
 namespace OpenCvWpfTracking
 {
@@ -68,6 +69,12 @@ namespace OpenCvWpfTracking
         private string _currentPanoramaFilePath;
 
         private PanoramaPreviewWindow _panoramaPreviewWindow;
+
+        /// <summary>
+        /// GLOBAL SYSTEMS OpenStreetMap 확대 창.
+        /// 중복 생성되지 않도록 현재 열린 Window 참조를 보관한다.
+        /// </summary>
+        private CompanyMapWindow _companyMapWindow;
 
         private bool _isWindowDragPending;
         private Point _windowDragStartPoint;
@@ -168,6 +175,80 @@ namespace OpenCvWpfTracking
             }
 
             base.OnClosed(e);
+        }
+
+        #endregion
+
+        #region [Company OpenStreetMap Events]
+
+        /// <summary>
+        /// 메인 화면 GLOBAL SYSTEMS 지도 더블클릭 처리.
+        ///
+        /// 메인 화면의 현재 지도 중심/Zoom을 그대로 넘겨
+        /// 별도 확대 Window에서 OpenStreetMap을 계속 탐색할 수 있게 한다.
+        /// </summary>
+        private void CompanyMap_MouseDoubleClick(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            OpenStreetMapControl mapControl =
+                sender as OpenStreetMapControl;
+
+            if (mapControl == null)
+            {
+                return;
+            }
+
+            if (_companyMapWindow != null)
+            {
+                if (_companyMapWindow.WindowState ==
+                    WindowState.Minimized)
+                {
+                    _companyMapWindow.WindowState =
+                        WindowState.Normal;
+                }
+
+                _companyMapWindow.Activate();
+
+                Log.Information(
+                    "[MAP] Expanded Map Window Activate");
+
+                e.Handled =
+                    true;
+
+                return;
+            }
+
+            _companyMapWindow =
+                new CompanyMapWindow(
+                    mapControl.CenterLatitude,
+                    mapControl.CenterLongitude,
+                    Math.Max(
+                        mapControl.Zoom,
+                        16));
+
+            _companyMapWindow.Owner =
+                this;
+
+            _companyMapWindow.Closed +=
+                (closedSender, closedArgs) =>
+                {
+                    _companyMapWindow =
+                        null;
+                };
+
+            _companyMapWindow.Show();
+
+            Log.Information(
+                "[MAP] Expanded Map Window Open / CENTER=({Latitude:F6}, {Longitude:F6}) / ZOOM={Zoom}",
+                mapControl.CenterLatitude,
+                mapControl.CenterLongitude,
+                Math.Max(
+                    mapControl.Zoom,
+                    16));
+
+            e.Handled =
+                true;
         }
 
         #endregion

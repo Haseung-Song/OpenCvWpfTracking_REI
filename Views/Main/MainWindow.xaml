@@ -664,12 +664,21 @@
                         </Image.Style>
                     </Image>
 
-                    <!-- 장비 연결 완료 후 실제 지도 이미지를 표시한다. -->
-                    <Image Source="/Images/Demo/GlobalSystemsTacticalMap.png"
-                           Stretch="UniformToFill"
-                           RenderOptions.BitmapScalingMode="HighQuality">
-                        <Image.Style>
-                            <Style TargetType="Image">
+                    <!--
+                        2026-08-20:
+                        장비 연결 완료 후 실제 OpenStreetMap Tile을 표시한다.
+
+                        - Wheel       : Zoom
+                        - Drag        : Pan
+                        - DoubleClick : 확대 지도 Window
+                        - Offline     : 기존 GlobalSystemsTacticalMap.png가
+                                        Control 내부 fallback으로 표시됨
+                    -->
+                    <local:OpenStreetMapControl
+                        ToolTip="Mouse Wheel: Zoom / Drag: Move / Double Click: Open Map"
+                        MouseDoubleClick="CompanyMap_MouseDoubleClick">
+                        <local:OpenStreetMapControl.Style>
+                            <Style TargetType="{x:Type local:OpenStreetMapControl}">
                                 <Setter Property="Visibility"
                                         Value="Collapsed"/>
 
@@ -682,8 +691,8 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Image.Style>
-                    </Image>
+                        </local:OpenStreetMapControl.Style>
+                    </local:OpenStreetMapControl>
                 </Grid>
             </Border>
         </ControlTemplate>

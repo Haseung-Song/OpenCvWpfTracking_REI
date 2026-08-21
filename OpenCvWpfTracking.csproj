@@ -149,7 +149,9 @@
     <Compile Include="ViewModels\Main\MainViewModel.Sync.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Thermal.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Video.cs" />
+    <Compile Include="Views\Main\CompanyMapWindow.cs" />
     <Compile Include="Views\Main\MainWindow.MoveControlInput.cs" />
+    <Compile Include="Views\Main\OpenStreetMapControl.cs" />
     <Compile Include="Views\Video\VideoPopoutWindow.xaml.cs">
       <DependentUpon>VideoPopoutWindow.xaml</DependentUpon>
     </Compile>
@@ -250,9 +252,7 @@
     <ItemGroup>
       <FireDetectorProgramFiles Include="FireCandidateValidator\bin\$(Platform)\$(Configuration)\**\*.*" />
     </ItemGroup>
-    <Copy SourceFiles="@(FireDetectorProgramFiles)"
-          DestinationFiles="@(FireDetectorProgramFiles->'$(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FireDetectorProgramFiles)" DestinationFiles="@(FireDetectorProgramFiles->'$(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
