@@ -355,19 +355,20 @@ namespace OpenCvWpfTracking
         /// EO 카메라:
         /// - EOCameraImage 영상 Binding
         /// - EoStatusText 연결 상태 Binding
-        /// - 파란색 상태 표시
+        /// - 고대비 전술 청록색 상태 표시
         ///
         /// IR 카메라:
         /// - IRCameraImage 영상 Binding
         /// - IrStatusText 연결 상태 Binding
-        /// - 보라색 상태 표시
+        /// - 고대비 열상 황색 상태 표시
         ///
         /// R / T 단축키로 분리 창의 카메라가 변경될 때도
         /// 이 함수를 다시 호출하여 모든 Binding과 표시 정보를 갱신한다.
         ///
         /// 메인 화면과 동일한 상태 색상:
-        /// - EO: #7FB3E6
-        /// - IR: #C4B5FD
+        /// 2026-08-24: 영상 위에서도 식별되도록 방산 UI 고대비 색상으로 통일한다.
+        /// - EO: #5EE7F7
+        /// - IR: #FFB347
         /// </summary>
         private void ConfigureCameraBinding()
         {
@@ -390,9 +391,9 @@ namespace OpenCvWpfTracking
 
                 statusColor =
                     Color.FromRgb(
-                        0x7F,
-                        0xB3,
-                        0xE6);
+                        0x5E,
+                        0xE7,
+                        0xF7);
 
                 // EO 영상은 16:9 비율의 넓은 분리 창을 사용한다.
                 Width =
@@ -420,9 +421,9 @@ namespace OpenCvWpfTracking
 
                 statusColor =
                     Color.FromRgb(
-                        0xC4,
-                        0xB5,
-                        0xFD);
+                        0xFF,
+                        0xB3,
+                        0x47);
 
                 //
                 // IR 영상은 EO보다 좁은 센서 종횡비를 사용한다.
@@ -464,6 +465,14 @@ namespace OpenCvWpfTracking
 
             CameraTitleText.Text =
                 cameraTitle;
+
+            CameraTitleText.Foreground =
+                new SolidColorBrush(
+                    statusColor);
+
+            CameraInfoBorder.BorderBrush =
+                new SolidColorBrush(
+                    statusColor);
         }
 
         #endregion

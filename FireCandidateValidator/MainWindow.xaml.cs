@@ -1,10 +1,13 @@
 using Microsoft.Win32;
 using OpenCvSharp;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -31,6 +34,9 @@ namespace FireCandidateValidator
         private int _displayPaletteIndex;
         // 2026-08-14: 1=전체 단일 BBox, 2=화염별 분리 BBox.
         private int _fireBoxGroupingMode = 2;
+        private readonly List<StableCandidateTrack> _stableCandidateTracks =
+            new List<StableCandidateTrack>();
+        private bool _lastPublishedDetectionState;
 
         /// <summary>
         /// MainWindow 동작 수행 함수.
@@ -210,6 +216,75 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
+        /// 선택한 10/15/20/30 px 크기의 국부 화염 패턴을 생성하여
+        /// Small Fire 최소 검출 크기를 동일 조건에서 반복 시험한다.
+        /// </summary>
+        private void CreateSmallFireTest_Click(
+            object sender,
+            RoutedEventArgs e)
+        {
+            ComboBoxItem selectedItem =
+                SmallFireSizeCombo.SelectedItem as ComboBoxItem;
+
+            int pixelSize = 10;
+
+            if (selectedItem != null)
+            {
+                int.TryParse(
+                    selectedItem.Tag?.ToString(),
+                    out pixelSize);
+            }
+
+            pixelSize =
+                Math.Max(10, Math.Min(30, pixelSize));
+
+            StopVideo();
+
+            Mat testPattern =
+                new Mat(
+                    new CvSize(1280, 720),
+                    MatType.CV_8UC3,
+                    new Scalar(48, 48, 48));
+
+            Cv2.Rectangle(
+                testPattern,
+                new CvRect(80, 80, 1120, 560),
+                new Scalar(72, 72, 72),
+                -1);
+
+            CvPoint center =
+                new CvPoint(640, 360);
+
+            Cv2.Ellipse(
+                testPattern,
+                center,
+                new CvSize(
+                    Math.Max(3, pixelSize / 2),
+                    Math.Max(4, pixelSize / 2)),
+                0,
+                0,
+                360,
+                new Scalar(0, 90, 255),
+                -1);
+
+            Cv2.Circle(
+                testPattern,
+                new CvPoint(center.X, center.Y - pixelSize / 4),
+                Math.Max(2, pixelSize / 4),
+                new Scalar(30, 220, 255),
+                -1);
+
+            ReplaceCurrentSource(testPattern);
+            _isVideoMode = false;
+            _loadedVideo = false;
+            _analyzer.Reset();
+            ProcessCurrentFrame(true);
+
+            StatusText.Text +=
+                " / SYNTHETIC TARGET=" + pixelSize + " px";
+        }
+
+        /// <summary>
         /// Stop_Click 이벤트 처리 함수.
         /// </summary>
         private void Stop_Click(
@@ -386,23 +461,67 @@ namespace FireCandidateValidator
                        confirmationFrames,
                        _fireBoxGroupingMode))
             {
+                IList<CvRect> displayCandidates =
+                    UpdateStableCandidateTracks(
+                        analysis.Candidates,
+                        analysis.IsConfirmed);
+
                 using (Mat displaySource = ApplySelectedPalette(_currentSource))
                 {
                     Mat rendered = displaySource.Clone();
 
-                    foreach (CvRect candidate in analysis.Candidates)
+                    double displayScale =
+                        Math.Max(
+                            1.0,
+                            Math.Max(
+                                rendered.Width / 1280.0,
+                                rendered.Height / 720.0));
+                    int lineThickness =
+                        Math.Max(3, (int)Math.Round(2.0 * displayScale));
+
+                    List<CvRect> occupiedLabelRects = new List<CvRect>();
+
+                    foreach (CvRect candidate in displayCandidates)
                     {
                         Scalar color = new Scalar(0, 0, 255);
+                        CvRect displayRect =
+                            CreateVisibleDetectionRect(
+                                candidate,
+                                rendered.Width,
+                                rendered.Height,
+                                displayScale);
 
-                        Cv2.Rectangle(rendered, candidate, color, 3);
+                        Cv2.Rectangle(
+                            rendered,
+                            displayRect,
+                            color,
+                            lineThickness);
+                        double labelScale = Math.Max(0.8, 0.8 * displayScale);
+                        int labelThickness = Math.Max(2, (int)Math.Round(1.5 * displayScale));
+                        int baseline;
+                        CvSize labelSize = Cv2.GetTextSize(
+                            "FIRE DETECTION",
+                            HersheyFonts.HersheySimplex,
+                            labelScale,
+                            labelThickness,
+                            out baseline);
+                        CvPoint labelOrigin = FindAvailableLabelOrigin(
+                            displayRect,
+                            labelSize,
+                            baseline,
+                            occupiedLabelRects,
+                            rendered.Width,
+                            rendered.Height,
+                            displayScale);
+
                         Cv2.PutText(
                             rendered,
                             "FIRE DETECTION",
-                            new CvPoint(candidate.X, Math.Max(28, candidate.Y - 8)),
+                            labelOrigin,
                             HersheyFonts.HersheySimplex,
-                            0.8,
-                            color,
-                            2);
+                            labelScale,
+                            new Scalar(0, 0, 255),
+                            labelThickness);
                     }
 
                     ReplaceRendered(rendered);
@@ -415,20 +534,282 @@ namespace FireCandidateValidator
                 ResultImage.Source = ToBitmapSource(_currentRendered);
                 MaskImage.Source = ToBitmapSource(analysis.Mask);
 
+                CvRect largestCandidate =
+                    displayCandidates
+                        .OrderByDescending(candidate => candidate.Width * candidate.Height)
+                        .FirstOrDefault();
+
+                string largestPixelText =
+                    largestCandidate.Width > 0
+                        ? largestCandidate.Width + "x" + largestCandidate.Height +
+                          " px / " + (largestCandidate.Width * largestCandidate.Height) + " px²"
+                        : "-";
+
                 StatusText.Text =
                     string.Format(
-                        "{0} / 후보 {1}개 / 연속 {2} frame / 최대 면적 {3:P3}",
-                        analysis.IsConfirmed ? "FIRE DETECTOR DETECTED" : "FIRE DETECTOR MONITORING",
-                        analysis.Candidates.Count,
+                        "{0} / 후보 {1}개 / 연속 {2} frame / 최대 BBox {3} / 최대 면적비 {4:P3}",
+                        displayCandidates.Count > 0 ? "FIRE DETECTOR DETECTED" : "FIRE DETECTOR MONITORING",
+                        displayCandidates.Count,
                         analysis.ContinuousFrames,
+                        largestPixelText,
                         analysis.LargestAreaRatio);
 
                 StatusText.Foreground =
-                    analysis.IsConfirmed
+                    displayCandidates.Count > 0
                         ? Brushes.OrangeRed
                         : Brushes.LightGreen;
+
+                PublishLiveEvent(
+                    displayCandidates.Count > 0,
+                    displayCandidates);
             }
 
+        }
+
+        /// <summary>
+        /// [2026-08-24] 모든 FIRE DETECTION 문구를 BBox 위쪽에 배치하고,
+        /// 여러 화염의 문구가 겹치면 더 높은 행으로 이동한다.
+        /// </summary>
+        private static CvPoint FindAvailableLabelOrigin(
+            CvRect detectionRect,
+            CvSize labelSize,
+            int baseline,
+            IList<CvRect> occupiedLabels,
+            int frameWidth,
+            int frameHeight,
+            double displayScale)
+        {
+            int gap = Math.Max(4, (int)Math.Round(5 * displayScale));
+            int labelHeight = labelSize.Height + baseline + 2;
+            int clampedX = Math.Max(0, Math.Min(detectionRect.X, frameWidth - labelSize.Width - 1));
+            int preferredTop = detectionRect.Y - labelHeight - gap;
+
+            for (int attempt = 0; attempt < 12; attempt++)
+            {
+                int rowOffset = attempt * (labelHeight + gap);
+                int candidateTop = preferredTop - rowOffset;
+                candidateTop = Math.Max(0, Math.Min(candidateTop, frameHeight - labelHeight - 1));
+
+                CvRect candidateLabel = new CvRect(
+                    clampedX,
+                    candidateTop,
+                    labelSize.Width,
+                    labelHeight);
+
+                if (!occupiedLabels.Any(existing => RectanglesOverlap(existing, candidateLabel)))
+                {
+                    occupiedLabels.Add(candidateLabel);
+                    return new CvPoint(clampedX, candidateTop + labelSize.Height);
+                }
+            }
+
+            int fallbackTop = Math.Max(0, Math.Min(preferredTop, frameHeight - labelHeight - 1));
+            occupiedLabels.Add(new CvRect(clampedX, fallbackTop, labelSize.Width, labelHeight));
+            return new CvPoint(clampedX, fallbackTop + labelSize.Height);
+        }
+
+        /// <summary>
+        /// 두 문구 영역의 교차 여부를 반환한다.
+        /// </summary>
+        private static bool RectanglesOverlap(CvRect left, CvRect right)
+        {
+            return left.X < right.Right &&
+                   left.Right > right.X &&
+                   left.Y < right.Bottom &&
+                   left.Bottom > right.Y;
+        }
+
+        /// <summary>
+        /// 프레임 간 후보를 같은 화염으로 추적하여 BBox 위치를 완만하게 보정하고,
+        /// 일시적인 미검출은 8프레임까지 유지해 깜빡임을 줄인다.
+        /// </summary>
+        private IList<CvRect> UpdateStableCandidateTracks(
+            IList<CvRect> candidates,
+            bool isConfirmed)
+        {
+            bool[] matched = new bool[_stableCandidateTracks.Count];
+
+            foreach (CvRect candidate in candidates)
+            {
+                int bestIndex = -1;
+                double bestScore = 0.0;
+
+                for (int index = 0; index < _stableCandidateTracks.Count; index++)
+                {
+                    if (matched[index])
+                    {
+                        continue;
+                    }
+
+                    double score = CalculateMatchScore(
+                        _stableCandidateTracks[index].Rectangle,
+                        candidate);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestIndex = index;
+                    }
+                }
+
+                if (bestIndex >= 0 && bestScore >= 0.20)
+                {
+                    StableCandidateTrack track = _stableCandidateTracks[bestIndex];
+                    track.Rectangle = SmoothRectangle(track.Rectangle, candidate, 0.35);
+                    track.MissingFrames = 0;
+                    track.SeenFrames++;
+                    track.IsVisible = track.IsVisible || (isConfirmed && track.SeenFrames >= 2);
+                    matched[bestIndex] = true;
+                }
+                else
+                {
+                    _stableCandidateTracks.Add(
+                        new StableCandidateTrack
+                        {
+                            Rectangle = candidate,
+                            IsVisible = isConfirmed && !_isVideoMode,
+                            SeenFrames = 1
+                        });
+                    Array.Resize(ref matched, _stableCandidateTracks.Count);
+                    matched[matched.Length - 1] = true;
+                }
+            }
+
+            for (int index = _stableCandidateTracks.Count - 1; index >= 0; index--)
+            {
+                if (index >= matched.Length || !matched[index])
+                {
+                    _stableCandidateTracks[index].MissingFrames++;
+                }
+
+                if (_stableCandidateTracks[index].MissingFrames > 8)
+                {
+                    _stableCandidateTracks.RemoveAt(index);
+                }
+            }
+
+            return _stableCandidateTracks
+                .Where(track => track.IsVisible)
+                .Select(track => track.Rectangle)
+                .ToList();
+        }
+
+        /// <summary>
+        /// 두 BBox의 겹침과 중심 거리로 동일 화염 여부 점수를 계산한다.
+        /// </summary>
+        private static double CalculateMatchScore(CvRect first, CvRect second)
+        {
+            int intersectionWidth =
+                Math.Max(0, Math.Min(first.Right, second.Right) - Math.Max(first.Left, second.Left));
+            int intersectionHeight =
+                Math.Max(0, Math.Min(first.Bottom, second.Bottom) - Math.Max(first.Top, second.Top));
+            double intersection = intersectionWidth * intersectionHeight;
+            double union = Math.Max(1.0, first.Width * first.Height + second.Width * second.Height - intersection);
+            double iou = intersection / union;
+            double centerDistance =
+                Math.Sqrt(
+                    Math.Pow(first.X + first.Width / 2.0 - second.X - second.Width / 2.0, 2) +
+                    Math.Pow(first.Y + first.Height / 2.0 - second.Y - second.Height / 2.0, 2));
+            double allowedDistance =
+                Math.Max(12.0, Math.Max(first.Width, first.Height) * 0.8);
+            double proximity = Math.Max(0.0, 1.0 - centerDistance / allowedDistance);
+            return Math.Max(iou, proximity * 0.8);
+        }
+
+        /// <summary>
+        /// 현재 측정값 일부만 반영하여 화염 BBox의 급격한 위치·크기 변화를 억제한다.
+        /// </summary>
+        private static CvRect SmoothRectangle(
+            CvRect previous,
+            CvRect current,
+            double currentWeight)
+        {
+            double previousWeight = 1.0 - currentWeight;
+            return new CvRect(
+                (int)Math.Round(previous.X * previousWeight + current.X * currentWeight),
+                (int)Math.Round(previous.Y * previousWeight + current.Y * currentWeight),
+                Math.Max(1, (int)Math.Round(previous.Width * previousWeight + current.Width * currentWeight)),
+                Math.Max(1, (int)Math.Round(previous.Height * previousWeight + current.Height * currentWeight)));
+        }
+
+        /// <summary>
+        /// 테스트 프로그램의 탐지 시작·해제를 메인 Viewer가 읽는 공유 이벤트 파일에 기록한다.
+        /// </summary>
+        private void PublishLiveEvent(
+            bool isDetected,
+            IList<CvRect> candidates)
+        {
+            if (!_loadedVideo || _lastPublishedDetectionState == isDetected)
+            {
+                return;
+            }
+
+            _lastPublishedDetectionState = isDetected;
+            string directory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "OpenCvWpfTracking",
+                "FireEvents");
+            Directory.CreateDirectory(directory);
+            string path = Path.Combine(directory, "TestProgramLiveEvents.txt");
+            using (FileStream stream =
+                   new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
+            using (StreamWriter writer = new StreamWriter(stream))
+            {
+                DateTime eventTime = DateTime.Now;
+                if (isDetected)
+                {
+                    foreach (CvRect candidate in candidates)
+                    {
+                        writer.WriteLine(
+                            string.Join(
+                                "|",
+                                eventTime.ToString("O"),
+                                "DETECTED",
+                                "1",
+                                candidate.Width.ToString(),
+                                candidate.Height.ToString(),
+                                (candidate.Width * candidate.Height).ToString(),
+                                "TEST PROGRAM"));
+                    }
+                }
+                else
+                {
+                    writer.WriteLine(
+                        string.Join(
+                            "|",
+                            eventTime.ToString("O"),
+                            "CLEARED",
+                            "0",
+                            "0",
+                            "0",
+                            "0",
+                            "TEST PROGRAM"));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 작은 후보의 실제 크기는 유지하면서 축소 화면에서도 확인할 수 있는
+        /// 최소 표시 영역을 계산한다.
+        /// </summary>
+        private static CvRect CreateVisibleDetectionRect(
+            CvRect source,
+            int frameWidth,
+            int frameHeight,
+            double displayScale)
+        {
+            int minimumSide =
+                Math.Max(28, (int)Math.Round(24 * displayScale));
+            int targetWidth = Math.Max(source.Width, minimumSide);
+            int targetHeight = Math.Max(source.Height, minimumSide);
+            int centerX = source.X + source.Width / 2;
+            int centerY = source.Y + source.Height / 2;
+            int x = Math.Max(0, centerX - targetWidth / 2);
+            int y = Math.Max(0, centerY - targetHeight / 2);
+
+            targetWidth = Math.Min(targetWidth, frameWidth - x);
+            targetHeight = Math.Min(targetHeight, frameHeight - y);
+
+            return new CvRect(x, y, targetWidth, targetHeight);
         }
 
         /// <summary>
@@ -635,8 +1016,14 @@ namespace FireCandidateValidator
         /// </summary>
         private void StopVideo()
         {
+            if (_lastPublishedDetectionState)
+            {
+                PublishLiveEvent(false, new List<CvRect>());
+            }
+
             _videoTimer.Stop();
             _isVideoMode = false;
+            _stableCandidateTracks.Clear();
 
             if (_videoCapture != null)
             {
@@ -645,6 +1032,14 @@ namespace FireCandidateValidator
                 _videoCapture = null;
             }
 
+        }
+
+        private sealed class StableCandidateTrack
+        {
+            public CvRect Rectangle { get; set; }
+            public int MissingFrames { get; set; }
+            public int SeenFrames { get; set; }
+            public bool IsVisible { get; set; }
         }
 
         /// <summary>

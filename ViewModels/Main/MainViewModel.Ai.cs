@@ -260,6 +260,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             App.Current.Dispatcher.Invoke(() =>
             {
+                UpdateAiDetectionEvent(result, receiveTime);
+
                 switch (result.RtspIndex)
                 {
                     case 0:

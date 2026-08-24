@@ -143,6 +143,8 @@
     <Compile Include="ViewModels\Main\MainViewModel.Ai.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.ContinuousControl.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.ControlAgent.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.FireEvents.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.EventAlerts.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.MoveControl.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Panorama.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Properties.cs" />
@@ -156,6 +158,10 @@
       <DependentUpon>VideoPopoutWindow.xaml</DependentUpon>
     </Compile>
     <Page Include="Views\Main\MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Main\EventAlertControl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -189,6 +195,9 @@
     <Compile Include="Views\Main\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\Main\EventAlertControl.xaml.cs">
+      <DependentUpon>EventAlertControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\Main\PanoramaPreviewWindow.cs" />
     <Page Include="Views\Video\VideoPopoutWindow.xaml">

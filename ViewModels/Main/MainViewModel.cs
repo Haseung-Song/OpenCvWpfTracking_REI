@@ -2070,6 +2070,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// </summary>
             InitializeAiDetectorSetting();
             InitializeThermalFeatures();
+            InitializeFireEventFeatures();
 
             ConsoleLogHelper.PrintSection(
                 "[CONTROL AGENT]",

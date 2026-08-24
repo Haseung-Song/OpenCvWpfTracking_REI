@@ -86,19 +86,20 @@
         </Grid>
 
         <!-- 카메라 및 단축키 안내 -->
-        <Border Margin="14"
+        <Border x:Name="CameraInfoBorder"
+                Margin="14"
                 Padding="10,7"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Background="#B21D232A"
-                BorderBrush="#7FB3E6"
+                BorderBrush="#5EE7F7"
                 BorderThickness="1"
                 CornerRadius="3">
 
             <StackPanel>
 
                 <TextBlock x:Name="CameraTitleText"
-                           Foreground="#7FB3E6"
+                           Foreground="#5EE7F7"
                            FontSize="18"
                            FontWeight="Bold"/>
 

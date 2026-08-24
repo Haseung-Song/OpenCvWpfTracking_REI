@@ -76,16 +76,27 @@
                         <Button x:Name="FireBoxMode1Button" Content="구분 방식 1 (전체 단일 박스)" Background="#3E515E" Padding="4,2" Click="FireBoxMode1_Click"/>
                         <Button x:Name="FireBoxMode2Button" Content="구분 방식 2 (화염별 분리)" Background="#2A6F97" Padding="4,2" Click="FireBoxMode2_Click"/>
                     </UniformGrid>
+                    <!-- [2026-08-24] 소형 화재 시험은 검출 조건 영역에서 독립적으로 수행한다. -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,8">
+                        <TextBlock Text="SMALL FIRE SIZE" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
+                        <ComboBox x:Name="SmallFireSizeCombo" Width="82" Height="30" SelectedIndex="0" VerticalContentAlignment="Center">
+                            <ComboBoxItem Content="10 px" Tag="10"/>
+                            <ComboBoxItem Content="15 px" Tag="15"/>
+                            <ComboBoxItem Content="20 px" Tag="20"/>
+                            <ComboBoxItem Content="30 px" Tag="30"/>
+                        </ComboBox>
+                        <Button Content="SMALL FIRE TEST" Width="150" Height="30" Margin="8,0,0,0" Background="#34566A" BorderBrush="#7FB3E6" FontWeight="Bold" Click="CreateSmallFireTest_Click"/>
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="0">
-                    <StackPanel.Margin>0,50,0,0</StackPanel.Margin>
+                    <StackPanel.Margin>0,88,0,0</StackPanel.Margin>
                     <TextBlock Text="HOT PIXEL THRESHOLD" FontWeight="Bold"/>
                     <!-- 2026-08-14: Same offline validation defaults as the main viewer. -->
                     <Slider x:Name="ThresholdSlider" Minimum="0.05" Maximum="0.99" Value="0.72" TickFrequency="0.01" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
                     <TextBlock x:Name="ThresholdText" HorizontalAlignment="Right" Text="0.72"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <StackPanel.Margin>0,50,0,0</StackPanel.Margin>
+                    <StackPanel.Margin>0,88,0,0</StackPanel.Margin>
                     <TextBlock Text="MINIMUM FIRE DETECTOR AREA RATIO" FontWeight="Bold"/>
                     <Slider x:Name="AreaSlider" Minimum="0.0005" Maximum="0.05" Value="0.0015" TickFrequency="0.0005" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
                     <TextBlock x:Name="AreaText" HorizontalAlignment="Right" Text="0.0015"/>
@@ -103,10 +114,10 @@
                         <Button Content="NEXT" Background="#3E515E" Padding="2,1" Click="NextPalette_Click"/>
                     </UniformGrid>
                     <TextBlock Text="VIDEO CONFIRM FRAMES" FontWeight="Bold"/>
-                    <Slider x:Name="ConfirmationSlider" Minimum="1" Maximum="15" Value="6" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
-                    <TextBlock x:Name="ConfirmationText" HorizontalAlignment="Right" Text="6 frames"/>
+                    <Slider x:Name="ConfirmationSlider" Minimum="1" Maximum="15" Value="4" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                    <TextBlock x:Name="ConfirmationText" HorizontalAlignment="Right" Text="4 frames"/>
                 </StackPanel>
-                <TextBlock x:Name="StatusText" Grid.ColumnSpan="5" Margin="0,178,0,0" HorizontalAlignment="Center" Text="Open an image or IR video." Foreground="#9FE870" FontSize="14" FontWeight="Bold"/>
+                <TextBlock x:Name="StatusText" Grid.ColumnSpan="5" Margin="0,216,0,0" HorizontalAlignment="Center" Text="Open an image or IR video." Foreground="#9FE870" FontSize="14" FontWeight="Bold"/>
             </Grid>
         </Border>
     </Grid>

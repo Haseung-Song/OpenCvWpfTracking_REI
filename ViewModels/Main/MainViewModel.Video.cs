@@ -365,6 +365,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "DEVICE CONNECT",
                 "Disconnect requested");
 
+            /*
+             * 2026-08-21: 상위 장비 연결 해제는 현재 연결된 AI Agent도 함께 종료한다.
+             * AI 연결 시작은 기존 정책대로 AI CONNECT 버튼에서만 수행한다.
+             */
+            DisconnectAiAgent();
+
             Console.WriteLine("[VIDEO] Disconnect Try...");
 
             Console.WriteLine();
@@ -1327,7 +1333,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                         thermalResult.StateChanged)
                                     {
                                         UpdateThermalFireCandidateState(
-                                            thermalResult.IsDetected);
+                                            thermalResult);
                                     }
 
                                 }

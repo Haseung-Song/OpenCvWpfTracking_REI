@@ -88,15 +88,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (SelectedEquipmentStatusMode ==
                 EquipmentStatusMode.Environment)
             {
-                bool result =
+                bool environmentEoResult =
                     _webAgentZoomControlService
-                        .ApplySynchronizedZoom(
+                        .SetEoZoomPosition(
                             standardPosition);
 
+                bool environmentIrResult =
+                    _webAgentZoomControlService
+                        .SetIrZoomPosition(
+                            standardPosition);
+
+                environmentEoResult = environmentEoResult &&
+                    (_eoDecoder.IsOpened || _isEoFrameDisplayed);
+                environmentIrResult = environmentIrResult &&
+                    (_irDecoder.IsOpened || _isIrFrameDisplayed);
+
                 ZoomSyncStatusText =
-                    result
-                        ? $"COMMAND SENT / {standardPosition}"
-                        : "COMMAND FAILED";
+                    environmentEoResult && environmentIrResult
+                        ? $"COMPLETED / LEVEL {selectedLevel.Level}"
+                        : $"INCOMPLETE / EO={environmentEoResult} / IR={environmentIrResult}";
 
                 return;
             }
@@ -106,15 +116,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     .SetIrZoomPosition(
                         standardPosition);
 
+            irResult = irResult &&
+                (_irDecoder.IsOpened || _isIrFrameDisplayed);
+
             RtspSourceOption ctecSource =
                 _connectedEoCtecSource;
 
             if (ctecSource == null)
             {
                 ZoomSyncStatusText =
-                    irResult
-                        ? "IR SENT / EO CTEC NOT CONNECTED"
-                        : "EO / IR COMMAND FAILED";
+                    $"INCOMPLETE / EO=False / IR={irResult}";
 
                 return;
             }
@@ -160,10 +171,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             }
 
+            eoResult = eoResult &&
+                (_eoDecoder.IsOpened || _isEoFrameDisplayed);
+
             ZoomSyncStatusText =
                 eoResult && irResult
                     ? $"COMPLETED / LEVEL {selectedLevel.Level}"
-                    : "INCOMPLETE";
+                    : $"INCOMPLETE / EO={eoResult} / IR={irResult}";
         }
 
         /// <summary>

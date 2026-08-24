@@ -1,6 +1,7 @@
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FireCandidateValidator
 {
@@ -37,7 +38,12 @@ namespace FireCandidateValidator
             double safeAreaRatio = Math.Max(0.0001, Math.Min(0.20, minimumAreaRatio));
             int threshold = (int)Math.Round(safeThreshold * 255.0);
             double frameArea = Math.Max(1.0, source.Width * source.Height);
-            double minimumArea = Math.Max(16.0, frameArea * safeAreaRatio);
+            // 2026-08-21: 10~30 px는 Bounding Box 한 변 기준(약 100~900 px)이다.
+            // 24 px contour부터 Small Fire lane에서 확인하고 그보다 큰 후보는
+            // 기존 사용자가 정한 화면비 기반 최소 면적을 적용한다.
+            double configuredMinimumArea =
+                Math.Max(16.0, frameArea * safeAreaRatio);
+            double minimumArea = 24.0;
             // 2026-08-14: 큰 화염도 하나의 검출 영역으로 유지한다.
             // 2026-08-14: Accept a fire covering almost the entire still image.
             double maximumArea = frameArea * 0.95;
@@ -125,6 +131,21 @@ namespace FireCandidateValidator
                 double irregularity =
                     perimeter * perimeter /
                     Math.Max(1.0, 4.0 * Math.PI * area);
+                bool isSmallFireCandidate =
+                    rect.Width <= 36 &&
+                    rect.Height <= 36 &&
+                    rectangleArea <= 1296;
+                // 2026-08-24: 마스크에 충분히 크게 형성된 세로형·불규칙 화염은
+                // 압축 영상에서 프레임 차가 작아도 실제 화염 후보로 보존한다.
+                // 작은 점광원은 이 경로를 통과하지 않으므로 기존 시간축 검사를 유지한다.
+                bool isStrongLargeFireCandidate =
+                    IsStrongLargeFlameRect(rect, cleanedMask) &&
+                    (irregularity >= 1.20 || solidity <= 0.92);
+                if (!isSmallFireCandidate &&
+                    area < configuredMinimumArea)
+                {
+                    continue;
+                }
                 double motionRatio = 0.0;
                 double hotMotionRatio = 0.0;
                 double shapeChangeRatio = 0.0;
@@ -154,14 +175,18 @@ namespace FireCandidateValidator
                     (rectangleAreaRatio > 0.75 && fillRatio > 0.30) ||
                     (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 &&
                      fillRatio > 0.18 && solidity > 0.72) ||
-                    (solidity > 0.90 && fillRatio > 0.50 && irregularity < 1.25) ||
+                    (!isSmallFireCandidate &&
+                     solidity > 0.90 && fillRatio > 0.50 && irregularity < 1.25) ||
+                    // 2026-08-24: 작은 정적 전등도 시간축 검사를 반드시 통과시킨다.
+                    // 작은 실제 화염은 낮은 움직임 또는 외곽 변화 중 하나가 있으면 유지한다.
                     (requiresTemporalMotion &&
+                     !isStrongLargeFireCandidate &&
                      (!hasMotionReference ||
                       !hasCandidateReference ||
                       globalMotionRatio > 0.25 ||
-                      motionRatio < 0.010 ||
-                      hotMotionRatio < 0.018 ||
-                      shapeChangeRatio < 0.020 ||
+                      motionRatio < (isSmallFireCandidate ? 0.004 : 0.010) ||
+                      (hotMotionRatio < (isSmallFireCandidate ? 0.006 : 0.018) &&
+                       shapeChangeRatio < (isSmallFireCandidate ? 0.008 : 0.020)) ||
                       (rectangleAreaRatio > 0.12 && shapeChangeRatio < 0.060))) ||
                     aspectRatio < 0.05 || aspectRatio > 20.0)
                 {
@@ -172,8 +197,33 @@ namespace FireCandidateValidator
                 largestAreaRatio = Math.Max(largestAreaRatio, area / frameArea);
             }
 
+            IList<Rect> verticalFlameCandidates =
+                ExtractVerticalFlameCandidates(source, threshold);
+            if (requiresTemporalMotion)
+            {
+                // 2026-08-24: 충분히 큰 세로형 화염은 낮은 프레임 차에서도 유지하고,
+                // 작은 후보만 시간축 검사를 거쳐 고정 전등 오탐을 억제한다.
+                verticalFlameCandidates = verticalFlameCandidates
+                    .Where(rect =>
+                        IsStrongLargeFlameRect(rect, cleanedMask) ||
+                        HasTemporalFlameEvidence(
+                            rect,
+                            motionMask,
+                            cleanedMask,
+                            candidateChangeMask,
+                            hasMotionReference,
+                            hasCandidateReference,
+                            globalMotionRatio))
+                    .ToList();
+            }
+
+            if (verticalFlameCandidates.Count > 0)
+            {
+                rawCandidates = new List<Rect>(verticalFlameCandidates);
+            }
+
             List<Rect> candidates = MergeCandidates(
-                rawCandidates,
+                SuppressNestedAndReflectionCandidates(rawCandidates),
                 source.Width,
                 source.Height,
                 fireBoxGroupingMode);
@@ -203,6 +253,230 @@ namespace FireCandidateValidator
                 isConfirmed,
                 _continuousCandidateFrames,
                 largestAreaRatio);
+        }
+
+        /// <summary>
+        /// [2026-08-24] 세로 방향으로 충분히 크게 형성된 고온 마스크를
+        /// 강한 대형 화염 증거로 판정한다. 작은 전등과 수평 구조물은 제외한다.
+        /// </summary>
+        private static bool IsStrongLargeFlameRect(Rect rect, Mat candidateMask)
+        {
+            if (candidateMask == null || candidateMask.Empty() ||
+                rect.Width <= 0 || rect.Height <= 0)
+            {
+                return false;
+            }
+
+            double frameArea = Math.Max(1.0, candidateMask.Width * candidateMask.Height);
+            double rectangleArea = Math.Max(1.0, rect.Width * rect.Height);
+            double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
+
+            using (Mat candidateRoi = new Mat(candidateMask, rect))
+            {
+                double fillRatio = Cv2.CountNonZero(candidateRoi) / rectangleArea;
+
+                return rectangleArea / frameArea >= 0.0015 &&
+                       rect.Height >= Math.Max(32, candidateMask.Height * 0.04) &&
+                       aspectRatio >= 0.08 && aspectRatio <= 1.60 &&
+                       fillRatio >= 0.025;
+            }
+        }
+
+        /// <summary>
+        /// [2026-08-24] 동영상의 세로 화염 후보가 프레임 간 움직임 또는 외곽 변화를
+        /// 포함하는지 검사한다. 정적인 전등 점광원은 제외하되 작은 화염은 보존한다.
+        /// </summary>
+        private static bool HasTemporalFlameEvidence(
+            Rect rect,
+            Mat motionMask,
+            Mat candidateMask,
+            Mat candidateChangeMask,
+            bool hasMotionReference,
+            bool hasCandidateReference,
+            double globalMotionRatio)
+        {
+            if (!hasMotionReference ||
+                !hasCandidateReference ||
+                globalMotionRatio > 0.25 ||
+                rect.Width <= 0 ||
+                rect.Height <= 0)
+            {
+                return false;
+            }
+
+            using (Mat motionRoi = new Mat(motionMask, rect))
+            using (Mat candidateRoi = new Mat(candidateMask, rect))
+            using (Mat changeRoi = new Mat(candidateChangeMask, rect))
+            using (Mat hotMotion = new Mat())
+            {
+                double rectangleArea = Math.Max(1.0, rect.Width * rect.Height);
+                double candidatePixels = Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
+                double motionRatio = Cv2.CountNonZero(motionRoi) / rectangleArea;
+                Cv2.BitwiseAnd(motionRoi, candidateRoi, hotMotion);
+                double hotMotionRatio = Cv2.CountNonZero(hotMotion) / candidatePixels;
+                double shapeChangeRatio = Cv2.CountNonZero(changeRoi) / candidatePixels;
+
+                return motionRatio >= 0.004 &&
+                       (hotMotionRatio >= 0.006 || shapeChangeRatio >= 0.008);
+            }
+        }
+
+        /// <summary>
+        /// 촛불 영상에서 원형 보케·촛농·받침 반사보다 세로로 긴 화염 본체를
+        /// 우선 검출한다. 색상 팔레트와 흑백 WHITE/BLACK HOT을 모두 지원한다.
+        /// </summary>
+        private static IList<Rect> ExtractVerticalFlameCandidates(
+            Mat source,
+            int threshold)
+        {
+            using (Mat bgr = EnsureBgr(source))
+            using (Mat hsv = new Mat())
+            using (Mat gray = new Mat())
+            using (Mat whiteCore = new Mat())
+            using (Mat yellowCore = new Mat())
+            using (Mat brightCore = new Mat())
+            using (Mat darkCore = new Mat())
+            using (Mat coreMask = new Mat())
+            {
+                Cv2.CvtColor(bgr, hsv, ColorConversionCodes.BGR2HSV);
+                Cv2.CvtColor(bgr, gray, ColorConversionCodes.BGR2GRAY);
+
+                if (Cv2.Mean(hsv).Val1 >= 20)
+                {
+                    Cv2.InRange(
+                        hsv,
+                        new Scalar(0, 0, Math.Max(200, threshold)),
+                        new Scalar(179, 125, 255),
+                        whiteCore);
+                    Cv2.InRange(
+                        hsv,
+                        new Scalar(15, 45, Math.Max(180, threshold - 20)),
+                        new Scalar(45, 255, 255),
+                        yellowCore);
+                    Cv2.BitwiseOr(whiteCore, yellowCore, coreMask);
+                }
+                else
+                {
+                    Cv2.Threshold(gray, brightCore, threshold, 255, ThresholdTypes.Binary);
+                    Cv2.Threshold(gray, darkCore, 255 - threshold, 255, ThresholdTypes.BinaryInv);
+                    int brightCount = Cv2.CountNonZero(brightCore);
+                    int darkCount = Cv2.CountNonZero(darkCore);
+                    if (brightCount > 0 && (darkCount == 0 || brightCount <= darkCount))
+                    {
+                        brightCore.CopyTo(coreMask);
+                    }
+                    else
+                    {
+                        darkCore.CopyTo(coreMask);
+                    }
+                }
+
+                using (Mat openKernel =
+                       Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(3, 3)))
+                using (Mat closeKernel =
+                       Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(5, 9)))
+                {
+                    Cv2.MorphologyEx(coreMask, coreMask, MorphTypes.Open, openKernel);
+                    Cv2.MorphologyEx(coreMask, coreMask, MorphTypes.Close, closeKernel);
+                }
+
+                Cv2.FindContours(
+                    coreMask,
+                    out Point[][] contours,
+                    out _,
+                    RetrievalModes.External,
+                    ContourApproximationModes.ApproxSimple);
+
+                List<Rect> flames = new List<Rect>();
+                double frameArea = Math.Max(1.0, source.Width * source.Height);
+                foreach (Point[] contour in contours)
+                {
+                    double area = Cv2.ContourArea(contour);
+                    Rect rect = Cv2.BoundingRect(contour);
+                    double fillRatio = area / Math.Max(1.0, rect.Width * rect.Height);
+                    bool isSmallFlame =
+                        rect.Width <= 36 &&
+                        rect.Height <= 36 &&
+                        rect.Width * rect.Height >= 64;
+                    bool isVerticalFlame =
+                        rect.Height >= 10 &&
+                        rect.Height >= rect.Width * 1.25 &&
+                        fillRatio >= 0.08 &&
+                        rect.Width * rect.Height <= frameArea * 0.30;
+
+                    if (area >= 20 && (isSmallFlame || isVerticalFlame))
+                    {
+                        flames.Add(
+                            Expand(
+                                rect,
+                                3,
+                                4,
+                                source.Width,
+                                source.Height));
+                    }
+                }
+
+                return flames;
+            }
+        }
+
+        /// <summary>
+        /// 큰 화염 내부의 작은 조각과 화염 바로 아래의 짧은 반사광 후보를 제거한다.
+        /// 실제로 떨어져 있는 독립 화염은 보존한다.
+        /// </summary>
+        private static IList<Rect> SuppressNestedAndReflectionCandidates(
+            IList<Rect> source)
+        {
+            List<Rect> filtered = new List<Rect>();
+
+            for (int candidateIndex = 0; candidateIndex < source.Count; candidateIndex++)
+            {
+                Rect candidate = source[candidateIndex];
+                bool suppressed = false;
+
+                for (int anchorIndex = 0; anchorIndex < source.Count; anchorIndex++)
+                {
+                    if (candidateIndex == anchorIndex)
+                    {
+                        continue;
+                    }
+
+                    Rect anchor = source[anchorIndex];
+                    int intersectionWidth =
+                        Math.Max(0, Math.Min(candidate.Right, anchor.Right) - Math.Max(candidate.Left, anchor.Left));
+                    int intersectionHeight =
+                        Math.Max(0, Math.Min(candidate.Bottom, anchor.Bottom) - Math.Max(candidate.Top, anchor.Top));
+                    double candidateArea = Math.Max(1.0, candidate.Width * candidate.Height);
+                    double coveredRatio = intersectionWidth * intersectionHeight / candidateArea;
+
+                    bool nestedFragment =
+                        anchor.Width * anchor.Height > candidateArea * 1.35 &&
+                        coveredRatio >= 0.60;
+                    bool shortReflectionBelowFlame =
+                        anchor.Height >= anchor.Width * 1.25 &&
+                        anchor.Height >= candidate.Height * 1.8 &&
+                        candidate.Height <= anchor.Height * 0.45 &&
+                        Math.Abs(
+                            candidate.X + candidate.Width / 2.0 -
+                            anchor.X - anchor.Width / 2.0) <=
+                        Math.Max(anchor.Width, candidate.Width) * 0.75 &&
+                        candidate.Top >= anchor.Top + anchor.Height * 0.55 &&
+                        candidate.Top <= anchor.Bottom + Math.Max(30, anchor.Height / 2);
+
+                    if (nestedFragment || shortReflectionBelowFlame)
+                    {
+                        suppressed = true;
+                        break;
+                    }
+                }
+
+                if (!suppressed)
+                {
+                    filtered.Add(candidate);
+                }
+            }
+
+            return filtered;
         }
 
         /// <summary>
@@ -246,8 +520,10 @@ namespace FireCandidateValidator
                 };
             }
 
-            // 2026-08-14: Merge only nearby flame fragments and preserve separated fires.
+            // 2026-08-21: 큰 화염 조각은 대표 BBox에 흡수하고 떨어진 촛불은 분리 유지한다.
             List<Rect> grouped = new List<Rect>(source);
+            grouped.Sort((left, right) =>
+                (right.Width * right.Height).CompareTo(left.Width * left.Height));
             int horizontalGap = Math.Max(6, frameWidth / 120);
             int verticalGap = Math.Max(8, frameHeight / 100);
             bool mergedAny;
@@ -257,7 +533,16 @@ namespace FireCandidateValidator
                 mergedAny = false;
                 for (int first = 0; first < grouped.Count && !mergedAny; first++)
                 {
-                    Rect expanded = Expand(grouped[first], horizontalGap, verticalGap, frameWidth, frameHeight);
+                    int fragmentHorizontalGap =
+                        Math.Max(horizontalGap, (int)Math.Round(grouped[first].Width * 0.45));
+                    int fragmentVerticalGap =
+                        Math.Max(verticalGap, (int)Math.Round(grouped[first].Height * 0.75));
+                    Rect expanded = Expand(
+                        grouped[first],
+                        fragmentHorizontalGap,
+                        fragmentVerticalGap,
+                        frameWidth,
+                        frameHeight);
                     for (int second = first + 1; second < grouped.Count; second++)
                     {
                         if (!Intersects(expanded, grouped[second]))
@@ -389,6 +674,8 @@ namespace FireCandidateValidator
             using (Mat redLow = new Mat())
             using (Mat redHigh = new Mat())
             using (Mat orange = new Mat())
+            using (Mat brightMask = new Mat())
+            using (Mat darkMask = new Mat())
             using (Mat colorMask = new Mat())
             {
                 Cv2.CvtColor(bgr, grayscale, ColorConversionCodes.BGR2GRAY);
@@ -432,29 +719,21 @@ namespace FireCandidateValidator
                 {
                     Cv2.Subtract(grayscale, blurred, localContrast);
                     Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
-                    Cv2.Threshold(grayscale, intensityMask, threshold, 255, ThresholdTypes.Binary);
-                    if (Cv2.CountNonZero(intensityMask) > source.Width * source.Height * 0.45)
-                    {
-                        contrastMask.CopyTo(redLow);
-                    }
-                    else
-                    {
-                        Cv2.BitwiseOr(intensityMask, contrastMask, redLow);
-                    }
+                    Cv2.Threshold(grayscale, brightMask, threshold, 255, ThresholdTypes.Binary);
+                    Cv2.BitwiseOr(brightMask, contrastMask, redLow);
 
                     Cv2.Subtract(blurred, grayscale, localContrast);
                     Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
-                    Cv2.Threshold(grayscale, intensityMask, 255 - threshold, 255, ThresholdTypes.BinaryInv);
-                    if (Cv2.CountNonZero(intensityMask) > source.Width * source.Height * 0.45)
-                    {
-                        contrastMask.CopyTo(redHigh);
-                    }
-                    else
-                    {
-                        Cv2.BitwiseOr(intensityMask, contrastMask, redHigh);
-                    }
+                    Cv2.Threshold(grayscale, darkMask, 255 - threshold, 255, ThresholdTypes.BinaryInv);
+                    Cv2.BitwiseOr(darkMask, contrastMask, redHigh);
 
-                    if (Cv2.CountNonZero(redLow) <= Cv2.CountNonZero(redHigh))
+                    int brightPixelCount = Cv2.CountNonZero(brightMask);
+                    int darkPixelCount = Cv2.CountNonZero(darkMask);
+                    bool useBrightPolarity =
+                        brightPixelCount > 0 &&
+                        (darkPixelCount == 0 || brightPixelCount <= darkPixelCount);
+
+                    if (useBrightPolarity)
                     {
                         redLow.CopyTo(colorMask);
                     }
@@ -464,6 +743,20 @@ namespace FireCandidateValidator
                     }
 
                 }
+                // 이전 검증 결과 영상을 다시 열었을 때 이미 그려진 순수 적색
+                // BBox/문구를 화염으로 재검출하지 않도록 주석 색상만 제외한다.
+                using (Mat annotationMask = new Mat())
+                using (Mat inverseAnnotationMask = new Mat())
+                {
+                    Cv2.InRange(
+                        bgr,
+                        new Scalar(0, 0, 215),
+                        new Scalar(45, 45, 255),
+                        annotationMask);
+                    Cv2.BitwiseNot(annotationMask, inverseAnnotationMask);
+                    Cv2.BitwiseAnd(colorMask, inverseAnnotationMask, colorMask);
+                }
+
                 return colorMask.Clone();
             }
 

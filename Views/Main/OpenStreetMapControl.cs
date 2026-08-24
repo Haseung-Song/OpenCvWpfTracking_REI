@@ -382,18 +382,31 @@ namespace OpenCvWpfTracking
                 markerWorldY -
                 viewTopWorld;
 
+            // [2026-08-24] 지도 축척에 맞춰 회사 Marker도 함께 확대/축소한다.
+            double markerScale =
+                Math.Max(
+                    0.45,
+                    Math.Min(
+                        1.35,
+                        1.0 + ((_zoom - DefaultZoom) * 0.10)));
+
+            _companyMarker.RenderTransformOrigin =
+                new System.Windows.Point(0, 0);
+            _companyMarker.RenderTransform =
+                new ScaleTransform(markerScale, markerScale);
+
             // Marker Grid 170x65:
             // Crosshair 44x44 is horizontally centered,
             // so its center is X=85, Y=22 relative to the Grid.
             Canvas.SetLeft(
                 _companyMarker,
                 markerScreenX -
-                85.0);
+                (85.0 * markerScale));
 
             Canvas.SetTop(
                 _companyMarker,
                 markerScreenY -
-                22.0);
+                (22.0 * markerScale));
         }
 
         private void OpenStreetMapControl_Loaded(

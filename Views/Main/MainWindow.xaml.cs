@@ -13,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Threading;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Serilog;
@@ -637,6 +638,43 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
+        /// 2026-08-24: 상위 이벤트 알림 탭 선택 시 최신 AI/FIRE 이벤트 하위 탭을 즉시 연다.
+        /// 내부 TabControl의 SelectionChanged 버블링은 처리하지 않는다.
+        /// </summary>
+        private void RightPanelTabControl_SelectionChanged(
+            object sender,
+            SelectionChangedEventArgs e)
+        {
+            TabControl tabControl =
+                sender as TabControl;
+
+            // 2026-08-24: OriginalSource는 클릭한 TabItem이 될 수 있으므로
+            // 실제 SelectionChanged 발생원(Source)으로 상위 TabControl을 판별한다.
+            if (!ReferenceEquals(e.Source, sender) ||
+                tabControl == null ||
+                tabControl.SelectedIndex != 2)
+            {
+                return;
+            }
+
+            Dispatcher.BeginInvoke(
+                new Action(() => EventAlertPanel?.SelectLatestEventTab()),
+                DispatcherPriority.DataBind);
+        }
+
+        /// <summary>
+        /// 2026-08-24: 이미 선택된 이벤트 알림 상위 탭을 다시 눌러도 최신 이벤트 종류를 연다.
+        /// </summary>
+        private void EventAlertTabItem_PreviewMouseLeftButtonDown(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            Dispatcher.BeginInvoke(
+                new Action(() => EventAlertPanel?.SelectLatestEventTab()),
+                DispatcherPriority.DataBind);
+        }
+
+        /// <summary>
         /// 프로그램 창 최대화 / 이전 크기 전환.
         /// </summary>
         private void MaximizeRestoreWindowButton_Click(
@@ -717,8 +755,13 @@ namespace OpenCvWpfTracking
                     "EO PANORAMA / UI",
                     "Operator requested capture cancellation");
                 _panoramaCaptureCts.Cancel();
+                vm.SetPanoramaCancellationState(
+                    true,
+                    false);
                 PanoramaFileNameText.Text =
-                    "360° PANORAMA / 촬영 취소 요청...";
+                    "360° PANORAMA / 촬영 취소 중...";
+                PanoramaLoadingText.Text =
+                    "촬영 취소 중...";
 
                 return;
             }
@@ -769,6 +812,11 @@ namespace OpenCvWpfTracking
 
             _panoramaCaptureCts =
                 new CancellationTokenSource();
+            vm.SetPanoramaCancellationState(
+                false,
+                false);
+            vm.SetPanoramaCompletionState(
+                false);
 
             // 2026-08-18: 촬영부터 정합/블렌딩/저장 완료까지 제어 잠금 유지.
             vm.SetPanoramaProcessingRunning(
@@ -779,11 +827,22 @@ namespace OpenCvWpfTracking
 
             LoadPanoramaImageButton.IsEnabled =
                 false;
+            PanoramaLoadingText.Text = "촬영 중...";
+            PanoramaLoadingOverlay.Visibility = Visibility.Visible;
 
             Progress<string> progress =
                 new Progress<string>(message =>
                 {
                     PanoramaFileNameText.Text = message;
+
+                    if (message.Contains("시작 위치 복귀"))
+                    {
+                        PanoramaLoadingText.Text =
+                            _panoramaCaptureCts != null &&
+                            _panoramaCaptureCts.IsCancellationRequested
+                                ? "촬영 취소 중... / 시작 위치 복귀 중..."
+                                : "시작 위치 복귀 중...";
+                    }
                 });
 
             try
@@ -800,6 +859,8 @@ namespace OpenCvWpfTracking
 
                 PanoramaFileNameText.Text =
                     "360° PANORAMA / 특징점 정합 및 블렌딩 중...";
+                PanoramaLoadingText.Text =
+                    "특징점 정합 및 블렌딩 중...";
 
                 NewPanoramaButton.Content =
                     "합성 중...";
@@ -838,6 +899,20 @@ namespace OpenCvWpfTracking
                     "Panorama completed and displayed / OUTPUT=" + outputPath +
                     " / SIZE=" + panorama.PixelWidth + "x" + panorama.PixelHeight);
 
+                // 2026-08-21: 완료 알림 확인 전까지 간결한 완료 상태를 함께 표시한다.
+                PanoramaLoadingText.Text =
+                    "파노라마 생성 완료";
+
+                // 2026-08-24: 정상 완료 알림 전 우측 상단 작업 상태도 완료 문구로 갱신한다.
+                vm.SetPanoramaCompletionState(
+                    true);
+                await Dispatcher.Yield(
+                    DispatcherPriority.Render);
+
+                ConsoleLogHelper.State(
+                    "EO PANORAMA / UI",
+                    "Completion status displayed before confirmation dialog");
+
                 MessageBox.Show(
                     this,
                     "360° EO 파노라마 생성이 완료되었습니다.\n\n" +
@@ -845,14 +920,33 @@ namespace OpenCvWpfTracking
                     "파노라마 완료",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
+
+                PanoramaLoadingOverlay.Visibility =
+                    Visibility.Collapsed;
             }
             catch (OperationCanceledException)
             {
+                vm.SetPanoramaCancellationState(
+                    true,
+                    true);
                 ConsoleLogHelper.Warning(
                     "EO PANORAMA / UI",
                     "Panorama operation canceled");
                 PanoramaFileNameText.Text =
-                    "ROOFTOP PANORAMA / 촬영 취소됨";
+                    "ROOFTOP PANORAMA / 촬영 취소 완료";
+                PanoramaLoadingText.Text =
+                    "촬영 취소 완료 / 시작 위치 복귀 완료";
+
+                ConsoleLogHelper.State(
+                    "EO PANORAMA / UI",
+                    "Capture cancellation completed and start position restored");
+
+                MessageBox.Show(
+                    this,
+                    "파노라마 촬영을 취소했습니다.\n시작 위치로 복귀했습니다.",
+                    "촬영 취소",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -873,6 +967,11 @@ namespace OpenCvWpfTracking
             }
             finally
             {
+                vm.SetPanoramaCancellationState(
+                    false,
+                    false);
+                vm.SetPanoramaCompletionState(
+                    false);
                 vm.SetPanoramaProcessingRunning(
                     false);
 
@@ -887,6 +986,7 @@ namespace OpenCvWpfTracking
 
                 LoadPanoramaImageButton.IsEnabled =
                     true;
+                PanoramaLoadingOverlay.Visibility = Visibility.Collapsed;
 
                 ConsoleLogHelper.Info(
                     "EO PANORAMA / UI",
@@ -1844,6 +1944,25 @@ namespace OpenCvWpfTracking
             }
 
             vm?.StopContinuousMove();
+        }
+
+        /// <summary>
+        /// 운용 제어 하위 탭을 선택할 때 이전 스크롤 위치를 남기지 않고
+        /// 첫 제목과 버튼이 완전히 보이는 위치로 이동한다.
+        /// </summary>
+        private void OperationScrollViewer_IsVisibleChanged(
+            object sender,
+            DependencyPropertyChangedEventArgs e)
+        {
+            if (!(sender is ScrollViewer scrollViewer) ||
+                !(e.NewValue is bool isVisible) ||
+                !isVisible)
+            {
+                return;
+            }
+
+            Dispatcher.BeginInvoke(
+                new Action(scrollViewer.ScrollToTop));
         }
         #endregion
     }

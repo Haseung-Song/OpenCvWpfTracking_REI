@@ -455,6 +455,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(
                     nameof(IsControlInputLocked));
                 OnPropertyChanged(
+                    nameof(IsEventAlertControlEnabled));
+                OnPropertyChanged(
+                    nameof(IsOperationLockOverlayVisible));
+                OnPropertyChanged(
                     nameof(ControlLockTitle));
                 OnPropertyChanged(
                     nameof(ControlLockMessage));
@@ -472,10 +476,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 실제 장비 명령을 발생시키는 UI 활성 여부.
-        /// HOME / ZERO 및 AUTO SCAN 중에는 키보드와 함께 잠근다.
+        /// HOME / ZERO, 파노라마 처리 및 AUTO SCAN 중에는 장비 명령을 잠근다.
+        /// 2026-08-24: AUTO SCAN 중 PRESET L / PRESET W 탭 전환과 상태 확인만 허용한다.
         /// </summary>
         public bool IsOperationCommandEnabled =>
-            !IsControlInputLocked;
+            !IsHomePositionMoving &&
+            !IsPresetScanControlLocked &&
+            !IsPanoramaCaptureRunning &&
+            !IsPanoramaProcessingRunning;
+
+        /// <summary>
+        /// 2026-08-24: 운용 제어 하위 탭 자체의 이동 가능 여부.
+        /// AUTO SCAN 중에는 PRESET L / PRESET W 화면 확인과 스크롤을 허용하지만,
+        /// 파노라마 촬영·정합·저장 및 HOME / ZERO 중에는 탭 이동까지 차단한다.
+        /// </summary>
+        public bool IsOperationTabNavigationEnabled =>
+            !IsHomePositionMoving &&
+            !IsPanoramaCaptureRunning &&
+            !IsPanoramaProcessingRunning;
+
+        /// <summary>
+        /// 2026-08-21: HOME, AUTO SCAN, 파노라마 작업 중 이벤트 목록 변경 버튼을 잠근다.
+        /// </summary>
+        public bool IsEventAlertControlEnabled =>
+            !IsHomePositionMoving &&
+            !IsPresetScanControlLocked &&
+            !IsPanoramaCaptureRunning &&
+            !IsPanoramaProcessingRunning;
+
+        /// <summary>
+        /// 2026-08-21: AUTO SCAN은 PRESET 조작을 허용하므로 우측 제어 차단 Overlay에서 제외한다.
+        /// </summary>
+        public bool IsOperationLockOverlayVisible =>
+            IsHomePositionMoving ||
+            IsPanoramaCaptureRunning ||
+            IsPanoramaProcessingRunning;
 
         /// <summary>
         /// 우측 상위 탭 선택 상태.
@@ -499,13 +534,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(
                     nameof(IsPanTiltSpeedControlEnabled));
+
+                // 2026-08-24: 이벤트 알림 상위 탭을 열 때 가장 최근 이벤트 종류를 다시 적용한다.
+                // 사용자가 이전에 다른 하위 탭을 보았더라도 AI/FIRE 최신 발생 탭이 즉시 표시된다.
+                if (value == 2)
+                {
+                    OnPropertyChanged(
+                        nameof(SelectedEventAlertTabIndex));
+                }
             }
 
         }
 
         /// <summary>
         /// 운용 제어 하위 탭 선택 상태.
-        /// 0번 PTZF 탭에서만 수동 PAN / TILT SPEED를 사용할 수 있다.
+        /// 2026-08-21: 상단 PAN / TILT SPEED는 운용 제어의 모든 하위 탭에서 사용한다.
         /// </summary>
         public int SelectedOperationControlTabIndex
         {
@@ -535,13 +578,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsPanTiltSpeedControlEnabled =>
             IsOperationCommandEnabled &&
-            SelectedRightPanelTabIndex == 1 &&
-            SelectedOperationControlTabIndex == 0;
+            SelectedRightPanelTabIndex == 1;
 
         public bool IsPresetScanControlLocked =>
             IsLaPresetScanRunning ||
             IsPresetScanRunning;
 
+        /// <summary>
+        /// 2026-08-24: HOME, PAN/TILT ZERO, AUTO SCAN 및 파노라마 작업 중
+        /// 방향키, 렌즈키와 R/T 영상 전환을 포함한 모든 키보드 장비 제어를 차단한다.
+        /// 화면의 작업 중지 버튼은 별도의 마우스 명령으로 계속 사용할 수 있다.
+        /// </summary>
         public bool IsControlInputLocked =>
             IsHomePositionMoving ||
             IsPresetScanControlLocked ||
@@ -549,14 +596,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IsPanoramaProcessingRunning;
 
         public string ControlLockTitle =>
-            IsPanoramaProcessingRunning
+            IsPanoramaCompleted
+                ? "360° PANORAMA COMPLETED"
+                : IsPanoramaCancellationCompleted
+                ? "360° PANORAMA CANCELED"
+                : IsPanoramaCancellationRequested
+                ? "360° PANORAMA CANCELING"
+                : IsPanoramaProcessingRunning
                 ? "360° PANORAMA OPERATION"
                 : IsPresetScanControlLocked
                 ? "AUTO SCAN OPERATION"
                 : HomeZeroLockTitle;
 
         public string ControlLockMessage =>
-            IsPanoramaProcessingRunning
+            IsPanoramaCompleted
+                ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED"
+                : IsPanoramaCancellationCompleted
+                ? "CAPTURE CANCELED / START POSITION RESTORED"
+                : IsPanoramaCancellationRequested
+                ? "CANCELING / RETURNING TO START POSITION..."
+                : IsPanoramaProcessingRunning
                 ? IsPanoramaCaptureRunning
                     ? "EO CAMERA AUTO PAN / CAPTURING..."
                     : "FEATURE MATCHING / BLENDING / SAVING..."
@@ -1109,6 +1168,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsControlInputLocked));
                 OnPropertyChanged(nameof(IsMainControlEnabled));
                 OnPropertyChanged(nameof(IsOperationCommandEnabled));
+                OnPropertyChanged(nameof(IsEventAlertControlEnabled));
+                OnPropertyChanged(nameof(IsOperationLockOverlayVisible));
                 OnPropertyChanged(nameof(IsPanTiltSpeedControlEnabled));
                 OnPropertyChanged(nameof(ControlLockTitle));
                 OnPropertyChanged(nameof(ControlLockMessage));
@@ -1375,6 +1436,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsControlInputLocked));
                 OnPropertyChanged(nameof(IsMainControlEnabled));
                 OnPropertyChanged(nameof(IsOperationCommandEnabled));
+                OnPropertyChanged(nameof(IsEventAlertControlEnabled));
+                OnPropertyChanged(nameof(IsOperationLockOverlayVisible));
                 OnPropertyChanged(nameof(IsPanTiltSpeedControlEnabled));
                 OnPropertyChanged(nameof(ControlLockTitle));
                 OnPropertyChanged(nameof(ControlLockMessage));
@@ -2013,6 +2076,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _aiPowerStatusText = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(AiAlertStatusText));
                 }
 
             }

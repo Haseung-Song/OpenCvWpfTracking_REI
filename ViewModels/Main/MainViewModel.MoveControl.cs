@@ -384,7 +384,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "PAN ZERO";
 
             HomeZeroLockMessage =
-                "SETTING PAN ORIGIN...";
+                "PAN MOTOR STABILIZING...";
 
             SetHomePositionMovingState(
                 true);
@@ -392,7 +392,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             try
             {
                 HomeZeroStatusText =
-                    "PAN ZERO SENDING...";
+                    "PAN ZERO / MOTOR STABILIZING...";
 
                 string mcbIpAddress =
                     GetMcbMaintenanceIpAddress();
@@ -418,7 +418,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 HomeZeroStatusText =
                     result
-                        ? "PAN ZERO COMPLETE"
+                        ? "PAN ZERO COMPLETE / MOTOR READY"
                         : "PAN ZERO SEND FAILED";
             }
             catch (Exception ex)

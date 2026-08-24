@@ -275,7 +275,7 @@
                     <ControlTemplate TargetType="TabItem">
 
                         <Border x:Name="TabBorder"
-                                Width="78"
+                            Width="84.5"
                                 Height="32"
                                 Background="#4F5860"
                                 BorderBrush="#95A5B0"
@@ -404,7 +404,7 @@
         </Style>
 
         <!--
-            상단 통신 설정 / 운용 제어 전용 TabControl Template
+            상단 통신 설정 / 운용 제어 / 화재 알림 전용 TabControl Template
 
             기본 WPF TabControl은 Header 영역에 TabPanel을 사용하므로
             ItemsPanel을 UniformGrid로 지정해도 Header가 내용 크기만큼만 표시될 수 있다.
@@ -430,10 +430,10 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
-                            <!-- 상단 탭 Header를 전체 너비 기준 정확히 50:50 배치 -->
+                            <!-- 상단 탭 Header를 전체 너비 기준 동일 비율로 배치 -->
                             <UniformGrid Grid.Row="0"
                                          Rows="1"
-                                         Columns="2"
+                                         Columns="3"
                                          IsItemsHost="True"
                                          HorizontalAlignment="Stretch"
                                          KeyboardNavigation.TabIndex="1"/>
@@ -447,6 +447,7 @@
 
                                 <ContentPresenter x:Name="PART_SelectedContentHost"
                                                   ContentSource="SelectedContent"
+                                                  Margin="0,0,0,6"
                                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                                   SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
@@ -801,7 +802,7 @@
                      StretchDirection="Both"
                      HorizontalAlignment="Stretch"
                      VerticalAlignment="Stretch">
-                <Grid Width="1900"
+                <Grid Width="1860"
                       Height="1060"
                       Margin="10"
                       Background="#2C313A">
@@ -833,13 +834,13 @@
 
                         <Grid.ColumnDefinitions>
                             <!-- [EO] 영상 영역 -->
-                            <ColumnDefinition Width="1000"/>
+                            <ColumnDefinition Width="940"/>
 
                             <!-- [IR] 영상 및 보조 로고 영역 -->
                             <ColumnDefinition Width="440"/>
 
                             <!-- 장비 제어 패널 -->
-                            <ColumnDefinition Width="450"/>
+                            <ColumnDefinition Width="480"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- [좌측] 큰 영상 -->
@@ -979,7 +980,7 @@
                                 <TextBlock Text="{Binding EoStatusText}"
                                            Panel.ZIndex="100"
                                            Margin="0,0,8,2"
-                                           Foreground="#7FB3E6"
+                                           Foreground="#5EE7F7"
                                            FontSize="15.5"
                                            FontWeight="Bold"
                                            HorizontalAlignment="Right"
@@ -1136,7 +1137,7 @@
                                     <TextBlock Text="{Binding IrStatusText}"
                                                Panel.ZIndex="100"
                                                Margin="0,0,8,2"
-                                               Foreground="#C4B5FD"
+                                               Foreground="#FFB347"
                                                FontSize="15.5"
                                                FontWeight="Bold"
                                                HorizontalAlignment="Right"
@@ -1398,6 +1399,29 @@
                                            Foreground="#7FB3E6"
                                            FontSize="16"
                                            FontWeight="Bold"/>
+
+                                <Border x:Name="PanoramaLoadingOverlay"
+                                        Visibility="Collapsed"
+                                        Panel.ZIndex="20"
+                                        Background="Transparent"
+                                        IsHitTestVisible="False">
+                                    <Border Width="410" MinHeight="115"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Background="#E83A424A" BorderBrush="#7FB3E6"
+                                            BorderThickness="2" CornerRadius="8" Padding="22">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Name="PanoramaLoadingText"
+                                                       Text="촬영 중..."
+                                                       Foreground="White" FontSize="16" FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       TextWrapping="Wrap"/>
+                                            <ProgressBar Height="10" Margin="0,18,0,0"
+                                                         IsIndeterminate="True"
+                                                         Foreground="#4DB7E5" Background="#20272D"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Border>
                             </Grid>
                         </Border>
 
@@ -1495,7 +1519,8 @@
                                     </Grid>
                                 </Border>
 
-                                <TabControl Grid.Row="2"
+                                <TabControl x:Name="RightPanelTabControl"
+                                            Grid.Row="2"
                                             Background="#5F666D"
                                             BorderBrush="#95A5B0"
                                             BorderThickness="1"
@@ -1504,6 +1529,7 @@
                                             HorizontalContentAlignment="Stretch"
                                             VerticalContentAlignment="Stretch"
                                             SelectedIndex="{Binding SelectedRightPanelTabIndex, Mode=TwoWay}"
+                                            SelectionChanged="RightPanelTabControl_SelectionChanged"
                                             IsEnabled="{Binding IsMainControlEnabled}"
                                             Style="{StaticResource TopRightPanelTabControlStyle}"
                                             ItemContainerStyle="{StaticResource TopRightPanelTabItemStyle}">
@@ -1521,7 +1547,7 @@
 
                                             <!-- Control Agent 및 EO / IR RTSP 통합 설정 카드 -->
                                             <Border Grid.Row="0"
-                                                    IsEnabled="{Binding IsOperationCommandEnabled}"
+                                                    IsEnabled="{Binding IsEventAlertControlEnabled}"
                                                     Background="#5F666D"
                                                     BorderBrush="#95A5B0"
                                                     BorderThickness="1.5"
@@ -1559,7 +1585,8 @@
                                                             <!-- Control Agent 및 EO / IR RTSP 설정 하위 탭 -->
                                                             <TabItem Header="CONTROL / RTSP">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                              HorizontalScrollBarVisibility="Disabled">
+                                                                              HorizontalScrollBarVisibility="Disabled"
+                                                                              Padding="0,0,8,18">
                                                                     <StackPanel Margin="7">
 
                                                                         <!-- [1] Control Agent 제어 TCP 설정 -->
@@ -1832,8 +1859,9 @@
                                                             <!-- AI Detector 연결 및 분석 설정 하위 탭 -->
                                                             <TabItem Header="AI / FIRE DETECTOR">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                              HorizontalScrollBarVisibility="Disabled">
-                                                                    <StackPanel Margin="7">
+                                                                              HorizontalScrollBarVisibility="Disabled"
+                                                                              Padding="0,0,8,24">
+                                                                    <StackPanel Margin="7,7,7,18">
 
                                                                         <!--
                                                                             [3] AI Detector 통합 설정
@@ -2288,7 +2316,8 @@
                                                     Padding="9"
                                                     MaxHeight="250">
                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                              HorizontalScrollBarVisibility="Disabled">
+                                                              HorizontalScrollBarVisibility="Disabled"
+                                                              Padding="0,0,8,18">
                                                     <StackPanel>
                                                         <!-- [CURRENT STATUS] 제목 -->
                                                         <TextBlock Text="CURRENT STATUS"
@@ -2587,12 +2616,12 @@
                                                 LENS   : EO / IR 연속 Zoom 및 Focus 수동 제어
                                             SYNC   : Web Agent 기준 EO / IR Zoom / Focus 단계 동기화 -->
                                             <TabControl Grid.Row="1"
-                                                        IsEnabled="{Binding IsOperationCommandEnabled}"
                                                         Margin="0,8,0,0"
                                                         Background="#5F666D"
                                                         BorderBrush="#95A5B0"
                                                         BorderThickness="1"
                                                         Padding="3"
+                                                        IsEnabled="{Binding IsOperationTabNavigationEnabled}"
                                                         HorizontalContentAlignment="Stretch"
                                                         SelectedIndex="{Binding SelectedOperationControlTabIndex, Mode=TwoWay}"
                                                         ItemContainerStyle="{StaticResource RightPanelTabItemStyle}">
@@ -2601,8 +2630,12 @@
                                                 <TabItem Header="PTZF"
                                                          IsEnabled="{Binding IsOperationCommandEnabled}">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                  HorizontalScrollBarVisibility="Disabled">
-                                                        <StackPanel Margin="4,2,2,5">
+                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                  CanContentScroll="False"
+                                                                  PanningMode="VerticalOnly"
+                                                                  IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
+                                                                  Padding="0,12,10,12">
+                                                        <StackPanel Margin="4,2,2,24">
                                                             <!-- [EO / IR] 영상 Overlay 표시 제어 -->
                                                             <Border Margin="0,5,5,0"
                                                                     Background="#5F666D"
@@ -3161,8 +3194,12 @@
                                                 <TabItem x:Name="PresetLTab"
                                                          Header="PRESET L&#x0a;(LA TEST)">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                  HorizontalScrollBarVisibility="Disabled">
-                                                        <StackPanel Margin="4,2,2,5">
+                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                  CanContentScroll="False"
+                                                                  PanningMode="VerticalOnly"
+                                                                  IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
+                                                                  Padding="0,12,10,12">
+                                                        <StackPanel Margin="4,2,2,24">
 
                                                             <!-- 프리셋 추가 / 갱신 / 제거 -->
                                                             <Border Margin="0,5,5,0"
@@ -3476,8 +3513,12 @@
 
                                                 <TabItem Header="PRESET W&#x0a;(DEVICE)">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                  HorizontalScrollBarVisibility="Disabled">
-                                                        <StackPanel Margin="4,2,2,5">
+                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                  CanContentScroll="False"
+                                                                  PanningMode="VerticalOnly"
+                                                                  IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
+                                                                  Padding="0,12,10,12">
+                                                        <StackPanel Margin="4,2,2,24">
 
                                                             <!-- 프리셋 추가 / 갱신 / 제거 -->
                                                             <Border Margin="0,5,5,0"
@@ -3793,8 +3834,12 @@
                                                 <TabItem Header="LENS"
                                                          IsEnabled="{Binding IsOperationCommandEnabled}">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                  HorizontalScrollBarVisibility="Disabled">
-                                                        <StackPanel Margin="5,0,0,5">
+                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                  CanContentScroll="False"
+                                                                  PanningMode="VerticalOnly"
+                                                                  IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
+                                                                  Padding="0,12,10,12">
+                                                        <StackPanel Margin="5,0,0,24">
                                                             <!-- [EO] [ZOOM] / [FOCUS] 제어 -->
                                                             <Border Grid.Row="2"
                                                                     Margin="0,10,5,0"
@@ -4015,8 +4060,12 @@
                                                 <TabItem Header="SYNC"
                                                          IsEnabled="{Binding IsOperationCommandEnabled}">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                  HorizontalScrollBarVisibility="Disabled">
-                                                        <StackPanel Margin="4,4,2,6">
+                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                  CanContentScroll="False"
+                                                                  PanningMode="VerticalOnly"
+                                                                  IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
+                                                                  Padding="0,12,10,12">
+                                                        <StackPanel Margin="4,4,2,24">
                                                             <!-- 환경장비 기준 EO / IR Zoom 10단계 동기화 -->
                                                             <Border Background="#2F363D"
                                                                     BorderBrush="#8A9BA8"
@@ -4164,6 +4213,19 @@
                                             </TabControl>
                                         </Grid>
                                     </TabItem>
+                                    <!-- 화재 탐지 상태와 이벤트 이력을 실시간으로 확인하는 탭 -->
+                                    <TabItem>
+                                        <TabItem.Header>
+                                            <TextBlock Text="{Binding EventAlertHeaderText}"
+                                                       Foreground="{Binding FireAlertHeaderBrush}"
+                                                       FontWeight="Bold"/>
+                                        </TabItem.Header>
+
+                                        <Grid>
+                                            <local:EventAlertControl x:Name="EventAlertPanel"/>
+
+                                        </Grid>
+                                    </TabItem>
                                 </TabControl>
 
                                 <!--
@@ -4195,7 +4257,14 @@
                                                     Value="Collapsed"/>
 
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsControlInputLocked}"
+                                                <DataTrigger Binding="{Binding IsOperationLockOverlayVisible}"
+                                                             Value="True">
+                                                    <Setter Property="Visibility"
+                                                            Value="Visible"/>
+                                                </DataTrigger>
+
+                                                <!-- 2026-08-24: AUTO SCAN 상태/STOP은 기존 상단 장비 제어 위치에 표시한다. -->
+                                                <DataTrigger Binding="{Binding IsPresetScanControlLocked}"
                                                              Value="True">
                                                     <Setter Property="Visibility"
                                                             Value="Visible"/>

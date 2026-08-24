@@ -78,6 +78,18 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         }
 
         /// <summary>
+        /// 환경장비 EO Zoom Position 이동
+        /// </summary>
+        public bool SetEoZoomPosition(
+            short position)
+        {
+            return _controlCommandService
+                .EoZoomGoPosition(
+                    ClampPosition(
+                        position));
+        }
+
+        /// <summary>
         /// 환경장비 IR Zoom Position 이동
         /// </summary>
         public bool SetIrZoomPosition(

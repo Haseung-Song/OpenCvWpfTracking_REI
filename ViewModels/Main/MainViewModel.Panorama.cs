@@ -12,6 +12,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private bool _isPanoramaCaptureRunning;
         private bool _isPanoramaProcessingRunning;
+        private bool _isPanoramaCancellationRequested;
+        private bool _isPanoramaCancellationCompleted;
+        private bool _isPanoramaCompleted;
 
         private const double PanoramaCaptureStepDegrees = 10.0;
         private const int PanoramaCaptureFrameCount = 36;
@@ -40,6 +43,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlInputLocked));
                 OnPropertyChanged(nameof(IsOperationCommandEnabled));
+                OnPropertyChanged(nameof(IsOperationTabNavigationEnabled));
+                OnPropertyChanged(nameof(IsEventAlertControlEnabled));
+                OnPropertyChanged(nameof(IsOperationLockOverlayVisible));
                 OnPropertyChanged(nameof(IsPanTiltSpeedControlEnabled));
                 OnPropertyChanged(nameof(ControlLockTitle));
                 OnPropertyChanged(nameof(ControlLockMessage));
@@ -53,6 +59,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsPanoramaProcessingRunning =>
             _isPanoramaProcessingRunning;
+
+        public bool IsPanoramaCancellationRequested =>
+            _isPanoramaCancellationRequested;
+
+        public bool IsPanoramaCancellationCompleted =>
+            _isPanoramaCancellationCompleted;
+
+        public bool IsPanoramaCompleted =>
+            _isPanoramaCompleted;
+
+        /// <summary>
+        /// 2026-08-24: 파노라마 취소 요청 및 시작 위치 복귀 완료 상태를
+        /// 우측 상단 작업 상태 표시와 동기화한다.
+        /// </summary>
+        public void SetPanoramaCancellationState(
+            bool isRequested,
+            bool isCompleted)
+        {
+            _isPanoramaCancellationRequested = isRequested;
+            _isPanoramaCancellationCompleted = isCompleted;
+            OnPropertyChanged(nameof(IsPanoramaCancellationRequested));
+            OnPropertyChanged(nameof(IsPanoramaCancellationCompleted));
+            OnPropertyChanged(nameof(ControlLockTitle));
+            OnPropertyChanged(nameof(ControlLockMessage));
+        }
+
+        /// <summary>
+        /// 2026-08-24: 정상 생성 완료 상태를 우측 상단 작업 표시와 동기화한다.
+        /// 완료 알림을 확인할 때까지 촬영 중 문구가 남지 않도록 별도 상태로 관리한다.
+        /// </summary>
+        public void SetPanoramaCompletionState(
+            bool isCompleted)
+        {
+            _isPanoramaCompleted = isCompleted;
+            OnPropertyChanged(nameof(IsPanoramaCompleted));
+            OnPropertyChanged(nameof(ControlLockTitle));
+            OnPropertyChanged(nameof(ControlLockMessage));
+        }
 
         /// <summary>
         /// SetPanoramaProcessingRunning 설정 함수.
@@ -69,6 +113,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(IsPanoramaProcessingRunning));
             OnPropertyChanged(nameof(IsControlInputLocked));
             OnPropertyChanged(nameof(IsOperationCommandEnabled));
+            OnPropertyChanged(nameof(IsOperationTabNavigationEnabled));
+            OnPropertyChanged(nameof(IsEventAlertControlEnabled));
+            OnPropertyChanged(nameof(IsOperationLockOverlayVisible));
             OnPropertyChanged(nameof(IsPanTiltSpeedControlEnabled));
             OnPropertyChanged(nameof(ControlLockTitle));
             OnPropertyChanged(nameof(ControlLockMessage));
@@ -374,9 +421,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 catch (Exception ex)
                 {
-                    ConsoleLogHelper.Warning(
-                        "EO PANORAMA",
-                        "Start position restore failed / " + ex.Message);
+                    ConsoleLogHelper.Error(
+                        "EO PANORAMA / RESTORE",
+                        "Start position restore failed",
+                        ex);
+
+                    throw new InvalidOperationException(
+                        "파노라마 촬영 시작 위치로 복귀하지 못했습니다.",
+                        ex);
                 }
 
                 IsPanoramaCaptureRunning =
