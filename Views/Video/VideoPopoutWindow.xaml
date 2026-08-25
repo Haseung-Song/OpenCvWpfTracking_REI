@@ -10,6 +10,7 @@
         WindowStartupLocation="CenterOwner"
         Focusable="True"
         Loaded="Window_Loaded"
+        SizeChanged="Window_SizeChanged"
         Deactivated="Window_Deactivated"
         Closing="Window_Closing"
         PreviewKeyDown="Window_PreviewKeyDown"
@@ -30,11 +31,10 @@
             창과 영상의 종횡비가 다를 경우 중앙을 기준으로 일부 영역만
             잘라내어 상하좌우의 검은 여백이 표시되지 않도록 한다.
         -->
-        <Image x:Name="CameraImage"
-               Stretch="UniformToFill"
-               RenderOptions.BitmapScalingMode="LowQuality"
-               SnapsToDevicePixels="True"
-               UseLayoutRounding="True"/>
+        <!-- 2026-08-25: 메인 영상의 렌더링 결과를 VisualBrush로 실시간 복제한다. -->
+        <Rectangle x:Name="CameraImage"
+                   SnapsToDevicePixels="True"
+                   UseLayoutRounding="True"/>
 
         <!-- 중앙 십자선 -->
         <Grid Width="72"
@@ -86,9 +86,12 @@
         </Grid>
 
         <!-- 카메라 및 단축키 안내 -->
+        <Grid Margin="14"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top">
+
         <Border x:Name="CameraInfoBorder"
-                Margin="14"
-                Padding="10,7"
+                Padding="42,7,10,7"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Background="#B21D232A"
@@ -218,6 +221,27 @@
             </StackPanel>
 
         </Border>
+
+        <!-- 2026-08-25: 단축키 안내 패널 왼쪽 상단 접기/펼치기 -->
+        <Button x:Name="CameraInfoToggleButton"
+                Width="28"
+                Height="28"
+                Margin="4,4,0,0"
+                Padding="0"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Panel.ZIndex="20"
+                Content="▲"
+                FontSize="15"
+                FontWeight="Bold"
+                Foreground="White"
+                Background="#B21D232A"
+                BorderBrush="#5EE7F7"
+                BorderThickness="1"
+                ToolTip="단축키 안내 숨기기"
+                Click="CameraInfoToggleButton_Click"/>
+
+        </Grid>
 
         <!-- 현재 카메라 연결 및 영상 상태 -->
         <TextBlock x:Name="CameraStatusText"

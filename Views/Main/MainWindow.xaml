@@ -856,8 +856,10 @@
                                 ToolTip="더블클릭: EO 영상 분리 창 열기">
                             <Grid ClipToBounds="True">
 
-                                <!-- [EO] 영상 -->
-                                <Image Source="{Binding EOCameraImage}"
+                                <!-- [EO] 영상
+                                     2026-08-25: 팝업이 동일 렌더링 결과를 복제할 수 있도록 이름을 지정한다. -->
+                                <Image x:Name="EoCameraImageView"
+                                       Source="{Binding EOCameraImage}"
                                        Stretch="UniformToFill"
                                        RenderOptions.BitmapScalingMode="LowQuality"
                                        SnapsToDevicePixels="True"
@@ -1014,8 +1016,10 @@
 
                                 <Grid ClipToBounds="True">
 
-                                    <!-- [IR] 영상 -->
-                                    <Image Source="{Binding IRCameraImage}"
+                                    <!-- [IR] 영상
+                                         2026-08-25: 팝업이 동일 렌더링 결과를 복제할 수 있도록 이름을 지정한다. -->
+                                    <Image x:Name="IrCameraImageView"
+                                           Source="{Binding IRCameraImage}"
                                            Stretch="UniformToFill"/>
 
                                     <!-- [AI] [Bounding Box] [Overlay] -->

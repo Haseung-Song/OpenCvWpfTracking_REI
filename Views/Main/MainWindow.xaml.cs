@@ -330,7 +330,15 @@ namespace OpenCvWpfTracking
             VideoPopoutWindow popoutWindow =
                 new VideoPopoutWindow(
                     vm,
-                    cameraType)
+                    cameraType,
+                    GetViewportAspectRatio(
+                        EoCameraImageView,
+                        940.0 / 650.0),
+                    GetViewportAspectRatio(
+                        IrCameraImageView,
+                        440.0 / 365.0),
+                    EoCameraImageView,
+                    IrCameraImageView)
                 {
                     Owner = this
                 };
@@ -365,6 +373,40 @@ namespace OpenCvWpfTracking
 
             popoutWindow.Show();
             popoutWindow.Activate();
+        }
+
+        /// <summary>
+        /// 현재 메인 영상 영역의 실제 종횡비를 분리 창에 전달한다.
+        /// 분리 창은 이 비율을 유지하여 영상 중앙 크롭과 십자선 기준점을
+        /// 메인 화면과 동일하게 표시한다.
+        /// </summary>
+        private static double GetViewportAspectRatio(
+            FrameworkElement viewport,
+            double fallbackAspectRatio)
+        {
+            Border viewportBorder =
+                viewport as Border;
+
+            FrameworkElement videoLayer =
+                viewportBorder?.Child as FrameworkElement;
+
+            if (videoLayer != null &&
+                videoLayer.ActualWidth > 0.0 &&
+                videoLayer.ActualHeight > 0.0)
+            {
+                return videoLayer.ActualWidth /
+                       videoLayer.ActualHeight;
+            }
+
+            if (viewport == null ||
+                viewport.ActualWidth <= 0.0 ||
+                viewport.ActualHeight <= 0.0)
+            {
+                return fallbackAspectRatio;
+            }
+
+            return viewport.ActualWidth /
+                   viewport.ActualHeight;
         }
 
         /// <summary>

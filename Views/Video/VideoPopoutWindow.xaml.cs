@@ -32,6 +32,13 @@ namespace OpenCvWpfTracking
 
         private readonly MainViewModel _viewModel;
 
+        private readonly double _eoViewportAspectRatio;
+        private readonly double _irViewportAspectRatio;
+        private readonly Visual _eoRenderedVideo;
+        private readonly Visual _irRenderedVideo;
+        private double _currentViewportAspectRatio;
+        private bool _isApplyingViewportAspectRatio;
+
         /// <summary>
         /// 현재 분리 창에 표시되고,
         /// W / S / A / D 제어 대상으로 선택된 카메라.
@@ -61,7 +68,11 @@ namespace OpenCvWpfTracking
         /// </summary>
         public VideoPopoutWindow(
             MainViewModel viewModel,
-            VideoPopoutCameraType cameraType)
+            VideoPopoutCameraType cameraType,
+            double eoViewportAspectRatio,
+            double irViewportAspectRatio,
+            Visual eoRenderedVideo,
+            Visual irRenderedVideo)
         {
             _viewModel =
                 viewModel ??
@@ -70,6 +81,26 @@ namespace OpenCvWpfTracking
 
             _cameraType =
                 cameraType;
+
+            _eoViewportAspectRatio =
+                NormalizeAspectRatio(
+                    eoViewportAspectRatio,
+                    940.0 / 650.0);
+
+            _irViewportAspectRatio =
+                NormalizeAspectRatio(
+                    irViewportAspectRatio,
+                    440.0 / 365.0);
+
+            _eoRenderedVideo =
+                eoRenderedVideo ??
+                throw new ArgumentNullException(
+                    nameof(eoRenderedVideo));
+
+            _irRenderedVideo =
+                irRenderedVideo ??
+                throw new ArgumentNullException(
+                    nameof(irRenderedVideo));
 
             InitializeComponent();
 
@@ -90,6 +121,126 @@ namespace OpenCvWpfTracking
             object sender,
             RoutedEventArgs e)
         {
+            ApplyViewportAspectRatio();
+
+            Keyboard.Focus(
+                this);
+        }
+
+        /// <summary>
+        /// 팝업 영상 영역을 메인 영상 영역과 같은 종횡비로 유지한다.
+        /// 영상과 십자선이 동일한 중앙 크롭 좌표를 사용하므로
+        /// 창 크기가 바뀌어도 두 화면의 중심점이 일치한다.
+        /// </summary>
+        private void Window_SizeChanged(
+            object sender,
+            SizeChangedEventArgs e)
+        {
+            if (!IsLoaded ||
+                WindowState == WindowState.Minimized)
+            {
+                return;
+            }
+
+            ApplyViewportAspectRatio();
+        }
+
+        private void ApplyViewportAspectRatio()
+        {
+            if (_isApplyingViewportAspectRatio ||
+                _currentViewportAspectRatio <= 0.0 ||
+                CameraImage.ActualWidth <= 0.0 ||
+                CameraImage.ActualHeight <= 0.0)
+            {
+                return;
+            }
+
+            double nonClientWidth =
+                Math.Max(
+                    0.0,
+                    ActualWidth - CameraImage.ActualWidth);
+
+            double nonClientHeight =
+                Math.Max(
+                    0.0,
+                    ActualHeight - CameraImage.ActualHeight);
+
+            double clientWidth =
+                Math.Max(
+                    1.0,
+                    ActualWidth - nonClientWidth);
+
+            double targetHeight =
+                clientWidth / _currentViewportAspectRatio +
+                nonClientHeight;
+
+            if (Math.Abs(ActualHeight - targetHeight) < 0.5)
+            {
+                return;
+            }
+
+            _isApplyingViewportAspectRatio =
+                true;
+
+            try
+            {
+                Height =
+                    targetHeight;
+            }
+            catch (Exception exception)
+            {
+                ConsoleLogHelper.Error(
+                    "VIDEO POPOUT / ASPECT",
+                    "Viewport aspect ratio update failed",
+                    exception);
+            }
+            finally
+            {
+                _isApplyingViewportAspectRatio =
+                    false;
+            }
+        }
+
+        private static double NormalizeAspectRatio(
+            double aspectRatio,
+            double fallbackAspectRatio)
+        {
+            return double.IsNaN(aspectRatio) ||
+                   double.IsInfinity(aspectRatio) ||
+                   aspectRatio <= 0.0
+                ? fallbackAspectRatio
+                : aspectRatio;
+        }
+
+        private void CameraInfoToggleButton_Click(
+            object sender,
+            RoutedEventArgs e)
+        {
+            bool showInfo =
+                CameraInfoBorder.Visibility != Visibility.Visible;
+
+            CameraInfoBorder.Visibility =
+                showInfo
+                    ? Visibility.Visible
+                    : Visibility.Hidden;
+
+            CameraInfoToggleButton.Content =
+                showInfo
+                    ? "▲"
+                    : "▼";
+
+            CameraInfoToggleButton.ToolTip =
+                showInfo
+                    ? "단축키 안내 숨기기"
+                    : "단축키 안내 표시하기";
+
+            ConsoleLogHelper.Info(
+                "VIDEO POPOUT / INFO PANEL",
+                "Shortcut guide visibility changed / CAMERA=" +
+                GetCameraName() +
+                " / VISIBLE=" +
+                showInfo);
+
             Keyboard.Focus(
                 this);
         }
@@ -307,8 +458,9 @@ namespace OpenCvWpfTracking
         ///
         /// 기존 분리 창을 닫거나 새 창을 생성하지 않는다.
         ///
-        /// MainViewModel이 보유한 EO / IR BitmapSource 중
-        /// 선택한 카메라의 Binding으로 교체한다.
+        /// 2026-08-25:
+        /// 메인 창에서 렌더링된 EO / IR 영상 Visual 중
+        /// 선택한 카메라의 실시간 복제 화면으로 교체한다.
         ///
         /// 전환 이후 W / S / A / D 명령도
         /// 새로 선택된 카메라 기준으로 처리된다.
@@ -348,6 +500,13 @@ namespace OpenCvWpfTracking
             ConsoleLogHelper.PrintLine();
         }
 
+        private string GetCameraName()
+        {
+            return _cameraType == VideoPopoutCameraType.Eo
+                ? "EO"
+                : "IR";
+        }
+
         /// <summary>
         /// 현재 분리 영상 창의 카메라 종류에 맞춰
         /// 영상, 연결 상태, 제목 및 상태 표시 색상을 설정한다.
@@ -376,10 +535,17 @@ namespace OpenCvWpfTracking
             string statusPropertyName;
             string cameraTitle;
             Color statusColor;
+            Visual renderedVideo;
 
             if (_cameraType ==
                 VideoPopoutCameraType.Eo)
             {
+                _currentViewportAspectRatio =
+                    _eoViewportAspectRatio;
+
+                renderedVideo =
+                    _eoRenderedVideo;
+
                 imagePropertyName =
                     "EOCameraImage";
 
@@ -395,21 +561,24 @@ namespace OpenCvWpfTracking
                         0xE7,
                         0xF7);
 
-                // EO 영상은 16:9 비율의 넓은 분리 창을 사용한다.
+                // EO 팝업은 메인 EO 영상 영역과 동일한 비율을 사용한다.
                 Width =
-                    1280;
+                    1050;
 
                 Height =
                     720;
-
-                CameraImage.Stretch =
-                    Stretch.UniformToFill;
 
                 Title =
                     "[REI] EO CAMERA VIEW";
             }
             else
             {
+                _currentViewportAspectRatio =
+                    _irViewportAspectRatio;
+
+                renderedVideo =
+                    _irRenderedVideo;
+
                 imagePropertyName =
                     "IRCameraImage";
 
@@ -436,20 +605,13 @@ namespace OpenCvWpfTracking
                 Height =
                     800;
 
-                CameraImage.Stretch =
-                    Stretch.Uniform;
-
                 Title =
                     "[REI] IR CAMERA VIEW";
             }
 
-            BindingOperations.SetBinding(
-                CameraImage,
-                Image.SourceProperty,
-                new Binding(imagePropertyName)
-                {
-                    Mode = BindingMode.OneWay
-                });
+            ConfigureRenderedVideoBrush(
+                renderedVideo,
+                imagePropertyName);
 
             BindingOperations.SetBinding(
                 CameraStatusText,
@@ -473,6 +635,68 @@ namespace OpenCvWpfTracking
             CameraInfoBorder.BorderBrush =
                 new SolidColorBrush(
                     statusColor);
+
+            CameraInfoToggleButton.BorderBrush =
+                new SolidColorBrush(
+                    statusColor);
+
+            if (IsLoaded)
+            {
+                ApplyViewportAspectRatio();
+            }
+        }
+
+        /// <summary>
+        /// 2026-08-25:
+        /// 메인 창에서 이미 중앙 크롭된 영상 Visual을 그대로 복제하여
+        /// 메인/팝업 십자선이 동일한 피사체를 가리키도록 한다.
+        /// Visual 복제 구성에 실패하면 기존 BitmapSource Binding 방식으로
+        /// 자동 전환하여 팝업 영상이 검게 남지 않도록 한다.
+        /// </summary>
+        private void ConfigureRenderedVideoBrush(
+            Visual renderedVideo,
+            string imagePropertyName)
+        {
+            try
+            {
+                CameraImage.Fill =
+                    new VisualBrush(renderedVideo)
+                    {
+                        Stretch = Stretch.Fill
+                    };
+
+                ConsoleLogHelper.State(
+                    "VIDEO POPOUT / RENDER SYNC",
+                    "Main rendered video linked / CAMERA=" +
+                    GetCameraName() +
+                    " / ASPECT=" +
+                    _currentViewportAspectRatio.ToString("F4"));
+            }
+            catch (Exception exception)
+            {
+                ConsoleLogHelper.Error(
+                    "VIDEO POPOUT / RENDER SYNC",
+                    "Main rendered video link failed; BitmapSource fallback applied",
+                    exception);
+
+                ImageBrush fallbackBrush =
+                    new ImageBrush
+                    {
+                        Stretch = Stretch.UniformToFill
+                    };
+
+                BindingOperations.SetBinding(
+                    fallbackBrush,
+                    ImageBrush.ImageSourceProperty,
+                    new Binding(imagePropertyName)
+                    {
+                        Source = _viewModel,
+                        Mode = BindingMode.OneWay
+                    });
+
+                CameraImage.Fill =
+                    fallbackBrush;
+            }
         }
 
         #endregion
