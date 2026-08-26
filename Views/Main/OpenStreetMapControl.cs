@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -559,6 +559,7 @@ namespace OpenCvWpfTracking
             {
                 EndDrag();
             }
+
         }
 
         private void EndDrag()
@@ -722,6 +723,7 @@ namespace OpenCvWpfTracking
                             tileY,
                             version));
                 }
+
             }
 
             try
@@ -788,7 +790,9 @@ namespace OpenCvWpfTracking
                         Log.Information(
                             "[MAP] OpenStreetMap Tile Load Recovered");
                     }
+
                 }
+
             }
             catch (Exception ex)
             {
@@ -805,6 +809,7 @@ namespace OpenCvWpfTracking
 
                 // The fallback tactical map remains visible behind the tile layer.
             }
+
         }
 
         private async Task<byte[]> GetTileBytesAsync(
@@ -835,6 +840,7 @@ namespace OpenCvWpfTracking
                 {
                     // Cache miss/failure: try network below.
                 }
+
             }
 
             string tileUrl =
@@ -1024,5 +1030,7 @@ namespace OpenCvWpfTracking
                 ? result + modulus
                 : result;
         }
+
     }
+
 }

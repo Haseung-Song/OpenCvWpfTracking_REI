@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using Microsoft.Win32;
 using OpenCvWpfTracking.ViewModels.Main;
 using OpenCvWpfTracking.Services.Video;
@@ -166,13 +166,28 @@ namespace OpenCvWpfTracking
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
-            // 2026-08-18: 메인 창 종료 시 자동 Pan 촬영도 즉시 취소한다.
-            _panoramaCaptureCts?.Cancel();
-
-            if (_fireDetectorTestProgram != null &&
-                !_fireDetectorTestProgram.HasExited)
+            /*
+             * 2026-08-26: Application.Current가 해제되기 전에 ViewModel의
+             * AI 수신, 이벤트 Timer와 영상 연결을 먼저 종료한다.
+             */
+            try
             {
-                _fireDetectorTestProgram.Kill();
+                _panoramaCaptureCts?.Cancel();
+                vm.ShutdownForApplicationExit();
+
+                if (_fireDetectorTestProgram != null &&
+                    !_fireDetectorTestProgram.HasExited)
+                {
+                    _fireDetectorTestProgram.Kill();
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "APPLICATION / SHUTDOWN",
+                    "Main window cleanup failed",
+                    ex);
             }
 
             base.OnClosed(e);
@@ -337,8 +352,8 @@ namespace OpenCvWpfTracking
                     GetViewportAspectRatio(
                         IrCameraImageView,
                         440.0 / 365.0),
-                    EoCameraImageView,
-                    IrCameraImageView)
+                    EoRenderedVideoSurface,
+                    IrRenderedVideoSurface)
                 {
                     Owner = this
                 };
@@ -357,6 +372,7 @@ namespace OpenCvWpfTracking
                         _irVideoPopoutWindow =
                             null;
                     }
+
                 };
 
             if (cameraType ==
@@ -376,26 +392,25 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// 현재 메인 영상 영역의 실제 종횡비를 분리 창에 전달한다.
-        /// 분리 창은 이 비율을 유지하여 영상 중앙 크롭과 십자선 기준점을
-        /// 메인 화면과 동일하게 표시한다.
+        /// 2026-08-25: 현재 프레임의 실제 픽셀 종횡비를 분리 창에 전달한다.
+        /// 프레임 정보를 아직 받지 못한 경우에만 화면 영역 또는 기본값을 사용한다.
         /// </summary>
         private static double GetViewportAspectRatio(
             FrameworkElement viewport,
             double fallbackAspectRatio)
         {
-            Border viewportBorder =
-                viewport as Border;
+            Image image =
+                viewport as Image;
 
-            FrameworkElement videoLayer =
-                viewportBorder?.Child as FrameworkElement;
+            BitmapSource frame =
+                image?.Source as BitmapSource;
 
-            if (videoLayer != null &&
-                videoLayer.ActualWidth > 0.0 &&
-                videoLayer.ActualHeight > 0.0)
+            if (frame != null &&
+                frame.PixelWidth > 0 &&
+                frame.PixelHeight > 0)
             {
-                return videoLayer.ActualWidth /
-                       videoLayer.ActualHeight;
+                return (double)frame.PixelWidth /
+                       frame.PixelHeight;
             }
 
             if (viewport == null ||
@@ -487,18 +502,17 @@ namespace OpenCvWpfTracking
                     ? 0
                     : 1);
 
+            // 2026-08-26: R/T 왕복 시 행의 Stretch 값이 남아 파노라마/지도와 겹치지 않도록
+            // 각 슬롯의 검증된 높이를 매 전환마다 명시적으로 복원한다.
             videoContainer.Height =
                 isPrimary
-                    ? double.NaN
-                    : 365;
+                    ? 522
+                    : 345;
 
             videoContainer.HorizontalAlignment =
                 HorizontalAlignment.Stretch;
 
-            videoContainer.VerticalAlignment =
-                isPrimary
-                    ? VerticalAlignment.Stretch
-                    : VerticalAlignment.Top;
+            videoContainer.VerticalAlignment = VerticalAlignment.Top;
 
             videoContainer.Margin =
                 isPrimary
@@ -885,6 +899,7 @@ namespace OpenCvWpfTracking
                                 ? "촬영 취소 중... / 시작 위치 복귀 중..."
                                 : "시작 위치 복귀 중...";
                     }
+
                 });
 
             try
@@ -1299,6 +1314,7 @@ namespace OpenCvWpfTracking
                         {
                             _panoramaPreviewWindow = null;
                         }
+
                     };
 
                 previewWindow.Show();

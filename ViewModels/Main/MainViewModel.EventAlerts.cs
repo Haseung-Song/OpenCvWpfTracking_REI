@@ -9,12 +9,15 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+        private int _nextAiEventId = 1;
+        private bool _isAiCsvHistoryLoaded;
         private readonly Dictionary<int, FireEventRecord> _activeAiEvents =
             new Dictionary<int, FireEventRecord>();
         private DispatcherTimer _testProgramEventTimer;
@@ -48,10 +51,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _selectedEventAlertTabIndex = normalizedValue;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(EventAlertHeaderText));
+                OnPropertyChanged(nameof(EventAlertHeaderBrush));
                 ConsoleLogHelper.Info(
                     "EVENT UI",
                     "Latest event tab selected / INDEX=" + normalizedValue);
             }
+
         }
 
         public ICommand SaveAiEventsCommand { get; private set; }
@@ -71,8 +77,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _activeAiCount = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(AiAlertStatusText));
+                OnPropertyChanged(nameof(AiAlertHeaderBrush));
                 OnPropertyChanged(nameof(EventAlertHeaderText));
+                OnPropertyChanged(nameof(EventAlertHeaderBrush));
             }
+
         }
 
         public string LastAiEventTimeText =>
@@ -87,15 +96,52 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ? "MONITORING"
                     : "DISCONNECTED";
 
+        /// <summary>
+        /// 2026-08-25: AI 활성 이벤트는 FIRE 빨간색과 구분되는 시안색으로 강조한다.
+        /// </summary>
+        public Brush AiAlertHeaderBrush =>
+            ActiveAiCount > 0
+                ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
+                : new SolidColorBrush(Color.FromRgb(208, 215, 222));
+
+        /// <summary>
+        /// 2026-08-26: 가장 최근 탐지로 선택된 하위 탭의 색상을 상위 탭에 즉시 반영한다.
+        /// </summary>
+        public Brush EventAlertHeaderBrush =>
+            SelectedEventAlertTabIndex == 1 && ActiveFireCount > 0
+                ? new SolidColorBrush(Color.FromRgb(255, 82, 82))
+                : SelectedEventAlertTabIndex == 0 && ActiveAiCount > 0
+                    ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
+                    : ActiveFireCount > 0
+                        ? new SolidColorBrush(Color.FromRgb(255, 82, 82))
+                        : ActiveAiCount > 0
+                            ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
+                            : new SolidColorBrush(Color.FromRgb(208, 215, 222));
+
         public string EventAlertHeaderText
         {
             get
             {
-                int activeCount = ActiveAiCount + ActiveFireCount;
-                return activeCount > 0
-                    ? "이벤트 알림 (" + activeCount + ")"
-                    : "이벤트 알림";
+                // 2026-08-26: 상위 탭 숫자는 BBox 객체 수가 아니라 현재 하위 탭의 실제 이벤트 행 수다.
+                int activeCount = SelectedEventAlertTabIndex == 1
+                    ? ActiveFireCount
+                    : ActiveAiCount;
+
+                if (activeCount == 0)
+                {
+                    activeCount = ActiveFireCount > 0
+                        ? ActiveFireCount
+                        : ActiveAiCount;
+                }
+
+                if (activeCount == 0)
+                {
+                    return "이벤트 알림";
+                }
+
+                return "이벤트 알림 (" + activeCount + ")";
             }
+
         }
 
         /// <summary>
@@ -140,7 +186,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             List<AiDetectionBox> boxes =
                 result.Boxes
-                    .Where(box => box.Confidence >= AiDisplayConfidenceThreshold)
+                    .Where(box => box.NormalizedConfidence >= AiDisplayConfidenceThreshold)
                     .ToList();
 
             if (boxes.Count == 0)
@@ -154,7 +200,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 clearedEvent.MarkCleared(receiveTime);
                 _activeAiEvents.Remove(result.RtspIndex);
-                ActiveAiCount = _activeAiEvents.Values.Sum(item => item.ObjectCount);
+                ActiveAiCount = _activeAiEvents.Count;
                 AppendFireEventAudit(clearedEvent, "CLEARED");
                 NotifyAiEventSummaryChanged();
                 ConsoleLogHelper.State(
@@ -166,7 +212,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (_activeAiEvents.ContainsKey(result.RtspIndex))
             {
-                ActiveAiCount = _activeAiEvents.Values.Sum(item => item.ObjectCount);
+                // 2026-08-26: BBox 수는 행 정보에만 갱신하고 ACTIVE 알림 수는 활성 이벤트 행 수로 유지한다.
+                _activeAiEvents[result.RtspIndex].UpdateObjectCount(boxes.Count);
+                ActiveAiCount = _activeAiEvents.Count;
                 return;
             }
 
@@ -174,17 +222,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 boxes
                     .OrderByDescending(box => Math.Max(0, box.Width) * Math.Max(0, box.Height))
                     .First();
-            double maximumConfidence = boxes.Max(box => box.Confidence);
+            double maximumConfidence = boxes.Max(box => box.NormalizedConfidence);
             string camera = result.RtspIndex == 0 ? "EO" : "IR";
 
             FireEventRecord aiEvent =
                 new FireEventRecord(
-                    _nextFireEventId++,
+                    _nextAiEventId++,
                     receiveTime,
                     null,
                     camera,
                     "AI",
-                    (maximumConfidence * 100).ToString("F0", CultureInfo.InvariantCulture) + "%",
+                    (maximumConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
                     boxes.Count,
                     Math.Max(0, largestBox.Width),
                     Math.Max(0, largestBox.Height),
@@ -192,11 +240,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "AI AGENT",
                     "ACTIVE");
 
+            if (_isAiCsvHistoryLoaded)
+            {
+                aiEvent.MarkLiveAfterCsvLoad();
+            }
+
             _activeAiEvents[result.RtspIndex] = aiEvent;
             AiDetectionEvents.Insert(0, aiEvent);
             TrimEventCollection(AiDetectionEvents);
             _lastAiDetectedTime = receiveTime;
-            ActiveAiCount = _activeAiEvents.Values.Sum(item => item.ObjectCount);
+            ActiveAiCount = _activeAiEvents.Count;
             AppendFireEventAudit(aiEvent, "DETECTED");
             NotifyAiEventSummaryChanged();
 
@@ -241,6 +294,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 // 테스트 프로그램이 같은 순간에 기록 중이면 다음 Tick에서 다시 읽는다.
             }
+
         }
 
         /// <summary>
@@ -287,6 +341,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         string.IsNullOrWhiteSpace(sourceName) ? "TEST PROGRAM" : sourceName,
                         "ACTIVE");
 
+                // 2026-08-26: FIRE CSV 복원 이후 테스트 프로그램에서 추가된 신규 행도 청록색으로 구분한다.
+                if (_isFireCsvHistoryLoaded)
+                {
+                    testEvent.MarkLiveAfterCsvLoad();
+                }
+
                 _activeTestFireEvents.Add(testEvent);
                 FireEvents.Insert(0, testEvent);
                 TrimEventCollection(FireEvents);
@@ -297,6 +357,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.Warning(
                     "FIRE EVENT",
                     "Test program fire detected / EVENT_ID=" + testEvent.EventId +
+                    " / CSV_LIVE=" + testEvent.IsLiveAfterCsvLoad +
                     " / OBJECTS=" + testEvent.ObjectCount +
                     " / BBOX=" + testEvent.PixelSizeText +
                     " / PIXEL_AREA=" + testEvent.PixelArea.ToString("F0", CultureInfo.InvariantCulture));
@@ -319,20 +380,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "FIRE EVENT",
                     "Test program fire cleared / COUNT=" + clearedEvents.Count);
             }
+
         }
 
         /// <summary>
-        /// 메인 IR과 테스트 프로그램의 현재 FIRE 개수를 합산한다.
+        /// 2026-08-26: BBox 개수가 아닌 현재 ACTIVE FIRE 이벤트 행 개수를 합산한다.
         /// </summary>
         private void RefreshActiveFireCount()
         {
             int count = 0;
             if (_activeThermalFireEvent != null)
             {
-                count += Math.Max(1, _activeThermalFireEvent.ObjectCount);
+                count++;
             }
 
-            count += _activeTestFireEvents.Sum(item => Math.Max(1, item.ObjectCount));
+            count += _activeTestFireEvents.Count;
 
             ActiveFireCount = count;
             OnPropertyChanged(nameof(EventAlertHeaderText));
@@ -381,6 +443,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+
         }
 
         /// <summary>
@@ -412,6 +475,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 _activeAiEvents.Clear();
+                _nextAiEventId =
+                    AiDetectionEvents.Count == 0
+                        ? 1
+                        : AiDetectionEvents.Max(item => item.EventId) + 1;
+                _isAiCsvHistoryLoaded = true;
                 ActiveAiCount = 0;
                 _lastAiDetectedTime =
                     AiDetectionEvents.Count == 0
@@ -432,32 +500,49 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+
         }
 
         private void ClearAiEvents()
         {
             AiDetectionEvents.Clear();
+            _nextAiEventId = 1;
+            _isAiCsvHistoryLoaded = false;
             _activeAiEvents.Clear();
             ActiveAiCount = 0;
             _lastAiDetectedTime = null;
             NotifyAiEventSummaryChanged();
-            ConsoleLogHelper.State("AI EVENT", "Event list cleared");
+            ConsoleLogHelper.State("AI EVENT", "Event list cleared / NEXT_ID=1");
         }
 
         private void NotifyAiEventSummaryChanged()
         {
             OnPropertyChanged(nameof(LastAiEventTimeText));
             OnPropertyChanged(nameof(AiAlertStatusText));
+            OnPropertyChanged(nameof(AiAlertHeaderBrush));
             OnPropertyChanged(nameof(EventAlertHeaderText));
+            OnPropertyChanged(nameof(EventAlertHeaderBrush));
         }
 
         private static void TrimEventCollection(
             ObservableCollection<FireEventRecord> events)
         {
-            while (events.Count > MaximumFireEventCount)
+            int removedCount = 0;
+            while (events.Count > MaximumEventHistoryCount)
             {
                 events.RemoveAt(events.Count - 1);
+                removedCount++;
             }
+
+            if (removedCount > 0)
+            {
+                // 2026-08-26: 100페이지 초과 시 신규 이벤트는 유지하고 삭제된 과거 이력을 기록한다.
+                ConsoleLogHelper.State(
+                    "EVENT RETENTION",
+                    "Oldest event removed / REMOVED=" + removedCount +
+                    " / RETAINED=" + events.Count);
+            }
+
         }
 
         internal static string GetTestProgramEventBridgePath()
@@ -468,5 +553,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "FireEvents",
                 "TestProgramLiveEvents.txt");
         }
+
     }
+
 }

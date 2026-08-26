@@ -601,6 +601,7 @@ namespace FireCandidateValidator
                     occupiedLabels.Add(candidateLabel);
                     return new CvPoint(clampedX, candidateTop + labelSize.Height);
                 }
+
             }
 
             int fallbackTop = Math.Max(0, Math.Min(preferredTop, frameHeight - labelHeight - 1));
@@ -649,6 +650,7 @@ namespace FireCandidateValidator
                         bestScore = score;
                         bestIndex = index;
                     }
+
                 }
 
                 if (bestIndex >= 0 && bestScore >= 0.20)
@@ -672,6 +674,7 @@ namespace FireCandidateValidator
                     Array.Resize(ref matched, _stableCandidateTracks.Count);
                     matched[matched.Length - 1] = true;
                 }
+
             }
 
             for (int index = _stableCandidateTracks.Count - 1; index >= 0; index--)
@@ -685,6 +688,7 @@ namespace FireCandidateValidator
                 {
                     _stableCandidateTracks.RemoveAt(index);
                 }
+
             }
 
             return _stableCandidateTracks
@@ -770,6 +774,7 @@ namespace FireCandidateValidator
                                 (candidate.Width * candidate.Height).ToString(),
                                 "TEST PROGRAM"));
                     }
+
                 }
                 else
                 {
@@ -784,7 +789,9 @@ namespace FireCandidateValidator
                             "0",
                             "TEST PROGRAM"));
                 }
+
             }
+
         }
 
         /// <summary>

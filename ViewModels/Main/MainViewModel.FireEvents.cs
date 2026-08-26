@@ -23,6 +23,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private string _status;
         private DateTime? _clearedTime;
+        private int _displayIndex;
+        private bool _isLiveAfterCsvLoad;
+        private int _objectCount;
 
         internal FireEventRecord(
             int eventId,
@@ -43,8 +46,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _clearedTime = clearedTime;
             Camera = camera;
             DetectionType = detectionType;
-            Confidence = confidence;
-            ObjectCount = objectCount;
+            Confidence = NormalizeConfidenceText(detectionType, confidence);
+            _objectCount = objectCount;
             PixelWidth = pixelWidth;
             PixelHeight = pixelHeight;
             PixelArea = pixelArea;
@@ -59,6 +62,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public int EventId { get; }
+        /// <summary>2026-08-26: CSV 복원 후 실시간으로 추가된 행을 구분한다.</summary>
+        public bool IsLiveAfterCsvLoad => _isLiveAfterCsvLoad;
+        /// <summary>
+        /// 2026-08-26: 현재 정렬/페이지 안에서 표시하는 1~22 행 번호이다.
+        /// </summary>
+        public int DisplayIndex
+        {
+            get => _displayIndex;
+            internal set
+            {
+                if (_displayIndex == value)
+                {
+                    return;
+                }
+
+                _displayIndex = value;
+                OnPropertyChanged(nameof(DisplayIndex));
+            }
+
+        }
         public DateTime DetectedTime { get; }
         public string DetectedTimeText => DetectedTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
         // 2026-08-21: 화면 목록은 초 단위까지만 한글 시간 형식으로 표시한다.
@@ -71,7 +94,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string Camera { get; }
         public string DetectionType { get; }
         public string Confidence { get; }
-        public int ObjectCount { get; }
+        public int ObjectCount => _objectCount;
         public int PixelWidth { get; }
         public int PixelHeight { get; }
         public double PixelArea { get; }
@@ -93,6 +116,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _status = value;
                 OnPropertyChanged(nameof(Status));
             }
+
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -105,18 +129,72 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(ClearedTimeText));
         }
 
+        /// <summary>2026-08-26: 동일 ACTIVE 구간의 최신 실시간 BBox/후보 개수를 갱신한다.</summary>
+        internal void UpdateObjectCount(int objectCount)
+        {
+            int normalizedCount = Math.Max(0, objectCount);
+            if (_objectCount == normalizedCount)
+            {
+                return;
+            }
+
+            _objectCount = normalizedCount;
+            OnPropertyChanged(nameof(ObjectCount));
+        }
+
+        internal void MarkLiveAfterCsvLoad()
+        {
+            _isLiveAfterCsvLoad = true;
+            OnPropertyChanged(nameof(IsLiveAfterCsvLoad));
+        }
+
+        /// <summary>
+        /// 2026-08-26: 기존 CSV의 49600% 형식과 신규 49.6% 형식을 동일하게 복원한다.
+        /// </summary>
+        private static string NormalizeConfidenceText(string detectionType, string confidence)
+        {
+            if (!string.Equals(detectionType, "AI", StringComparison.OrdinalIgnoreCase))
+            {
+                return confidence;
+            }
+
+            string numericText = (confidence ?? string.Empty).Trim().TrimEnd('%');
+            if (!double.TryParse(
+                    numericText,
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out double percentage))
+            {
+                return confidence;
+            }
+
+            if (percentage > 100.0)
+            {
+                percentage /= 1000.0;
+            }
+
+            return percentage.ToString("F1", CultureInfo.InvariantCulture) + "%";
+        }
+
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(
                 this,
                 new PropertyChangedEventArgs(propertyName));
         }
+
     }
 
     public partial class MainViewModel
     {
-        private const int MaximumFireEventCount = 500;
+        /// <summary>
+        /// 2026-08-26: 이벤트 탭은 페이지당 22건, 최대 100페이지를 보존한다.
+        /// 2,200건을 초과하면 신규 이벤트는 유지하고 가장 오래된 이벤트부터 제거한다.
+        /// AI/FIRE 이벤트 목록에 동일한 보존 정책을 적용한다.
+        /// </summary>
+        private const int MaximumEventHistoryCount = 22 * 100;
         private int _nextFireEventId = 1;
+        private bool _isFireCsvHistoryLoaded;
         private int _activeFireCount;
         private DateTime? _lastFireDetectedTime;
         private FireEventRecord _activeThermalFireEvent;
@@ -144,7 +222,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(FireAlertStatusText));
                 OnPropertyChanged(nameof(FireAlertHeaderBrush));
                 OnPropertyChanged(nameof(EventAlertHeaderText));
+                OnPropertyChanged(nameof(EventAlertHeaderBrush));
             }
+
         }
 
         public int TotalFireEventCount => FireEvents.Count;
@@ -203,6 +283,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (_activeThermalFireEvent != null)
                 {
+                    _activeThermalFireEvent.UpdateObjectCount(Math.Max(1, result.CandidateCount));
+                    RefreshActiveFireCount();
                     return;
                 }
 
@@ -221,12 +303,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         "IMAGE PROCESSING",
                         "ACTIVE");
 
+                if (_isFireCsvHistoryLoaded)
+                {
+                    fireEvent.MarkLiveAfterCsvLoad();
+                }
+
                 _activeThermalFireEvent = fireEvent;
                 FireEvents.Insert(0, fireEvent);
-                while (FireEvents.Count > MaximumFireEventCount)
-                {
-                    FireEvents.RemoveAt(FireEvents.Count - 1);
-                }
+                TrimEventCollection(FireEvents);
 
                 _lastFireDetectedTime = now;
                 RefreshActiveFireCount();
@@ -274,6 +358,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(FireAlertStatusText));
             OnPropertyChanged(nameof(FireAlertHeaderBrush));
             OnPropertyChanged(nameof(EventAlertHeaderText));
+            OnPropertyChanged(nameof(EventAlertHeaderBrush));
         }
 
         /// <summary>
@@ -325,6 +410,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+
         }
 
         /// <summary>
@@ -352,7 +438,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 FireEvents.Clear();
 
                 foreach (FireEventRecord fireEvent in
-                         loaded.OrderByDescending(item => item.EventId))
+                         loaded.Where(item => string.Equals(item.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase))
+                               .OrderByDescending(item => item.EventId))
                 {
                     FireEvents.Add(fireEvent);
                 }
@@ -361,6 +448,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     FireEvents.Count == 0
                         ? 1
                         : FireEvents.Max(item => item.EventId) + 1;
+                _isFireCsvHistoryLoaded = true;
 
                 _activeThermalFireEvent = null;
                 _activeTestFireEvents.Clear();
@@ -390,6 +478,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+
         }
 
         /// <summary>
@@ -398,6 +487,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ClearFireEvents()
         {
             FireEvents.Clear();
+            _nextFireEventId = 1;
+            _isFireCsvHistoryLoaded = false;
             _activeThermalFireEvent = null;
             _activeTestFireEvents.Clear();
             RefreshActiveFireCount();
@@ -406,7 +497,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "FIRE EVENT",
-                "Event list cleared");
+                "Event list cleared / NEXT_ID=1");
         }
 
         /// <summary>
@@ -449,6 +540,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ToFireEventCsvLine(fireEvent) +
                         "," + EscapeCsv(transition));
                 }
+
             }
             catch (Exception ex)
             {
@@ -457,6 +549,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "Automatic event audit append failed",
                     ex);
             }
+
         }
 
         private static void WriteFireEventCsv(
@@ -476,7 +569,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     writer.WriteLine(
                         ToFireEventCsvLine(fireEvent));
                 }
+
             }
+
         }
 
         private static string GetFireEventCsvHeader()
@@ -684,5 +779,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                    safe.Replace("\"", "\"\"") +
                    "\"";
         }
+
     }
+
 }

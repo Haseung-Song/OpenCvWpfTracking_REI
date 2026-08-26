@@ -133,6 +133,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     IrDetectionBoxes.Clear();
                 }
+
             });
 
             _isVideoConnecting = true; // 연결 시도 중 상태 설정
@@ -1046,6 +1047,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _isIrFrameDisplayed =
                         false;
                 }
+
             });
 
             Console.WriteLine(

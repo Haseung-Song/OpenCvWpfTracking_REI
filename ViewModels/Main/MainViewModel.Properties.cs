@@ -471,8 +471,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// HOME / ZERO 중에는 기존 전체 잠금을 유지하지만,
         /// AUTO SCAN 중에는 CURRENT STATUS와 PRESET 화면을 계속 확인할 수 있다.
         /// </summary>
-        public bool IsMainControlEnabled =>
-            !IsHomePositionMoving;
+        public bool IsMainControlEnabled => true;
 
         /// <summary>
         /// 실제 장비 명령을 발생시키는 UI 활성 여부.
@@ -490,10 +489,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// AUTO SCAN 중에는 PRESET L / PRESET W 화면 확인과 스크롤을 허용하지만,
         /// 파노라마 촬영·정합·저장 및 HOME / ZERO 중에는 탭 이동까지 차단한다.
         /// </summary>
-        public bool IsOperationTabNavigationEnabled =>
-            !IsHomePositionMoving &&
-            !IsPanoramaCaptureRunning &&
-            !IsPanoramaProcessingRunning;
+        public bool IsOperationTabNavigationEnabled => true;
 
         /// <summary>
         /// 2026-08-21: HOME, AUTO SCAN, 파노라마 작업 중 이벤트 목록 변경 버튼을 잠근다.
@@ -505,12 +501,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             !IsPanoramaProcessingRunning;
 
         /// <summary>
-        /// 2026-08-21: AUTO SCAN은 PRESET 조작을 허용하므로 우측 제어 차단 Overlay에서 제외한다.
+        /// 2026-08-26: 작업 중 PAN/TILT SPEED 안내 문구를 유지하고 명령 입력을 차단한다.
         /// </summary>
-        public bool IsOperationLockOverlayVisible =>
-            IsHomePositionMoving ||
-            IsPanoramaCaptureRunning ||
-            IsPanoramaProcessingRunning;
+        public bool IsOperationLockOverlayVisible => !IsOperationCommandEnabled;
 
         /// <summary>
         /// 우측 상위 탭 선택 상태.
@@ -542,6 +535,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     OnPropertyChanged(
                         nameof(SelectedEventAlertTabIndex));
                 }
+
             }
 
         }
@@ -577,8 +571,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 수동 PTZF용 속도와 PRESET용 Speed(1 ~ 60)를 명확히 분리한다.
         /// </summary>
         public bool IsPanTiltSpeedControlEnabled =>
-            IsOperationCommandEnabled &&
-            SelectedRightPanelTabIndex == 1;
+            IsOperationCommandEnabled;
 
         public bool IsPresetScanControlLocked =>
             IsLaPresetScanRunning ||

@@ -14,6 +14,9 @@ namespace FireCandidateValidator
     internal sealed class FireCandidateAnalyzer
     {
         private int _continuousCandidateFrames;
+        // 2026-08-25: REI/MOE 검증 프로그램도 동일한 화재 후보 알고리즘과
+        // 오류 처리 정책을 사용하며, 반복 오류 출력은 5초 간격으로 제한한다.
+        private DateTime _lastAnalyzeErrorLogTime = DateTime.MinValue;
         // 2026-08-18: 동영상에서는 색상 자체가 아니라 실제 화염의 프레임간
         // 움직임과 외곽 형상 변화까지 확인한다.
         private Mat _previousGray = new Mat();
@@ -23,6 +26,42 @@ namespace FireCandidateValidator
         /// Analyze 동작 수행 함수.
         /// </summary>
         internal FireCandidateAnalysis Analyze(
+            Mat source,
+            double thresholdRatio,
+            double minimumAreaRatio,
+            int confirmationFrameCount,
+            int fireBoxGroupingMode)
+        {
+            try
+            {
+                return AnalyzeCore(
+                    source,
+                    thresholdRatio,
+                    minimumAreaRatio,
+                    confirmationFrameCount,
+                    fireBoxGroupingMode);
+            }
+            catch (Exception ex)
+            {
+                DateTime now = DateTime.Now;
+                if ((now - _lastAnalyzeErrorLogTime).TotalSeconds >= 5)
+                {
+                    _lastAnalyzeErrorLogTime = now;
+                    Console.Error.WriteLine(
+                        "[FIRE CANDIDATE ERROR] Analyze failed / " +
+                        ex.Message);
+                }
+
+                Reset();
+                return FireCandidateAnalysis.Empty;
+            }
+
+        }
+
+        /// <summary>
+        /// 2026-08-25 REI/MOE 공통 검증용 화재 후보 판정 본체.
+        /// </summary>
+        private FireCandidateAnalysis AnalyzeCore(
             Mat source,
             double thresholdRatio,
             double minimumAreaRatio,
@@ -280,6 +319,7 @@ namespace FireCandidateValidator
                        aspectRatio >= 0.08 && aspectRatio <= 1.60 &&
                        fillRatio >= 0.025;
             }
+
         }
 
         /// <summary>
@@ -319,6 +359,7 @@ namespace FireCandidateValidator
                 return motionRatio >= 0.004 &&
                        (hotMotionRatio >= 0.006 || shapeChangeRatio >= 0.008);
             }
+
         }
 
         /// <summary>
@@ -369,6 +410,7 @@ namespace FireCandidateValidator
                     {
                         darkCore.CopyTo(coreMask);
                     }
+
                 }
 
                 using (Mat openKernel =
@@ -414,10 +456,12 @@ namespace FireCandidateValidator
                                 source.Width,
                                 source.Height));
                     }
+
                 }
 
                 return flames;
             }
+
         }
 
         /// <summary>
@@ -468,12 +512,14 @@ namespace FireCandidateValidator
                         suppressed = true;
                         break;
                     }
+
                 }
 
                 if (!suppressed)
                 {
                     filtered.Add(candidate);
                 }
+
             }
 
             return filtered;

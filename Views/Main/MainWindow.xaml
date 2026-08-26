@@ -1,4 +1,4 @@
-﻿<Window x:Class="OpenCvWpfTracking.MainWindow"
+<Window x:Class="OpenCvWpfTracking.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -847,6 +847,8 @@
                         <Border x:Name="EoVideoBorder"
                                 Grid.Row="0"
                                 Grid.Column="0"
+                                Height="522"
+                                VerticalAlignment="Top"
                                 Margin="5,5,10,0"
                                 Background="Black"
                                 BorderBrush="#5A5A5A"
@@ -856,17 +858,23 @@
                                 ToolTip="더블클릭: EO 영상 분리 창 열기">
                             <Grid ClipToBounds="True">
 
-                                <!-- [EO] 영상
-                                     2026-08-25: 팝업이 동일 렌더링 결과를 복제할 수 있도록 이름을 지정한다. -->
-                                <Image x:Name="EoCameraImageView"
-                                       Source="{Binding EOCameraImage}"
-                                       Stretch="UniformToFill"
-                                       RenderOptions.BitmapScalingMode="LowQuality"
-                                       SnapsToDevicePixels="True"
-                                       UseLayoutRounding="True"/>
+                                <!--
+                                    2026-08-26: EO 표시 컨테이너를 16:9 원본 비율에 맞춘다.
+                                    영상 복제·블러·UniformToFill 없이 원본 전체를 Uniform으로
+                                    표시하며 AI BBox도 동일한 원본 좌표계를 유지한다.
+                                -->
+                                <Grid x:Name="EoRenderedVideoSurface"
+                                      ClipToBounds="True">
+                                    <Image x:Name="EoCameraImageView"
+                                           Source="{Binding EOCameraImage}"
+                                           Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="LowQuality"
+                                           SnapsToDevicePixels="True"
+                                           UseLayoutRounding="True"/>
+                                </Grid>
 
                                 <!-- [AI] [Bounding Box] [Overlay] -->
-                                <Viewbox Stretch="UniformToFill"
+                                <Viewbox Stretch="Uniform"
                                          Visibility="Visible"
                                          IsHitTestVisible="False">
 
@@ -897,18 +905,20 @@
                                             <DataTemplate>
                                                 <!-- [AI] [Bounding Box] 표시 영역 -->
                                                 <Grid>
-                                                    <!-- [AI] 탐지 객체 [Bounding Box] -->
-                                                    <Rectangle Width="{Binding Width}"
-                                                               Height="{Binding Height}"
-                                                               Stroke="#FFFF0000"
-                                                               StrokeThickness="4"/>
-                                                    <!-- [AI] 탐지 객체 이름 / 정확도 표시 -->
-                                                    <Border Background="#FFFF0000"
-                                                            HorizontalAlignment="Left"
-                                                            VerticalAlignment="Top">
-                                                        <TextBlock Text="{Binding DisplayText}"
-                                                                   Foreground="White"
-                                                                   FontSize="14"
+                                                     <!-- 2026-08-26: AI는 형광 라임 BBox와 AI 순번으로 FIRE와 구분한다. -->
+                                                     <Rectangle Width="{Binding Width}"
+                                                                Height="{Binding Height}"
+                                                                Stroke="#FF39FF14"
+                                                                StrokeThickness="4"/>
+                                                     <!-- [AI] 탐지 객체 이름 / 정확도 표시 -->
+                                                     <Border Background="#DD102A10"
+                                                             BorderBrush="#FF39FF14"
+                                                             BorderThickness="1"
+                                                             HorizontalAlignment="Left"
+                                                             VerticalAlignment="Top">
+                                                         <TextBlock Text="{Binding DisplayText}"
+                                                                    Foreground="#FF39FF14"
+                                                                    FontSize="16"
                                                                    FontWeight="Bold"
                                                                    Padding="5,1"/>
                                                     </Border>
@@ -1002,7 +1012,7 @@
                         <Grid x:Name="IrVideoContainer"
                               Grid.Row="0"
                               Grid.Column="1"
-                              Height="365"
+                              Height="345"
                               VerticalAlignment="Top"
                               Margin="0,5,10,0">
 
@@ -1016,14 +1026,19 @@
 
                                 <Grid ClipToBounds="True">
 
-                                    <!-- [IR] 영상
-                                         2026-08-25: 팝업이 동일 렌더링 결과를 복제할 수 있도록 이름을 지정한다. -->
-                                    <Image x:Name="IrCameraImageView"
-                                           Source="{Binding IRCameraImage}"
-                                           Stretch="UniformToFill"/>
+                                    <!--
+                                        2026-08-26: IR 표시 컨테이너도 원본 비율에 맞추고
+                                        원본 영상과 AI BBox를 동일한 Uniform 좌표계로 표시한다.
+                                    -->
+                                    <Grid x:Name="IrRenderedVideoSurface"
+                                          ClipToBounds="True">
+                                        <Image x:Name="IrCameraImageView"
+                                               Source="{Binding IRCameraImage}"
+                                               Stretch="Uniform"/>
+                                    </Grid>
 
                                     <!-- [AI] [Bounding Box] [Overlay] -->
-                                    <Viewbox Stretch="UniformToFill"
+                                    <Viewbox Stretch="Uniform"
                                              IsHitTestVisible="False">
 
                                         <ItemsControl ItemsSource="{Binding IrDetectionBoxes}"
@@ -1054,20 +1069,22 @@
                                                     <!-- [AI] [Bounding Box] 표시 영역 -->
                                                     <Grid>
 
-                                                        <!-- [AI] 탐지 객체 [Bounding Box] -->
+                                                        <!-- 2026-08-26: AI는 형광 라임 BBox와 AI 순번으로 FIRE와 구분한다. -->
                                                         <Rectangle Width="{Binding Width}"
                                                                    Height="{Binding Height}"
-                                                                   Stroke="#FFFF0000"
+                                                                   Stroke="#FF39FF14"
                                                                    StrokeThickness="4"/>
 
                                                         <!-- [AI] 탐지 객체 이름 / 정확도 표시 -->
-                                                        <Border Background="#FFFF0000"
+                                                        <Border Background="#DD102A10"
+                                                                BorderBrush="#FF39FF14"
+                                                                BorderThickness="1"
                                                                 HorizontalAlignment="Left"
                                                                 VerticalAlignment="Top">
 
                                                             <TextBlock Text="{Binding DisplayText}"
-                                                                       Foreground="White"
-                                                                       FontSize="14"
+                                                                       Foreground="#FF39FF14"
+                                                                       FontSize="16"
                                                                        FontWeight="Bold"
                                                                        Padding="5,1"/>
                                                         </Border>
@@ -1158,7 +1175,7 @@
                         <Control x:Name="CompanyMapPanel"
                                  Grid.Row="0"
                                  Grid.Column="1"
-                                 Height="275"
+                                 Height="295"
                                  VerticalAlignment="Bottom"
                                  Margin="0,5,10,0"
                                  Template="{StaticResource DemoCompanyMapPanelTemplate}"/>
@@ -1287,6 +1304,71 @@
                         </Grid>
 
                         <!--
+                            2026-08-26: EO 16:9 표시 아래에 생기던 중앙 여백을
+                            파노라마 상태 및 조작 영역으로 사용한다. IR 아래 지도는 유지하고
+                            파노라마 영상은 두 영역이 끝나는 즉시 시작하도록 배치한다.
+                        -->
+                        <Border Grid.Row="0"
+                                Grid.Column="0"
+                                Height="120"
+                                VerticalAlignment="Bottom"
+                                Margin="5,0,10,0"
+                                Background="#151D24"
+                                BorderBrush="#4F6773"
+                                BorderThickness="2"
+                                CornerRadius="5">
+                            <Grid Margin="12,9">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="32"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock x:Name="PanoramaFileNameText"
+                                           Text="ROOFTOP PANORAMA / DEFAULT IMAGE"
+                                           Foreground="#AFC8D8"
+                                           FontWeight="Bold"/>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="EO 16:9 / IR 5:4 FULL FRAME · AI BBOX SYNC"
+                                           Foreground="#6F8A99"
+                                           FontSize="10.5"
+                                           VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Row="2"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right">
+                                    <StackPanel.Resources>
+                                        <!-- 2026-08-26: 촬영 중에도 비활성 버튼 문구의 대비를 유지한다. -->
+                                        <Style TargetType="Button">
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Setter Property="Background" Value="#315D77"/>
+                                            <Setter Property="BorderBrush" Value="#7FB3E6"/>
+                                            <Setter Property="Opacity" Value="1"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Foreground" Value="#26343D"/>
+                                                    <Setter Property="Background" Value="#DCE2E6"/>
+                                                    <Setter Property="BorderBrush" Value="#8797A1"/>
+                                                    <Setter Property="Opacity" Value="1"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Resources>
+                                    <Button x:Name="NewPanoramaButton"
+                                            Content="360° 파노라마 촬영"
+                                            Width="165"
+                                            Margin="0,0,8,0"
+                                            Click="NewPanoramaButton_Click"/>
+                                    <Button x:Name="LoadPanoramaImageButton"
+                                            Content="파노라마 불러오기"
+                                            Width="145"
+                                            Click="LoadPanoramaImageButton_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!--
                             [DEMO UI] 하단 정적 파노라마 영역
 
                             실시간 Stitching 전 단계의 임시 운용 기능으로,
@@ -1308,6 +1390,7 @@
                                 <Image x:Name="PanoramaImage"
                                        Source="/Images/Demo/DefaultRooftopPanorama.jpg"
                                        Stretch="Uniform"
+                                       VerticalAlignment="Center"
                                        Cursor="Hand"
                                        ToolTip="더블 클릭하여 파노라마 확대 보기"
                                        MouseLeftButtonDown="PanoramaImage_MouseLeftButtonDown"
@@ -1337,63 +1420,6 @@
                                         </Style>
                                     </Image.Style>
                                 </Image>
-
-                                <Border VerticalAlignment="Top"
-                                        HorizontalAlignment="Stretch"
-                                        Height="46"
-                                        Background="#B0151D24">
-                                    <Grid Margin="12,6">
-                                        <TextBlock x:Name="PanoramaFileNameText"
-                                                   Text="ROOFTOP PANORAMA / DEFAULT IMAGE"
-                                                   Foreground="#AFC8D8"
-                                                   FontWeight="Bold"
-                                                   VerticalAlignment="Center"/>
-
-                                        <StackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Right">
-                                            <StackPanel.Resources>
-                                                <!--
-                                                    2026-08-18: 촬영/정합 중 비활성 버튼도
-                                                    밝은 배경 위에 문구가 명확히 보이도록
-                                                    비활성 Foreground와 Opacity를 고정한다.
-                                                -->
-                                                <Style TargetType="Button">
-                                                    <Setter Property="Foreground"
-                                                            Value="White"/>
-                                                    <Setter Property="Background"
-                                                            Value="#315D77"/>
-                                                    <Setter Property="BorderBrush"
-                                                            Value="#7FB3E6"/>
-                                                    <Setter Property="Opacity"
-                                                            Value="1"/>
-                                                    <Style.Triggers>
-                                                        <Trigger Property="IsEnabled"
-                                                                 Value="False">
-                                                            <Setter Property="Foreground"
-                                                                    Value="#26343D"/>
-                                                            <Setter Property="Background"
-                                                                    Value="#DCE2E6"/>
-                                                            <Setter Property="BorderBrush"
-                                                                    Value="#8797A1"/>
-                                                            <Setter Property="Opacity"
-                                                                    Value="1"/>
-                                                        </Trigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Resources>
-                                            <!-- 2026-08-18: 파일 선택 중복 기능을 실제 EO 360도 자동 촬영으로 교체 -->
-                                            <Button x:Name="NewPanoramaButton"
-                                                    Content="360° 파노라마 촬영"
-                                                    Width="165"
-                                                    Margin="0,0,8,0"
-                                                    Click="NewPanoramaButton_Click"/>
-                                            <Button x:Name="LoadPanoramaImageButton"
-                                                    Content="파노라마 불러오기"
-                                                    Width="145"
-                                                    Click="LoadPanoramaImageButton_Click"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
 
                                 <TextBlock x:Name="PanoramaEmptyText"
                                            Text="파노라마 이미지가 없습니다."
@@ -1551,7 +1577,6 @@
 
                                             <!-- Control Agent 및 EO / IR RTSP 통합 설정 카드 -->
                                             <Border Grid.Row="0"
-                                                    IsEnabled="{Binding IsEventAlertControlEnabled}"
                                                     Background="#5F666D"
                                                     BorderBrush="#95A5B0"
                                                     BorderThickness="1.5"
@@ -1591,7 +1616,8 @@
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
                                                                               Padding="0,0,8,18">
-                                                                    <StackPanel Margin="7">
+                                                                    <StackPanel Margin="7"
+                                                                                IsEnabled="{Binding IsOperationCommandEnabled}">
 
                                                                         <!-- [1] Control Agent 제어 TCP 설정 -->
                                                                         <Grid>
@@ -1864,8 +1890,9 @@
                                                             <TabItem Header="AI / FIRE DETECTOR">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
-                                                                              Padding="0,0,8,24">
-                                                                    <StackPanel Margin="7,7,7,18">
+                                                                              Padding="0,0,4,6">
+                                                                    <StackPanel Margin="5,5,5,4"
+                                                                                IsEnabled="{Binding IsOperationCommandEnabled}">
 
                                                                         <!--
                                                                             [3] AI Detector 통합 설정
@@ -1988,30 +2015,19 @@
                                                                                         Background="#263B4A"
                                                                                         Command="{Binding ApplyAiRtspCommand}"/>
 
-                                                                                <!-- [AI Detector] ONNX Mapping -->
-                                                                                <Grid Margin="0,0,0,10">
-                                                                                    <Grid.ColumnDefinitions>
-                                                                                        <ColumnDefinition Width="*"/>
-                                                                                        <ColumnDefinition Width="8"/>
-                                                                                        <ColumnDefinition Width="*"/>
-                                                                                    </Grid.ColumnDefinitions>
-
-                                                                                    <ComboBox Grid.Column="0"
-                                                                                              Height="28"
-                                                                                              ItemsSource="{Binding AiOnnxList}"
-                                                                                              DisplayMemberPath="FileName"
-                                                                                              SelectedValuePath="Index"
-                                                                                              SelectedValue="{Binding AiRtsp0OnnxIndex,
-                                                                                                      Mode=TwoWay}"/>
-
-                                                                                    <ComboBox Grid.Column="2"
-                                                                                              Height="28"
-                                                                                              ItemsSource="{Binding AiOnnxList}"
-                                                                                              DisplayMemberPath="FileName"
-                                                                                              SelectedValuePath="Index"
-                                                                                              SelectedValue="{Binding AiRtsp1OnnxIndex,
-                                                                                                      Mode=TwoWay}"/>
-                                                                                </Grid>
+                                                                                <!-- 2026-08-26: 긴 ONNX 이름을 위해 EO/IR 선택을 세로 전체 폭으로 배치한다. -->
+                                                                                <StackPanel Margin="0,0,0,10">
+                                                                                    <TextBlock Text="EO MODEL (RTSP 0)" Foreground="#7DD3FC" FontWeight="Bold" Margin="0,0,0,3"/>
+                                                                                    <ComboBox Height="28" Margin="0,0,0,7"
+                                                                                              ItemsSource="{Binding AiOnnxList}" DisplayMemberPath="FileName" SelectedValuePath="Index"
+                                                                                              ToolTip="{Binding SelectedItem.FileName, RelativeSource={RelativeSource Self}}"
+                                                                                              SelectedValue="{Binding AiRtsp0OnnxIndex, Mode=TwoWay}"/>
+                                                                                    <TextBlock Text="IR MODEL (RTSP 1)" Foreground="#C4B5FD" FontWeight="Bold" Margin="0,0,0,3"/>
+                                                                                    <ComboBox Height="28"
+                                                                                              ItemsSource="{Binding AiOnnxList}" DisplayMemberPath="FileName" SelectedValuePath="Index"
+                                                                                              ToolTip="{Binding SelectedItem.FileName, RelativeSource={RelativeSource Self}}"
+                                                                                              SelectedValue="{Binding AiRtsp1OnnxIndex, Mode=TwoWay}"/>
+                                                                                </StackPanel>
 
                                                                                 <!-- Confidence / IOU / Box Filter -->
                                                                                 <Grid Margin="0,2,0,4">
@@ -2131,8 +2147,8 @@
                                                                             IR 영상의 밝기 및 적색 계열 픽셀을 분석하는
                                                                             시험 기능이므로 FIRE CANDIDATE로 표시한다.
                                                                         -->
-                                                                        <Border Margin="0,14,0,0"
-                                                                                Padding="10"
+              <Border Margin="0,8,0,0"
+                      Padding="8"
                                                                                 Background="#464D54"
                                                                                 BorderBrush="#81909A"
                                                                                 BorderThickness="1"
@@ -2631,17 +2647,16 @@
                                                         ItemContainerStyle="{StaticResource RightPanelTabItemStyle}">
 
                                                 <!-- [PTZF] Overlay / Pan / Tilt / Zoom / Focus 이동 제어 -->
-                                                <TabItem Header="PTZF"
-                                                         IsEnabled="{Binding IsOperationCommandEnabled}">
+                                                <TabItem Header="PTZF">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,12,10,12">
-                                                        <StackPanel Margin="4,2,2,24">
+                                                                  Padding="0,4,6,4">
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,4">
                                                             <!-- [EO / IR] 영상 Overlay 표시 제어 -->
-                                                            <Border Margin="0,5,5,0"
+                                                            <Border Margin="0,2,3,0"
                                                                     Background="#5F666D"
                                                                     BorderBrush="#95A5B0"
                                                                     BorderThickness="1.5"
@@ -2920,8 +2935,8 @@
                                                                     BorderBrush="#95A5B0"
                                                                     BorderThickness="1"
                                                                     CornerRadius="5"
-                                                                    Padding="10"
-                                                                    Margin="0,0,0,7">
+                                                                    Padding="6"
+                                                                    Margin="0,0,0,3">
 
                                                                 <Border.Style>
                                                                     <Style TargetType="Border">
@@ -2943,21 +2958,21 @@
                                                                                Foreground="White"
                                                                                FontSize="12"
                                                                                FontWeight="Bold"
-                                                                               Margin="0,0,0,8"/>
+                                                                               Margin="0,0,0,4"/>
 
                                                                     <Button Content="HOME POSITION"
-                                                                            Height="30"
-                                                                            Margin="0,0,0,7"
+                                                                            Height="28"
+                                                                            Margin="0,0,0,3"
                                                                             Command="{Binding MoveHomePositionCommand}"/>
 
                                                                     <UniformGrid Columns="2">
                                                                         <Button Content="PAN ZERO"
-                                                                                Height="28"
-                                                                                Margin="2"
+                                                                                Height="26"
+                                                                                Margin="1"
                                                                                 Command="{Binding SetPanZeroCommand}"/>
                                                                         <Button Content="TILT ZERO"
-                                                                                Height="28"
-                                                                                Margin="2"
+                                                                                Height="26"
+                                                                                Margin="1"
                                                                                 Command="{Binding SetTiltZeroCommand}"/>
                                                                     </UniformGrid>
 
@@ -2967,7 +2982,7 @@
                                                                                FontWeight="Bold"
                                                                                TextAlignment="Center"
                                                                                TextWrapping="Wrap"
-                                                                               Margin="0,7,0,0"/>
+                                                                               Margin="0,3,0,0"/>
                                                                 </StackPanel>
                                                             </Border>
 
@@ -3202,8 +3217,8 @@
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,12,10,12">
-                                                        <StackPanel Margin="4,2,2,24">
+                                                                  Padding="0,4,6,4">
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,4">
 
                                                             <!-- 프리셋 추가 / 갱신 / 제거 -->
                                                             <Border Margin="0,5,5,0"
@@ -3521,8 +3536,8 @@
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,12,10,12">
-                                                        <StackPanel Margin="4,2,2,24">
+                                                                  Padding="0,4,6,4">
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,4">
 
                                                             <!-- 프리셋 추가 / 갱신 / 제거 -->
                                                             <Border Margin="0,5,5,0"
@@ -3835,15 +3850,14 @@
                                                 </TabItem>
 
                                                 <!-- [LENS] EO / IR Zoom / Focus 제어 -->
-                                                <TabItem Header="LENS"
-                                                         IsEnabled="{Binding IsOperationCommandEnabled}">
+                                                <TabItem Header="LENS">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,12,10,12">
-                                                        <StackPanel Margin="5,0,0,24">
+                                                                  Padding="0,4,6,4">
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,0,4">
                                                             <!-- [EO] [ZOOM] / [FOCUS] 제어 -->
                                                             <Border Grid.Row="2"
                                                                     Margin="0,10,5,0"
@@ -4061,15 +4075,14 @@
                                                 </TabItem>
 
                                                 <!-- [SYNC] 환경장비 Web Agent 표준 Zoom 동기화 -->
-                                                <TabItem Header="SYNC"
-                                                         IsEnabled="{Binding IsOperationCommandEnabled}">
+                                                <TabItem Header="SYNC">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,12,10,12">
-                                                        <StackPanel Margin="4,4,2,24">
+                                                                  Padding="0,4,6,4">
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,2,2,4">
                                                             <!-- 환경장비 기준 EO / IR Zoom 10단계 동기화 -->
                                                             <Border Background="#2F363D"
                                                                     BorderBrush="#8A9BA8"
@@ -4221,7 +4234,7 @@
                                     <TabItem>
                                         <TabItem.Header>
                                             <TextBlock Text="{Binding EventAlertHeaderText}"
-                                                       Foreground="{Binding FireAlertHeaderBrush}"
+                                                       Foreground="{Binding EventAlertHeaderBrush}"
                                                        FontWeight="Bold"/>
                                         </TabItem.Header>
 

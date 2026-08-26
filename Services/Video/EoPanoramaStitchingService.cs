@@ -248,6 +248,7 @@ namespace OpenCvWpfTracking.Services.Video
                         panorama?.Dispose();
                         panorama = null;
                     }
+
                 }
 
                 /*
@@ -298,6 +299,7 @@ namespace OpenCvWpfTracking.Services.Video
                     "Panorama processing resources released / ELAPSED_MS=" +
                     totalStopwatch.ElapsedMilliseconds);
             }
+
         }
 
         /// <summary>
@@ -392,6 +394,7 @@ namespace OpenCvWpfTracking.Services.Video
                             " / PAN_STEP_INDEX=" + index +
                             " / RESULT=" + column.Width + "x" + column.Height);
                     }
+
                 }
 
                 /*
@@ -410,6 +413,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 DisposeAll(columns);
             }
+
         }
 
         /// <summary>
@@ -450,6 +454,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     // 한 방향의 저대비/특징 부족은 전체 geometry 추정을 중단시키지 않는다.
                 }
+
             }
 
             if (overlapSamples.Count == 0)
@@ -485,6 +490,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     // Global Y는 방향별로 적용하지 않으므로 실패 샘플은 제외한다.
                 }
+
             }
 
             if (offsetSamples.Count == 0)
@@ -563,6 +569,7 @@ namespace OpenCvWpfTracking.Services.Video
                         shiftedLower,
                         safeOverlap);
             }
+
         }
 
         /// <summary>
@@ -597,7 +604,9 @@ namespace OpenCvWpfTracking.Services.Video
                         "Column-first 입력 Frame의 해상도/형식이 일정하지 않습니다. INDEX=" +
                         index);
                 }
+
             }
+
         }
 
         /// <summary>
@@ -657,6 +666,7 @@ namespace OpenCvWpfTracking.Services.Video
                                 "ROW=" + (rowIndex + 1),
                                 "ROW_GEOMETRY_NORMALIZATION"));
                     }
+
                 }
 
                 Mat result =
@@ -675,6 +685,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 DisposeAll(stitchedRows);
             }
+
         }
 
         /// <summary>
@@ -855,6 +866,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     selected.Add(frames[index]);
                 }
+
             }
 
             return selected;
@@ -1536,6 +1548,7 @@ namespace OpenCvWpfTracking.Services.Video
                             result.Dispose();
                             result = combined;
                         }
+
                     }
                     finally
                     {
@@ -2089,6 +2102,7 @@ namespace OpenCvWpfTracking.Services.Video
                             cost += Math.Abs(a - b);
                             samples++;
                         }
+
                     }
 
                     if (samples == 0)
@@ -2113,6 +2127,7 @@ namespace OpenCvWpfTracking.Services.Video
                         bestCost = cost;
                         bestOffset = candidate;
                     }
+
                 }
 
                 int fullOffset =
@@ -2125,6 +2140,7 @@ namespace OpenCvWpfTracking.Services.Video
                         MaxFullOffset,
                         fullOffset));
             }
+
         }
 
         /// <summary>
@@ -2282,7 +2298,9 @@ namespace OpenCvWpfTracking.Services.Video
                         gain,
                         0.0);
                 }
+
             }
+
         }
 
         /// <summary>

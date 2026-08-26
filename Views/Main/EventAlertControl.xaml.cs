@@ -69,6 +69,7 @@ namespace OpenCvWpfTracking
             {
                 SubscribeEventCollections(e.NewValue as MainViewModel);
             }
+
         }
 
         private void EventAlertControl_Unloaded(object sender, RoutedEventArgs e)
@@ -103,6 +104,7 @@ namespace OpenCvWpfTracking
                 _hadActiveAiEvent = false;
                 _hadActiveFireEvent = false;
             }
+
         }
 
         private void SubscribedViewModel_PropertyChanged(
@@ -135,6 +137,7 @@ namespace OpenCvWpfTracking
 
                 _hadActiveFireEvent = hasActiveFireEvent;
             }
+
         }
 
         /// <summary>
@@ -191,6 +194,7 @@ namespace OpenCvWpfTracking
                     "EVENT UI",
                     "Event tab auto-selection failed / " + exception.Message);
             }
+
         }
 
         /// <summary>
@@ -242,6 +246,7 @@ namespace OpenCvWpfTracking
                     "EVENT UI",
                     "Event tab selection failed / " + exception.Message);
             }
+
         }
 
         private void AiPreviousButton_Click(object sender, RoutedEventArgs e) => _aiPager?.MovePage(-1);
@@ -306,15 +311,20 @@ namespace OpenCvWpfTracking
                     "EVENT UI",
                     "Event sort failed / " + exception.Message);
             }
+
         }
 
         /// <summary>
-        /// 한 이벤트 표의 가변 페이지 이동과 선택 삭제 상태를 관리한다.
+        /// 한 이벤트 표의 고정 페이지 이동과 선택 삭제 상태를 관리한다.
         /// </summary>
         private sealed class EventPageController
         {
             private const double DefaultHeaderHeight = 30.0;
-            private const double DefaultRowHeight = 27.0;
+            /*
+             * 2026-08-26: 파노라마 운용 Overlay 표시 여부로 표 높이가 변해도
+             * 전체 페이지 수가 1/15와 1/13 사이에서 바뀌지 않도록 고정한다.
+             */
+            private const int FixedPageSize = 22;
             private readonly DataGrid _grid;
             private readonly TextBlock _totalText;
             private readonly TextBlock _selectedText;
@@ -325,7 +335,8 @@ namespace OpenCvWpfTracking
             private readonly ICollectionView _view;
             private readonly List<object> _orderedItems = new List<object>();
             private int _pageIndex;
-            private int _pageSize = 1;
+            private int _pageSize = FixedPageSize;
+            private double _lastAvailableHeight = -1.0;
             private EventRecordComparer _activeComparer;
 
             internal EventPageController(
@@ -418,6 +429,7 @@ namespace OpenCvWpfTracking
                         _source.Remove(item);
                         removedCount++;
                     }
+
                 }
 
                 ConsoleLogHelper.Info(
@@ -470,10 +482,22 @@ namespace OpenCvWpfTracking
                 {
                     _orderedItems.Sort(_activeComparer);
                 }
+
+                // 2026-08-26: 정렬 결과 기준으로 각 페이지에 1~22 행 번호를 다시 부여한다.
+                for (int index = 0; index < _orderedItems.Count; index++)
+                {
+                    if (_orderedItems[index] is FireEventRecord eventRecord)
+                    {
+                        eventRecord.DisplayIndex = (index % FixedPageSize) + 1;
+                    }
+
+                }
+
             }
 
             /// <summary>
-            /// 2026-08-21: 세로 스크롤바가 생기기 직전까지 실제 표시 가능한 행 수를 계산한다.
+            /// 2026-08-26: 표의 실제 높이에 맞춰 행 높이만 조정하고 페이지당 22행은 유지한다.
+            /// 촬영 Overlay로 우측 패널 높이가 바뀌어도 전체 페이지 수는 변하지 않는다.
             /// </summary>
             private bool UpdatePageSize()
             {
@@ -481,27 +505,36 @@ namespace OpenCvWpfTracking
                     ? _grid.ColumnHeaderHeight
                     : DefaultHeaderHeight;
                 double availableHeight = Math.Max(0.0, _grid.ActualHeight - headerHeight);
-                int calculatedPageSize = Math.Max(
-                    1,
-                    (int)Math.Floor(availableHeight / DefaultRowHeight));
-
-                // 마지막 행이 표 하단까지 정확히 닿도록 현재 높이를 행 수로 균등 배분한다.
-                // 페이지의 데이터 개수가 정확히 찬 경우 하단 빈 띠가 남지 않는다.
                 if (availableHeight > 0.0)
                 {
-                    _grid.RowHeight = availableHeight / calculatedPageSize;
+                    _grid.RowHeight = availableHeight / FixedPageSize;
                 }
 
-                if (_pageSize == calculatedPageSize)
+                bool layoutChanged =
+                    Math.Abs(_lastAvailableHeight - availableHeight) >= 1.0;
+
+                _lastAvailableHeight = availableHeight;
+
+                if (_pageSize == FixedPageSize)
                 {
+                    if (layoutChanged)
+                    {
+                        ConsoleLogHelper.State(
+                            "EVENT UI",
+                            "Fixed event page capacity retained / ROWS=" +
+                            FixedPageSize +
+                            " / HEIGHT=" +
+                            _grid.ActualHeight.ToString("F0"));
+                    }
+
                     return false;
                 }
 
-                _pageSize = calculatedPageSize;
+                _pageSize = FixedPageSize;
                 _pageIndex = Math.Max(0, Math.Min(PageCount - 1, _pageIndex));
-                ConsoleLogHelper.Info(
+                ConsoleLogHelper.State(
                     "EVENT UI",
-                    "Event page capacity updated / ROWS=" + _pageSize +
+                    "Fixed event page capacity restored / ROWS=" + _pageSize +
                     " / HEIGHT=" + _grid.ActualHeight.ToString("F0"));
                 return true;
             }
@@ -512,6 +545,7 @@ namespace OpenCvWpfTracking
                 {
                     Refresh();
                 }
+
             }
 
             private void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -624,7 +658,11 @@ namespace OpenCvWpfTracking
                         ? result
                         : double.MinValue;
                 }
+
             }
+
         }
+
     }
+
 }

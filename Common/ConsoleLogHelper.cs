@@ -443,6 +443,7 @@ namespace OpenCvWpfTracking.Common
                 {
                     return true;
                 }
+
             }
 
             if (isHighFrequency)
@@ -600,6 +601,7 @@ namespace OpenCvWpfTracking.Common
                             "    " +
                             (line ?? string.Empty));
                     }
+
                 }
 
                 WriteConsoleSafe(

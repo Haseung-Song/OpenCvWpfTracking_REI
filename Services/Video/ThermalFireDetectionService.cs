@@ -21,6 +21,9 @@ namespace OpenCvWpfTracking.Services.Video
         private int _clearFrameCount;
         private bool _isFireCandidateDetected;
         private Rect _trackedCandidateRect = Rect.Empty;
+        // 2026-08-25: REI/MOE가 동일한 화재 후보 알고리즘과 오류 처리 정책을
+        // 사용하도록 공통화하였다. 반복 오류 로그는 5초 간격으로 제한한다.
+        private DateTime _lastProcessErrorLogTime = DateTime.MinValue;
         // 2026-08-14: Static hot roofs/ground are rejected using inter-frame motion.
         private Mat _previousGray = new Mat();
         // 2026-08-18: 팔레트상 계속 붉게 보이는 건물/지면과 실제로 형상이
@@ -31,6 +34,41 @@ namespace OpenCvWpfTracking.Services.Video
         /// Process 처리 함수.
         /// </summary>
         internal ThermalFireDetectionResult Process(
+            Mat frame,
+            bool isEnabled,
+            double hotThresholdRatio,
+            double minimumAreaRatio,
+            int fireBoxGroupingMode)
+        {
+            try
+            {
+                return ProcessCore(
+                    frame,
+                    isEnabled,
+                    hotThresholdRatio,
+                    minimumAreaRatio,
+                    fireBoxGroupingMode);
+            }
+            catch (Exception ex)
+            {
+                DateTime now = DateTime.Now;
+                if ((now - _lastProcessErrorLogTime).TotalSeconds >= 5)
+                {
+                    _lastProcessErrorLogTime = now;
+                    ConsoleLogHelper.Error(
+                        "THERMAL FIRE",
+                        "Candidate processing failed / " + ex.Message);
+                }
+
+                return ResetDetectionState();
+            }
+
+        }
+
+        /// <summary>
+        /// 2026-08-25 REI/MOE 공통 화재 후보 판정 본체.
+        /// </summary>
+        private ThermalFireDetectionResult ProcessCore(
             Mat frame,
             bool isEnabled,
             double hotThresholdRatio,
@@ -257,13 +295,13 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     if (mergedRects.Count == 1)
                     {
-                        DrawDetectionBox(frame, selectedRect);
+                        DrawDetectionBox(frame, selectedRect, 1);
                     }
                     else
                     {
-                        foreach (Rect rect in mergedRects)
+                        for (int index = 0; index < mergedRects.Count; index++)
                         {
-                            DrawDetectionBox(frame, rect);
+                            DrawDetectionBox(frame, mergedRects[index], index + 1);
                         }
 
                     }
@@ -364,9 +402,10 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// DrawDetectionBox 동작 수행 함수.
+        /// 2026-08-26: FIRE 후보는 형광 마젠타 BBox와 프레임 내 순번으로 표시하여
+        /// 형광 라임 AI BBox와 즉시 구분한다.
         /// </summary>
-        private static void DrawDetectionBox(Mat frame, Rect rect)
+        private static void DrawDetectionBox(Mat frame, Rect rect, int detectionOrder)
         {
             double displayScale =
                 Math.Max(
@@ -383,22 +422,23 @@ namespace OpenCvWpfTracking.Services.Video
                     frame.Height,
                     displayScale);
 
+            Scalar fireOverlayColor = new Scalar(255, 0, 255);
             Cv2.Rectangle(
                 frame,
                 displayRect,
-                new Scalar(0, 0, 255),
+                fireOverlayColor,
                 lineThickness);
             Cv2.PutText(
                 frame,
-                "FIRE DETECTION",
+                "FIRE #" + detectionOrder,
                 new Point(
                     displayRect.X,
                     Math.Max(
                         (int)Math.Round(28 * displayScale),
                         displayRect.Y - (int)Math.Round(8 * displayScale))),
                 HersheyFonts.HersheySimplex,
-                Math.Max(0.8, 0.8 * displayScale),
-                new Scalar(0, 0, 255),
+                Math.Max(1.0, 1.0 * displayScale),
+                fireOverlayColor,
                 Math.Max(2, (int)Math.Round(1.5 * displayScale)));
         }
 

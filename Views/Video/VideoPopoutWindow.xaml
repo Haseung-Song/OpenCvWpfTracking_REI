@@ -26,15 +26,60 @@
             메인 화면과 분리 창이 동일 프레임을 공유한다.
         -->
         <!--
-            분리 영상 창은 원본 종횡비를 유지하면서 화면 전체를 채운다.
-
-            창과 영상의 종횡비가 다를 경우 중앙을 기준으로 일부 영역만
-            잘라내어 상하좌우의 검은 여백이 표시되지 않도록 한다.
+            2026-08-25: 분리 창은 원본 BitmapSource를 Uniform으로 공유한다.
+            창은 실제 프레임 종횡비로 자동 조정되어 왜곡과 가장자리 잘림을 방지한다.
         -->
-        <!-- 2026-08-25: 메인 영상의 렌더링 결과를 VisualBrush로 실시간 복제한다. -->
         <Rectangle x:Name="CameraImage"
                    SnapsToDevicePixels="True"
                    UseLayoutRounding="True"/>
+
+        <!--
+            2026-08-25: 메인창과 동일한 원본 영상 좌표계로 EO/IR AI BBox를 표시한다.
+            카메라 전환 시 code-behind에서 ItemsSource와 원본 해상도 Binding을 함께 교체한다.
+        -->
+        <Viewbox Stretch="Uniform"
+                 IsHitTestVisible="False"
+                 Panel.ZIndex="10">
+            <ItemsControl x:Name="PopoutDetectionItems">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas Width="{Binding Width,
+                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                Height="{Binding Height,
+                                                 RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                ClipToBounds="True"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.Left" Value="{Binding Left}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding Top}"/>
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <!-- 2026-08-26: 메인 화면과 동일한 형광 라임 AI BBox/순번을 표시한다. -->
+                            <Rectangle Width="{Binding Width}"
+                                       Height="{Binding Height}"
+                                       Stroke="#FF39FF14"
+                                       StrokeThickness="4"/>
+                            <Border Background="#DD102A10"
+                                    BorderBrush="#FF39FF14"
+                                    BorderThickness="1"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top">
+                                <TextBlock Text="{Binding DisplayText}"
+                                           Foreground="#FF39FF14"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Padding="5,1"/>
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Viewbox>
 
         <!-- 중앙 십자선 -->
         <Grid Width="72"
@@ -91,6 +136,7 @@
               VerticalAlignment="Top">
 
         <Border x:Name="CameraInfoBorder"
+                Visibility="Collapsed"
                 Padding="42,7,10,7"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
@@ -231,14 +277,14 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Panel.ZIndex="20"
-                Content="▲"
+                Content="▼"
                 FontSize="15"
                 FontWeight="Bold"
                 Foreground="White"
                 Background="#B21D232A"
                 BorderBrush="#5EE7F7"
                 BorderThickness="1"
-                ToolTip="단축키 안내 숨기기"
+                ToolTip="단축키 안내 표시하기"
                 Click="CameraInfoToggleButton_Click"/>
 
         </Grid>

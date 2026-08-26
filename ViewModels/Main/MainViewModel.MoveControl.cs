@@ -532,7 +532,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 옥상 MCB 유지보수 직접 연결 IP를 반환한다.
         ///
         /// Control Agent는 Local LA(기본 127.0.0.1:5001),
-        /// MCB는 실장비(기본 192.168.0.122:4002)이므로
+        /// 2026-08-26: MCB는 실장비(기본 192.168.0.112:4001),
+        /// SCB는 4002를 사용하므로
         /// 두 주소를 서로 공유하지 않는다.
         /// </summary>
         private string GetMcbMaintenanceIpAddress()
@@ -543,7 +544,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             return string.IsNullOrWhiteSpace(
                     ipAddress)
-                ? "192.168.0.122"
+                ? "192.168.0.112"
                 : ipAddress;
         }
 

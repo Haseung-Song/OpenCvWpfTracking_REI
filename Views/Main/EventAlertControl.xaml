@@ -1,8 +1,7 @@
 <UserControl x:Class="OpenCvWpfTracking.EventAlertControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="Transparent"
-             IsEnabled="{Binding IsEventAlertControlEnabled}">
+             Background="Transparent">
     <UserControl.Resources>
         <Style x:Key="EventGridStyle" TargetType="{x:Type DataGrid}">
             <Setter Property="AutoGenerateColumns" Value="False"/>
@@ -117,6 +116,12 @@
                     <Setter Property="Background" Value="#3F5550"/>
                     <Setter Property="Foreground" Value="#D0D7DE"/>
                 </DataTrigger>
+                <!-- 2026-08-26: CSV 불러오기 이후 수신된 신규 행은 밝은 청록색으로 구분한다. -->
+                <DataTrigger Binding="{Binding IsLiveAfterCsvLoad}" Value="True">
+                    <Setter Property="Background" Value="#176B87"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
@@ -144,14 +149,14 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="AI DETECTION" Foreground="#8FD3FF"
                                        FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Text="{Binding AiAlertStatusText}" Foreground="White"
+                            <TextBlock Text="{Binding AiAlertStatusText}" Foreground="{Binding AiAlertHeaderBrush}"
                                        FontSize="10" FontWeight="Bold" Margin="0,3,0,0"
                                        HorizontalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="ACTIVE" Foreground="#A9D6E5" FontSize="10"
                                        HorizontalAlignment="Center"/>
-                            <TextBlock Text="{Binding ActiveAiCount}" Foreground="#FF8A80"
+                            <TextBlock Text="{Binding ActiveAiCount}" Foreground="{Binding AiAlertHeaderBrush}"
                                        FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
@@ -170,7 +175,8 @@
                               Sorting="EventGrid_Sorting"
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="105" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="30" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="88" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="42" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="TYPE" SortMemberPath="DetectionType" Binding="{Binding DetectionType}" Width="50" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="CONF" SortMemberPath="Confidence" Binding="{Binding Confidence}" Width="48" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
@@ -180,7 +186,8 @@
                     </DataGrid>
                 </Border>
 
-                <Grid Grid.Row="2" Margin="0,6,0,0">
+                <Grid Grid.Row="2" Margin="0,6,0,0"
+                      IsEnabled="{Binding IsEventAlertControlEnabled}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/><ColumnDefinition Width="72"/>
                         <ColumnDefinition Width="52"/><ColumnDefinition Width="72"/>
@@ -199,10 +206,11 @@
                                VerticalAlignment="Center"/>
                 </Grid>
 
-                <UniformGrid Grid.Row="3" Columns="4" Margin="0,6,0,0">
-                    <Button Content="SAVE CSV" Height="31" Margin="0,0,3,0"
+                <UniformGrid Grid.Row="3" Columns="4" Margin="0,6,0,0"
+                             IsEnabled="{Binding IsEventAlertControlEnabled}">
+                    <Button Content="SAVE AI CSV" Height="31" FontSize="10.5" Margin="0,0,3,0"
                             Command="{Binding SaveAiEventsCommand}"/>
-                    <Button Content="LOAD CSV" Height="31" Margin="2,0"
+                    <Button Content="LOAD AI CSV" Height="31" FontSize="10.5" Margin="2,0"
                             Command="{Binding LoadAiEventsCommand}"/>
                     <Button Content="DELETE SELECTED" Height="31" Margin="2,0"
                             Background="#705A31" Click="AiDeleteSelectedButton_Click"/>
@@ -259,7 +267,8 @@
                               Sorting="EventGrid_Sorting"
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="105" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="30" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="88" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="42" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="BBOX(px)" SortMemberPath="PixelArea" Binding="{Binding PixelSizeCompactText}" Width="*" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="AREA(px²)" SortMemberPath="PixelArea" Binding="{Binding PixelAreaDisplayText}" Width="86" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
@@ -268,7 +277,8 @@
                     </DataGrid>
                 </Border>
 
-                <Grid Grid.Row="2" Margin="0,6,0,0">
+                <Grid Grid.Row="2" Margin="0,6,0,0"
+                      IsEnabled="{Binding IsEventAlertControlEnabled}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/><ColumnDefinition Width="72"/>
                         <ColumnDefinition Width="52"/><ColumnDefinition Width="72"/>
@@ -287,10 +297,11 @@
                                VerticalAlignment="Center"/>
                 </Grid>
 
-                <UniformGrid Grid.Row="3" Columns="4" Margin="0,6,0,0">
-                    <Button Content="SAVE CSV" Height="31" Margin="0,0,3,0"
+                <UniformGrid Grid.Row="3" Columns="4" Margin="0,6,0,0"
+                             IsEnabled="{Binding IsEventAlertControlEnabled}">
+                    <Button Content="SAVE FIRE CSV" Height="31" FontSize="10.5" Margin="0,0,3,0"
                             Command="{Binding SaveFireEventsCommand}"/>
-                    <Button Content="LOAD CSV" Height="31" Margin="2,0"
+                    <Button Content="LOAD FIRE CSV" Height="31" FontSize="10.5" Margin="2,0"
                             Command="{Binding LoadFireEventsCommand}"/>
                     <Button Content="DELETE SELECTED" Height="31" Margin="2,0"
                             Background="#705A31" Click="FireDeleteSelectedButton_Click"/>

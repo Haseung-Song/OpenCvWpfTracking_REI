@@ -93,7 +93,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// [AI] [Detector Agent]에 [TCP] 연결
         ///
         /// [기본] :
-        /// [IP]   : [192.168.20.160]
+        /// [IP]   : [192.168.20.165]
         /// [PORT] : [5055]
         /// </summary>
         public async Task<bool> ConnectAsync(string ip, int port)

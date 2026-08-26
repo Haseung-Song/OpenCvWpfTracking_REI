@@ -204,10 +204,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly McbMaintenanceCommandService _mcbMaintenanceCommandService;
 
         /// <summary>
-        /// LA Connect.ini 기본 MCB Port
+        /// 2026-08-26: 옥상 GOP MCB 유지보수 기본 Port.
+        /// MCB는 4001, SCB는 4002를 사용하므로 서로 혼용하지 않는다.
         /// </summary>
         private const int McbMaintenancePort =
-            4002;
+            4001;
 
         /// <summary>
         /// 환경장비 Web Agent 기준 EO / IR Zoom 동기화 Adapter
@@ -1190,7 +1191,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [AI Detector Agent] 연결 [IP]
         /// </summary>
-        private string _aiControlAgentIp = "192.168.20.160";
+        // 2026-08-25: AI Detector 운영 서버 기본 주소를 192.168.20.165로 변경한다. (Port 5055 유지)
+        private string _aiControlAgentIp = "192.168.20.165";
 
         /// <summary>
         /// [AI Detector Agent] 연결 [Port]
@@ -2116,9 +2118,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ControlAgentPortText =
                 "5001";
 
-            // 2-3. 옥상 GOP MCB 실장비 IP
+            // 2026-08-26: 옥상 GOP MCB 실장비 IP를 192.168.0.112로 변경한다.
             McbMaintenanceIpAddress =
-                "192.168.0.122";
+                "192.168.0.112";
 
             ControlAgentConnectionStatusText =
                 "Disconnected";

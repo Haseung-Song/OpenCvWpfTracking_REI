@@ -199,6 +199,7 @@ namespace OpenCvWpfTracking
                 _isApplyingViewportAspectRatio =
                     false;
             }
+
         }
 
         private static double NormalizeAspectRatio(
@@ -533,6 +534,9 @@ namespace OpenCvWpfTracking
         {
             string imagePropertyName;
             string statusPropertyName;
+            string detectionBoxesPropertyName;
+            string videoWidthPropertyName;
+            string videoHeightPropertyName;
             string cameraTitle;
             Color statusColor;
             Visual renderedVideo;
@@ -551,6 +555,15 @@ namespace OpenCvWpfTracking
 
                 statusPropertyName =
                     "EoStatusText";
+
+                detectionBoxesPropertyName =
+                    "EoDetectionBoxes";
+
+                videoWidthPropertyName =
+                    "EoVideoWidth";
+
+                videoHeightPropertyName =
+                    "EoVideoHeight";
 
                 cameraTitle =
                     "EO CAMERA / SHORTCUT CONTROL";
@@ -585,6 +598,15 @@ namespace OpenCvWpfTracking
                 statusPropertyName =
                     "IrStatusText";
 
+                detectionBoxesPropertyName =
+                    "IrDetectionBoxes";
+
+                videoWidthPropertyName =
+                    "IrVideoWidth";
+
+                videoHeightPropertyName =
+                    "IrVideoHeight";
+
                 cameraTitle =
                     "IR CAMERA / SHORTCUT CONTROL";
 
@@ -612,6 +634,11 @@ namespace OpenCvWpfTracking
             ConfigureRenderedVideoBrush(
                 renderedVideo,
                 imagePropertyName);
+
+            ConfigureDetectionOverlayBinding(
+                detectionBoxesPropertyName,
+                videoWidthPropertyName,
+                videoHeightPropertyName);
 
             BindingOperations.SetBinding(
                 CameraStatusText,
@@ -644,14 +671,13 @@ namespace OpenCvWpfTracking
             {
                 ApplyViewportAspectRatio();
             }
+
         }
 
         /// <summary>
         /// 2026-08-25:
-        /// 메인 창에서 이미 중앙 크롭된 영상 Visual을 그대로 복제하여
-        /// 메인/팝업 십자선이 동일한 피사체를 가리키도록 한다.
-        /// Visual 복제 구성에 실패하면 기존 BitmapSource Binding 방식으로
-        /// 자동 전환하여 팝업 영상이 검게 남지 않도록 한다.
+        /// 메인 창과 동일한 BitmapSource를 Uniform으로 표시하여
+        /// 메인/팝업 영상, 십자선과 AI BBox가 동일한 원본 좌표계를 사용하도록 한다.
         /// </summary>
         private void ConfigureRenderedVideoBrush(
             Visual renderedVideo,
@@ -659,15 +685,28 @@ namespace OpenCvWpfTracking
         {
             try
             {
-                CameraImage.Fill =
-                    new VisualBrush(renderedVideo)
+                ImageBrush imageBrush =
+                    new ImageBrush
                     {
-                        Stretch = Stretch.Fill
+                        Stretch = Stretch.Uniform,
+                        AlignmentX = AlignmentX.Center,
+                        AlignmentY = AlignmentY.Center
                     };
+
+                BindingOperations.SetBinding(
+                    imageBrush,
+                    ImageBrush.ImageSourceProperty,
+                    new Binding(imagePropertyName)
+                    {
+                        Source = _viewModel,
+                        Mode = BindingMode.OneWay
+                    });
+
+                CameraImage.Fill = imageBrush;
 
                 ConsoleLogHelper.State(
                     "VIDEO POPOUT / RENDER SYNC",
-                    "Main rendered video linked / CAMERA=" +
+                    "Original frame binding applied / CAMERA=" +
                     GetCameraName() +
                     " / ASPECT=" +
                     _currentViewportAspectRatio.ToString("F4"));
@@ -676,27 +715,73 @@ namespace OpenCvWpfTracking
             {
                 ConsoleLogHelper.Error(
                     "VIDEO POPOUT / RENDER SYNC",
-                    "Main rendered video link failed; BitmapSource fallback applied",
+                    "Original frame binding failed",
                     exception);
 
-                ImageBrush fallbackBrush =
-                    new ImageBrush
-                    {
-                        Stretch = Stretch.UniformToFill
-                    };
+                CameraImage.Fill = Brushes.Black;
+            }
+
+        }
+
+        /// <summary>
+        /// 2026-08-25: 분리 창의 AI BBox를 현재 EO/IR 카메라 컬렉션과
+        /// 원본 영상 해상도에 바인딩하여 메인창과 동일한 좌표로 표시한다.
+        /// </summary>
+        private void ConfigureDetectionOverlayBinding(
+            string detectionBoxesPropertyName,
+            string videoWidthPropertyName,
+            string videoHeightPropertyName)
+        {
+            try
+            {
+                BindingOperations.ClearBinding(
+                    PopoutDetectionItems,
+                    ItemsControl.ItemsSourceProperty);
+                BindingOperations.ClearBinding(
+                    PopoutDetectionItems,
+                    FrameworkElement.WidthProperty);
+                BindingOperations.ClearBinding(
+                    PopoutDetectionItems,
+                    FrameworkElement.HeightProperty);
 
                 BindingOperations.SetBinding(
-                    fallbackBrush,
-                    ImageBrush.ImageSourceProperty,
-                    new Binding(imagePropertyName)
+                    PopoutDetectionItems,
+                    ItemsControl.ItemsSourceProperty,
+                    new Binding(detectionBoxesPropertyName)
+                    {
+                        Source = _viewModel,
+                        Mode = BindingMode.OneWay
+                    });
+                BindingOperations.SetBinding(
+                    PopoutDetectionItems,
+                    FrameworkElement.WidthProperty,
+                    new Binding(videoWidthPropertyName)
+                    {
+                        Source = _viewModel,
+                        Mode = BindingMode.OneWay
+                    });
+                BindingOperations.SetBinding(
+                    PopoutDetectionItems,
+                    FrameworkElement.HeightProperty,
+                    new Binding(videoHeightPropertyName)
                     {
                         Source = _viewModel,
                         Mode = BindingMode.OneWay
                     });
 
-                CameraImage.Fill =
-                    fallbackBrush;
+                ConsoleLogHelper.State(
+                    "VIDEO POPOUT / AI OVERLAY",
+                    "Detection overlay linked / CAMERA=" + GetCameraName());
             }
+            catch (Exception exception)
+            {
+                PopoutDetectionItems.ItemsSource = null;
+                ConsoleLogHelper.Error(
+                    "VIDEO POPOUT / AI OVERLAY",
+                    "Detection overlay binding failed / CAMERA=" + GetCameraName(),
+                    exception);
+            }
+
         }
 
         #endregion

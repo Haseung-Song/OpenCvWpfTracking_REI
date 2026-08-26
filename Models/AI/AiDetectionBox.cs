@@ -11,6 +11,17 @@ namespace OpenCvWpfTracking.Models.AI
         public long ObjectId { get; set; }
 
         /// <summary>
+        /// 2026-08-26: 현재 프레임에서 화면에 표시되는 AI 탐지 순번이다.
+        /// 필터링 완료 후 1부터 부여하여 BBox 좌측 상단 식별표에 사용한다.
+        /// </summary>
+        public int DisplayOrder { get; set; }
+
+        /// <summary>
+        /// 2026-08-26: 이벤트 목록의 고정 EventId와 BBox를 연결하는 식별값이다.
+        /// </summary>
+        public int DetectionEventId { get; set; }
+
+        /// <summary>
         /// [AI Detector] 클래스 인덱스
         /// 
         /// 0 = [Drone]
@@ -25,6 +36,15 @@ namespace OpenCvWpfTracking.Models.AI
         /// 범위: [0.0 ~ 1.0]
         /// </summary>
         public double Confidence { get; set; }
+
+        /// <summary>
+        /// 2026-08-26: AI Agent가 0~1000 정수 스케일로 보내는 Confidence를
+        /// UI/이벤트 공통 0~1 범위로 변환한다. 기존 0~1 프로토콜 값도 호환한다.
+        /// </summary>
+        public double NormalizedConfidence =>
+            Confidence > 1.0
+                ? Confidence / 1000.0
+                : Confidence;
 
         /// <summary>
         /// [Bounding Box] 좌측 X 좌표
@@ -94,7 +114,7 @@ namespace OpenCvWpfTracking.Models.AI
         {
             get
             {
-                return $"{ClassName} {Confidence * 100:F0}%";
+                return $"AI E{DetectionEventId}-#{DisplayOrder} | {ClassName} {NormalizedConfidence * 100:F1}%";
             }
 
         }

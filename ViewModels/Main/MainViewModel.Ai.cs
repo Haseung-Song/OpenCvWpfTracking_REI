@@ -4,7 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
@@ -16,6 +20,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
+        /*
+         * 2026-08-26: 파노라마 촬영 중 UI Dispatcher가 일시적으로 바빠져도
+         * AI TCP 수신 Thread가 멈추지 않도록 채널별 최신 UI 갱신만 보관한다.
+         */
+        private readonly object _aiUiUpdateSync = new object();
+        private readonly Dictionary<int, Action> _pendingAiUiUpdates =
+            new Dictionary<int, Action>();
+        private bool _isAiUiDrainScheduled;
+        private bool _isApplicationShutdownRequested;
+        private int _coalescedAiUiUpdateCount;
+
         #region [AI Detector Communication]
 
         #region [AI Detector Connect]
@@ -31,6 +46,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             AiPowerStatusText = "OFF";
             AiSettingStatusText = "[AI] Connecting...";
+            // 2026-08-25: 재연결 시작 시 이전 연결의 BBox와 ACTIVE 상태를 제거한다.
+            ClearAiDetectionState("Connect initialization");
 
             try
             {
@@ -95,15 +112,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void DisconnectAiAgent()
         {
-            _aiDetectorClientService.StopAutoReconnect();
-            _aiDetectorClientService.Disconnect();
-
             AiPowerStatusText = "OFF";
-            AiSettingStatusText = "[AI] Disconnected";
+            AiSettingStatusText = "[AI] Disconnecting...";
 
-            ConsoleLogHelper.Command(
-                "AI DETECTOR",
-                "Manual disconnect completed");
+            try
+            {
+                _aiDetectorClientService.StopAutoReconnect();
+                _aiDetectorClientService.Disconnect();
+
+                // 2026-08-25: 수동 연결 해제 즉시 EO/IR BBox와 AI ACTIVE 상태를 정리한다.
+                ClearAiDetectionState("Manual disconnect");
+                AiSettingStatusText = "[AI] Disconnected";
+
+                ConsoleLogHelper.Command(
+                    "AI DETECTOR",
+                    "Manual disconnect completed / Detection overlay cleared");
+            }
+            catch (Exception ex)
+            {
+                ClearAiDetectionState("Manual disconnect exception fallback");
+                AiSettingStatusText = "[AI] Disconnect Incomplete";
+                ConsoleLogHelper.Error(
+                    "AI DETECTOR",
+                    "Manual disconnect exception",
+                    ex);
+            }
+
         }
 
         #endregion
@@ -222,6 +256,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             byte[] packet,
             DateTime receiveTime)
         {
+            // 2026-08-25: Disconnect 이후 도착한 지연 CMD 55가 BBox를 다시 만들지 못하게 한다.
+            if (AiPowerStatusText != "ON")
+            {
+                return;
+            }
 
             if (!_aiDetectorPacketParser.TryParseDetectionPacket(
                 packet,
@@ -258,9 +297,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DateTime receiveTime,
             bool forcePrintLog = false)
         {
-            App.Current.Dispatcher.Invoke(() =>
+            /*
+             * 2026-08-26: Dispatcher.Invoke는 UI가 파노라마 촬영 처리 중일 때
+             * AI 수신 Thread까지 대기시켰다. 비동기 최신값 병합 Queue를 사용하여
+             * 촬영 중에도 TCP 수신을 계속하고 UI 복귀 직후 최신 BBox를 반영한다.
+             */
+            QueueAiDetectionUiUpdate(result.RtspIndex, () =>
             {
                 UpdateAiDetectionEvent(result, receiveTime);
+                int detectionEventId =
+                    _activeAiEvents.TryGetValue(result.RtspIndex, out FireEventRecord activeEvent)
+                        ? activeEvent.EventId
+                        : 0;
 
                 switch (result.RtspIndex)
                 {
@@ -290,12 +338,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         /// </summary>
                         List<AiDetectionBox> rtspIndex0DisplayBoxes =
                             result.Boxes
-                                .Where(box => box.Confidence >= AiDisplayConfidenceThreshold)
-                                .Select(box =>
-                                    ConvertBoxForDisplay(
+                                .Where(box => box.NormalizedConfidence >= AiDisplayConfidenceThreshold)
+                                .Select((box, index) =>
+                                {
+                                    // 2026-08-26: 화면에 남은 객체 기준으로 1부터 순번을 부여한다.
+                                    box.DisplayOrder = index + 1;
+                                    box.DetectionEventId = detectionEventId;
+                                    return ConvertBoxForDisplay(
                                         box,
                                         EoVideoWidth,
-                                        EoVideoHeight))
+                                        EoVideoHeight);
+                                })
                                 .ToList();
 
                         UpdateDetectionBoxes(
@@ -329,12 +382,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         /// </summary>
                         List<AiDetectionBox> rtspIndex1DisplayBoxes =
                             result.Boxes
-                                .Where(box => box.Confidence >= AiDisplayConfidenceThreshold)
-                                .Select(box =>
-                                    ConvertBoxForDisplay(
+                                .Where(box => box.NormalizedConfidence >= AiDisplayConfidenceThreshold)
+                                .Select((box, index) =>
+                                {
+                                    // 2026-08-26: EO와 동일한 AI BBox 순번 정책을 IR에도 적용한다.
+                                    box.DisplayOrder = index + 1;
+                                    box.DetectionEventId = detectionEventId;
+                                    return ConvertBoxForDisplay(
                                         box,
                                         IrVideoWidth,
-                                        IrVideoHeight))
+                                        IrVideoHeight);
+                                })
                                 .ToList();
 
                         UpdateDetectionBoxes(
@@ -387,12 +445,272 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine(
                         $"[AI BOX #{i + 1}] [ID] {box.ObjectId}, " +
                         $"[Class] {box.ClassIndex}, " +
-                        $"[Confidence] {box.Confidence * 100:F0}%, " +
+                        $"[Confidence] {box.NormalizedConfidence * 100:F1}%, " +
                         $"[Box] {box.Left}, {box.Top}, {box.Right}, {box.Bottom}");
                 }
                 ConsoleLogHelper.PrintLine();
             }
 
+        }
+
+        /// <summary>
+        /// 2026-08-26: RTSP 채널별 최신 탐지 UI 작업을 비동기로 예약한다.
+        /// UI가 지연되는 동안 같은 채널의 중간 Frame은 병합하여 Dispatcher 적체를 방지한다.
+        /// </summary>
+        private void QueueAiDetectionUiUpdate(
+            int rtspIndex,
+            Action updateAction)
+        {
+            bool shouldSchedule = false;
+
+            lock (_aiUiUpdateSync)
+            {
+                if (_isApplicationShutdownRequested)
+                {
+                    return;
+                }
+
+                if (_pendingAiUiUpdates.ContainsKey(rtspIndex))
+                {
+                    _coalescedAiUiUpdateCount++;
+                }
+
+                _pendingAiUiUpdates[rtspIndex] = updateAction;
+
+                if (!_isAiUiDrainScheduled)
+                {
+                    _isAiUiDrainScheduled = true;
+                    shouldSchedule = true;
+                }
+
+            }
+
+            if (!shouldSchedule)
+            {
+                return;
+            }
+
+            Application application = Application.Current;
+            Dispatcher dispatcher = application?.Dispatcher;
+
+            if (dispatcher == null ||
+                dispatcher.HasShutdownStarted ||
+                dispatcher.HasShutdownFinished)
+            {
+                ResetPendingAiUiUpdates();
+                return;
+            }
+
+            try
+            {
+                dispatcher.BeginInvoke(
+                    DispatcherPriority.DataBind,
+                    new Action(DrainPendingAiUiUpdates));
+            }
+            catch (Exception ex)
+            {
+                ResetPendingAiUiUpdates();
+
+                if (!_isApplicationShutdownRequested)
+                {
+                    ConsoleLogHelper.Error(
+                        "AI UI / DISPATCH",
+                        "Detection UI update scheduling failed",
+                        ex);
+                }
+
+            }
+
+        }
+
+        /// <summary>
+        /// 2026-08-26: UI가 다시 응답하면 채널별 최신 BBox와 이벤트 상태를 한 번에 반영한다.
+        /// </summary>
+        private void DrainPendingAiUiUpdates()
+        {
+            List<Action> pendingActions;
+            int coalescedCount;
+
+            lock (_aiUiUpdateSync)
+            {
+                if (_isApplicationShutdownRequested)
+                {
+                    _pendingAiUiUpdates.Clear();
+                    _isAiUiDrainScheduled = false;
+                    _coalescedAiUiUpdateCount = 0;
+                    return;
+                }
+
+                pendingActions = _pendingAiUiUpdates
+                    .OrderBy(item => item.Key)
+                    .Select(item => item.Value)
+                    .ToList();
+                _pendingAiUiUpdates.Clear();
+                _isAiUiDrainScheduled = false;
+                coalescedCount = _coalescedAiUiUpdateCount;
+                _coalescedAiUiUpdateCount = 0;
+            }
+
+            foreach (Action pendingAction in pendingActions)
+            {
+                try
+                {
+                    pendingAction();
+                }
+                catch (Exception ex)
+                {
+                    ConsoleLogHelper.Error(
+                        "AI UI / DISPATCH",
+                        "Detection UI update failed",
+                        ex);
+                }
+
+            }
+
+            // 2026-08-26: 최신 프레임 병합은 유지하되 큰 적체만 기록하여 UI/디스크 부하를 줄인다.
+            if (coalescedCount >= 25)
+            {
+                ConsoleLogHelper.State(
+                    "AI UI / DISPATCH",
+                    "Latest detection state restored after UI delay / CHANNELS=" +
+                    pendingActions.Count +
+                    " / COALESCED=" +
+                    coalescedCount);
+            }
+
+        }
+
+        private void ResetPendingAiUiUpdates()
+        {
+            lock (_aiUiUpdateSync)
+            {
+                _pendingAiUiUpdates.Clear();
+                _isAiUiDrainScheduled = false;
+                _coalescedAiUiUpdateCount = 0;
+            }
+
+        }
+
+        /// <summary>
+        /// 2026-08-26: Application/Dispatcher 종료 상태를 확인한 뒤 UI 작업을 수행한다.
+        /// 종료 이후 지연 Callback이 Application.Current를 참조하여 발생하던 예외를 방지한다.
+        /// </summary>
+        private bool TryRunAiUiAction(
+            Action action,
+            string operationName)
+        {
+            if (_isApplicationShutdownRequested)
+            {
+                return false;
+            }
+
+            Application application = Application.Current;
+            Dispatcher dispatcher = application?.Dispatcher;
+
+            if (dispatcher == null ||
+                dispatcher.HasShutdownStarted ||
+                dispatcher.HasShutdownFinished)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (dispatcher.CheckAccess())
+                {
+                    action();
+                }
+                else
+                {
+                    dispatcher.Invoke(action);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (!_isApplicationShutdownRequested)
+                {
+                    ConsoleLogHelper.Error(
+                        "AI UI / DISPATCH",
+                        operationName + " failed",
+                        ex);
+                }
+
+                return false;
+            }
+
+        }
+
+        /// <summary>
+        /// 2026-08-26: 메인 창 종료 전에 AI 수신, 이벤트 Timer와 장비 연결을 정리한다.
+        /// 종료 뒤 Dispatcher Callback 및 Application.Current null 참조를 차단한다.
+        /// </summary>
+        internal void ShutdownForApplicationExit()
+        {
+            lock (_aiUiUpdateSync)
+            {
+                if (_isApplicationShutdownRequested)
+                {
+                    return;
+                }
+
+                _isApplicationShutdownRequested = true;
+                _pendingAiUiUpdates.Clear();
+                _isAiUiDrainScheduled = false;
+                _coalescedAiUiUpdateCount = 0;
+            }
+
+            ConsoleLogHelper.State(
+                "APPLICATION / SHUTDOWN",
+                "ViewModel resource cleanup started");
+
+            try
+            {
+                _testProgramEventTimer?.Stop();
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "APPLICATION / SHUTDOWN",
+                    "Event timer stop failed",
+                    ex);
+            }
+
+            try
+            {
+                _aiDetectorClientService.PacketReceived -=
+                    OnAiDetectorPacketReceived;
+                _aiDetectorClientService.StopAutoReconnect();
+                _aiDetectorClientService.Disconnect();
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "APPLICATION / SHUTDOWN",
+                    "AI detector cleanup failed",
+                    ex);
+            }
+
+            try
+            {
+                Disconnect();
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "APPLICATION / SHUTDOWN",
+                    "Device/video cleanup failed",
+                    ex);
+
+                _cts?.Cancel();
+                _controlAgentReconnectCts?.Cancel();
+                _videoReconnectCts?.Cancel();
+            }
+
+            ConsoleLogHelper.State(
+                "APPLICATION / SHUTDOWN",
+                "ViewModel resource cleanup completed");
         }
 
         #endregion
@@ -632,18 +950,128 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// [ONNX] 파일 목록 조회 요청
+        /// [ONNX/HEF] 파일 목록 조회 요청
         ///
-        /// 요청 [CMD 04]
-        /// 응답 [CMD 53]
+        /// 2026-08-25: 웹 설정 API(5101/api/config)를 우선 사용한다.
+        /// HTTP 조회가 실패하거나 모델이 없을 때만 기존 TCP CMD 04/53으로 복귀한다.
         /// </summary>
         private async Task<bool> RequestAiDetectorOnnxListAsync()
         {
+            if (await TryLoadAiDetectorModelListFromHttpAsync())
+            {
+                return true;
+            }
+
             byte[] packet =
                 _aiPacketBuilder
                     .BuildOnnxListRequest();
 
+            ConsoleLogHelper.Warning(
+                "AI MODEL / HTTP",
+                "HTTP model list unavailable; TCP CMD 04 fallback requested");
+
             return await _aiDetectorClientService.SendAsync(packet);
+        }
+
+        /// <summary>
+        /// 2026-08-25: AI 웹 뷰어 설정 API에서 ONNX/HEF 파일명을 읽어
+        /// 기존 AiOnnxList에 반영한다. 모델 파일 자체는 다운로드하지 않는다.
+        /// </summary>
+        private async Task<bool> TryLoadAiDetectorModelListFromHttpAsync()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_aiControlAgentIp))
+                {
+                    return false;
+                }
+
+                Uri configUri =
+                    new UriBuilder(
+                        Uri.UriSchemeHttp,
+                        _aiControlAgentIp.Trim(),
+                        5101,
+                        "api/config")
+                    .Uri;
+
+                using (HttpClientHandler handler = new HttpClientHandler { UseProxy = false })
+                using (HttpClient client = new HttpClient(handler))
+                {
+                    client.Timeout = TimeSpan.FromSeconds(3);
+
+                    string json =
+                        await client.GetStringAsync(configUri);
+
+                    MatchCollection matches =
+                        Regex.Matches(
+                            json ?? string.Empty,
+                            @"""(?<name>(?:\\.|[^""\\])*?\.(?:onnx|hef))""",
+                            RegexOptions.IgnoreCase);
+
+                    List<AiOnnxInfo> models =
+                        new List<AiOnnxInfo>();
+
+                    HashSet<string> uniqueNames =
+                        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (Match match in matches)
+                    {
+                        string rawName =
+                            Regex.Unescape(match.Groups["name"].Value)
+                                 .Replace("\\/", "/");
+
+                        int separatorIndex =
+                            Math.Max(
+                                rawName.LastIndexOf('/'),
+                                rawName.LastIndexOf('\\'));
+
+                        string fileName =
+                            separatorIndex >= 0
+                                ? rawName.Substring(separatorIndex + 1)
+                                : rawName;
+
+                        if (string.IsNullOrWhiteSpace(fileName) ||
+                            !uniqueNames.Add(fileName))
+                        {
+                            continue;
+                        }
+
+                        models.Add(
+                            new AiOnnxInfo
+                            {
+                                Index = models.Count,
+                                FileName = fileName
+                            });
+                    }
+
+                    if (models.Count == 0)
+                    {
+                        ConsoleLogHelper.Warning(
+                            "AI MODEL / HTTP",
+                            "Config response contained no ONNX/HEF model names");
+                        return false;
+                    }
+
+                    UpdateAiOnnxList(models);
+
+                    ConsoleLogHelper.State(
+                        "AI MODEL / HTTP",
+                        "Model list loaded / HOST=" + _aiControlAgentIp +
+                        " / PORT=5101 / COUNT=" + models.Count);
+
+                    return true;
+                }
+
+            }
+            catch (Exception exception)
+            {
+                ConsoleLogHelper.Error(
+                    "AI MODEL / HTTP",
+                    "Model list request failed; TCP fallback will be used",
+                    exception);
+                return false;
+            }
+
         }
 
         /// <summary>
@@ -703,6 +1131,76 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         }
 
+        /// <summary>
+        /// 2026-08-25: AI 연결 전환 또는 해제 시 화면 BBox와 ACTIVE 이벤트 상태를
+        /// UI Dispatcher에서 함께 정리하여 연결이 끊긴 뒤 이전 탐지 결과가 남지 않게 한다.
+        /// </summary>
+        private void ClearAiDetectionState(string reason)
+        {
+            int eoBoxCount = 0;
+            int irBoxCount = 0;
+            int activeEventCount = 0;
+
+            Action clearAction = () =>
+            {
+                eoBoxCount = EoDetectionBoxes.Count;
+                irBoxCount = IrDetectionBoxes.Count;
+                activeEventCount = _activeAiEvents.Count;
+
+                EoDetectionBoxes.Clear();
+                IrDetectionBoxes.Clear();
+
+                DateTime clearedTime = DateTime.Now;
+                foreach (FireEventRecord activeEvent in _activeAiEvents.Values.ToList())
+                {
+                    activeEvent.MarkCleared(clearedTime);
+
+                    try
+                    {
+                        AppendFireEventAudit(activeEvent, "CLEARED");
+                    }
+                    catch (Exception auditException)
+                    {
+                        ConsoleLogHelper.Error(
+                            "AI EVENT",
+                            "Disconnect audit write failed / EVENT_ID=" +
+                            activeEvent.EventId,
+                            auditException);
+                    }
+
+                }
+
+                _activeAiEvents.Clear();
+                ActiveAiCount = 0;
+                NotifyAiEventSummaryChanged();
+            };
+
+            try
+            {
+                if (!TryRunAiUiAction(
+                        clearAction,
+                        "Detection state clear"))
+                {
+                    return;
+                }
+
+                ConsoleLogHelper.State(
+                    "AI DETECTOR",
+                    "Detection state cleared / REASON=" + reason +
+                    " / EO_BOXES=" + eoBoxCount +
+                    " / IR_BOXES=" + irBoxCount +
+                    " / ACTIVE_EVENTS=" + activeEventCount);
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "AI DETECTOR",
+                    "Detection state clear failed / REASON=" + reason,
+                    ex);
+            }
+
+        }
+
         #endregion
 
         #region [AI Detector UI Update Helpers]
@@ -713,7 +1211,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void UpdateAiRtspList(
             List<AiRtspInfo> rtspList)
         {
-            App.Current.Dispatcher.Invoke(() =>
+            TryRunAiUiAction(() =>
             {
                 AiRtspList.Clear();
 
@@ -722,7 +1220,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     AiRtspList.Add(rtspInfo);
                 }
 
-            });
+            }, "RTSP list update");
 
         }
 
@@ -732,7 +1230,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void UpdateAiOnnxList(
             List<AiOnnxInfo> onnxList)
         {
-            App.Current.Dispatcher.Invoke(() =>
+            TryRunAiUiAction(() =>
             {
                 AiOnnxList.Clear();
 
@@ -762,7 +1260,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 OnPropertyChanged(nameof(AiRtsp0OnnxIndex));
                 OnPropertyChanged(nameof(AiRtsp1OnnxIndex));
-            });
+            }, "Model list update");
 
         }
 
@@ -772,7 +1270,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void UpdateAiMappingList(
             List<AiMappingInfo> mappingList)
         {
-            App.Current.Dispatcher.Invoke(() =>
+            TryRunAiUiAction(() =>
             {
                 AiMappingList.Clear();
 
@@ -781,7 +1279,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     AiMappingList.Add(mappingInfo);
                 }
 
-            });
+            }, "Mapping list update");
 
         }
 

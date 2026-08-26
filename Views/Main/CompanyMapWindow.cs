@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -151,5 +151,7 @@ namespace OpenCvWpfTracking
             Log.Information(
                 "[MAP] Expanded Map Window Close");
         }
+
     }
+
 }
