@@ -3,6 +3,7 @@ using OpenCvSharp;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -20,6 +21,7 @@ namespace FireCandidateValidator
     public partial class MainWindow : System.Windows.Window
     {
         private readonly FireCandidateAnalyzer _analyzer;
+        private readonly SmokeCandidateAnalyzer _smokeAnalyzer;
         private readonly DispatcherTimer _videoTimer;
 
         private VideoCapture _videoCapture;
@@ -36,7 +38,12 @@ namespace FireCandidateValidator
         private int _fireBoxGroupingMode = 2;
         private readonly List<StableCandidateTrack> _stableCandidateTracks =
             new List<StableCandidateTrack>();
-        private bool _lastPublishedDetectionState;
+        // 2026-08-31: TEST FIRE/SMOKE도 Viewer와 동일한 기준으로 최초 확정 V.SCORE를 계산한다.
+        private readonly Dictionary<string, List<TestVisionScoreTrack>> _testVisionScoreTracks =
+            new Dictionary<string, List<TestVisionScoreTrack>>(StringComparer.OrdinalIgnoreCase);
+        // 2026-08-27: FIRE와 SMOKE 상태 전환을 서로 독립적으로 메인 Viewer에 전달한다.
+        private bool _lastPublishedFireState;
+        private bool _lastPublishedSmokeState;
 
         /// <summary>
         /// MainWindow 동작 수행 함수.
@@ -47,6 +54,8 @@ namespace FireCandidateValidator
 
             _analyzer =
                 new FireCandidateAnalyzer();
+            _smokeAnalyzer =
+                new SmokeCandidateAnalyzer();
 
             _videoTimer =
                 new DispatcherTimer(
@@ -303,6 +312,7 @@ namespace FireCandidateValidator
             StopVideo();
             StopVideoWriter();
             _analyzer.Reset();
+            _smokeAnalyzer.Reset();
             _loadedVideo = false;
             ReplaceCurrentSource(null);
             ReplaceRendered(null);
@@ -453,115 +463,302 @@ namespace FireCandidateValidator
                     ? 1
                     : Math.Max(1, (int)Math.Round(ConfirmationSlider.Value));
 
-            using (FireCandidateAnalysis analysis =
-                   _analyzer.Analyze(
-                       _currentSource,
-                       ThresholdSlider.Value,
-                       AreaSlider.Value,
-                       confirmationFrames,
-                       _fireBoxGroupingMode))
+            bool analyzeFire =
+                DetectionModeCombo == null ||
+                DetectionModeCombo.SelectedIndex != 2;
+            bool analyzeSmoke =
+                DetectionModeCombo != null &&
+                DetectionModeCombo.SelectedIndex != 1;
+            bool isInfrared =
+                SourceHintCombo != null &&
+                SourceHintCombo.SelectedIndex == 2;
+
+            try
             {
-                IList<CvRect> displayCandidates =
-                    UpdateStableCandidateTracks(
-                        analysis.Candidates,
-                        analysis.IsConfirmed);
-
-                using (Mat displaySource = ApplySelectedPalette(_currentSource))
+                using (FireCandidateAnalysis fireAnalysis =
+                       analyzeFire
+                           ? _analyzer.Analyze(
+                               _currentSource,
+                               ThresholdSlider.Value,
+                               AreaSlider.Value,
+                               confirmationFrames,
+                               _fireBoxGroupingMode)
+                           : FireCandidateAnalysis.Empty)
+                using (SmokeCandidateAnalysis smokeAnalysis =
+                       analyzeSmoke
+                           ? _smokeAnalyzer.Analyze(
+                               _currentSource,
+                               isInfrared,
+                               SmokeAreaSlider.Value,
+                               SmokeChangeSlider.Value,
+                               confirmationFrames)
+                           : SmokeCandidateAnalysis.Empty())
                 {
-                    Mat rendered = displaySource.Clone();
+                    IList<CvRect> fireCandidates =
+                        UpdateStableCandidateTracks(
+                            fireAnalysis.Candidates,
+                            fireAnalysis.IsConfirmed);
+                    IList<CvRect> smokeCandidates =
+                        smokeAnalysis.IsConfirmed
+                            ? ApplySmokeGroupingMode(smokeAnalysis.Candidates)
+                            : new List<CvRect>();
 
-                    double displayScale =
-                        Math.Max(
-                            1.0,
-                            Math.Max(
-                                rendered.Width / 1280.0,
-                                rendered.Height / 720.0));
-                    int lineThickness =
-                        Math.Max(3, (int)Math.Round(2.0 * displayScale));
-
-                    List<CvRect> occupiedLabelRects = new List<CvRect>();
-
-                    foreach (CvRect candidate in displayCandidates)
+                    // 2026-08-27: AUTO/EO 입력의 저채도 연기·구름을 FIRE로 중복 판정하지 않는다.
+                    // IR을 명시한 경우에는 기존 고온 후보 판정을 그대로 유지한다.
+                    if (!isInfrared &&
+                        smokeCandidates.Count > 0 &&
+                        !HasVisibleFlameColorEvidence(_currentSource))
                     {
-                        Scalar color = new Scalar(0, 0, 255);
-                        CvRect displayRect =
-                            CreateVisibleDetectionRect(
-                                candidate,
-                                rendered.Width,
-                                rendered.Height,
-                                displayScale);
-
-                        Cv2.Rectangle(
-                            rendered,
-                            displayRect,
-                            color,
-                            lineThickness);
-                        double labelScale = Math.Max(0.8, 0.8 * displayScale);
-                        int labelThickness = Math.Max(2, (int)Math.Round(1.5 * displayScale));
-                        int baseline;
-                        CvSize labelSize = Cv2.GetTextSize(
-                            "FIRE DETECTION",
-                            HersheyFonts.HersheySimplex,
-                            labelScale,
-                            labelThickness,
-                            out baseline);
-                        CvPoint labelOrigin = FindAvailableLabelOrigin(
-                            displayRect,
-                            labelSize,
-                            baseline,
-                            occupiedLabelRects,
-                            rendered.Width,
-                            rendered.Height,
-                            displayScale);
-
-                        Cv2.PutText(
-                            rendered,
-                            "FIRE DETECTION",
-                            labelOrigin,
-                            HersheyFonts.HersheySimplex,
-                            labelScale,
-                            new Scalar(0, 0, 255),
-                            labelThickness);
+                        fireCandidates = new List<CvRect>();
                     }
 
-                    ReplaceRendered(rendered);
+                    // 2026-08-27: 동일 위치에서 FIRE와 IR 연기 후보가 겹치면
+                    // 고온 화염 판정을 우선하여 중복 SMOKE 표기와 이벤트를 억제한다.
+                    if (isInfrared &&
+                        fireCandidates.Count > 0 &&
+                        smokeCandidates.Count > 0)
+                    {
+                        smokeCandidates =
+                            RemoveFireOverlappingSmokeCandidates(
+                                fireCandidates,
+                                smokeCandidates);
+                    }
+
+                    IList<double> fireVisionScores =
+                        UpdateTestVisionScores(
+                            "FIRE",
+                            fireCandidates,
+                            _currentSource.Width,
+                            _currentSource.Height,
+                            isInfrared,
+                            fireAnalysis.ContinuousFrames);
+                    IList<double> smokeVisionScores =
+                        UpdateTestVisionScores(
+                            "SMOKE",
+                            smokeCandidates,
+                            _currentSource.Width,
+                            _currentSource.Height,
+                            isInfrared,
+                            smokeAnalysis.ContinuousFrames);
+
+                    using (Mat displaySource = ApplySelectedPalette(_currentSource))
+                    {
+                        Mat rendered = displaySource.Clone();
+
+                        double displayScale =
+                            Math.Max(
+                                1.0,
+                                Math.Max(
+                                    rendered.Width / 1280.0,
+                                    rendered.Height / 720.0));
+
+                        DrawValidatorCandidates(
+                            rendered,
+                            fireCandidates,
+                            fireVisionScores,
+                            "FIRE",
+                            new Scalar(255, 0, 255),
+                            displayScale);
+                        DrawValidatorCandidates(
+                            rendered,
+                            smokeCandidates,
+                            smokeVisionScores,
+                            isInfrared ? "IR SMOKE CANDIDATE" : "SMOKE",
+                            isInfrared
+                                ? new Scalar(0, 215, 255)
+                                : new Scalar(255, 255, 0),
+                            displayScale);
+
+                        ReplaceRendered(rendered);
+                    }
+
+                    if (_videoWriter != null && _videoWriter.IsOpened())
+                    {
+                        _videoWriter.Write(_currentRendered);
+                    }
+
+                    ResultImage.Source = ToBitmapSource(_currentRendered);
+                    bool showSmokeMask =
+                        MaskModeCombo != null &&
+                        (MaskModeCombo.SelectedIndex == 2 ||
+                         (MaskModeCombo.SelectedIndex == 0 &&
+                          smokeCandidates.Count > 0));
+                    MaskImage.Source = ToBitmapSource(
+                        showSmokeMask
+                            ? smokeAnalysis.Mask
+                            : fireAnalysis.Mask);
+
+                    StatusText.Text =
+                        "FIRE " + fireCandidates.Count +
+                        " / SMOKE " + smokeCandidates.Count +
+                        " / FIRE FRAME " + fireAnalysis.ContinuousFrames +
+                        " / SMOKE FRAME " + smokeAnalysis.ContinuousFrames +
+                        " / SOURCE " + (isInfrared ? "IR SUPPORT" : "EO/AUTO");
+                    StatusText.Foreground =
+                        fireCandidates.Count > 0
+                            ? Brushes.OrangeRed
+                            : smokeCandidates.Count > 0
+                                ? Brushes.Cyan
+                                : Brushes.LightGreen;
+
+                    PublishLiveEvent(
+                        "FIRE",
+                        fireCandidates.Count > 0,
+                        fireCandidates,
+                        fireVisionScores);
+                    PublishLiveEvent(
+                        "SMOKE",
+                        smokeCandidates.Count > 0,
+                        smokeCandidates,
+                        smokeVisionScores);
                 }
-
-                if (_videoWriter != null && _videoWriter.IsOpened())
-                {
-                    _videoWriter.Write(_currentRendered);
-                }
-                ResultImage.Source = ToBitmapSource(_currentRendered);
-                MaskImage.Source = ToBitmapSource(analysis.Mask);
-
-                CvRect largestCandidate =
-                    displayCandidates
-                        .OrderByDescending(candidate => candidate.Width * candidate.Height)
-                        .FirstOrDefault();
-
-                string largestPixelText =
-                    largestCandidate.Width > 0
-                        ? largestCandidate.Width + "x" + largestCandidate.Height +
-                          " px / " + (largestCandidate.Width * largestCandidate.Height) + " px²"
-                        : "-";
-
+            }
+            catch (Exception exception)
+            {
+                Console.Error.WriteLine(
+                    "[FIRE/SMOKE TEST ERROR] Frame processing failed / " +
+                    exception);
                 StatusText.Text =
-                    string.Format(
-                        "{0} / 후보 {1}개 / 연속 {2} frame / 최대 BBox {3} / 최대 면적비 {4:P3}",
-                        displayCandidates.Count > 0 ? "FIRE DETECTOR DETECTED" : "FIRE DETECTOR MONITORING",
-                        displayCandidates.Count,
-                        analysis.ContinuousFrames,
-                        largestPixelText,
-                        analysis.LargestAreaRatio);
+                    "FIRE / SMOKE 분석 오류 : " + exception.Message;
+                StatusText.Foreground = Brushes.OrangeRed;
+            }
 
-                StatusText.Foreground =
-                    displayCandidates.Count > 0
-                        ? Brushes.OrangeRed
-                        : Brushes.LightGreen;
+        }
 
-                PublishLiveEvent(
-                    displayCandidates.Count > 0,
-                    displayCandidates);
+        /// <summary>
+        /// 2026-08-27: FIRE와 동일한 구분 방식 선택을 SMOKE 후보에도 적용한다.
+        /// 방식 1은 연기 후보 전체를 하나의 박스로, 방식 2는 후보별로 표시한다.
+        /// </summary>
+        private IList<CvRect> ApplySmokeGroupingMode(IList<CvRect> candidates)
+        {
+            if (_fireBoxGroupingMode != 1 || candidates == null || candidates.Count <= 1)
+            {
+                return candidates ?? new List<CvRect>();
+            }
+
+            int left = candidates.Min(item => item.Left);
+            int top = candidates.Min(item => item.Top);
+            int right = candidates.Max(item => item.Right);
+            int bottom = candidates.Max(item => item.Bottom);
+
+            return new List<CvRect>
+            {
+                new CvRect(left, top, right - left, bottom - top)
+            };
+        }
+
+        /// <summary>
+        /// 2026-08-27: IR 영상에서 FIRE 후보와 중심 또는 면적이 겹치는 연기 후보를 제거한다.
+        /// 화염의 밝은 핵과 주변 변화가 IR 연기로 중복 집계되는 현상을 방지한다.
+        /// </summary>
+        private static IList<CvRect> RemoveFireOverlappingSmokeCandidates(
+            IList<CvRect> fireCandidates,
+            IList<CvRect> smokeCandidates)
+        {
+            List<CvRect> filteredCandidates =
+                new List<CvRect>();
+
+            foreach (CvRect smokeCandidate in smokeCandidates)
+            {
+                bool overlapsFire =
+                    fireCandidates.Any(fireCandidate =>
+                    {
+                        CvRect intersection =
+                            fireCandidate & smokeCandidate;
+
+                        double intersectionArea =
+                            Math.Max(0, intersection.Width) *
+                            Math.Max(0, intersection.Height);
+
+                        double smallerArea =
+                            Math.Max(
+                                1.0,
+                                Math.Min(
+                                    fireCandidate.Width * fireCandidate.Height,
+                                    smokeCandidate.Width * smokeCandidate.Height));
+
+                        CvPoint smokeCenter =
+                            new CvPoint(
+                                smokeCandidate.X + smokeCandidate.Width / 2,
+                                smokeCandidate.Y + smokeCandidate.Height / 2);
+
+                        return intersectionArea / smallerArea >= 0.25 ||
+                               fireCandidate.Contains(smokeCenter);
+                    });
+
+                if (!overlapsFire)
+                {
+                    filteredCandidates.Add(smokeCandidate);
+                }
+            }
+
+            return filteredCandidates;
+        }
+
+        /// <summary>
+        /// 2026-08-27: FIRE와 SMOKE 후보를 서로 다른 색과 순번으로 표시한다.
+        /// </summary>
+        private static void DrawValidatorCandidates(
+            Mat rendered,
+            IList<CvRect> candidates,
+            IList<double> visionScores,
+            string label,
+            Scalar color,
+            double displayScale)
+        {
+            int lineThickness =
+                Math.Max(3, (int)Math.Round(2.0 * displayScale));
+
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                CvRect displayRect =
+                    CreateVisibleDetectionRect(
+                        candidates[index],
+                        rendered.Width,
+                        rendered.Height,
+                        displayScale);
+                Cv2.Rectangle(
+                    rendered,
+                    displayRect,
+                    color,
+                    lineThickness);
+                string displayLabel =
+                    label + " #" + (index + 1) + " | VISION " +
+                    (index < visionScores.Count ? visionScores[index] : 0.0)
+                        .ToString("F1", CultureInfo.InvariantCulture) + "%";
+                int baseline;
+                double fontScale =
+                    Math.Max(0.8, 0.8 * displayScale);
+                CvSize labelSize =
+                    Cv2.GetTextSize(
+                        displayLabel,
+                        HersheyFonts.HersheySimplex,
+                        fontScale,
+                        Math.Max(2, lineThickness - 1),
+                        out baseline);
+                int labelX =
+                    Math.Max(0, Math.Min(displayRect.X, rendered.Width - labelSize.Width - 6));
+                int labelY =
+                    Math.Max(labelSize.Height + 6, Math.Min(displayRect.Y - 7, rendered.Height - baseline - 2));
+                Cv2.Rectangle(
+                    rendered,
+                    new CvRect(
+                        labelX,
+                        Math.Max(0, labelY - labelSize.Height - 5),
+                        Math.Min(labelSize.Width + 6, rendered.Width - labelX),
+                        Math.Min(
+                            labelSize.Height + baseline + 7,
+                            rendered.Height - Math.Max(0, labelY - labelSize.Height - 5))),
+                    new Scalar(24, 24, 24),
+                    -1);
+                Cv2.PutText(
+                    rendered,
+                    displayLabel,
+                    new CvPoint(labelX + 3, labelY),
+                    HersheyFonts.HersheySimplex,
+                    fontScale,
+                    color,
+                    Math.Max(2, lineThickness - 1));
             }
 
         }
@@ -739,15 +936,30 @@ namespace FireCandidateValidator
         /// 테스트 프로그램의 탐지 시작·해제를 메인 Viewer가 읽는 공유 이벤트 파일에 기록한다.
         /// </summary>
         private void PublishLiveEvent(
+            string detectionType,
             bool isDetected,
-            IList<CvRect> candidates)
+            IList<CvRect> candidates,
+            IList<double> visionScores = null)
         {
-            if (!_loadedVideo || _lastPublishedDetectionState == isDetected)
+            bool lastState =
+                string.Equals(detectionType, "SMOKE", StringComparison.OrdinalIgnoreCase)
+                    ? _lastPublishedSmokeState
+                    : _lastPublishedFireState;
+
+            if (!_loadedVideo || lastState == isDetected)
             {
                 return;
             }
 
-            _lastPublishedDetectionState = isDetected;
+            if (string.Equals(detectionType, "SMOKE", StringComparison.OrdinalIgnoreCase))
+            {
+                _lastPublishedSmokeState = isDetected;
+            }
+            else
+            {
+                _lastPublishedFireState = isDetected;
+            }
+
             string directory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "OpenCvWpfTracking",
@@ -761,8 +973,13 @@ namespace FireCandidateValidator
                 DateTime eventTime = DateTime.Now;
                 if (isDetected)
                 {
-                    foreach (CvRect candidate in candidates)
+                    for (int index = 0; index < candidates.Count; index++)
                     {
+                        CvRect candidate = candidates[index];
+                        double visionScore =
+                            visionScores != null && index < visionScores.Count
+                                ? visionScores[index]
+                                : 0.0;
                         writer.WriteLine(
                             string.Join(
                                 "|",
@@ -772,6 +989,8 @@ namespace FireCandidateValidator
                                 candidate.Width.ToString(),
                                 candidate.Height.ToString(),
                                 (candidate.Width * candidate.Height).ToString(),
+                                visionScore.ToString("F1", CultureInfo.InvariantCulture),
+                                detectionType,
                                 "TEST PROGRAM"));
                     }
 
@@ -787,9 +1006,191 @@ namespace FireCandidateValidator
                             "0",
                             "0",
                             "0",
+                            "0.0",
+                            detectionType,
                             "TEST PROGRAM"));
                 }
 
+            }
+
+        }
+
+        /// <summary>
+        /// 2026-08-31: Viewer의 FIRE/SMOKE 시공간 증거식을 TEST 후보에도 적용한다.
+        /// 점수는 확률이 아니라 면적·지속·상향 이동·확산·형상 변화의 합성 지표다.
+        /// </summary>
+        private IList<double> UpdateTestVisionScores(
+            string detectionType,
+            IList<CvRect> candidates,
+            int frameWidth,
+            int frameHeight,
+            bool isInfrared,
+            int continuousFrames)
+        {
+            if (!_testVisionScoreTracks.TryGetValue(detectionType, out List<TestVisionScoreTrack> tracks))
+            {
+                tracks = new List<TestVisionScoreTrack>();
+                _testVisionScoreTracks[detectionType] = tracks;
+            }
+
+            DateTime nowUtc = DateTime.UtcNow;
+            foreach (TestVisionScoreTrack track in tracks)
+            {
+                track.Matched = false;
+            }
+
+            List<double> scores = new List<double>();
+            foreach (CvRect candidate in candidates)
+            {
+                TestVisionScoreTrack matched = null;
+                double bestMatch = 0.0;
+                foreach (TestVisionScoreTrack track in tracks)
+                {
+                    if (track.Matched)
+                    {
+                        continue;
+                    }
+
+                    double match = CalculateMatchScore(track.Rectangle, candidate);
+                    if (match > bestMatch)
+                    {
+                        bestMatch = match;
+                        matched = track;
+                    }
+                }
+
+                if (matched == null || bestMatch < 0.25)
+                {
+                    matched = new TestVisionScoreTrack
+                    {
+                        InitialRectangle = candidate,
+                        Rectangle = candidate,
+                        FirstSeenUtc = nowUtc
+                    };
+                    tracks.Add(matched);
+                }
+
+                double score =
+                    string.Equals(detectionType, "FIRE", StringComparison.OrdinalIgnoreCase)
+                        ? CalculateTestFireVisionScore(candidate, continuousFrames)
+                        : CalculateTestSmokeVisionScore(
+                            matched,
+                            candidate,
+                            frameWidth,
+                            frameHeight,
+                            isInfrared,
+                            Math.Max(0.0, (nowUtc - matched.FirstSeenUtc).TotalSeconds));
+                matched.Rectangle = candidate;
+                matched.Score = score;
+                matched.Matched = true;
+                scores.Add(score);
+            }
+
+            tracks.RemoveAll(track => !track.Matched);
+            return scores;
+        }
+
+        private static double CalculateTestFireVisionScore(CvRect candidate, int continuousFrames)
+        {
+            double area = Math.Max(0.0, candidate.Width * (double)candidate.Height);
+            return Math.Min(
+                96.0,
+                70.0 + Math.Min(16.0, Math.Max(0, continuousFrames) * 2.5) +
+                Math.Min(10.0, Math.Sqrt(area) / 12.0));
+        }
+
+        private static double CalculateTestSmokeVisionScore(
+            TestVisionScoreTrack track,
+            CvRect candidate,
+            int frameWidth,
+            int frameHeight,
+            bool isInfrared,
+            double elapsedSeconds)
+        {
+            double frameArea = Math.Max(1.0, frameWidth * (double)frameHeight);
+            double areaRatio = candidate.Width * candidate.Height / frameArea;
+            double verticality = candidate.Height /
+                (double)Math.Max(1, candidate.Width + candidate.Height);
+            double aspectBalance = Math.Min(candidate.Width, candidate.Height) /
+                (double)Math.Max(1, Math.Max(candidate.Width, candidate.Height));
+            double initialArea = Math.Max(
+                1.0,
+                track.InitialRectangle.Width * (double)track.InitialRectangle.Height);
+            double currentArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
+            double expansionRatio = currentArea / initialArea - 1.0;
+            double initialCenterX = track.InitialRectangle.X + track.InitialRectangle.Width / 2.0;
+            double initialCenterY = track.InitialRectangle.Y + track.InitialRectangle.Height / 2.0;
+            double currentCenterX = candidate.X + candidate.Width / 2.0;
+            double currentCenterY = candidate.Y + candidate.Height / 2.0;
+            double deltaX = currentCenterX - initialCenterX;
+            double deltaY = currentCenterY - initialCenterY;
+            double frameDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
+            double motionRatio = Math.Sqrt(deltaX * deltaX + deltaY * deltaY) / frameDiagonal;
+            double upwardRatio = Math.Max(0.0, initialCenterY - currentCenterY) /
+                Math.Max(1.0, frameHeight);
+            double initialAspect = track.InitialRectangle.Width /
+                (double)Math.Max(1, track.InitialRectangle.Height);
+            double currentAspect = candidate.Width /
+                (double)Math.Max(1, candidate.Height);
+            double shapeChange = Math.Abs(currentAspect - initialAspect) /
+                Math.Max(0.25, initialAspect);
+
+            double score = (isInfrared ? 20.0 : 22.0) +
+                Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) +
+                Math.Min(4.0, verticality * 7.0) +
+                Math.Min(3.0, aspectBalance * 3.0) +
+                Math.Min(20.0, elapsedSeconds / 1.5 * 20.0) +
+                Math.Min(8.0, upwardRatio * 160.0) +
+                Math.Min(10.0, Math.Max(0.0, expansionRatio) * 12.0) +
+                Math.Min(5.0, motionRatio * 100.0) +
+                Math.Min(5.0, shapeChange * 8.0);
+
+            if (elapsedSeconds >= 0.5 &&
+                motionRatio < 0.006 &&
+                Math.Abs(expansionRatio) < 0.10 &&
+                shapeChange < 0.10)
+            {
+                score -= 15.0;
+            }
+
+            return Math.Max(5.0, Math.Min(92.0, score));
+        }
+
+        /// <summary>
+        /// 2026-08-27: EO 영상에서 실제 화염 계열 색상 픽셀이 존재하는지 확인한다.
+        /// 저채도 연기가 밝기 기반 FIRE 마스크에 중복 검출되는 현상을 억제한다.
+        /// </summary>
+        private static bool HasVisibleFlameColorEvidence(Mat source)
+        {
+            if (source == null || source.Empty() || source.Channels() == 1)
+            {
+                return false;
+            }
+
+            using (Mat bgr = new Mat())
+            using (Mat hsv = new Mat())
+            using (Mat flameMask = new Mat())
+            {
+                if (source.Channels() == 4)
+                {
+                    Cv2.CvtColor(source, bgr, ColorConversionCodes.BGRA2BGR);
+                }
+                else
+                {
+                    source.CopyTo(bgr);
+                }
+
+                Cv2.CvtColor(bgr, hsv, ColorConversionCodes.BGR2HSV);
+                Cv2.InRange(
+                    hsv,
+                    new Scalar(0, 70, 150),
+                    new Scalar(45, 255, 255),
+                    flameMask);
+
+                double frameArea = Math.Max(1.0, source.Width * source.Height);
+                return Cv2.CountNonZero(flameMask) / frameArea >= 0.00002;
             }
 
         }
@@ -860,6 +1261,7 @@ namespace FireCandidateValidator
             SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
             HighlightRandomPaletteButton();
         }
+
         private void PreviousPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex - 1 + DisplayPaletteCount) % DisplayPaletteCount);
         private void NextPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
 
@@ -982,7 +1384,11 @@ namespace FireCandidateValidator
         /// </summary>
         private void UpdateSettingText()
         {
-            if (ThresholdText == null || AreaText == null || ConfirmationText == null)
+            if (ThresholdText == null ||
+                AreaText == null ||
+                ConfirmationText == null ||
+                SmokeChangeText == null ||
+                SmokeAreaText == null)
             {
                 return;
             }
@@ -990,6 +1396,29 @@ namespace FireCandidateValidator
             ThresholdText.Text = ThresholdSlider.Value.ToString("0.00");
             AreaText.Text = AreaSlider.Value.ToString("0.0000");
             ConfirmationText.Text = Math.Round(ConfirmationSlider.Value) + " frames";
+            SmokeChangeText.Text = "CHANGE " + SmokeChangeSlider.Value.ToString("0.000");
+            SmokeAreaText.Text = "AREA " + SmokeAreaSlider.Value.ToString("0.0000");
+        }
+
+        /// <summary>
+        /// 2026-08-27: FIRE/SMOKE 시험 모드와 입력 채널 힌트 변경을 즉시 반영한다.
+        /// </summary>
+        private void Setting_SelectionChanged(
+            object sender,
+            SelectionChangedEventArgs e)
+        {
+            if (!IsInitialized)
+            {
+                return;
+            }
+
+            _analyzer.Reset();
+            _smokeAnalyzer.Reset();
+
+            if (!_isVideoMode && _currentSource != null)
+            {
+                ProcessCurrentFrame(true);
+            }
         }
 
         /// <summary>
@@ -1023,14 +1452,20 @@ namespace FireCandidateValidator
         /// </summary>
         private void StopVideo()
         {
-            if (_lastPublishedDetectionState)
+            if (_lastPublishedFireState)
             {
-                PublishLiveEvent(false, new List<CvRect>());
+                PublishLiveEvent("FIRE", false, new List<CvRect>());
+            }
+
+            if (_lastPublishedSmokeState)
+            {
+                PublishLiveEvent("SMOKE", false, new List<CvRect>());
             }
 
             _videoTimer.Stop();
             _isVideoMode = false;
             _stableCandidateTracks.Clear();
+            _testVisionScoreTracks.Clear();
 
             if (_videoCapture != null)
             {
@@ -1044,9 +1479,25 @@ namespace FireCandidateValidator
         private sealed class StableCandidateTrack
         {
             public CvRect Rectangle { get; set; }
+
             public int MissingFrames { get; set; }
+
             public int SeenFrames { get; set; }
+
             public bool IsVisible { get; set; }
+        }
+
+        private sealed class TestVisionScoreTrack
+        {
+            public CvRect InitialRectangle { get; set; }
+
+            public CvRect Rectangle { get; set; }
+
+            public DateTime FirstSeenUtc { get; set; }
+
+            public double Score { get; set; }
+
+            public bool Matched { get; set; }
         }
 
         /// <summary>

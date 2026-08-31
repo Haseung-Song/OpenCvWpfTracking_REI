@@ -2,7 +2,7 @@
 <Window x:Class="FireCandidateValidator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="IR FIRE DETECTOR TEST PROGRAM"
+        Title="FIRE / SMOKE DETECTOR TEST PROGRAM"
         Width="1500" Height="900" MinWidth="1100" MinHeight="700"
         Background="#20262D" WindowStartupLocation="CenterScreen"
         Closing="Window_Closing">
@@ -32,7 +32,17 @@
         </Grid.RowDefinitions>
         <Border Grid.Row="0" Padding="10" Background="#343D46" BorderBrush="#7F96A8" BorderThickness="1" CornerRadius="5">
             <DockPanel>
-                <TextBlock Margin="6,0,18,0" VerticalAlignment="Center" Text="IR FIRE DETECTOR TEST PROGRAM" Foreground="#FF5252" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Margin="6,0,18,0" VerticalAlignment="Center" Text="FIRE / SMOKE DETECTOR TEST PROGRAM" Foreground="#FFB4A2" FontSize="18" FontWeight="Bold"/>
+                <ComboBox x:Name="DetectionModeCombo" Width="105" Height="34" Margin="4" SelectedIndex="0" SelectionChanged="Setting_SelectionChanged">
+                    <ComboBoxItem Content="BOTH"/>
+                    <ComboBoxItem Content="FIRE"/>
+                    <ComboBoxItem Content="SMOKE"/>
+                </ComboBox>
+                <ComboBox x:Name="SourceHintCombo" Width="105" Height="34" Margin="4" SelectedIndex="0" SelectionChanged="Setting_SelectionChanged">
+                    <ComboBoxItem Content="AUTO"/>
+                    <ComboBoxItem Content="EO"/>
+                    <ComboBoxItem Content="IR"/>
+                </ComboBox>
                 <Button Style="{StaticResource ValidatorButtonStyle}" Content="OPEN IMAGE" Click="OpenImage_Click"/>
                 <Button Style="{StaticResource ValidatorButtonStyle}" Content="OPEN VIDEO" Click="OpenVideo_Click"/>
                 <Button Style="{StaticResource ValidatorButtonStyle}" Content="IR TEST PATTERN" Click="CreateTestPattern_Click"/>
@@ -49,75 +59,112 @@
             </Grid.ColumnDefinitions>
             <Border Grid.Column="0" Padding="6" Background="Black" BorderBrush="#7FB3E6" BorderThickness="1" CornerRadius="5">
                 <Grid>
-                    <Image x:Name="ResultImage" Stretch="Uniform"/>
-                    <TextBlock Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top" Text="IR PALETTE / FIRE DETECTOR OVERLAY" Foreground="#FF5252" FontWeight="Bold"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Margin="8,2,8,6" Text="FIRE / SMOKE DETECTOR OVERLAY" Foreground="#FFB4A2" FontWeight="Bold"/>
+                    <Image Grid.Row="1" x:Name="ResultImage" Margin="2" Stretch="Uniform"/>
                 </Grid>
             </Border>
             <Border Grid.Column="2" Padding="6" Background="Black" BorderBrush="#FFD166" BorderThickness="1" CornerRadius="5">
                 <Grid>
-                    <Image x:Name="MaskImage" Stretch="Uniform"/>
-                    <TextBlock Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top" Text="PALETTE-INDEPENDENT FIRE DETECTOR MASK" Foreground="#FF5252" FontWeight="Bold"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Margin="8,2,8,6" Text="FIRE / SMOKE CANDIDATE MASK" Foreground="#66FFFF" FontWeight="Bold"/>
+                    <Image Grid.Row="1" x:Name="MaskImage" Margin="2" Stretch="Uniform"/>
                 </Grid>
             </Border>
         </Grid>
-        <Border Grid.Row="2" Padding="12" Background="#343D46" BorderBrush="#7F96A8" BorderThickness="1" CornerRadius="5">
+        <Border Grid.Row="2" Padding="10" Background="#343D46" BorderBrush="#7F96A8" BorderThickness="1" CornerRadius="5">
+            <!-- 2026-08-27: FIRE/SMOKE를 동일한 계층에서 비교·조정할 수 있도록 재배치한다. -->
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="1.5*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="1.45*"/>
                 </Grid.ColumnDefinitions>
-                <!-- 2026-08-14: Runtime-selectable fire BBox grouping. -->
-                <StackPanel Grid.Column="0" Grid.ColumnSpan="3">
-                    <TextBlock Text="FIRE DETECTION 구분 방식" FontWeight="Bold" Foreground="#FF8A80"/>
-                    <UniformGrid Columns="2" Margin="0,4,0,8">
-                        <Button x:Name="FireBoxMode1Button" Content="구분 방식 1 (전체 단일 박스)" Background="#3E515E" Padding="4,2" Click="FireBoxMode1_Click"/>
-                        <Button x:Name="FireBoxMode2Button" Content="구분 방식 2 (화염별 분리)" Background="#2A6F97" Padding="4,2" Click="FireBoxMode2_Click"/>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3">
+                    <TextBlock Text="FIRE / SMOKE BBOX 구분 방식" FontWeight="Bold" Foreground="#FFB4A2"/>
+                    <UniformGrid Columns="2" Margin="0,4,0,4">
+                        <Button x:Name="FireBoxMode1Button" Content="구분 방식 1 (화염·연기 전체 단일 박스)" Background="#3E515E" Padding="4,3" Click="FireBoxMode1_Click"/>
+                        <Button x:Name="FireBoxMode2Button" Content="구분 방식 2 (화염·연기별 분리)" Background="#2A6F97" Padding="4,3" Click="FireBoxMode2_Click"/>
                     </UniformGrid>
-                    <!-- [2026-08-24] 소형 화재 시험은 검출 조건 영역에서 독립적으로 수행한다. -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <TextBlock Text="SMALL FIRE SIZE" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
-                        <ComboBox x:Name="SmallFireSizeCombo" Width="82" Height="30" SelectedIndex="0" VerticalContentAlignment="Center">
+                        <ComboBox x:Name="SmallFireSizeCombo" Width="82" Height="28" SelectedIndex="0" VerticalContentAlignment="Center">
                             <ComboBoxItem Content="10 px" Tag="10"/>
                             <ComboBoxItem Content="15 px" Tag="15"/>
                             <ComboBoxItem Content="20 px" Tag="20"/>
                             <ComboBoxItem Content="30 px" Tag="30"/>
                         </ComboBox>
-                        <Button Content="SMALL FIRE TEST" Width="150" Height="30" Margin="8,0,0,0" Background="#34566A" BorderBrush="#7FB3E6" FontWeight="Bold" Click="CreateSmallFireTest_Click"/>
+                        <Button Content="SMALL FIRE TEST" Width="150" Height="28" Margin="8,0,0,0" Background="#34566A" BorderBrush="#7FB3E6" FontWeight="Bold" Click="CreateSmallFireTest_Click"/>
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="0">
-                    <StackPanel.Margin>0,88,0,0</StackPanel.Margin>
-                    <TextBlock Text="HOT PIXEL THRESHOLD" FontWeight="Bold"/>
-                    <!-- 2026-08-14: Same offline validation defaults as the main viewer. -->
-                    <Slider x:Name="ThresholdSlider" Minimum="0.05" Maximum="0.99" Value="0.72" TickFrequency="0.01" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
-                    <TextBlock x:Name="ThresholdText" HorizontalAlignment="Right" Text="0.72"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2">
-                    <StackPanel.Margin>0,88,0,0</StackPanel.Margin>
-                    <TextBlock Text="MINIMUM FIRE DETECTOR AREA RATIO" FontWeight="Bold"/>
-                    <Slider x:Name="AreaSlider" Minimum="0.0005" Maximum="0.05" Value="0.0015" TickFrequency="0.0005" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
-                    <TextBlock x:Name="AreaText" HorizontalAlignment="Right" Text="0.0015"/>
-                </StackPanel>
-                <StackPanel Grid.Column="4">
+
+                <StackPanel Grid.Row="0" Grid.Column="4">
+                    <ComboBox x:Name="MaskModeCombo" Height="28" SelectedIndex="0" Margin="0,0,0,4" SelectionChanged="Setting_SelectionChanged">
+                        <ComboBoxItem Content="AUTO MASK"/>
+                        <ComboBoxItem Content="FIRE MASK"/>
+                        <ComboBoxItem Content="SMOKE MASK"/>
+                    </ComboBox>
                     <TextBlock Text="IR DISPLAY PALETTE" FontWeight="Bold"/>
-                    <!-- 2026-08-14: Device-independent direct and relative palette buttons. -->
                     <UniformGrid Columns="3" Margin="0,4,0,2">
                         <Button x:Name="BlackHotPaletteButton" Content="BLACK HOT" Background="#F4F4F4" Foreground="#20262D" Padding="2,1" Click="BlackHotPalette_Click"/>
                         <Button x:Name="WhiteHotPaletteButton" Content="WHITE HOT" Background="#F4F4F4" Foreground="#20262D" Padding="2,1" Click="WhiteHotPalette_Click"/>
                         <Button x:Name="RandomPaletteButton" Content="RANDOM" Background="#F4F4F4" Foreground="#20262D" Padding="2,1" Click="RandomPalette_Click"/>
                     </UniformGrid>
-                    <UniformGrid Columns="2" Margin="0,0,0,6">
+                    <UniformGrid Columns="2">
                         <Button Content="PREV" Background="#3E515E" Padding="2,1" Click="PreviousPalette_Click"/>
                         <Button Content="NEXT" Background="#3E515E" Padding="2,1" Click="NextPalette_Click"/>
                     </UniformGrid>
-                    <TextBlock Text="VIDEO CONFIRM FRAMES" FontWeight="Bold"/>
-                    <Slider x:Name="ConfirmationSlider" Minimum="1" Maximum="15" Value="4" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
-                    <TextBlock x:Name="ConfirmationText" HorizontalAlignment="Right" Text="4 frames"/>
                 </StackPanel>
-                <TextBlock x:Name="StatusText" Grid.ColumnSpan="5" Margin="0,216,0,0" HorizontalAlignment="Center" Text="Open an image or IR video." Foreground="#9FE870" FontSize="14" FontWeight="Bold"/>
+
+                <Border Grid.Row="2" Grid.Column="0" Padding="8" BorderBrush="#FF8A80" BorderThickness="1" CornerRadius="4">
+                    <StackPanel>
+                        <TextBlock Text="1. FIRE DETECTOR" FontWeight="Bold" Foreground="#FF8A80"/>
+                        <TextBlock Text="HOT PIXEL THRESHOLD" FontWeight="Bold" Margin="0,6,0,0"/>
+                        <Slider x:Name="ThresholdSlider" Minimum="0.05" Maximum="0.99" Value="0.72" TickFrequency="0.01" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                        <TextBlock x:Name="ThresholdText" HorizontalAlignment="Right" Text="0.72"/>
+                        <TextBlock Text="MINIMUM FIRE AREA RATIO" FontWeight="Bold" Margin="0,4,0,0"/>
+                        <Slider x:Name="AreaSlider" Minimum="0.0005" Maximum="0.05" Value="0.0015" TickFrequency="0.0005" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                        <TextBlock x:Name="AreaText" HorizontalAlignment="Right" Text="0.0015"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2" Grid.Column="2" Padding="8" BorderBrush="#66FFFF" BorderThickness="1" CornerRadius="4">
+                    <StackPanel>
+                        <TextBlock Text="2. SMOKE DETECTOR" FontWeight="Bold" Foreground="#66FFFF"/>
+                        <TextBlock Text="FRAME CHANGE THRESHOLD" FontWeight="Bold" Margin="0,6,0,0"/>
+                        <Slider x:Name="SmokeChangeSlider" Minimum="0.015" Maximum="0.15" Value="0.015" TickFrequency="0.005" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                        <TextBlock x:Name="SmokeChangeText" HorizontalAlignment="Right" Text="CHANGE 0.015"/>
+                        <TextBlock Text="MINIMUM SMOKE AREA RATIO" FontWeight="Bold" Margin="0,4,0,0"/>
+                        <Slider x:Name="SmokeAreaSlider" Minimum="0.0005" Maximum="0.05" Value="0.0005" TickFrequency="0.0005" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                        <TextBlock x:Name="SmokeAreaText" HorizontalAlignment="Right" Text="AREA 0.0005"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2" Grid.Column="4" Padding="8" BorderBrush="#7F96A8" BorderThickness="1" CornerRadius="4">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="VIDEO CONFIRM FRAMES" FontWeight="Bold"/>
+                        <Slider x:Name="ConfirmationSlider" Minimum="1" Maximum="15" Value="4" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
+                        <TextBlock x:Name="ConfirmationText" HorizontalAlignment="Right" Text="4 frames"/>
+                        <TextBlock Text="FIRE와 SMOKE는 독립 상태로 이벤트를 전달합니다." TextWrapping="Wrap" Foreground="#D0D7DE" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock x:Name="StatusText" Grid.Row="3" Grid.ColumnSpan="5" Margin="0,8,0,0" HorizontalAlignment="Center" Text="Open an EO/IR image or video." Foreground="#9FE870" FontSize="14" FontWeight="Bold"/>
             </Grid>
         </Border>
     </Grid>

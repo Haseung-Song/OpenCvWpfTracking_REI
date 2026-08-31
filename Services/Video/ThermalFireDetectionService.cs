@@ -19,6 +19,7 @@ namespace OpenCvWpfTracking.Services.Video
 
         private int _candidateFrameCount;
         private int _clearFrameCount;
+        private double _latchedVisionScore;
         private bool _isFireCandidateDetected;
         private Rect _trackedCandidateRect = Rect.Empty;
         // 2026-08-25: REI/MOE가 동일한 화재 후보 알고리즘과 오류 처리 정책을
@@ -29,6 +30,14 @@ namespace OpenCvWpfTracking.Services.Video
         // 2026-08-18: 팔레트상 계속 붉게 보이는 건물/지면과 실제로 형상이
         // 흔들리는 화염을 구분하기 위한 직전 후보 마스크이다.
         private Mat _previousCandidateMask = new Mat();
+
+        /// <summary>
+        /// 2026-08-27: Palette·NUC 등 영상 조건 변경 뒤 시간축 후보를 초기화한다.
+        /// </summary>
+        internal void Reset()
+        {
+            ResetDetectionState();
+        }
 
         /// <summary>
         /// Process 처리 함수.
@@ -287,6 +296,18 @@ namespace OpenCvWpfTracking.Services.Video
 
                 bool previousState = _isFireCandidateDetected;
                 UpdateConfirmation(selectedRect != Rect.Empty);
+                double visionScore = Math.Min(
+                    96.0,
+                    70.0 + Math.Min(16.0, _candidateFrameCount * 2.5) +
+                    Math.Min(10.0, Math.Sqrt(Math.Max(0.0, selectedArea)) / 12.0));
+                if (!previousState && _isFireCandidateDetected)
+                {
+                    _latchedVisionScore = visionScore;
+                }
+                else if (!_isFireCandidateDetected)
+                {
+                    _latchedVisionScore = 0.0;
+                }
 
                 currentGray.CopyTo(_previousGray);
                 cleanedMask.CopyTo(_previousCandidateMask);
@@ -295,13 +316,13 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     if (mergedRects.Count == 1)
                     {
-                        DrawDetectionBox(frame, selectedRect, 1);
+                        DrawDetectionBox(frame, selectedRect, 1, _latchedVisionScore);
                     }
                     else
                     {
                         for (int index = 0; index < mergedRects.Count; index++)
                         {
-                            DrawDetectionBox(frame, mergedRects[index], index + 1);
+                            DrawDetectionBox(frame, mergedRects[index], index + 1, _latchedVisionScore);
                         }
 
                     }
@@ -313,7 +334,9 @@ namespace OpenCvWpfTracking.Services.Video
                     previousState != _isFireCandidateDetected,
                     selectedArea,
                     selectedRect,
-                    mergedRects.Count);
+                    mergedRects.Count,
+                    _latchedVisionScore,
+                    _isFireCandidateDetected ? mergedRects : new List<Rect>());
             }
 
         }
@@ -405,7 +428,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// 2026-08-26: FIRE 후보는 형광 마젠타 BBox와 프레임 내 순번으로 표시하여
         /// 형광 라임 AI BBox와 즉시 구분한다.
         /// </summary>
-        private static void DrawDetectionBox(Mat frame, Rect rect, int detectionOrder)
+        private static void DrawDetectionBox(Mat frame, Rect rect, int detectionOrder, double visionScore)
         {
             double displayScale =
                 Math.Max(
@@ -415,6 +438,7 @@ namespace OpenCvWpfTracking.Services.Video
                         frame.Height / 720.0));
             int lineThickness =
                 Math.Max(3, (int)Math.Round(2.0 * displayScale));
+            double labelFontScale = Math.Max(0.45, 0.42 * displayScale);
             Rect displayRect =
                 CreateVisibleDetectionRect(
                     rect,
@@ -430,16 +454,16 @@ namespace OpenCvWpfTracking.Services.Video
                 lineThickness);
             Cv2.PutText(
                 frame,
-                "FIRE #" + detectionOrder,
+                "FIRE #" + detectionOrder + " | VISION " + visionScore.ToString("F1") + "%",
                 new Point(
                     displayRect.X,
                     Math.Max(
                         (int)Math.Round(28 * displayScale),
                         displayRect.Y - (int)Math.Round(8 * displayScale))),
                 HersheyFonts.HersheySimplex,
-                Math.Max(1.0, 1.0 * displayScale),
+                labelFontScale,
                 fireOverlayColor,
-                Math.Max(2, (int)Math.Round(1.5 * displayScale)));
+                Math.Max(1, (int)Math.Round(displayScale)));
         }
 
         /// <summary>
@@ -661,6 +685,7 @@ namespace OpenCvWpfTracking.Services.Video
             _candidateFrameCount = 0;
             _clearFrameCount = 0;
             _isFireCandidateDetected = false;
+            _latchedVisionScore = 0.0;
             _trackedCandidateRect = Rect.Empty;
             if (_previousGray != null)
             {
@@ -678,7 +703,9 @@ namespace OpenCvWpfTracking.Services.Video
                 changed,
                 0,
                 Rect.Empty,
-                0);
+                0,
+                0.0,
+                new List<Rect>());
         }
 
     }
@@ -693,13 +720,19 @@ namespace OpenCvWpfTracking.Services.Video
             bool stateChanged,
             double candidateArea,
             Rect candidateRect,
-            int candidateCount)
+            int candidateCount,
+            double visionScore,
+            IList<Rect> candidateRects)
         {
             IsDetected = isDetected;
             StateChanged = stateChanged;
             CandidateArea = candidateArea;
             CandidateRect = candidateRect;
             CandidateCount = candidateCount;
+            VisionScore = visionScore;
+            CandidateRects = candidateRects == null
+                ? new List<Rect>()
+                : new List<Rect>(candidateRects);
         }
 
         internal bool IsDetected { get; }
@@ -707,6 +740,8 @@ namespace OpenCvWpfTracking.Services.Video
         internal double CandidateArea { get; }
         internal Rect CandidateRect { get; }
         internal int CandidateCount { get; }
+        internal double VisionScore { get; }
+        internal IList<Rect> CandidateRects { get; }
     }
 
 }

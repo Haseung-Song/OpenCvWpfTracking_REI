@@ -15,6 +15,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isPanoramaCancellationRequested;
         private bool _isPanoramaCancellationCompleted;
         private bool _isPanoramaCompleted;
+        private readonly object _panoramaSourceFrameSync = new object();
+        private BitmapSource _latestRawEoPanoramaFrame;
 
         private const double PanoramaCaptureStepDegrees = 10.0;
         private const int PanoramaCaptureFrameCount = 36;
@@ -122,16 +124,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 2026-08-18: ROOFTOP EO 자동 파노라마 촬영 전 필수 상태를 검사한다.
+        /// 2026-08-28: ROOFTOP과 ENVIRONMENT 공통 EO 파노라마 촬영 전
+        /// 필수 연결·영상·운용 상태를 검사한다.
         /// null이면 촬영 가능하며, 문자열이면 사용자에게 표시할 차단 사유다.
         /// </summary>
         public string GetPanoramaCaptureBlockReason()
         {
-            if (!IsRooftopStatusSelected)
-            {
-                return "360° 파노라마 촬영은 ROOFTOP / LA AGENT 모드에서만 지원합니다.";
-            }
-
             if (!_laTcpService.IsConnected)
             {
                 return "Control Agent TCP 연결 후 파노라마 촬영을 시작하십시오.";
@@ -184,6 +182,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 throw new InvalidOperationException(blockReason);
             }
 
+            ClearRawEoPanoramaFrame();
+
             double originalPan =
                 _currentPan;
 
@@ -216,7 +216,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 " / CAPTURE_SPEED_FIXED=" + capturePositionSpeed + "deg/s" +
                 " / STABLE=" + frameStabilizationMs + "ms / " +
                 "START_PAN=" + originalPan.ToString("F2") +
-                " / START_TILT=" + originalTilt.ToString("F2"));
+                " / START_TILT=" + originalTilt.ToString("F2") +
+                " / MODE=" + (IsRooftopStatusSelected ? "ROOFTOP" : "ENVIRONMENT"));
 
             IsPanoramaCaptureRunning =
                 true;
@@ -324,13 +325,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             frameStabilizationMs,
                             cancellationToken);
 
+                        // 2026-08-31: 표시 영상에는 탐지 Overlay가 포함될 수 있으므로
+                        // 파노라마는 분석·표시 처리 전 EO 원본 프레임만 사용한다.
                         BitmapSource frame =
-                            EOCameraImage;
+                            GetRawEoPanoramaFrame();
 
                         if (frame == null)
                         {
                             throw new InvalidOperationException(
-                                "EO 프레임을 가져오지 못했습니다.");
+                                "Overlay가 없는 EO 원본 프레임을 가져오지 못했습니다.");
                         }
 
                         BitmapSource frozenFrame =
@@ -352,6 +355,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             " / TILT=" + _currentTilt.ToString("F2") +
                             " / SPEED=" + capturePositionSpeed +
                             " / STABLE_MS=" + frameStabilizationMs +
+                            " / SOURCE=RAW_NO_OVERLAY" +
                             " / SIZE=" + frozenFrame.PixelWidth + "x" + frozenFrame.PixelHeight);
 
                         progress?.Report(
@@ -438,7 +442,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 2026-08-18: 누적 Pan 목표값을 LA 절대 위치 범위 -180°~+180°로
+        /// 2026-08-31: 탐지 Overlay 적용 전 EO 프레임을 파노라마 전용 버퍼에 보관한다.
+        /// Frozen Bitmap만 공유하여 수신 Thread와 촬영 Thread 간 접근을 안전하게 한다.
+        /// </summary>
+        private void SetRawEoPanoramaFrame(BitmapSource frame)
+        {
+            if (frame == null)
+            {
+                return;
+            }
+
+            lock (_panoramaSourceFrameSync)
+            {
+                _latestRawEoPanoramaFrame = frame;
+            }
+        }
+
+        private BitmapSource GetRawEoPanoramaFrame()
+        {
+            lock (_panoramaSourceFrameSync)
+            {
+                return _latestRawEoPanoramaFrame;
+            }
+        }
+
+        private void ClearRawEoPanoramaFrame()
+        {
+            lock (_panoramaSourceFrameSync)
+            {
+                _latestRawEoPanoramaFrame = null;
+            }
+
+            ConsoleLogHelper.State(
+                "EO PANORAMA / FRAME",
+                "Raw panorama frame buffer reset");
+        }
+
+        /// <summary>
+         /// 2026-08-18: 누적 Pan 목표값을 LA 절대 위치 범위 -180°~+180°로
         /// 정규화한다. +180/-180 경계에서도 다음 목표는 항상 10° 차이다.
         /// </summary>
         private static double NormalizePanoramaPan(

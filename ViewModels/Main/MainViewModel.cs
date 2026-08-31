@@ -356,6 +356,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private long _panTiltStatusVersion;
 
         /// <summary>
+        /// 최신 IR Zoom / Focus 상태 Packet 수신 순번.
+        ///
+        /// 2026-08-27: 마우스 해제 후 STOP 명령보다 늦게 도착한
+        /// 실제 장비 상태값인지 판별하는 데 사용한다.
+        /// </summary>
+        private long _irLensStatusVersion;
+
+        /// <summary>
         /// 프로그램 시작 이후 고정밀 경과시간 측정용
         /// </summary>
         private readonly Stopwatch _focusLogStopwatch =
@@ -1855,6 +1863,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 new RelayCommand(
                     ClearAllLaPresetPoints);
 
+            DeleteSelectedLaPresetCommand =
+                new RelayCommand(
+                    DeleteSelectedLaPresetPoint);
+
             MoveToLaPresetCommand =
                 new AsyncRelayCommand(
                     MoveToSelectedLaPresetPointAsync);
@@ -1882,6 +1894,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DeletePresetCommand =
                 new RelayCommand(
                     DeletePresetPoint);
+
+            ClearAllPresetsCommand =
+                new RelayCommand(
+                    ClearAllPresetPoints);
 
             MoveToPresetCommand =
                 new RelayCommand(
@@ -2072,6 +2088,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// </summary>
             InitializeAiDetectorSetting();
             InitializeThermalFeatures();
+            InitializeSmokeFeatures();
             InitializeFireEventFeatures();
 
             ConsoleLogHelper.PrintSection(

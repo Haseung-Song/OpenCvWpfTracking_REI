@@ -200,6 +200,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public ICommand ClearAllLaPresetsCommand { get; }
 
+        /// <summary>
+        /// 2026-08-28: PRESET L 목록에서 선택한 한 지점만 제거한다.
+        /// </summary>
+        public ICommand DeleteSelectedLaPresetCommand { get; }
+
         public ICommand MoveToLaPresetCommand { get; }
 
         public ICommand StartLaPresetScanCommand { get; }
@@ -219,6 +224,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 선택 슬롯 프리셋 제거
         /// </summary>
         public ICommand DeletePresetCommand { get; }
+
+        /// <summary>
+        /// 2026-08-28: 등록된 PRESET W 전체를 장비와 화면 목록에서 제거한다.
+        /// </summary>
+        public ICommand ClearAllPresetsCommand { get; }
 
         /// <summary>
         /// ComboBox에서 선택한 프리셋으로 이동

@@ -111,14 +111,15 @@ namespace OpenCvWpfTracking
             object sender,
             RoutedEventArgs e)
         {
-            string testProgramPath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "FireCandidateValidator.exe");
+            string testProgramPath = ResolveFireDetectorTestProgramPath();
 
-            if (!File.Exists(testProgramPath))
+            if (string.IsNullOrWhiteSpace(testProgramPath))
             {
+                ConsoleLogHelper.Error("TEST PROGRAM",
+                    "FireCandidateValidator.exe was not found / BASE=" +
+                    AppDomain.CurrentDomain.BaseDirectory);
                 MessageBox.Show(
-                    "Fire detector test program was not found. Rebuild the solution and run it from the output folder.",
+                    "Fire detector test program was not found. Rebuild the entire solution and run the Viewer from its output folder.",
                     "TEST PROGRAM",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
@@ -134,6 +135,8 @@ namespace OpenCvWpfTracking
 
             try
             {
+                ConsoleLogHelper.Command("TEST PROGRAM",
+                    "Starting FireCandidateValidator / PATH=" + testProgramPath);
                 _fireDetectorTestProgram = Process.Start(new ProcessStartInfo
                 {
                     FileName = testProgramPath,
@@ -159,6 +162,41 @@ namespace OpenCvWpfTracking
                     MessageBoxImage.Error);
             }
 
+        }
+
+        // 2026-08-31: 일반 배치 위치를 우선 사용하고, Visual Studio에서 프로젝트별
+        // 출력 폴더만 생성된 경우에도 동일 Configuration의 Validator를 찾는다.
+        private static string ResolveFireDetectorTestProgramPath()
+        {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string directPath = Path.Combine(baseDirectory, "FireCandidateValidator.exe");
+            if (File.Exists(directPath))
+            {
+                return directPath;
+            }
+
+            string nestedPath = Path.Combine(
+                baseDirectory, "FireCandidateValidator", "FireCandidateValidator.exe");
+            if (File.Exists(nestedPath))
+            {
+                return nestedPath;
+            }
+
+            DirectoryInfo configurationDirectory = new DirectoryInfo(baseDirectory);
+            DirectoryInfo platformDirectory = configurationDirectory.Parent;
+            DirectoryInfo binDirectory = platformDirectory?.Parent;
+            DirectoryInfo projectDirectory = binDirectory?.Parent;
+            if (projectDirectory == null || platformDirectory == null)
+            {
+                return null;
+            }
+
+            string projectOutputPath = Path.Combine(
+                projectDirectory.FullName,
+                "FireCandidateValidator", "bin",
+                platformDirectory.Name, configurationDirectory.Name,
+                "FireCandidateValidator.exe");
+            return File.Exists(projectOutputPath) ? projectOutputPath : null;
         }
 
         /// <summary>
@@ -594,6 +632,10 @@ namespace OpenCvWpfTracking
             MouseButtonEventArgs e)
         {
             _isWindowDragPending = false;
+
+            // 2026-08-27: Button의 MouseUp이 다른 자식 요소에서 처리되거나
+            // 포인터가 버튼 밖에서 해제되어도 연속 Zoom / Focus STOP을 보장한다.
+            vm?.StopContinuousMove();
         }
 
         /// <summary>
@@ -1442,6 +1484,13 @@ namespace OpenCvWpfTracking
             object sender,
             KeyEventArgs e)
         {
+            // 2026-08-28: 이벤트 PREVIOUS/NEXT 버튼이 키보드 초점을 가진 경우
+            // 좌·우 키를 PTZ 명령으로 소비하지 않고 하위 이벤트 목록에 전달한다.
+            if (IsEventPageNavigationKey(e.Key))
+            {
+                return;
+            }
+
             // HOME / ZERO 또는 AUTO SCAN 중에는 장비 제어 키 입력 전체를 차단한다.
             //
             // 차단 범위:
@@ -1747,6 +1796,28 @@ namespace OpenCvWpfTracking
         {
             return Keyboard.FocusedElement
                 is TextBox;
+        }
+
+        /// <summary>
+        /// 2026-08-28: 이벤트 페이지 버튼의 좌·우 키 입력을 식별한다.
+        /// 메인 창 PTZ 단축키보다 하위 이벤트 컨트롤이 먼저 처리하도록 한다.
+        /// </summary>
+        private static bool IsEventPageNavigationKey(Key key)
+        {
+            if (key != Key.Left && key != Key.Right)
+            {
+                return false;
+            }
+
+            FrameworkElement focusedElement =
+                Keyboard.FocusedElement as FrameworkElement;
+
+            string focusedName = focusedElement?.Name;
+
+            return focusedName == "AiPreviousButton" ||
+                   focusedName == "AiNextButton" ||
+                   focusedName == "FirePreviousButton" ||
+                   focusedName == "FireNextButton";
         }
 
         #endregion

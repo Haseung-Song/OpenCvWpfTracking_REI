@@ -1238,19 +1238,55 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     try
                     {
+                        /*
+                         * 2026-08-31: 파노라마 합성 입력은 AI/FIRE/SMOKE Overlay가
+                         * 그려지기 전 EO 원본이어야 한다. 촬영 중에만 별도 Bitmap을
+                         * 생성해 일반 운용의 프레임 변환 비용은 증가시키지 않는다.
+                         */
+                        if (streamName == "EO" && IsPanoramaCaptureRunning)
+                        {
+                            BitmapSource rawPanoramaFrame =
+                                MatToBitmapSourceConverter.Convert(frame);
+
+                            if (rawPanoramaFrame != null)
+                            {
+                                if (rawPanoramaFrame.CanFreeze &&
+                                    !rawPanoramaFrame.IsFrozen)
+                                {
+                                    rawPanoramaFrame.Freeze();
+                                }
+
+                                SetRawEoPanoramaFrame(rawPanoramaFrame);
+                            }
+                        }
+
                         ThermalFireDetectionResult thermalResult =
                             default(ThermalFireDetectionResult);
+                        SmokeDetectionResult smokeResult =
+                            default(SmokeDetectionResult);
 
+                        // 2026-08-27: 실제 온도 정보가 없는 EO 영상에서는 밝은 건물과
+                        // 반사광이 FIRE로 오인되므로 FIRE 실탐지는 IR 채널에서만 수행한다.
+                        // EO는 SMOKE 분석과 AI BBox 표시만 유지한다.
                         if (streamName == "IR")
                         {
                             thermalResult =
-                                _thermalFireDetectionService.Process(
+                                _irFireDetectionService.Process(
                                     frame,
-                                    IsThermalFireDetectionEnabled,
+                                    IsThermalFireDetectionEnabled &&
+                                    IsFireSmokeFrameAnalysisAllowed(),
                                     ThermalHotThresholdRatio,
                                     ThermalMinimumAreaRatio,
                                     ThermalFireBoxGroupingMode);
                         }
+
+                        // 2026-08-27: EO는 연기 주 탐지, IR은 플룸 보조 후보로
+                        // 동일한 최신 표시 프레임에서 처리하여 별도 UI 큐 적체를 막는다.
+                        smokeResult =
+                            ProcessSmokeFrame(
+                                frame,
+                                streamName,
+                                thermalResult.CandidateRect);
 
                         /// <summary>
                         /// OpenCV Mat → WPF BitmapSource 변환
@@ -1331,12 +1367,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     setImageAction(
                                         bitmap);
 
-                                    if (streamName == "IR" &&
-                                        thermalResult.StateChanged)
+                                    if (streamName == "IR")
                                     {
-                                        UpdateThermalFireCandidateState(
-                                            thermalResult);
+                                        UpdateThermalFireCandidateState(streamName, thermalResult);
                                     }
+
+                                    UpdateVisionBBoxEvents(
+                                        streamName,
+                                        smokeResult.IsInfraredSupport ? "IR SMOKE CANDIDATE" : "SMOKE",
+                                        smokeResult.CandidateRects,
+                                        smokeResult.CandidateScores,
+                                        smokeResult.IsInfraredSupport
+                                            ? "IR SMOKE CANDIDATE"
+                                            : "IMAGE PROCESSING");
 
                                 }
                                 catch (Exception ex)

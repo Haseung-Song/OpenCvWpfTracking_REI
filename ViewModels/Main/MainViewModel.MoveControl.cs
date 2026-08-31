@@ -2037,6 +2037,35 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
+        /// 2026-08-28: PRESET L의 선택 항목만 자동 순회 목록에서 제거한다.
+        /// LA Agent는 개별 삭제 명령을 제공하지 않으므로 장비 전체 프리셋은
+        /// 유지하고, 현재 Viewer의 선택 슬롯만 제거한다.
+        /// </summary>
+        private void DeleteSelectedLaPresetPoint()
+        {
+            PresetPointOption selected =
+                SelectedLaPresetPoint;
+
+            if (selected == null)
+            {
+                LaPresetCommandStatusText =
+                    "DELETE FAILED : SELECT PRESET";
+                return;
+            }
+
+            LaPresetPoints.Remove(selected);
+            SelectedLaPresetPoint =
+                LaPresetPoints.FirstOrDefault();
+
+            ConsoleLogHelper.State(
+                "PRESET L",
+                "Selected scan point removed / NUMBER=" + selected.Number +
+                " / REMAINING=" + LaPresetPoints.Count);
+            LaPresetCommandStatusText =
+                $"P{selected.Number:00} REMOVED FROM SCAN LIST";
+        }
+
+        /// <summary>
         /// PRESET 1 저장 목록을 WPF가 직접 P01 -> P02 -> ... 순회한다.
         /// 각 지점마다 PTZF 전체 직접 복원 루틴을 사용한다.
         /// </summary>
@@ -2477,6 +2506,56 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             PresetCommandStatusText =
                 $"P{presetNumber:00} CLEAR PRESET SENT";
+        }
+
+        /// <summary>
+        /// 2026-08-28: PRESET W 전체 삭제를 각 슬롯의 표준 CLEAR PRESET 명령으로 수행한다.
+        /// 일부 송신 실패 시 성공한 항목만 화면 목록에서 제거하고 실패 개수를 알린다.
+        /// </summary>
+        private void ClearAllPresetPoints()
+        {
+            StopPresetScan();
+
+            PresetPointOption[] registered =
+                PresetPoints.ToArray();
+            int removedCount = 0;
+            int failedCount = 0;
+
+            foreach (PresetPointOption preset in registered)
+            {
+                try
+                {
+                    if (_controlCommandService.RemovePresetPoint((byte)preset.Number))
+                    {
+                        PresetPoints.Remove(preset);
+                        removedCount++;
+                    }
+                    else
+                    {
+                        failedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failedCount++;
+                    ConsoleLogHelper.Error(
+                        "PRESET W",
+                        "Clear preset exception / NUMBER=" + preset.Number,
+                        ex);
+                }
+            }
+
+            SelectedPresetPoint =
+                PresetPoints.FirstOrDefault();
+            PresetCommandStatusText =
+                failedCount == 0
+                    ? "ALL REGISTERED PRESETS CLEARED"
+                    : $"CLEAR COMPLETE : {removedCount} OK / {failedCount} FAILED";
+
+            ConsoleLogHelper.State(
+                "PRESET W",
+                "Clear all completed / REMOVED=" + removedCount +
+                " / FAILED=" + failedCount);
         }
 
         /// <summary>

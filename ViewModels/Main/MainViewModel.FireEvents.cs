@@ -12,12 +12,13 @@ using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using CvRect = OpenCvSharp.Rect;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
     /// <summary>
-    /// DB 없이 운용하는 화재 탐지 이벤트 한 건의 상태와 검출 크기를 보관한다.
-    /// 동일 화재가 유지되는 동안 새 행을 추가하지 않고 DETECTED에서 CLEARED로 갱신한다.
+    /// DB 없이 운용하는 화재·연기 탐지 이벤트 한 건의 상태와 검출 크기를 보관한다.
+    /// 동일 후보가 유지되는 동안 새 행을 추가하지 않고 DETECTED에서 CLEARED로 갱신한다.
     /// </summary>
     public sealed class FireEventRecord : INotifyPropertyChanged
     {
@@ -26,6 +27,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _displayIndex;
         private bool _isLiveAfterCsvLoad;
         private int _objectCount;
+        private string _detectionType;
+        private string _confidence;
 
         internal FireEventRecord(
             int eventId,
@@ -45,8 +48,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DetectedTime = detectedTime;
             _clearedTime = clearedTime;
             Camera = camera;
-            DetectionType = detectionType;
-            Confidence = NormalizeConfidenceText(detectionType, confidence);
+            _detectionType = detectionType;
+            _confidence = NormalizeConfidenceText(detectionType, confidence);
             _objectCount = objectCount;
             PixelWidth = pixelWidth;
             PixelHeight = pixelHeight;
@@ -62,8 +65,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public int EventId { get; }
-        /// <summary>2026-08-26: CSV 복원 후 실시간으로 추가된 행을 구분한다.</summary>
+
+        /// <summary>
+        /// 2026-08-26: CSV 복원 후 실시간으로 추가된 행을 구분한다.
+        /// </summary>
         public bool IsLiveAfterCsvLoad => _isLiveAfterCsvLoad;
+
         /// <summary>
         /// 2026-08-26: 현재 정렬/페이지 안에서 표시하는 1~22 행 번호이다.
         /// </summary>
@@ -82,27 +89,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
         }
+
         public DateTime DetectedTime { get; }
-        public string DetectedTimeText => DetectedTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
-        // 2026-08-21: 화면 목록은 초 단위까지만 한글 시간 형식으로 표시한다.
-        // CSV와 로그는 DetectedTimeText를 사용해 밀리초 정밀도를 그대로 보존한다.
-        public string DetectedTimeShortText => DetectedTime.ToString("HH시 mm분 ss초");
+
+        // 2026-08-28: 화면과 CSV에서 같은 날짜·시간 형식을 사용해
+        // 날짜가 다른 이벤트도 협소한 목록에서 즉시 구분할 수 있도록 한다.
+        public string DetectedTimeText => DetectedTime.ToString("yy-MM-dd HH:mm:ss");
+
+        public string DetectedTimeShortText => DetectedTimeText;
+
         public DateTime? ClearedTime => _clearedTime;
+
         public string ClearedTimeText => _clearedTime.HasValue
-            ? _clearedTime.Value.ToString("yyyy-MM-dd HH:mm:ss.fff")
+            ? _clearedTime.Value.ToString("yy-MM-dd HH:mm:ss")
             : "-";
+
         public string Camera { get; }
-        public string DetectionType { get; }
-        public string Confidence { get; }
+
+        public string DetectionType => _detectionType;
+
+        public string Confidence => _confidence;
+
         public int ObjectCount => _objectCount;
+
         public int PixelWidth { get; }
+
         public int PixelHeight { get; }
+
         public double PixelArea { get; }
+
         public string PixelSizeText => PixelWidth + " x " + PixelHeight;
+
         public string PixelSizeCompactText => PixelWidth + " x " + PixelHeight + " px";
+
         public string PixelAreaDisplayText =>
             PixelArea.ToString("F0", CultureInfo.InvariantCulture) + " px²";
+
         public string DetectionSource { get; }
+
         public string Status
         {
             get => _status;
@@ -129,7 +153,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(ClearedTimeText));
         }
 
-        /// <summary>2026-08-26: 동일 ACTIVE 구간의 최신 실시간 BBox/후보 개수를 갱신한다.</summary>
+        /// <summary>
+        /// 2026-08-26: 동일 ACTIVE 구간의 최신 실시간 BBox/후보 개수를 갱신한다.
+        /// </summary>
         internal void UpdateObjectCount(int objectCount)
         {
             int normalizedCount = Math.Max(0, objectCount);
@@ -140,6 +166,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _objectCount = normalizedCount;
             OnPropertyChanged(nameof(ObjectCount));
+        }
+
+        // 2026-08-31: 영상처리 V.SCORE는 Track 초기 누적 평가 구간에만 갱신되고
+        // 서비스에서 점수가 확정된 뒤에는 같은 값이 유지된다.
+        internal void UpdateVisionScore(double score)
+        {
+            string value = Math.Max(0.0, Math.Min(100.0, score))
+                .ToString("F1", CultureInfo.InvariantCulture) + "%";
+            if (_confidence == value)
+            {
+                return;
+            }
+
+            _confidence = value;
+            OnPropertyChanged(nameof(Confidence));
+        }
+
+        /// <summary>
+        /// 2026-08-31: AI 모델의 현재 Class Index가 실제 클래스명으로 해석되면
+        /// ACTIVE 이벤트 TYPE도 같은 이름으로 즉시 갱신한다.
+        /// </summary>
+        internal void UpdateDetectionType(string detectionType)
+        {
+            if (string.IsNullOrWhiteSpace(detectionType) ||
+                string.Equals(_detectionType, detectionType, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _detectionType = detectionType;
+            OnPropertyChanged(nameof(DetectionType));
         }
 
         internal void MarkLiveAfterCsvLoad()
@@ -197,13 +254,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isFireCsvHistoryLoaded;
         private int _activeFireCount;
         private DateTime? _lastFireDetectedTime;
-        private FireEventRecord _activeThermalFireEvent;
+        private readonly List<VisionBBoxEventTrack> _activeVisionBBoxEvents =
+            new List<VisionBBoxEventTrack>();
+
+        private sealed class VisionBBoxEventTrack
+        {
+            internal string Camera { get; set; }
+            internal string DetectionType { get; set; }
+            internal CvRect Rectangle { get; set; }
+            internal DateTime LastSeen { get; set; }
+            internal bool Matched { get; set; }
+            internal FireEventRecord Event { get; set; }
+        }
 
         public ObservableCollection<FireEventRecord> FireEvents { get; } =
             new ObservableCollection<FireEventRecord>();
 
         public ICommand SaveFireEventsCommand { get; private set; }
+
         public ICommand LoadFireEventsCommand { get; private set; }
+
         public ICommand ClearFireEventsCommand { get; private set; }
 
         public int ActiveFireCount
@@ -236,23 +306,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public string FireAlertHeaderText =>
             ActiveFireCount > 0
-                ? "화재 알림 (" + ActiveFireCount + ")"
-                : "화재 알림";
+                ? "화재 / 연기 알림 (" + ActiveFireCount + ")"
+                : "화재 / 연기 알림";
 
         public string FireAlertStatusText =>
             ActiveFireCount > 0
-                ? "FIRE DETECTED"
-                : !IsThermalFireDetectionEnabled
-                    ? "FIRE DETECTION OFF"
+                ? "FIRE / SMOKE DETECTED"
+                : !IsThermalFireDetectionEnabled && !IsSmokeDetectionEnabled
+                    ? "FIRE / SMOKE OFF"
                     : "MONITORING";
 
         public Brush FireAlertHeaderBrush =>
             ActiveFireCount > 0
-                ? new SolidColorBrush(Color.FromRgb(255, 82, 82))
+                // 2026-08-27: FIRE와 흰색 SMOKE를 함께 나타내는 밝은 코럴 색상이다.
+                ? new SolidColorBrush(Color.FromRgb(255, 143, 163))
                 : new SolidColorBrush(Color.FromRgb(208, 215, 222));
 
         /// <summary>
-        /// 화재 이벤트 저장·불러오기 명령을 초기화한다.
+        /// 화재·연기 이벤트 저장·불러오기 명령을 초기화한다.
         /// </summary>
         private void InitializeFireEventFeatures()
         {
@@ -271,80 +342,106 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeEventAlertFeatures();
         }
 
-        /// <summary>
-        /// IR 검출 상태가 실제로 변경된 시점에만 이벤트를 생성하거나 종료한다.
-        /// </summary>
-        private void UpdateFireEvent(
-            ThermalFireDetectionResult result)
+        // 2026-08-31: FIRE/SMOKE는 채널 상태 한 행이 아니라 화면에 표시된 BBox별로 기록한다.
+        // 위치가 이어지는 동일 BBox는 기존 행을 유지하고 새 위치의 후보만 새 행을 만든다.
+        private void UpdateVisionBBoxEvents(
+            string camera,
+            string detectionType,
+            IList<CvRect> candidates,
+            IList<double> candidateScores,
+            string detectionSource)
         {
             DateTime now = DateTime.Now;
-
-            if (result.IsDetected)
+            IList<CvRect> safeCandidates = candidates ?? new List<CvRect>();
+            foreach (VisionBBoxEventTrack track in _activeVisionBBoxEvents.Where(
+                item => item.Camera == camera && item.DetectionType == detectionType))
             {
-                if (_activeThermalFireEvent != null)
+                track.Matched = false;
+            }
+
+            for (int candidateIndex = 0; candidateIndex < safeCandidates.Count; candidateIndex++)
+            {
+                CvRect candidate = safeCandidates[candidateIndex];
+                double visionScore = candidateScores != null && candidateIndex < candidateScores.Count
+                    ? candidateScores[candidateIndex]
+                    : 0.0;
+                VisionBBoxEventTrack matched = _activeVisionBBoxEvents
+                    .Where(item => !item.Matched && item.Camera == camera && item.DetectionType == detectionType)
+                    .OrderByDescending(item => VisionBBoxMatchRatio(item.Rectangle, candidate))
+                    .FirstOrDefault(item => VisionBBoxMatchRatio(item.Rectangle, candidate) >= 0.25);
+
+                if (matched != null)
                 {
-                    _activeThermalFireEvent.UpdateObjectCount(Math.Max(1, result.CandidateCount));
-                    RefreshActiveFireCount();
-                    return;
+                    matched.Rectangle = candidate;
+                    matched.LastSeen = now;
+                    matched.Matched = true;
+                    matched.Event.UpdateVisionScore(visionScore);
+                    continue;
                 }
 
-                FireEventRecord fireEvent =
-                    new FireEventRecord(
-                        _nextFireEventId++,
-                        now,
-                        null,
-                        "IR",
-                        "FIRE",
-                        "N/A (IMAGE)",
-                        Math.Max(1, result.CandidateCount),
-                        result.CandidateRect.Width,
-                        result.CandidateRect.Height,
-                        result.CandidateArea,
-                        "IMAGE PROCESSING",
-                        "ACTIVE");
-
+                FireEventRecord record = new FireEventRecord(
+                    _nextFireEventId++, now, null, camera, detectionType,
+                    visionScore.ToString("F1", CultureInfo.InvariantCulture) + "%",
+                    1, candidate.Width, candidate.Height,
+                    candidate.Width * (double)candidate.Height,
+                    detectionSource, "ACTIVE");
                 if (_isFireCsvHistoryLoaded)
                 {
-                    fireEvent.MarkLiveAfterCsvLoad();
+                    record.MarkLiveAfterCsvLoad();
                 }
 
-                _activeThermalFireEvent = fireEvent;
-                FireEvents.Insert(0, fireEvent);
+                _activeVisionBBoxEvents.Add(new VisionBBoxEventTrack
+                {
+                    Camera = camera,
+                    DetectionType = detectionType,
+                    Rectangle = candidate,
+                    LastSeen = now,
+                    Matched = true,
+                    Event = record
+                });
+                FireEvents.Insert(0, record);
                 TrimEventCollection(FireEvents);
-
                 _lastFireDetectedTime = now;
-                RefreshActiveFireCount();
-                NotifyFireEventSummaryChanged();
-                AppendFireEventAudit(fireEvent, "DETECTED");
-
-                ConsoleLogHelper.Warning(
-                    "FIRE EVENT",
-                    "Fire detected / EVENT_ID=" + fireEvent.EventId +
-                    " / CAMERA=IR / OBJECTS=" + fireEvent.ObjectCount +
-                    " / BBOX=" + fireEvent.PixelSizeText +
-                    " / PIXEL_AREA=" + fireEvent.PixelArea.ToString("F0", CultureInfo.InvariantCulture));
-                return;
+                AppendFireEventAudit(record, "DETECTED");
+                ConsoleLogHelper.Warning("VISION BBOX EVENT",
+                    "BBox registered / EVENT_ID=" + record.EventId +
+                    " / CAMERA=" + camera + " / TYPE=" + detectionType +
+                    " / SCORE=" + record.Confidence +
+                    " / BBOX=" + record.PixelSizeCompactText);
             }
 
-            if (_activeThermalFireEvent == null)
+            foreach (VisionBBoxEventTrack expired in _activeVisionBBoxEvents
+                .Where(item => item.Camera == camera && item.DetectionType == detectionType &&
+                               !item.Matched && (now - item.LastSeen).TotalSeconds >= 1.0)
+                .ToList())
             {
-                RefreshActiveFireCount();
-                return;
+                expired.Event.MarkCleared(now);
+                AppendFireEventAudit(expired.Event, "CLEARED");
+                _activeVisionBBoxEvents.Remove(expired);
+                ConsoleLogHelper.State("VISION BBOX EVENT",
+                    "BBox cleared / EVENT_ID=" + expired.Event.EventId +
+                    " / CAMERA=" + camera + " / TYPE=" + detectionType);
             }
 
-            FireEventRecord clearedEvent =
-                _activeThermalFireEvent;
-
-            clearedEvent.MarkCleared(now);
-            _activeThermalFireEvent = null;
             RefreshActiveFireCount();
             NotifyFireEventSummaryChanged();
-            AppendFireEventAudit(clearedEvent, "CLEARED");
+        }
 
-            ConsoleLogHelper.State(
-                "FIRE EVENT",
-                "Fire cleared / EVENT_ID=" + clearedEvent.EventId +
-                " / CAMERA=IR");
+        private static double VisionBBoxMatchRatio(CvRect left, CvRect right)
+        {
+            CvRect intersection = left & right;
+            double intersectionArea = Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
+            double smallerArea = Math.Max(1.0, Math.Min(
+                left.Width * (double)left.Height, right.Width * (double)right.Height));
+            double overlap = intersectionArea / smallerArea;
+            double deltaX = (left.X + left.Width / 2.0) - (right.X + right.Width / 2.0);
+            double deltaY = (left.Y + left.Height / 2.0) - (right.Y + right.Height / 2.0);
+            double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+            double allowedDistance = Math.Max(20.0,
+                Math.Max(Math.Max(left.Width, left.Height), Math.Max(right.Width, right.Height)) * 0.65);
+            return overlap >= 0.25 || distance > allowedDistance
+                ? overlap
+                : 0.25 + (1.0 - distance / allowedDistance) * 0.20;
         }
 
         /// <summary>
@@ -369,9 +466,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SaveFileDialog dialog =
                 new SaveFileDialog
                 {
-                    Title = "화재 이벤트 CSV 저장",
+                    Title = "화재 / 연기 이벤트 CSV 저장",
                     Filter = "CSV file|*.csv",
-                    FileName = "FireEvent_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv"
+                    FileName = "FireSmokeEvent_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv"
                 };
 
             if (dialog.ShowDialog() != true)
@@ -390,9 +487,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "Event CSV saved / PATH=" + dialog.FileName +
                     " / COUNT=" + FireEvents.Count);
 
-                // 2026-08-24: 저장은 성공 여부를 즉시 확인할 수 있도록 완료 알림을 표시한다.
+                // 2026-08-27: 통합된 화재·연기 이벤트 명칭으로 저장 결과를 안내한다.
                 MessageBox.Show(
-                    "화재 이벤트 CSV 저장이 완료되었습니다.",
+                    "화재 / 연기 이벤트 CSV 저장이 완료되었습니다.",
                     "CSV 저장 완료",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -400,13 +497,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             catch (Exception ex)
             {
                 ConsoleLogHelper.Error(
-                    "FIRE EVENT",
+                    "FIRE / SMOKE EVENT",
                     "Event CSV save failed",
                     ex);
 
                 MessageBox.Show(
-                    "화재 이벤트 저장에 실패했습니다.\n" + ex.Message,
-                    "FIRE EVENT",
+                    "화재 / 연기 이벤트 CSV 저장에 실패했습니다.\n" + ex.Message,
+                    "FIRE / SMOKE EVENT",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -414,14 +511,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 이전에 저장한 화재 이벤트 CSV를 현재 목록으로 불러온다.
+        /// 이전에 저장한 화재·연기 이벤트 CSV를 현재 목록으로 불러온다.
         /// </summary>
         private void LoadFireEvents()
         {
             OpenFileDialog dialog =
                 new OpenFileDialog
                 {
-                    Title = "화재 이벤트 CSV 불러오기",
+                    Title = "화재 / 연기 이벤트 CSV 불러오기",
                     Filter = "CSV file|*.csv|All files|*.*"
                 };
 
@@ -438,7 +535,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 FireEvents.Clear();
 
                 foreach (FireEventRecord fireEvent in
-                         loaded.Where(item => string.Equals(item.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase))
+                         loaded.Where(item =>
+                             string.Equals(item.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(item.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase))
                                .OrderByDescending(item => item.EventId))
                 {
                     FireEvents.Add(fireEvent);
@@ -450,8 +549,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         : FireEvents.Max(item => item.EventId) + 1;
                 _isFireCsvHistoryLoaded = true;
 
-                _activeThermalFireEvent = null;
                 _activeTestFireEvents.Clear();
+                _activeVisionBBoxEvents.Clear();
                 ActiveFireCount = 0;
                 _lastFireDetectedTime =
                     FireEvents.Count == 0
@@ -461,20 +560,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 NotifyFireEventSummaryChanged();
 
                 ConsoleLogHelper.State(
-                    "FIRE EVENT",
+                    "FIRE / SMOKE EVENT",
                     "Event CSV loaded / PATH=" + dialog.FileName +
                     " / COUNT=" + FireEvents.Count);
+
+                // 2026-08-27: 저장과 동일하게 불러오기 결과와 건수를 즉시 안내한다.
+                MessageBox.Show(
+                    "화재 / 연기 이벤트 CSV 불러오기가 완료되었습니다.\n" +
+                    "불러온 이벤트: " + FireEvents.Count + "건",
+                    "CSV 불러오기 완료",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 ConsoleLogHelper.Error(
-                    "FIRE EVENT",
+                    "FIRE / SMOKE EVENT",
                     "Event CSV load failed",
                     ex);
 
                 MessageBox.Show(
-                    "화재 이벤트 불러오기에 실패했습니다.\n" + ex.Message,
-                    "FIRE EVENT",
+                    "화재 / 연기 이벤트 CSV 불러오기에 실패했습니다.\n" + ex.Message,
+                    "FIRE / SMOKE EVENT",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -489,8 +596,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             FireEvents.Clear();
             _nextFireEventId = 1;
             _isFireCsvHistoryLoaded = false;
-            _activeThermalFireEvent = null;
             _activeTestFireEvents.Clear();
+            _activeVisionBBoxEvents.Clear();
             RefreshActiveFireCount();
             _lastFireDetectedTime = null;
             NotifyFireEventSummaryChanged();
@@ -576,7 +683,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private static string GetFireEventCsvHeader()
         {
-            return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,Confidence,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status";
+            return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,VisionScore,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status";
         }
 
         private static string ToFireEventCsvLine(
@@ -671,15 +778,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// CSV 저장 형식을 문화권 설정과 무관하게 밀리초까지 정확히 복원한다.
+        /// 2026-08-28: 신규 날짜·시간 형식과 기존 밀리초 형식을 모두 복원한다.
+        /// 기존 V9 이전 CSV를 계속 불러올 수 있도록 하위 호환성을 유지한다.
         /// </summary>
         private static bool TryParseEventTime(string value, out DateTime parsed)
         {
             value = NormalizeExcelTextCell(value);
 
+            string[] supportedFormats =
+            {
+                "yy-MM-dd HH:mm:ss",
+                "yy.MM.dd.HH.mm.ss",
+                "yyyy-MM-dd HH:mm:ss.fff",
+                "yyyy-MM-dd HH:mm:ss"
+            };
+
             return DateTime.TryParseExact(
                        value,
-                       "yyyy-MM-dd HH:mm:ss.fff",
+                       supportedFormats,
                        CultureInfo.InvariantCulture,
                        DateTimeStyles.AssumeLocal,
                        out parsed) ||

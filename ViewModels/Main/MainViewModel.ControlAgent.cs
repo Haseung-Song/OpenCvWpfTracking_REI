@@ -1049,7 +1049,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            // 2026-08-27: 연속 Zoom / Focus 상태 패킷은 일반 UI 입력보다 먼저
+            // Binding 큐에서 처리하여 다음 버튼 입력까지 표시가 지연되지 않게 한다.
             dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.DataBind,
                 new Action(Notify));
         }
 
@@ -1103,6 +1106,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.DataBind,
                 new Action(Notify));
         }
 
@@ -1203,6 +1207,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _currentIrFocus =
                 irFocusPosition;
+
+            Interlocked.Increment(
+                ref _irLensStatusVersion);
 
             /// <summary>
             /// IR 상태값은 CONTROL AGENT TCP 수신 Thread에서 갱신된다.

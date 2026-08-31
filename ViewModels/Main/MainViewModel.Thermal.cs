@@ -1,18 +1,23 @@
 using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Services.Video;
 using System.Windows.Media;
+using System.Linq;
 using System.Windows.Input;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
-        private readonly ThermalFireDetectionService
-            _thermalFireDetectionService =
-                new ThermalFireDetectionService();
+        // 2026-08-27: 실제 Viewer의 EO와 IR 프레임을 각각 독립 추적한다.
+        // 한 Service를 공유하면 채널 전환 시 이전 프레임과 상태가 섞이므로 분리한다.
+        private readonly ThermalFireDetectionService _eoFireDetectionService =
+            new ThermalFireDetectionService();
+        private readonly ThermalFireDetectionService _irFireDetectionService =
+            new ThermalFireDetectionService();
 
         private bool _isThermalFireDetectionEnabled;
-        private bool _isThermalFireCandidateDetected;
+        private bool _isEoFireCandidateDetected;
+        private bool _isIrFireCandidateDetected;
         // 2026-08-14: 컬러/흑백 IR 시험 영상 공통 초기값.
         private double _thermalHotThresholdRatio = 0.72;
         private double _thermalMinimumAreaRatio = 0.0015;
@@ -197,6 +202,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (result)
             {
                 UpdateThermalPaletteButtonVisual(paletteType);
+                ResetFireSmokeFrameAnalysis("PALETTE " + paletteName);
             }
 
         }
@@ -221,6 +227,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SendThermalCommand(
                 "NUC",
                 sendCommand);
+
+            ResetFireSmokeFrameAnalysis("NUC");
         }
 
         /// <summary>
@@ -265,6 +273,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ResetThermalPaletteButtonVisuals();
                     }
 
+                    ResetFireSmokeFrameAnalysis("ENVIRONMENT PALETTE CHANGE");
+
                 }
 
                 return;
@@ -291,6 +301,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     ResetThermalPaletteButtonVisuals();
                 }
+
+                ResetFireSmokeFrameAnalysis("ROOFTOP PALETTE CHANGE");
 
             }
 
@@ -397,18 +409,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// UpdateThermalFireCandidateState 갱신 함수.
         /// </summary>
         private void UpdateThermalFireCandidateState(
+            string camera,
             ThermalFireDetectionResult result)
         {
-            if (_isThermalFireCandidateDetected == result.IsDetected)
+            bool isInfrared =
+                string.Equals(camera, "IR", System.StringComparison.OrdinalIgnoreCase);
+            bool previousState = isInfrared
+                ? _isIrFireCandidateDetected
+                : _isEoFireCandidateDetected;
+
+            if (previousState != result.IsDetected && isInfrared)
             {
-                return;
+                _isIrFireCandidateDetected = result.IsDetected;
+            }
+            else if (previousState != result.IsDetected)
+            {
+                _isEoFireCandidateDetected = result.IsDetected;
             }
 
-            _isThermalFireCandidateDetected = result.IsDetected;
-            OnPropertyChanged(nameof(FirePowerStatusText));
-            OnPropertyChanged(nameof(FireAlertStatusText));
+            if (previousState != result.IsDetected)
+            {
+                OnPropertyChanged(nameof(FirePowerStatusText));
+                OnPropertyChanged(nameof(FireAlertStatusText));
+            }
 
-            UpdateFireEvent(result);
+            UpdateVisionBBoxEvents(
+                camera, "FIRE", result.CandidateRects,
+                result.CandidateRects.Select(item => result.VisionScore).ToList(),
+                "IMAGE PROCESSING");
         }
 
     }

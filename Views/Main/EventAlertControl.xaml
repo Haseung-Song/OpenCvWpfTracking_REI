@@ -103,6 +103,16 @@
             <Setter Property="Padding" Value="2,0"/>
         </Style>
 
+        <!-- 2026-08-31: 날짜와 초를 유지하면서 가독성을 높이고 Condensed 폭으로 열 안에 제한한다. -->
+        <Style x:Key="CompactEventTimeCellTextStyle"
+               TargetType="{x:Type TextBlock}"
+               BasedOn="{StaticResource CenteredEventCellTextStyle}">
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="FontStretch" Value="Condensed"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+        </Style>
+
         <Style TargetType="{x:Type DataGridRow}">
             <Setter Property="Background" Value="#40474E"/>
             <Setter Property="Foreground" Value="White"/>
@@ -175,13 +185,13 @@
                               Sorting="EventGrid_Sorting"
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="30" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="88" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="42" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="28" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="100" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
+                            <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="35" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="TYPE" SortMemberPath="DetectionType" Binding="{Binding DetectionType}" Width="50" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="CONF" SortMemberPath="Confidence" Binding="{Binding Confidence}" Width="48" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="CONF" SortMemberPath="Confidence" Binding="{Binding Confidence}" Width="42" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="BBOX(px)" SortMemberPath="PixelArea" Binding="{Binding PixelSizeCompactText}" Width="*" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="STATE" SortMemberPath="Status" Binding="{Binding Status}" Width="62" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="STATE" SortMemberPath="Status" Binding="{Binding Status}" Width="52" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>
@@ -195,12 +205,16 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="AiTotalText" Grid.Column="0" Foreground="#9DD8FA"
                                FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
-                    <Button x:Name="AiPreviousButton" Grid.Column="1" Content="PREVIOUS" Height="27"
-                            Click="AiPreviousButton_Click"/>
+                    <RepeatButton x:Name="AiPreviousButton" Grid.Column="1" Content="PREVIOUS" Height="27"
+                                  Delay="350" Interval="90"
+                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                                  Click="AiPreviousButton_Click"/>
                     <TextBlock x:Name="AiPageText" Grid.Column="2" Text="1 / 1" Foreground="White"
                                FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <Button x:Name="AiNextButton" Grid.Column="3" Content="NEXT" Height="27"
-                            Click="AiNextButton_Click"/>
+                    <RepeatButton x:Name="AiNextButton" Grid.Column="3" Content="NEXT" Height="27"
+                                  Delay="350" Interval="90"
+                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                                  Click="AiNextButton_Click"/>
                     <TextBlock x:Name="AiSelectedText" Grid.Column="4" Foreground="#9DD8FA"
                                FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
                                VerticalAlignment="Center"/>
@@ -220,7 +234,7 @@
             </Grid>
         </TabItem>
 
-        <TabItem Header="FIRE DETECTION">
+        <TabItem Header="FIRE / SMOKE DETECTION">
             <Grid Margin="5">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -238,7 +252,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="FIRE DETECTION" Foreground="#FF9C92"
+                            <TextBlock Text="FIRE / SMOKE" Foreground="#FFB4A2"
                                        FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding FireAlertStatusText}"
                                        Foreground="{Binding FireAlertHeaderBrush}"
@@ -248,7 +262,7 @@
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="ACTIVE" Foreground="#A9D6E5" FontSize="10"
                                        HorizontalAlignment="Center"/>
-                            <TextBlock Text="{Binding ActiveFireCount}" Foreground="#FF8A80"
+                            <TextBlock Text="{Binding ActiveFireCount}" Foreground="{Binding FireAlertHeaderBrush}"
                                        FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
@@ -267,12 +281,13 @@
                               Sorting="EventGrid_Sorting"
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="30" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="88" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="42" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="28" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="100" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
+                            <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="35" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="TYPE" SortMemberPath="DetectionType" Binding="{Binding DetectionType}" Width="45" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="V.SCORE" SortMemberPath="Confidence" Binding="{Binding Confidence}" Width="60" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="BBOX(px)" SortMemberPath="PixelArea" Binding="{Binding PixelSizeCompactText}" Width="*" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="AREA(px²)" SortMemberPath="PixelArea" Binding="{Binding PixelAreaDisplayText}" Width="86" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="STATE" SortMemberPath="Status" Binding="{Binding Status}" Width="62" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="STATE" SortMemberPath="Status" Binding="{Binding Status}" Width="52" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>
@@ -286,12 +301,16 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="FireTotalText" Grid.Column="0" Foreground="#9DD8FA"
                                FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
-                    <Button x:Name="FirePreviousButton" Grid.Column="1" Content="PREVIOUS" Height="27"
-                            Click="FirePreviousButton_Click"/>
+                    <RepeatButton x:Name="FirePreviousButton" Grid.Column="1" Content="PREVIOUS" Height="27"
+                                  Delay="350" Interval="90"
+                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                                  Click="FirePreviousButton_Click"/>
                     <TextBlock x:Name="FirePageText" Grid.Column="2" Text="1 / 1" Foreground="White"
                                FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <Button x:Name="FireNextButton" Grid.Column="3" Content="NEXT" Height="27"
-                            Click="FireNextButton_Click"/>
+                    <RepeatButton x:Name="FireNextButton" Grid.Column="3" Content="NEXT" Height="27"
+                                  Delay="350" Interval="90"
+                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                                  Click="FireNextButton_Click"/>
                     <TextBlock x:Name="FireSelectedText" Grid.Column="4" Foreground="#9DD8FA"
                                FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
                                VerticalAlignment="Center"/>
@@ -299,9 +318,9 @@
 
                 <UniformGrid Grid.Row="3" Columns="4" Margin="0,6,0,0"
                              IsEnabled="{Binding IsEventAlertControlEnabled}">
-                    <Button Content="SAVE FIRE CSV" Height="31" FontSize="10.5" Margin="0,0,3,0"
+                    <Button Content="SAVE F/S CSV" Height="31" FontSize="10.5" Margin="0,0,3,0"
                             Command="{Binding SaveFireEventsCommand}"/>
-                    <Button Content="LOAD FIRE CSV" Height="31" FontSize="10.5" Margin="2,0"
+                    <Button Content="LOAD F/S CSV" Height="31" FontSize="10.5" Margin="2,0"
                             Command="{Binding LoadFireEventsCommand}"/>
                     <Button Content="DELETE SELECTED" Height="31" Margin="2,0"
                             Background="#705A31" Click="FireDeleteSelectedButton_Click"/>

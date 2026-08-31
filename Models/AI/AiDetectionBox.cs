@@ -31,6 +31,18 @@ namespace OpenCvWpfTracking.Models.AI
         public int ClassIndex { get; set; }
 
         /// <summary>
+        /// 2026-08-31: Agent의 모델별 클래스 목록과 RTSP Mapping을 이용해
+        /// 해석한 실제 클래스명이다. 조회 실패 시 비워 두고 Class Index를 표시한다.
+        /// </summary>
+        public string ResolvedClassName { get; set; }
+
+        /// <summary>
+        /// 2026-08-31: 클래스명 해석에 사용한 ONNX/HEF 파일명이다.
+        /// 로그와 현장 Mapping 확인용으로만 사용한다.
+        /// </summary>
+        public string ModelFileName { get; set; }
+
+        /// <summary>
         /// [AI Detector] 객체 탐지 신뢰도
         /// 
         /// 범위: [0.0 ~ 1.0]
@@ -89,6 +101,11 @@ namespace OpenCvWpfTracking.Models.AI
         {
             get
             {
+                if (!string.IsNullOrWhiteSpace(ResolvedClassName))
+                {
+                    return ResolvedClassName;
+                }
+
                 switch (ClassIndex)
                 {
                     case 0:

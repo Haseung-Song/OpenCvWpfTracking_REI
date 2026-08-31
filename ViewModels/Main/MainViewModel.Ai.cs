@@ -30,6 +30,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isAiUiDrainScheduled;
         private bool _isApplicationShutdownRequested;
         private int _coalescedAiUiUpdateCount;
+        private bool _hasAppliedDefaultAiModelMapping;
 
         #region [AI Detector Communication]
 
@@ -46,6 +47,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             AiPowerStatusText = "OFF";
             AiSettingStatusText = "[AI] Connecting...";
+            SetFireSmokeDetectorsForAiConnection(false, "AI connect initialization");
             // 2026-08-25: 재연결 시작 시 이전 연결의 BBox와 ACTIVE 상태를 제거한다.
             ClearAiDetectionState("Connect initialization");
 
@@ -71,6 +73,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 AiPowerStatusText = "ON";
                 AiSettingStatusText = "[AI] Connected";
+                // 2026-08-31: 실제 TCP 연결 성공 시 FIRE/SMOKE 분석을 함께 활성화한다.
+                SetFireSmokeDetectorsForAiConnection(true, "AI connected");
 
                 if (!await RequestAiDetectorRtspAddressSetAsync())
                 {
@@ -82,8 +86,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (!await RequestAiDetectorInfoAsync() ||
                     !await RequestAiDetectorRtspAddressAsync() ||
-                    !await RequestAiDetectorOnnxListAsync() ||
-                    !await RequestAiDetectorMappingSetAsync() ||
+                    !await RequestAiDetectorOnnxListAsync())
+                {
+                    AiSettingStatusText = "[AI] Initial Setting Incomplete";
+                    return;
+                }
+
+                // 2026-08-31: ONNX 목록 응답이 UI 기본 선택에 반영된 뒤 Mapping을
+                // 전송해야 EO/IR 모두 Real-Time Smoke 모델로 실제 Agent에 적용된다.
+                await WaitForInitialAiModelSelectionAsync();
+
+                if (!await RequestAiDetectorMappingSetAsync() ||
                     !await RequestAiDetectorMappingAsync())
                 {
                     AiSettingStatusText = "[AI] Initial Setting Incomplete";
@@ -96,12 +109,42 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 AiPowerStatusText = "OFF";
                 AiSettingStatusText = "[AI] Connect / Setting Incomplete";
+                SetFireSmokeDetectorsForAiConnection(false, "AI connect exception");
 
                 ConsoleLogHelper.Error(
                     "AI DETECTOR",
                     "Connect / setting exception / " + ex.Message);
             }
 
+        }
+
+        /// <summary>
+        /// 2026-08-31: 최초 연결의 ONNX 목록 응답과 기본 모델 선택 완료를 제한 시간 동안 기다린다.
+        /// 응답이 늦거나 모델이 없는 경우에는 기존 선택값으로 계속 연결한다.
+        /// </summary>
+        private async Task WaitForInitialAiModelSelectionAsync()
+        {
+            const string DefaultModelName =
+                "Real-Time-Smoke-Fire-Detection-YOLO11n-main.onnx";
+
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                if (AiOnnxList.Any(model =>
+                        string.Equals(
+                            model.FileName,
+                            DefaultModelName,
+                            StringComparison.OrdinalIgnoreCase)) &&
+                    AiRtsp0OnnxIndex == AiRtsp1OnnxIndex)
+                {
+                    return;
+                }
+
+                await Task.Delay(75);
+            }
+
+            ConsoleLogHelper.Warning(
+                "AI DETECTOR",
+                "Default smoke model selection timeout; current mapping will be used");
         }
 
         /// <summary>
@@ -122,6 +165,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 // 2026-08-25: 수동 연결 해제 즉시 EO/IR BBox와 AI ACTIVE 상태를 정리한다.
                 ClearAiDetectionState("Manual disconnect");
+                SetFireSmokeDetectorsForAiConnection(false, "AI manual disconnect");
                 AiSettingStatusText = "[AI] Disconnected";
 
                 ConsoleLogHelper.Command(
@@ -131,6 +175,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             catch (Exception ex)
             {
                 ClearAiDetectionState("Manual disconnect exception fallback");
+                SetFireSmokeDetectorsForAiConnection(false, "AI disconnect exception");
                 AiSettingStatusText = "[AI] Disconnect Incomplete";
                 ConsoleLogHelper.Error(
                     "AI DETECTOR",
@@ -304,6 +349,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
              */
             QueueAiDetectionUiUpdate(result.RtspIndex, () =>
             {
+                // 2026-08-31: 현재 RTSP Mapping과 모델 클래스 목록으로 Class Index를 실제 명칭으로 해석한다.
+                ResolveAiDetectionClassNames(result);
+                UpdateAiSmokeCandidateSnapshot(result, receiveTime);
                 UpdateAiDetectionEvent(result, receiveTime);
                 int detectionEventId =
                     _activeAiEvents.TryGetValue(result.RtspIndex, out FireEventRecord activeEvent)
@@ -1002,47 +1050,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     string json =
                         await client.GetStringAsync(configUri);
 
-                    MatchCollection matches =
-                        Regex.Matches(
-                            json ?? string.Empty,
-                            @"""(?<name>(?:\\.|[^""\\])*?\.(?:onnx|hef))""",
-                            RegexOptions.IgnoreCase);
-
                     List<AiOnnxInfo> models =
-                        new List<AiOnnxInfo>();
-
-                    HashSet<string> uniqueNames =
-                        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                    foreach (Match match in matches)
-                    {
-                        string rawName =
-                            Regex.Unescape(match.Groups["name"].Value)
-                                 .Replace("\\/", "/");
-
-                        int separatorIndex =
-                            Math.Max(
-                                rawName.LastIndexOf('/'),
-                                rawName.LastIndexOf('\\'));
-
-                        string fileName =
-                            separatorIndex >= 0
-                                ? rawName.Substring(separatorIndex + 1)
-                                : rawName;
-
-                        if (string.IsNullOrWhiteSpace(fileName) ||
-                            !uniqueNames.Add(fileName))
-                        {
-                            continue;
-                        }
-
-                        models.Add(
-                            new AiOnnxInfo
-                            {
-                                Index = models.Count,
-                                FileName = fileName
-                            });
-                    }
+                        ParseAiModelsFromHttpConfig(json);
 
                     if (models.Count == 0)
                     {
@@ -1056,8 +1065,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     ConsoleLogHelper.State(
                         "AI MODEL / HTTP",
-                        "Model list loaded / HOST=" + _aiControlAgentIp +
-                        " / PORT=5101 / COUNT=" + models.Count);
+                        "Model and class list loaded / HOST=" + _aiControlAgentIp +
+                        " / PORT=5101 / COUNT=" + models.Count +
+                        " / CLASS_COUNT=" + models.Sum(model => model.Classes.Count));
 
                     return true;
                 }
@@ -1072,6 +1082,87 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
+        }
+
+        /// <summary>
+        /// 2026-08-31: AI 설정 API의 models 배열에서 파일명과 클래스 배열을 함께 읽는다.
+        /// 배열 순서를 ONNX Index로 유지하여 CMD 54/56 Mapping과 정확히 대응시킨다.
+        /// </summary>
+        private static List<AiOnnxInfo> ParseAiModelsFromHttpConfig(string json)
+        {
+            List<AiOnnxInfo> models = new List<AiOnnxInfo>();
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return models;
+            }
+
+            MatchCollection objectMatches =
+                Regex.Matches(
+                    json,
+                    @"\{(?<body>[^{}]*)\}",
+                    RegexOptions.Singleline);
+
+            foreach (Match objectMatch in objectMatches)
+            {
+                string body = objectMatch.Groups["body"].Value;
+                Match fileMatch =
+                    Regex.Match(
+                        body,
+                        @"""filename""\s*:\s*""(?<name>(?:\\.|[^""\\])*?\.(?:onnx|hef))""",
+                        RegexOptions.IgnoreCase);
+
+                if (!fileMatch.Success)
+                {
+                    continue;
+                }
+
+                string rawName =
+                    Regex.Unescape(fileMatch.Groups["name"].Value)
+                         .Replace("\\/", "/");
+                int separatorIndex =
+                    Math.Max(rawName.LastIndexOf('/'), rawName.LastIndexOf('\\'));
+                string fileName =
+                    separatorIndex >= 0
+                        ? rawName.Substring(separatorIndex + 1)
+                        : rawName;
+
+                AiOnnxInfo model =
+                    new AiOnnxInfo
+                    {
+                        Index = models.Count,
+                        FileName = fileName
+                    };
+
+                Match classesMatch =
+                    Regex.Match(
+                        body,
+                        @"""classes""\s*:\s*\[(?<items>.*?)\]",
+                        RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+                if (classesMatch.Success)
+                {
+                    MatchCollection classMatches =
+                        Regex.Matches(
+                            classesMatch.Groups["items"].Value,
+                            @"""(?<class>(?:\\.|[^""\\])*)""");
+
+                    foreach (Match classMatch in classMatches)
+                    {
+                        string className =
+                            Regex.Unescape(classMatch.Groups["class"].Value).Trim();
+
+                        if (!string.IsNullOrWhiteSpace(className))
+                        {
+                            model.Classes.Add(className);
+                        }
+                    }
+                }
+
+                models.Add(model);
+            }
+
+            return models;
         }
 
         /// <summary>
@@ -1113,6 +1204,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
         #region [AI Detector Display Helpers]
 
         /// <summary>
+        /// 2026-08-31: CMD 55의 RTSP Index와 Class Index를 현재 Mapping 및
+        /// 모델별 클래스 목록에 연결한다. 조회 실패나 범위 초과 시 기존 Class n 표시를 유지한다.
+        /// </summary>
+        private void ResolveAiDetectionClassNames(AiDetectionResult result)
+        {
+            if (result == null || result.Boxes == null)
+            {
+                return;
+            }
+
+            int selectedOnnxIndex =
+                result.RtspIndex == 0
+                    ? AiRtsp0OnnxIndex
+                    : result.RtspIndex == 1
+                        ? AiRtsp1OnnxIndex
+                        : -1;
+            AiMappingInfo mapping =
+                AiMappingList.LastOrDefault(item => item.RtspIndex == result.RtspIndex);
+            int mappedOnnxIndex = mapping?.OnnxIndex ?? selectedOnnxIndex;
+            AiOnnxInfo model =
+                AiOnnxList.FirstOrDefault(item => item.Index == mappedOnnxIndex);
+
+            foreach (AiDetectionBox box in result.Boxes)
+            {
+                box.ModelFileName = model?.FileName;
+                box.ResolvedClassName =
+                    model != null &&
+                    box.ClassIndex >= 0 &&
+                    box.ClassIndex < model.Classes.Count
+                        ? model.Classes[box.ClassIndex]
+                        : null;
+            }
+        }
+
+        /// <summary>
         /// [AI Detector] 탐지 결과 [Bounding Box] 목록 갱신
         ///
         /// 기존 [Bounding Box] 목록을 초기화한 뒤,
@@ -1140,6 +1266,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int eoBoxCount = 0;
             int irBoxCount = 0;
             int activeEventCount = 0;
+            ClearAiSmokeCandidateSnapshots();
 
             Action clearAction = () =>
             {
@@ -1237,6 +1364,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 foreach (AiOnnxInfo onnxInfo in onnxList)
                 {
                     AiOnnxList.Add(onnxInfo);
+                }
+
+                /*
+                 * 2026-08-31: 최초 ONNX 목록 수신 시 EO와 IR 모두
+                 * Real-Time Smoke/Fire 모델을 기본 Mapping으로 선택한다.
+                 * 이후 사용자가 UI에서 변경한 값은 목록 새로 고침으로 덮어쓰지 않는다.
+                 */
+                if (!_hasAppliedDefaultAiModelMapping)
+                {
+                    AiOnnxInfo smokeDefault =
+                        AiOnnxList.FirstOrDefault(model =>
+                            string.Equals(
+                                model.FileName,
+                                "Real-Time-Smoke-Fire-Detection-YOLO11n-main.onnx",
+                                StringComparison.OrdinalIgnoreCase));
+
+                    if (smokeDefault != null)
+                    {
+                        AiRtsp0OnnxIndex = smokeDefault.Index;
+                        AiRtsp1OnnxIndex = smokeDefault.Index;
+                    }
+
+                    _hasAppliedDefaultAiModelMapping = true;
+                    ConsoleLogHelper.State(
+                        "AI DETECTOR",
+                        "Default model mapping selected / EO=" +
+                        (smokeDefault?.FileName ?? "CURRENT") +
+                        " / IR=" + (smokeDefault?.FileName ?? "CURRENT"));
                 }
 
                 /// <summary>

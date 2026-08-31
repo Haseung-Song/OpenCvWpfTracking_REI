@@ -2070,8 +2070,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         }
                         else
                         {
-                            _controlCommandService
+                            bool stopResult =
+                                _controlCommandService
                                 .StopMove();
+
+                            if (stopResult)
+                            {
+                                await WaitForControlAgentLensStatusAfterStopAsync(
+                                    ContinuousMoveType.EoZoom);
+                            }
                         }
 
                         break;
@@ -2129,23 +2136,45 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 activeEoCtecSource,
                                 stopOperationGeneration);
                         }
+                        else if (stopResult &&
+                                 activeEoCtecSource == null)
+                        {
+                            await WaitForControlAgentLensStatusAfterStopAsync(
+                                ContinuousMoveType.EoFocus);
+                        }
 
                         break;
                     }
 
                 case ContinuousMoveType.IrZoom:
+                    {
+                        bool stopResult =
+                            _controlCommandService
+                                .StopIrZoom();
 
-                    _controlCommandService
-                        .StopIrZoom();
+                        if (stopResult)
+                        {
+                            await WaitForControlAgentLensStatusAfterStopAsync(
+                                ContinuousMoveType.IrZoom);
+                        }
 
-                    break;
+                        break;
+                    }
 
                 case ContinuousMoveType.IrFocus:
+                    {
+                        bool stopResult =
+                            _controlCommandService
+                                .StopIrFocus();
 
-                    _controlCommandService
-                        .StopIrFocus();
+                        if (stopResult)
+                        {
+                            await WaitForControlAgentLensStatusAfterStopAsync(
+                                ContinuousMoveType.IrFocus);
+                        }
 
-                    break;
+                        break;
+                    }
 
                 case ContinuousMoveType.IrDigitalZoom:
 
@@ -2155,6 +2184,72 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     break;
             }
 
+        }
+
+        /// <summary>
+        /// 2026-08-27: Control Agent 연속 Zoom / Focus STOP 이후
+        /// STOP보다 나중에 수신된 실제 장비 상태 Packet을 확인한다.
+        ///
+        /// Control Agent 프로토콜에는 별도 Lens Inquiry 명령이 없으므로
+        /// 임의 예측값을 만들지 않고 주기 상태 Packet을 최대 600ms만 기다린다.
+        /// 새 이동이 시작되면 이전 확인 작업은 즉시 종료한다.
+        /// </summary>
+        private async Task WaitForControlAgentLensStatusAfterStopAsync(
+            ContinuousMoveType moveType)
+        {
+            bool isIr =
+                moveType == ContinuousMoveType.IrZoom ||
+                moveType == ContinuousMoveType.IrFocus;
+
+            long observedVersion = isIr
+                ? Interlocked.Read(ref _irLensStatusVersion)
+                : Interlocked.Read(ref _panTiltStatusVersion);
+
+            const int maximumAttempts = 6;
+
+            for (int attempt = 1; attempt <= maximumAttempts; attempt++)
+            {
+                await Task.Delay(100);
+
+                if (_currentMoveType != ContinuousMoveType.None ||
+                    !_isDeviceConnectionRequested)
+                {
+                    return;
+                }
+
+                long currentVersion = isIr
+                    ? Interlocked.Read(ref _irLensStatusVersion)
+                    : Interlocked.Read(ref _panTiltStatusVersion);
+
+                if (currentVersion == observedVersion)
+                {
+                    continue;
+                }
+
+                if (isIr)
+                {
+                    NotifyIrCurrentStatusChanged();
+                }
+                else
+                {
+                    NotifyEoCurrentStatusChanged();
+                }
+
+                ConsoleLogHelper.State(
+                    "LENS STATUS",
+                    "Post-stop device status applied / TYPE=" + moveType +
+                    " / ATTEMPT=" + attempt +
+                    " / EO_ZOOM=" + GetCurrentPresetStandardZoom() +
+                    " / EO_FOCUS=" + GetCurrentPresetStandardFocus() +
+                    " / IR_ZOOM=" + GetCurrentIrZoomStandardPosition() +
+                    " / IR_FOCUS=" + GetCurrentIrFocusStandardPosition());
+                return;
+            }
+
+            ConsoleLogHelper.Warning(
+                "LENS STATUS",
+                "Post-stop status packet timeout / TYPE=" + moveType +
+                " / WAIT_MS=" + (maximumAttempts * 100));
         }
 
         #endregion

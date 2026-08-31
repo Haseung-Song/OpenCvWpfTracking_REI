@@ -9,7 +9,9 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Threading;
 
 namespace OpenCvWpfTracking
@@ -253,6 +255,49 @@ namespace OpenCvWpfTracking
         private void AiNextButton_Click(object sender, RoutedEventArgs e) => _aiPager?.MovePage(1);
         private void FirePreviousButton_Click(object sender, RoutedEventArgs e) => _firePager?.MovePage(-1);
         private void FireNextButton_Click(object sender, RoutedEventArgs e) => _firePager?.MovePage(1);
+
+        /// <summary>
+        /// 2026-08-28: 페이지 버튼에 초점이 있으면 좌·우 방향키로
+        /// AI 또는 FIRE/SMOKE 목록을 같은 방식으로 순환 이동한다.
+        /// </summary>
+        private void EventPageButton_PreviewKeyDown(
+            object sender,
+            KeyEventArgs e)
+        {
+            if (e.Key != Key.Left && e.Key != Key.Right)
+            {
+                return;
+            }
+
+            try
+            {
+                bool isAiPage =
+                    ReferenceEquals(sender, AiPreviousButton) ||
+                    ReferenceEquals(sender, AiNextButton);
+
+                EventPageController pager =
+                    isAiPage
+                        ? _aiPager
+                        : _firePager;
+
+                int direction = e.Key == Key.Left ? -1 : 1;
+                pager?.MovePage(direction);
+                e.Handled = true;
+
+                ConsoleLogHelper.Info(
+                    "EVENT UI",
+                    "Keyboard page navigation / TYPE=" +
+                    (isAiPage ? "AI" : "FIRE_SMOKE") +
+                    " / DIRECTION=" + direction);
+            }
+            catch (Exception exception)
+            {
+                e.Handled = true;
+                ConsoleLogHelper.Error(
+                    "EVENT UI",
+                    "Keyboard page navigation failed / " + exception.Message);
+            }
+        }
         private void AiDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _aiPager?.DeleteSelected();
         private void FireDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _firePager?.DeleteSelected();
 
@@ -329,8 +374,8 @@ namespace OpenCvWpfTracking
             private readonly TextBlock _totalText;
             private readonly TextBlock _selectedText;
             private readonly TextBlock _pageText;
-            private readonly Button _previousButton;
-            private readonly Button _nextButton;
+            private readonly RepeatButton _previousButton;
+            private readonly RepeatButton _nextButton;
             private readonly IList _source;
             private readonly ICollectionView _view;
             private readonly List<object> _orderedItems = new List<object>();
@@ -344,8 +389,8 @@ namespace OpenCvWpfTracking
                 TextBlock totalText,
                 TextBlock selectedText,
                 TextBlock pageText,
-                Button previousButton,
-                Button nextButton)
+                RepeatButton previousButton,
+                RepeatButton nextButton)
             {
                 _grid = grid ?? throw new ArgumentNullException(nameof(grid));
                 _totalText = totalText ?? throw new ArgumentNullException(nameof(totalText));
@@ -407,7 +452,9 @@ namespace OpenCvWpfTracking
 
             internal void MovePage(int offset)
             {
-                _pageIndex = Math.Max(0, Math.Min(PageCount - 1, _pageIndex + offset));
+                int pageCount = PageCount;
+                _pageIndex =
+                    ((_pageIndex + offset) % pageCount + pageCount) % pageCount;
                 ConsoleLogHelper.Info(
                     "EVENT UI",
                     "Event page moved / PAGE=" + (_pageIndex + 1) + "/" + PageCount);
@@ -443,8 +490,9 @@ namespace OpenCvWpfTracking
                 _totalText.Text = SourceCount + " EVENTS";
                 _selectedText.Text = _grid.SelectedItems.Count + " SELECTED";
                 _pageText.Text = (_pageIndex + 1) + " / " + PageCount;
-                _previousButton.IsEnabled = _pageIndex > 0;
-                _nextButton.IsEnabled = _pageIndex + 1 < PageCount;
+                bool canMove = PageCount > 1;
+                _previousButton.IsEnabled = canMove;
+                _nextButton.IsEnabled = canMove;
             }
 
             private int SourceCount => _source?.Count ?? 0;
