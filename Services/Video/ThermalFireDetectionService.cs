@@ -15,13 +15,19 @@ namespace OpenCvWpfTracking.Services.Video
     internal sealed class ThermalFireDetectionService
     {
         private const int ConfirmFrameCount = 4;
-        private const int ClearFrameCount = 8;
+        private const int ClearFrameCount = 45;
+        private const int CandidateHoldFrameCount = 45;
 
         private int _candidateFrameCount;
         private int _clearFrameCount;
         private double _latchedVisionScore;
         private bool _isFireCandidateDetected;
         private Rect _trackedCandidateRect = Rect.Empty;
+        private readonly List<FireCandidateTrack> _candidateTracks =
+            new List<FireCandidateTrack>();
+        private DateTime _lastTrackContinuityLogTime = DateTime.MinValue;
+        private int _lastReportedTrackCount = -1;
+        private bool _wasAiFireSuppressionActive;
         // 2026-08-25: REI/MOE가 동일한 화재 후보 알고리즘과 오류 처리 정책을
         // 사용하도록 공통화하였다. 반복 오류 로그는 5초 간격으로 제한한다.
         private DateTime _lastProcessErrorLogTime = DateTime.MinValue;
@@ -47,7 +53,8 @@ namespace OpenCvWpfTracking.Services.Video
             bool isEnabled,
             double hotThresholdRatio,
             double minimumAreaRatio,
-            int fireBoxGroupingMode)
+            int fireBoxGroupingMode,
+            IList<Rect> aiFireCandidates)
         {
             try
             {
@@ -56,7 +63,8 @@ namespace OpenCvWpfTracking.Services.Video
                     isEnabled,
                     hotThresholdRatio,
                     minimumAreaRatio,
-                    fireBoxGroupingMode);
+                    fireBoxGroupingMode,
+                    aiFireCandidates);
             }
             catch (Exception ex)
             {
@@ -82,7 +90,8 @@ namespace OpenCvWpfTracking.Services.Video
             bool isEnabled,
             double hotThresholdRatio,
             double minimumAreaRatio,
-            int fireBoxGroupingMode)
+            int fireBoxGroupingMode,
+            IList<Rect> aiFireCandidates)
         {
             if (!isEnabled || frame == null || frame.Empty())
             {
@@ -259,6 +268,44 @@ namespace OpenCvWpfTracking.Services.Video
                     frame.Width,
                     frame.Height,
                     fireBoxGroupingMode);
+                int candidatesBeforeAiFilter = mergedRects.Count;
+                mergedRects = new List<Rect>(RemoveAiFireOverlappingCandidates(
+                    mergedRects,
+                    aiFireCandidates));
+                RemoveAiFireOverlappingTracks(aiFireCandidates);
+                bool aiFireSuppressionActive =
+                    mergedRects.Count < candidatesBeforeAiFilter;
+                if (aiFireSuppressionActive != _wasAiFireSuppressionActive)
+                {
+                    _wasAiFireSuppressionActive = aiFireSuppressionActive;
+                    ConsoleLogHelper.State(
+                        "THERMAL FIRE HYBRID",
+                        "AI FIRE overlap suppression " +
+                        (aiFireSuppressionActive ? "started" : "ended") +
+                        " / CHANNEL=IR");
+                }
+                int heldFireCandidateCount;
+                IList<Rect> persistentRects = UpdatePersistentCandidateTracks(
+                    mergedRects,
+                    frame.Width,
+                    frame.Height,
+                    out heldFireCandidateCount);
+
+                DateTime continuityNow = DateTime.Now;
+                bool fireTrackCountChanged =
+                    persistentRects.Count != _lastReportedTrackCount;
+                if ((fireTrackCountChanged || heldFireCandidateCount > 0) &&
+                    (continuityNow - _lastTrackContinuityLogTime).TotalSeconds >=
+                        (fireTrackCountChanged ? 0.5 : 2.0))
+                {
+                    _lastTrackContinuityLogTime = continuityNow;
+                    _lastReportedTrackCount = persistentRects.Count;
+                    ConsoleLogHelper.State(
+                        "THERMAL FIRE TRACK",
+                        "Independent fire candidates / VISIBLE=" +
+                        persistentRects.Count +
+                        " / HELD=" + heldFireCandidateCount);
+                }
 
                 Rect selectedRect = Rect.Empty;
 
@@ -312,31 +359,44 @@ namespace OpenCvWpfTracking.Services.Video
                 currentGray.CopyTo(_previousGray);
                 cleanedMask.CopyTo(_previousCandidateMask);
 
-                if (_isFireCandidateDetected && selectedRect != Rect.Empty)
+                if (_isFireCandidateDetected && persistentRects.Count > 0)
                 {
-                    if (mergedRects.Count == 1)
+                    for (int index = 0; index < persistentRects.Count; index++)
                     {
-                        DrawDetectionBox(frame, selectedRect, 1, _latchedVisionScore);
+                        DrawDetectionBox(
+                            frame,
+                            persistentRects[index],
+                            index + 1,
+                            _latchedVisionScore);
                     }
-                    else
+                }
+
+                Rect resultRect = selectedRect;
+                double resultArea = selectedArea;
+                if (_isFireCandidateDetected && persistentRects.Count > 0)
+                {
+                    resultRect = persistentRects[0];
+                    resultArea = resultRect.Width * resultRect.Height;
+                    for (int index = 1; index < persistentRects.Count; index++)
                     {
-                        for (int index = 0; index < mergedRects.Count; index++)
+                        Rect candidate = persistentRects[index];
+                        double area = candidate.Width * candidate.Height;
+                        if (area > resultArea)
                         {
-                            DrawDetectionBox(frame, mergedRects[index], index + 1, _latchedVisionScore);
+                            resultRect = candidate;
+                            resultArea = area;
                         }
-
                     }
-
                 }
 
                 return new ThermalFireDetectionResult(
                     _isFireCandidateDetected,
                     previousState != _isFireCandidateDetected,
-                    selectedArea,
-                    selectedRect,
-                    mergedRects.Count,
+                    resultArea,
+                    resultRect,
+                    persistentRects.Count,
                     _latchedVisionScore,
-                    _isFireCandidateDetected ? mergedRects : new List<Rect>());
+                    _isFireCandidateDetected ? persistentRects : new List<Rect>());
             }
 
         }
@@ -562,6 +622,195 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
+        /// 2026-09-02: 여러 화점 후보를 독립 Track으로 관리한다. 한 후보가 잠깐
+        /// 약해져도 다른 화점의 검출 여부와 무관하게 마지막 BBox를 유지한다.
+        /// </summary>
+        private IList<Rect> UpdatePersistentCandidateTracks(
+            IList<Rect> candidates,
+            int frameWidth,
+            int frameHeight,
+            out int heldCandidateCount)
+        {
+            foreach (FireCandidateTrack track in _candidateTracks)
+            {
+                track.Matched = false;
+            }
+
+            foreach (Rect candidate in candidates ?? new List<Rect>())
+            {
+                FireCandidateTrack bestTrack = null;
+                double bestScore = 0.0;
+                double candidateCenterX = candidate.X + candidate.Width / 2.0;
+                double candidateCenterY = candidate.Y + candidate.Height / 2.0;
+
+                foreach (FireCandidateTrack track in _candidateTracks)
+                {
+                    if (track.Matched)
+                    {
+                        continue;
+                    }
+
+                    double iou = IntersectionOverUnion(track.Rectangle, candidate);
+                    double trackCenterX = track.Rectangle.X + track.Rectangle.Width / 2.0;
+                    double trackCenterY = track.Rectangle.Y + track.Rectangle.Height / 2.0;
+                    double centerDistance = Math.Sqrt(
+                        Math.Pow(candidateCenterX - trackCenterX, 2) +
+                        Math.Pow(candidateCenterY - trackCenterY, 2));
+                    double allowedDistance = Math.Max(
+                        18.0,
+                        Math.Max(track.Rectangle.Width, track.Rectangle.Height) * 0.65);
+                    double score = iou;
+                    if (score < 0.08 && centerDistance <= allowedDistance)
+                    {
+                        score = 0.08 +
+                            (1.0 - centerDistance / allowedDistance) * 0.20;
+                    }
+
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestTrack = track;
+                    }
+                }
+
+                if (bestTrack == null || bestScore < 0.08)
+                {
+                    _candidateTracks.Add(new FireCandidateTrack(candidate));
+                    continue;
+                }
+
+                const double currentWeight = 0.45;
+                Rect previous = bestTrack.Rectangle;
+                bestTrack.Rectangle = new Rect(
+                    Math.Max(0, (int)Math.Round(
+                        previous.X * (1.0 - currentWeight) + candidate.X * currentWeight)),
+                    Math.Max(0, (int)Math.Round(
+                        previous.Y * (1.0 - currentWeight) + candidate.Y * currentWeight)),
+                    Math.Max(1, (int)Math.Round(
+                        previous.Width * (1.0 - currentWeight) + candidate.Width * currentWeight)),
+                    Math.Max(1, (int)Math.Round(
+                        previous.Height * (1.0 - currentWeight) + candidate.Height * currentWeight)));
+                bestTrack.Rectangle = ExpandRect(
+                    bestTrack.Rectangle,
+                    0,
+                    0,
+                    frameWidth,
+                    frameHeight);
+                bestTrack.SeenFrames++;
+                bestTrack.MissingFrames = 0;
+                bestTrack.Matched = true;
+            }
+
+            for (int index = _candidateTracks.Count - 1; index >= 0; index--)
+            {
+                FireCandidateTrack track = _candidateTracks[index];
+                if (!track.Matched)
+                {
+                    track.MissingFrames++;
+                }
+
+                int removalLimit = track.SeenFrames >= ConfirmFrameCount
+                    ? CandidateHoldFrameCount
+                    : ConfirmFrameCount * 2;
+                if (track.MissingFrames > removalLimit)
+                {
+                    _candidateTracks.RemoveAt(index);
+                }
+            }
+
+            heldCandidateCount = 0;
+            List<Rect> visible = new List<Rect>();
+            foreach (FireCandidateTrack track in _candidateTracks)
+            {
+                if (track.SeenFrames < ConfirmFrameCount ||
+                    track.MissingFrames > CandidateHoldFrameCount)
+                {
+                    continue;
+                }
+
+                visible.Add(track.Rectangle);
+                if (!track.Matched)
+                {
+                    heldCandidateCount++;
+                }
+            }
+
+            return visible;
+        }
+
+        /// <summary>
+        /// AI가 이미 FIRE/FLAME으로 표시한 영역은 자체 영상처리 BBox와 이벤트에서
+        /// 제외하여 하이브리드 결과가 동일 위치에 중복 표시되지 않도록 한다.
+        /// </summary>
+        private static IList<Rect> RemoveAiFireOverlappingCandidates(
+            IList<Rect> candidates,
+            IList<Rect> aiFireCandidates)
+        {
+            if (candidates == null || candidates.Count == 0 ||
+                aiFireCandidates == null || aiFireCandidates.Count == 0)
+            {
+                return candidates ?? new List<Rect>();
+            }
+
+            List<Rect> filtered = new List<Rect>();
+            foreach (Rect candidate in candidates)
+            {
+                bool overlapsAi = false;
+                foreach (Rect aiFire in aiFireCandidates)
+                {
+                    Rect intersection = candidate & aiFire;
+                    double intersectionArea =
+                        Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
+                    double smallerArea = Math.Max(
+                        1.0,
+                        Math.Min(
+                            candidate.Width * (double)candidate.Height,
+                            aiFire.Width * (double)aiFire.Height));
+                    double centerX = candidate.X + candidate.Width / 2.0;
+                    double centerY = candidate.Y + candidate.Height / 2.0;
+                    bool centerInside =
+                        centerX >= aiFire.X && centerX <= aiFire.Right &&
+                        centerY >= aiFire.Y && centerY <= aiFire.Bottom;
+
+                    if (IntersectionOverUnion(candidate, aiFire) >= 0.08 ||
+                        intersectionArea / smallerArea >= 0.30 ||
+                        centerInside)
+                    {
+                        overlapsAi = true;
+                        break;
+                    }
+                }
+
+                if (!overlapsAi)
+                {
+                    filtered.Add(candidate);
+                }
+            }
+
+            return filtered;
+        }
+
+        private void RemoveAiFireOverlappingTracks(IList<Rect> aiFireCandidates)
+        {
+            if (aiFireCandidates == null || aiFireCandidates.Count == 0 ||
+                _candidateTracks.Count == 0)
+            {
+                return;
+            }
+
+            for (int index = _candidateTracks.Count - 1; index >= 0; index--)
+            {
+                Rect tracked = _candidateTracks[index].Rectangle;
+                if (RemoveAiFireOverlappingCandidates(
+                        new List<Rect> { tracked },
+                        aiFireCandidates).Count == 0)
+                {
+                    _candidateTracks.RemoveAt(index);
+                }
+            }
+        }
+
+        /// <summary>
         /// CreateHotPixelMask 생성 및 변환 함수.
         /// </summary>
         private static Mat CreateHotPixelMask(
@@ -671,7 +920,7 @@ namespace OpenCvWpfTracking.Services.Video
                     "THERMAL FIRE",
                     _isFireCandidateDetected
                         ? "Candidate confirmed / PERSISTENCE=4 frames"
-                        : "Candidate cleared / PERSISTENCE=8 frames");
+                        : "Candidate cleared / PERSISTENCE=" + ClearFrameCount + " frames");
             }
 
         }
@@ -687,6 +936,10 @@ namespace OpenCvWpfTracking.Services.Video
             _isFireCandidateDetected = false;
             _latchedVisionScore = 0.0;
             _trackedCandidateRect = Rect.Empty;
+            _candidateTracks.Clear();
+            _lastTrackContinuityLogTime = DateTime.MinValue;
+            _lastReportedTrackCount = -1;
+            _wasAiFireSuppressionActive = false;
             if (_previousGray != null)
             {
                 _previousGray.Dispose();
@@ -706,6 +959,24 @@ namespace OpenCvWpfTracking.Services.Video
                 0,
                 0.0,
                 new List<Rect>());
+        }
+
+        private sealed class FireCandidateTrack
+        {
+            internal FireCandidateTrack(Rect rectangle)
+            {
+                Rectangle = rectangle;
+                SeenFrames = 1;
+                Matched = true;
+            }
+
+            internal Rect Rectangle { get; set; }
+
+            internal int SeenFrames { get; set; }
+
+            internal int MissingFrames { get; set; }
+
+            internal bool Matched { get; set; }
         }
 
     }

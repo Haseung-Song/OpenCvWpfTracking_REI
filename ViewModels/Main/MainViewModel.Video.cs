@@ -1277,7 +1277,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     IsFireSmokeFrameAnalysisAllowed(),
                                     ThermalHotThresholdRatio,
                                     ThermalMinimumAreaRatio,
-                                    ThermalFireBoxGroupingMode);
+                                    ThermalFireBoxGroupingMode,
+                                    GetRecentAiFireCandidates(true));
                         }
 
                         // 2026-08-27: EO는 연기 주 탐지, IR은 플룸 보조 후보로

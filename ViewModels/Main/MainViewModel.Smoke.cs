@@ -19,8 +19,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly object _aiSmokeCandidateSync = new object();
         private readonly List<Rect> _latestEoAiSmokeCandidates = new List<Rect>();
         private readonly List<Rect> _latestIrAiSmokeCandidates = new List<Rect>();
+        private readonly List<Rect> _latestEoAiFireCandidates = new List<Rect>();
+        private readonly List<Rect> _latestIrAiFireCandidates = new List<Rect>();
+        private readonly List<Rect> _latestEoAiVehicleCandidates = new List<Rect>();
+        private readonly List<Rect> _latestIrAiVehicleCandidates = new List<Rect>();
         private DateTime _latestEoAiSmokeCandidateTime = DateTime.MinValue;
         private DateTime _latestIrAiSmokeCandidateTime = DateTime.MinValue;
+        private DateTime _latestEoAiFireCandidateTime = DateTime.MinValue;
+        private DateTime _latestIrAiFireCandidateTime = DateTime.MinValue;
+        private DateTime _latestEoAiVehicleCandidateTime = DateTime.MinValue;
+        private DateTime _latestIrAiVehicleCandidateTime = DateTime.MinValue;
         private bool _isSmokeDetectionEnabled;
         private int _smokeDetectionSourceIndex;
         // 2026-08-31: 실운용 초기 오탐 억제를 위해 BALANCED를 기본값으로 사용한다.
@@ -96,16 +104,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             List<Rect> snapshot = new List<Rect>();
+            List<Rect> fireSnapshot = new List<Rect>();
+            List<Rect> vehicleSnapshot = new List<Rect>();
             foreach (AiDetectionBox box in result.Boxes)
             {
                 if (box.NormalizedConfidence < AiDisplayConfidenceThreshold ||
-                    box.ClassName.IndexOf("smoke", StringComparison.OrdinalIgnoreCase) < 0 ||
                     box.Width <= 0 || box.Height <= 0)
                 {
                     continue;
                 }
 
-                snapshot.Add(new Rect(box.Left, box.Top, box.Width, box.Height));
+                Rect rectangle = new Rect(box.Left, box.Top, box.Width, box.Height);
+                if (box.ClassName.IndexOf("smoke", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    snapshot.Add(rectangle);
+                }
+
+                if (box.ClassName.IndexOf("fire", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    box.ClassName.IndexOf("flame", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    fireSnapshot.Add(rectangle);
+                }
+
+                if (IsAiVehicleClass(box.ClassName))
+                {
+                    vehicleSnapshot.Add(rectangle);
+                }
             }
 
             lock (_aiSmokeCandidateSync)
@@ -115,32 +139,123 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     : _latestIrAiSmokeCandidates;
                 target.Clear();
                 target.AddRange(snapshot);
+                List<Rect> fireTarget = result.RtspIndex == 0
+                    ? _latestEoAiFireCandidates
+                    : _latestIrAiFireCandidates;
+                fireTarget.Clear();
+                fireTarget.AddRange(fireSnapshot);
                 if (result.RtspIndex == 0)
                 {
                     _latestEoAiSmokeCandidateTime = receiveTime;
+                    _latestEoAiFireCandidateTime = receiveTime;
+                    if (vehicleSnapshot.Count > 0)
+                    {
+                        _latestEoAiVehicleCandidates.Clear();
+                        _latestEoAiVehicleCandidates.AddRange(vehicleSnapshot);
+                        _latestEoAiVehicleCandidateTime = receiveTime;
+                    }
                 }
                 else
                 {
                     _latestIrAiSmokeCandidateTime = receiveTime;
+                    _latestIrAiFireCandidateTime = receiveTime;
+                    if (vehicleSnapshot.Count > 0)
+                    {
+                        _latestIrAiVehicleCandidates.Clear();
+                        _latestIrAiVehicleCandidates.AddRange(vehicleSnapshot);
+                        _latestIrAiVehicleCandidateTime = receiveTime;
+                    }
                 }
             }
+        }
+
+        private static bool IsAiVehicleClass(string className)
+        {
+            if (string.IsNullOrWhiteSpace(className))
+            {
+                return false;
+            }
+
+            string normalized = className.Trim().ToLowerInvariant();
+            return normalized == "car" ||
+                   normalized == "truck" ||
+                   normalized == "bus" ||
+                   normalized == "van" ||
+                   normalized == "vehicle" ||
+                   normalized == "motorcycle" ||
+                   normalized == "motorbike" ||
+                   normalized == "automobile";
         }
 
         private IList<Rect> GetRecentAiSmokeCandidates(bool isInfrared)
         {
             lock (_aiSmokeCandidateSync)
             {
-                DateTime timestamp = isInfrared
+                DateTime smokeTimestamp = isInfrared
                     ? _latestIrAiSmokeCandidateTime
                     : _latestEoAiSmokeCandidateTime;
+                DateTime fireTimestamp = isInfrared
+                    ? _latestIrAiFireCandidateTime
+                    : _latestEoAiFireCandidateTime;
+                List<Rect> hybridExclusions = new List<Rect>();
+
+                if ((DateTime.Now - smokeTimestamp).TotalSeconds <= 2.0)
+                {
+                    hybridExclusions.AddRange(isInfrared
+                        ? _latestIrAiSmokeCandidates
+                        : _latestEoAiSmokeCandidates);
+                }
+
+                // 2026-09-02: AI가 FIRE로 분류한 동일 현상 주변에도 자체 SMOKE를
+                // 중복 표시하지 않는다. AI가 놓친 떨어진 플룸만 영상처리가 보완한다.
+                if ((DateTime.Now - fireTimestamp).TotalSeconds <= 2.0)
+                {
+                    hybridExclusions.AddRange(isInfrared
+                        ? _latestIrAiFireCandidates
+                        : _latestEoAiFireCandidates);
+                }
+
+                return hybridExclusions;
+            }
+        }
+
+        private IList<Rect> GetRecentAiVehicleCandidates(bool isInfrared)
+        {
+            lock (_aiSmokeCandidateSync)
+            {
+                DateTime timestamp = isInfrared
+                    ? _latestIrAiVehicleCandidateTime
+                    : _latestEoAiVehicleCandidateTime;
                 if ((DateTime.Now - timestamp).TotalSeconds > 2.0)
                 {
                     return new List<Rect>();
                 }
 
                 return new List<Rect>(isInfrared
-                    ? _latestIrAiSmokeCandidates
-                    : _latestEoAiSmokeCandidates);
+                    ? _latestIrAiVehicleCandidates
+                    : _latestEoAiVehicleCandidates);
+            }
+        }
+
+        /// <summary>
+        /// 2026-09-02: AI FIRE/FLAME BBox를 영상처리 FIRE 중복 억제에 사용한다.
+        /// Snapshot은 오래된 좌표가 남지 않도록 2초까지만 유효하다.
+        /// </summary>
+        private IList<Rect> GetRecentAiFireCandidates(bool isInfrared)
+        {
+            lock (_aiSmokeCandidateSync)
+            {
+                DateTime timestamp = isInfrared
+                    ? _latestIrAiFireCandidateTime
+                    : _latestEoAiFireCandidateTime;
+                if ((DateTime.Now - timestamp).TotalSeconds > 2.0)
+                {
+                    return new List<Rect>();
+                }
+
+                return new List<Rect>(isInfrared
+                    ? _latestIrAiFireCandidates
+                    : _latestEoAiFireCandidates);
             }
         }
 
@@ -150,8 +265,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 _latestEoAiSmokeCandidates.Clear();
                 _latestIrAiSmokeCandidates.Clear();
+                _latestEoAiFireCandidates.Clear();
+                _latestIrAiFireCandidates.Clear();
+                _latestEoAiVehicleCandidates.Clear();
+                _latestIrAiVehicleCandidates.Clear();
                 _latestEoAiSmokeCandidateTime = DateTime.MinValue;
                 _latestIrAiSmokeCandidateTime = DateTime.MinValue;
+                _latestEoAiFireCandidateTime = DateTime.MinValue;
+                _latestIrAiFireCandidateTime = DateTime.MinValue;
+                _latestEoAiVehicleCandidateTime = DateTime.MinValue;
+                _latestIrAiVehicleCandidateTime = DateTime.MinValue;
             }
         }
 
@@ -320,9 +443,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private bool IsFireSmokeFrameAnalysisAllowed()
         {
+            if (IsPanoramaCaptureRunning)
+            {
+                // 실제 PTZ 이동 및 도착 직후에는 FIRE/SMOKE 상태를 초기화하고,
+                // 정지 영상이 확보된 구간에서만 다시 분석한다.
+                return !IsPanoramaMotionDetectionSuppressed();
+            }
+
             if (IsLaPresetScanRunning ||
                 IsPresetScanRunning ||
-                IsPanoramaCaptureRunning ||
                 IsPanoramaProcessingRunning)
             {
                 return true;
@@ -341,8 +470,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool IsAutomaticCameraMotionActive()
         {
             return IsLaPresetScanRunning ||
-                   IsPresetScanRunning ||
-                   IsPanoramaCaptureRunning;
+                   IsPresetScanRunning;
         }
 
         private SmokeDetectionResult ProcessSmokeFrame(
@@ -386,6 +514,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     SmokeChangeThresholdRatio,
                     Rect.Empty,
                     new List<Rect>(),
+                    new List<Rect>(),
                     SmokeBoxGroupingMode,
                     false);
                 return disabledResult;
@@ -399,6 +528,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 SmokeChangeThresholdRatio,
                 fireCandidateRect,
                 GetRecentAiSmokeCandidates(isInfrared),
+                GetRecentAiVehicleCandidates(isInfrared),
                 SmokeBoxGroupingMode,
                 compensateCameraMotion);
             return result;

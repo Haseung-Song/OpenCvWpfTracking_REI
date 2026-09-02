@@ -17,6 +17,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isPanoramaCompleted;
         private readonly object _panoramaSourceFrameSync = new object();
         private BitmapSource _latestRawEoPanoramaFrame;
+        // 2026-08-31: 파노라마 PTZ 이동/잔진동 구간은 탐지 기준 영상으로 사용하지 않는다.
+        private int _panoramaCameraMotionActive;
+        private long _panoramaDetectionResumeUtcTicks;
 
         private const double PanoramaCaptureStepDegrees = 10.0;
         private const int PanoramaCaptureFrameCount = 36;
@@ -26,6 +29,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const int PanoramaPanStableSampleCount = 4;
         private const int PanoramaCapturePositionSpeed = 15;
         private const int PanoramaMaximumEoZoomPosition = 100;
+        private const int PanoramaDetectionSettleMs = 400;
 
         /// <summary>
         /// 2026-08-18: 자동 파노라마 촬영 중 수동 장비 제어 잠금 상태.
@@ -434,9 +438,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         "파노라마 촬영 시작 위치로 복귀하지 못했습니다.",
                         ex);
                 }
-
-                IsPanoramaCaptureRunning =
-                    false;
+                finally
+                {
+                    // 복귀 명령 자체가 실패해도 탐지 게이트와 UI 잠금은 반드시 해제한다.
+                    IsPanoramaCaptureRunning =
+                        false;
+                    ResetPanoramaDetectionGate();
+                }
             }
 
         }
@@ -521,7 +529,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (positionSpeed <= 20)
             {
-                return 1000;
+                // 이동 후 0.4초는 분석을 차단하고 이후 약 1.4초 동안
+                // 새 기준 프레임과 36프레임 SMOKE 확인 시간을 확보한다.
+                return 1800;
             }
 
             if (positionSpeed <= 35)
@@ -542,6 +552,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            BeginPanoramaCameraMotion("PAN", targetPan);
 
             bool commandResult =
                 _controlCommandService.SetPanPositionSpeed(
@@ -619,6 +631,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (stableCount >= PanoramaPanStableSampleCount)
                 {
+                    EndPanoramaCameraMotion("PAN", targetPan);
                     ConsoleLogHelper.State(
                         "EO PANORAMA / MOVE",
                         "Pan target stable / TARGET=" + targetPan.ToString("F2") +
@@ -647,6 +660,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            BeginPanoramaCameraMotion("TILT", targetTilt);
 
             bool commandResult =
                 _controlCommandService.SetTiltPositionSpeed(
@@ -716,6 +731,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (stableCount >= PanoramaPanStableSampleCount)
                 {
+                    EndPanoramaCameraMotion("TILT", targetTilt);
                     ConsoleLogHelper.State(
                         "EO PANORAMA / MOVE",
                         "Tilt target stable / TARGET=" + targetTilt.ToString("F2") +
@@ -732,6 +748,50 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 " / ACTUAL=" + _currentTilt.ToString("F2") +
                 " / TIMEOUT_MS=" + timeoutMs);
             return false;
+        }
+
+        /// <summary>
+        /// 파노라마 이동 중과 도착 직후 잔진동 구간의 신규 탐지를 억제한다.
+        /// </summary>
+        private void BeginPanoramaCameraMotion(string axis, double target)
+        {
+            Volatile.Write(ref _panoramaCameraMotionActive, 1);
+            Interlocked.Exchange(ref _panoramaDetectionResumeUtcTicks, long.MaxValue);
+            ConsoleLogHelper.State(
+                "PANORAMA DETECTION GATE",
+                "Detection suspended / AXIS=" + axis +
+                " / TARGET=" + target.ToString("F2"));
+        }
+
+        private void EndPanoramaCameraMotion(string axis, double target)
+        {
+            Interlocked.Exchange(
+                ref _panoramaDetectionResumeUtcTicks,
+                DateTime.UtcNow.AddMilliseconds(PanoramaDetectionSettleMs).Ticks);
+            Volatile.Write(ref _panoramaCameraMotionActive, 0);
+            ConsoleLogHelper.State(
+                "PANORAMA DETECTION GATE",
+                "Stable-frame analysis scheduled / AXIS=" + axis +
+                " / TARGET=" + target.ToString("F2") +
+                " / SETTLE_MS=" + PanoramaDetectionSettleMs);
+        }
+
+        private bool IsPanoramaMotionDetectionSuppressed()
+        {
+            if (!IsPanoramaCaptureRunning)
+            {
+                return false;
+            }
+
+            return Volatile.Read(ref _panoramaCameraMotionActive) != 0 ||
+                   DateTime.UtcNow.Ticks <
+                   Interlocked.Read(ref _panoramaDetectionResumeUtcTicks);
+        }
+
+        private void ResetPanoramaDetectionGate()
+        {
+            Volatile.Write(ref _panoramaCameraMotionActive, 0);
+            Interlocked.Exchange(ref _panoramaDetectionResumeUtcTicks, 0L);
         }
 
     }

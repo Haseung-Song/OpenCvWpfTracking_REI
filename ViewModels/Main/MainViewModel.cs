@@ -2199,10 +2199,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             AiRtsp0OnnxIndex = 1;
             AiRtsp1OnnxIndex = 1;
 
+            // 2026-09-02: Agent 추론 하한은 0.15로 유지해 16% 수준의 실제 송신
+            // 후보를 보존하고, NMS IOU는 0.50으로 완화해 인접 플룸을 과도하게
+            // 제거하지 않는다. Viewer 표시 하한은 0.12로 두어 Agent와 UI 차이를 줄인다.
             AiMappingConfidence = 0.15;
-            AiMappingIou = 0.45;
+            AiMappingIou = 0.50;
 
-            AiDisplayConfidenceThreshold = 0.15;
+            AiDisplayConfidenceThreshold = 0.12;
         }
 
         #endregion

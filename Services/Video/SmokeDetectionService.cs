@@ -18,11 +18,15 @@ namespace OpenCvWpfTracking.Services.Video
         private int _clearFrameCount;
         private int _visionStableFrames;
         private bool _wasAiSmokeSuppressionActive;
+        private bool _wasAiVehicleSuppressionActive;
         private double _latchedVisionScore;
         private readonly List<VisionScoreTrack> _visionScoreTracks = new List<VisionScoreTrack>();
         private readonly List<Rect> _lastVisibleCandidates =
             new List<Rect>();
         private DateTime _lastErrorLogTime = DateTime.MinValue;
+        private DateTime _lastRigidMotionLogTime = DateTime.MinValue;
+        private DateTime _lastContinuityLogTime = DateTime.MinValue;
+        private int _lastReportedVisibleCandidateCount = -1;
         /// <summary>
         /// 2026-08-27: PTZ 이동·Palette·NUC 등 화면 전체 변화 뒤 기준 프레임을 폐기한다.
         /// </summary>
@@ -39,6 +43,7 @@ namespace OpenCvWpfTracking.Services.Video
             double changeThresholdRatio,
             Rect fireCandidateRect,
             IList<Rect> aiSmokeCandidates,
+            IList<Rect> aiVehicleCandidates,
             int smokeBoxGroupingMode,
             bool compensateCameraMotion = false)
         {
@@ -66,6 +71,24 @@ namespace OpenCvWpfTracking.Services.Video
                            confirmationFrames,
                            compensateCameraMotion))
                 {
+                    // 2026-09-02: 강체 이동 후보 억제는 정상적인 필터 동작이므로
+                    // 이벤트 오류로 기록하지 않고 2초 제한 상태 로그로 남긴다.
+                    DateTime now = DateTime.Now;
+                    if ((analysis.RigidMotionSuppressedCount > 0 ||
+                         analysis.MovingSourceSuppressedCount > 0 ||
+                         analysis.TrafficAggregateSuppressedCount > 0) &&
+                        (now - _lastRigidMotionLogTime).TotalSeconds >= 2.0)
+                    {
+                        _lastRigidMotionLogTime = now;
+                        ConsoleLogHelper.State(
+                            "SMOKE ROAD MOTION",
+                            "Moving-object/source candidate suppressed / CHANNEL=" +
+                            (isInfrared ? "IR" : "EO") +
+                            " / RIGID=" + analysis.RigidMotionSuppressedCount +
+                            " / SOURCE=" + analysis.MovingSourceSuppressedCount +
+                            " / TRAFFIC=" + analysis.TrafficAggregateSuppressedCount);
+                    }
+
                     bool previousState = _isDetected;
                     IList<Rect> visibleCandidates =
                         RemoveFireOverlappingCandidates(
@@ -96,11 +119,64 @@ namespace OpenCvWpfTracking.Services.Video
                             _visionStableFrames = 0;
                         }
                     }
+
+                    // 2026-09-02: AI가 CAR/TRUCK/BUS 등으로 확인한 주변은
+                    // 차량 본체·그림자·배경 가림 변화가 SMOKE 마스크가 되기 쉽다.
+                    // 차량 BBox를 확장한 동적 도로 활동 구간과 겹치는 후보를 제거한다.
+                    int candidatesBeforeVehicleFilter = visibleCandidates.Count;
+                    visibleCandidates = RemoveAiVehicleOverlappingCandidates(
+                        visibleCandidates,
+                        aiVehicleCandidates);
+                    bool vehicleSuppressionActive =
+                        visibleCandidates.Count < candidatesBeforeVehicleFilter;
+                    if (vehicleSuppressionActive != _wasAiVehicleSuppressionActive)
+                    {
+                        _wasAiVehicleSuppressionActive = vehicleSuppressionActive;
+                        ConsoleLogHelper.State(
+                            "SMOKE VEHICLE FUSION",
+                            "AI vehicle corridor suppression " +
+                            (vehicleSuppressionActive ? "started" : "ended") +
+                            " / CHANNEL=" + (isInfrared ? "IR" : "EO"));
+                    }
+
+                    if (aiVehicleCandidates != null && aiVehicleCandidates.Count > 0)
+                    {
+                        IList<Rect> retained = RemoveAiVehicleOverlappingCandidates(
+                            _lastVisibleCandidates,
+                            aiVehicleCandidates);
+                        _lastVisibleCandidates.Clear();
+                        _lastVisibleCandidates.AddRange(retained);
+                        if (visibleCandidates.Count == 0 && _lastVisibleCandidates.Count == 0)
+                        {
+                            _isDetected = false;
+                            _clearFrameCount = 0;
+                            _visionStableFrames = 0;
+                        }
+                    }
                     // 2026-08-31: 구분 방식 1은 화면 내 확정 연기를 하나의 외곽으로,
                     // 구분 방식 2는 독립된 연기 기둥별 외곽으로 표시한다.
                     visibleCandidates = ApplySmokeGroupingMode(
                         visibleCandidates,
                         smokeBoxGroupingMode);
+
+                    // 2026-09-02: 독립 연기 Track 수와 일시 누락 중 유지되는 BBox 수를
+                    // 제한 로그로 남겨 다중 플룸의 동시 ACTIVE 연속성을 확인한다.
+                    bool candidateCountChanged =
+                        visibleCandidates.Count != _lastReportedVisibleCandidateCount;
+                    if ((candidateCountChanged || analysis.ContinuityHeldCount > 0) &&
+                        (now - _lastContinuityLogTime).TotalSeconds >=
+                            (candidateCountChanged ? 0.5 : 2.0))
+                    {
+                        _lastContinuityLogTime = now;
+                        _lastReportedVisibleCandidateCount = visibleCandidates.Count;
+                        ConsoleLogHelper.State(
+                            "SMOKE TRACK CONTINUITY",
+                            "Independent plume tracks / CHANNEL=" +
+                            (isInfrared ? "IR" : "EO") +
+                            " / VISIBLE=" + visibleCandidates.Count +
+                            " / HELD=" + analysis.ContinuityHeldCount);
+                    }
+
                     if (analysis.IsConfirmed &&
                         visibleCandidates.Count > 0)
                     {
@@ -197,9 +273,12 @@ namespace OpenCvWpfTracking.Services.Video
             _clearFrameCount = 0;
             _visionStableFrames = 0;
             _wasAiSmokeSuppressionActive = false;
+            _wasAiVehicleSuppressionActive = false;
             _latchedVisionScore = 0.0;
             _visionScoreTracks.Clear();
             _lastVisibleCandidates.Clear();
+            _lastContinuityLogTime = DateTime.MinValue;
+            _lastReportedVisibleCandidateCount = -1;
             _analyzer.Reset();
 
             return new SmokeDetectionResult(
@@ -327,6 +406,64 @@ namespace OpenCvWpfTracking.Services.Video
                 if (!duplicate)
                 {
                     filtered.Add(vision);
+                }
+            }
+
+            return filtered;
+        }
+
+        private static IList<Rect> RemoveAiVehicleOverlappingCandidates(
+            IList<Rect> smokeCandidates,
+            IList<Rect> vehicleCandidates)
+        {
+            if (smokeCandidates == null || smokeCandidates.Count == 0 ||
+                vehicleCandidates == null || vehicleCandidates.Count == 0)
+            {
+                return smokeCandidates ?? new List<Rect>();
+            }
+
+            List<Rect> filtered = new List<Rect>();
+            foreach (Rect smoke in smokeCandidates)
+            {
+                bool vehicleGeneratedChange = false;
+                Point smokeCenter = new Point(
+                    smoke.X + smoke.Width / 2,
+                    smoke.Y + smoke.Height / 2);
+                Point smokeSource = new Point(
+                    smoke.X + smoke.Width / 2,
+                    smoke.Bottom);
+
+                foreach (Rect vehicle in vehicleCandidates)
+                {
+                    int horizontalMargin = Math.Max(16, (int)Math.Round(vehicle.Width * 0.80));
+                    int topMargin = Math.Max(12, (int)Math.Round(vehicle.Height * 0.45));
+                    int bottomMargin = Math.Max(12, (int)Math.Round(vehicle.Height * 0.35));
+                    Rect activityCorridor = new Rect(
+                        vehicle.X - horizontalMargin,
+                        vehicle.Y - topMargin,
+                        vehicle.Width + horizontalMargin * 2,
+                        vehicle.Height + topMargin + bottomMargin);
+
+                    Rect intersection = smoke & activityCorridor;
+                    double intersectionArea =
+                        Math.Max(0, intersection.Width) *
+                        Math.Max(0, intersection.Height);
+                    double smokeArea = Math.Max(1.0, smoke.Width * (double)smoke.Height);
+                    bool centerInside = activityCorridor.Contains(smokeCenter);
+                    bool sourceInside = activityCorridor.Contains(smokeSource);
+
+                    if (centerInside ||
+                        sourceInside ||
+                        intersectionArea / smokeArea >= 0.12)
+                    {
+                        vehicleGeneratedChange = true;
+                        break;
+                    }
+                }
+
+                if (!vehicleGeneratedChange)
+                {
+                    filtered.Add(smoke);
                 }
             }
 

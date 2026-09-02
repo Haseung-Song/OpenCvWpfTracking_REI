@@ -15,6 +15,10 @@ namespace FireCandidateValidator
         private Mat _temporalCandidateMask = new Mat();
         private int _referenceFrameAge;
         private int _continuousCandidateFrames;
+        private int _lastRigidMotionSuppressedCount;
+        private int _lastMovingSourceSuppressedCount;
+        private int _lastContinuityHeldCount;
+        private int _lastTrafficAggregateSuppressedCount;
         private readonly List<SmokeCandidateTrack> _tracks =
             new List<SmokeCandidateTrack>();
 
@@ -31,6 +35,11 @@ namespace FireCandidateValidator
                 Reset();
                 return SmokeCandidateAnalysis.Empty();
             }
+
+            _lastRigidMotionSuppressedCount = 0;
+            _lastMovingSourceSuppressedCount = 0;
+            _lastContinuityHeldCount = 0;
+            _lastTrafficAggregateSuppressedCount = 0;
 
             Mat gray = new Mat();
             Mat blurred = new Mat();
@@ -405,9 +414,11 @@ namespace FireCandidateValidator
 
                 candidates.Sort((left, right) =>
                     (right.Width * right.Height).CompareTo(left.Width * left.Height));
-                if (candidates.Count > 6)
+                // 2026-09-02: 화면에 여러 연기 기둥이 동시에 존재할 때 큰 후보 몇 개가
+                // 작은 독립 플룸을 밀어내지 않도록 Track 입력 상한을 확장한다.
+                if (candidates.Count > 12)
                 {
-                    candidates.RemoveRange(6, candidates.Count - 6);
+                    candidates.RemoveRange(12, candidates.Count - 12);
                 }
 
                 List<Rect> confirmedCandidates =
@@ -415,7 +426,8 @@ namespace FireCandidateValidator
                         candidates,
                         Math.Max(1, confirmationFrameCount),
                         source.Width,
-                        source.Height);
+                        source.Height,
+                        isInfrared);
 
                 _continuousCandidateFrames = 0;
                 foreach (SmokeCandidateTrack track in _tracks)
@@ -448,7 +460,11 @@ namespace FireCandidateValidator
                     confirmedCandidates,
                     isConfirmed,
                     _continuousCandidateFrames,
-                    largestAreaRatio);
+                    largestAreaRatio,
+                    _lastRigidMotionSuppressedCount,
+                    _lastMovingSourceSuppressedCount,
+                    _lastContinuityHeldCount,
+                    _lastTrafficAggregateSuppressedCount);
             }
             catch
             {
@@ -561,6 +577,10 @@ namespace FireCandidateValidator
         {
             _continuousCandidateFrames = 0;
             _referenceFrameAge = 0;
+            _lastRigidMotionSuppressedCount = 0;
+            _lastMovingSourceSuppressedCount = 0;
+            _lastContinuityHeldCount = 0;
+            _lastTrafficAggregateSuppressedCount = 0;
             _tracks.Clear();
 
             if (_temporalCandidateMask != null)
@@ -633,8 +653,13 @@ namespace FireCandidateValidator
             IList<Rect> candidates,
             int confirmationFrameCount,
             int frameWidth,
-            int frameHeight)
+            int frameHeight,
+            bool isInfrared)
         {
+            _lastRigidMotionSuppressedCount = 0;
+            _lastMovingSourceSuppressedCount = 0;
+            _lastContinuityHeldCount = 0;
+            _lastTrafficAggregateSuppressedCount = 0;
             foreach (SmokeCandidateTrack track in _tracks)
             {
                 track.Matched = false;
@@ -663,12 +688,15 @@ namespace FireCandidateValidator
                         Math.Sqrt(
                             Math.Pow(candidateCenter.X - previousCenter.X, 2) +
                             Math.Pow(candidateCenter.Y - previousCenter.Y, 2));
+                    // 확정 Track은 가까운 다른 연기 기둥으로 ID가 넘어가지 않도록
+                    // 신규 Track보다 좁은 중심점 게이트를 사용한다.
                     double allowedDistance =
                         Math.Max(
                             18.0,
                             Math.Max(
                                 track.Rectangle.Width,
-                                track.Rectangle.Height) * 0.85);
+                                track.Rectangle.Height) *
+                            (track.HasBeenConfirmed ? 0.55 : 0.85));
                     double score = intersectionScore;
 
                     if (score < 0.08 && centerDistance <= allowedDistance)
@@ -707,6 +735,118 @@ namespace FireCandidateValidator
                 double deltaX = candidateCenter.X - previousTrackCenter.X;
                 double deltaY = candidateCenter.Y - previousTrackCenter.Y;
                 double motion = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+                Point previousSource = GetBottomCenter(bestTrack.Rectangle);
+                Point currentSource = GetBottomCenter(candidate);
+                double sourceDeltaX = currentSource.X - previousSource.X;
+                double sourceDeltaY = currentSource.Y - previousSource.Y;
+                double sourceMotion = Math.Sqrt(
+                    sourceDeltaX * sourceDeltaX + sourceDeltaY * sourceDeltaY);
+                double areaDelta =
+                    Math.Abs(currentArea - previousArea) / previousArea;
+                double previousAspect =
+                    bestTrack.Rectangle.Width /
+                    (double)Math.Max(1, bestTrack.Rectangle.Height);
+                double currentAspect =
+                    candidate.Width /
+                    (double)Math.Max(1, candidate.Height);
+                double shapeDelta =
+                    Math.Abs(currentAspect - previousAspect) /
+                    Math.Max(0.25, previousAspect);
+
+                // 2026-09-02: 차량은 BBox 형태를 거의 유지한 채 한 방향으로
+                // 평행 이동하지만, 실제 연기 플룸은 이동 중 면적·종횡비가 계속
+                // 변한다. 두 특성을 Track 단위로 별도 누적한다.
+                if (areaDelta >= 0.080 || shapeDelta >= 0.100)
+                {
+                    bestTrack.DeformationSamples++;
+                }
+
+                if (motion >= 1.5)
+                {
+                    bestTrack.SignificantMotionSamples++;
+                    bestTrack.TotalMotion += motion;
+
+                    if (bestTrack.HasMotionVector)
+                    {
+                        double previousNorm = Math.Sqrt(
+                            bestTrack.LastMotionX * bestTrack.LastMotionX +
+                            bestTrack.LastMotionY * bestTrack.LastMotionY);
+                        double currentNorm = Math.Max(0.001, motion);
+                        double cosine =
+                            (bestTrack.LastMotionX * deltaX +
+                             bestTrack.LastMotionY * deltaY) /
+                            Math.Max(0.001, previousNorm * currentNorm);
+
+                        if (cosine >= 0.70)
+                        {
+                            bestTrack.CoherentMotionSamples++;
+                        }
+                        else if (cosine <= 0.25)
+                        {
+                            bestTrack.DirectionChangeSamples++;
+                        }
+                    }
+
+                    if (areaDelta < 0.100 && shapeDelta < 0.100)
+                    {
+                        bestTrack.RigidTranslationSamples++;
+                    }
+
+                    bestTrack.LastMotionX = deltaX;
+                    bestTrack.LastMotionY = deltaY;
+                    bestTrack.HasMotionVector = true;
+                }
+
+                // 연기 플룸 상단은 바람에 움직여도 굴뚝·화점에 해당하는 BBox
+                // 하단 중심은 비교적 고정된다. 차량은 하단 발생점까지 함께 이동한다.
+                if (sourceMotion >= 1.5)
+                {
+                    bestTrack.SourceMotionSamples++;
+                    bestTrack.SourceTotalMotion += sourceMotion;
+
+                    if (bestTrack.HasSourceMotionVector)
+                    {
+                        double previousSourceNorm = Math.Sqrt(
+                            bestTrack.LastSourceMotionX * bestTrack.LastSourceMotionX +
+                            bestTrack.LastSourceMotionY * bestTrack.LastSourceMotionY);
+                        double cosine =
+                            (bestTrack.LastSourceMotionX * sourceDeltaX +
+                             bestTrack.LastSourceMotionY * sourceDeltaY) /
+                            Math.Max(0.001, previousSourceNorm * sourceMotion);
+
+                        if (cosine >= 0.70)
+                        {
+                            bestTrack.CoherentSourceMotionSamples++;
+                        }
+                        else if (cosine <= 0.25)
+                        {
+                            bestTrack.SourceDirectionChangeSamples++;
+                        }
+                    }
+
+                    bestTrack.LastSourceMotionX = sourceDeltaX;
+                    bestTrack.LastSourceMotionY = sourceDeltaY;
+                    bestTrack.HasSourceMotionVector = true;
+                }
+
+                bestTrack.MinimumSourceX = Math.Min(
+                    bestTrack.MinimumSourceX,
+                    currentSource.X);
+                bestTrack.MaximumSourceX = Math.Max(
+                    bestTrack.MaximumSourceX,
+                    currentSource.X);
+                bestTrack.MinimumSourceY = Math.Min(
+                    bestTrack.MinimumSourceY,
+                    currentSource.Y);
+                bestTrack.MaximumSourceY = Math.Max(
+                    bestTrack.MaximumSourceY,
+                    currentSource.Y);
+                if (sourceMotion >= Math.Max(
+                        10.0,
+                        Math.Max(candidate.Width, candidate.Height) * 0.18))
+                {
+                    bestTrack.AbruptSourceJumpSamples++;
+                }
 
                 /*
                  * 2026-08-31: 실제 연기는 분리·병합 때문에 BBox 면적이 한 프레임에
@@ -739,9 +879,6 @@ namespace FireCandidateValidator
                         bestTrack.DownwardSamples++;
                     }
 
-                    double areaDelta =
-                        Math.Abs(currentArea - previousArea) / previousArea;
-
                     if (motion >= 1.5 || areaDelta >= 0.030)
                     {
                         bestTrack.DynamicSamples++;
@@ -769,10 +906,36 @@ namespace FireCandidateValidator
                 // 장시간 누적 또는 화면의 22%를 넘는 경우 현재 외곽부터 다시 시작해
                 // 이동·오탐 때문에 BBox가 화면 전체로 계속 커지는 현상을 제한한다.
                 Rect envelope = bestTrack.EnvelopeRectangle | bestTrack.Rectangle;
+                double currentRectangleArea = Math.Max(
+                    1.0,
+                    bestTrack.Rectangle.Width * (double)bestTrack.Rectangle.Height);
+                double envelopeArea = envelope.Width * (double)envelope.Height;
                 double envelopeRatio =
-                    envelope.Width * envelope.Height /
+                    envelopeArea /
                     Math.Max(1.0, frameWidth * (double)frameHeight);
-                if (bestTrack.EnvelopeFrames >= 120 || envelopeRatio > 0.22)
+                bool translationDominant =
+                    bestTrack.SignificantMotionSamples >= 6 &&
+                    bestTrack.RigidTranslationSamples >=
+                        bestTrack.SignificantMotionSamples * 0.55 &&
+                    bestTrack.CoherentMotionSamples >=
+                        Math.Max(2, (bestTrack.SignificantMotionSamples - 1) / 2);
+                bool movingSourceDominant =
+                    bestTrack.SourceMotionSamples >= 6 &&
+                    bestTrack.CoherentSourceMotionSamples >=
+                        Math.Max(2, (bestTrack.SourceMotionSamples - 1) / 2);
+                double sourceSpanX =
+                    bestTrack.MaximumSourceX - bestTrack.MinimumSourceX;
+                double sourceSpanY =
+                    bestTrack.MaximumSourceY - bestTrack.MinimumSourceY;
+                bool sparseTrafficEnvelope =
+                    envelopeRatio >= 0.08 &&
+                    envelopeArea / currentRectangleArea >= 2.40 &&
+                    (sourceSpanX >= frameWidth * 0.045 ||
+                     sourceSpanY >= frameHeight * 0.040);
+
+                if (translationDominant || movingSourceDominant ||
+                    sparseTrafficEnvelope ||
+                    bestTrack.EnvelopeFrames >= 120 || envelopeRatio > 0.22)
                 {
                     bestTrack.EnvelopeRectangle = bestTrack.Rectangle;
                     bestTrack.EnvelopeFrames = 1;
@@ -786,6 +949,9 @@ namespace FireCandidateValidator
                 bestTrack.Matched = true;
             }
 
+            int continuityHoldFrames = isInfrared
+                ? Math.Max(42, confirmationFrameCount * 3)
+                : Math.Max(108, confirmationFrameCount * 3);
             for (int index = _tracks.Count - 1; index >= 0; index--)
             {
                 SmokeCandidateTrack track = _tracks[index];
@@ -795,7 +961,10 @@ namespace FireCandidateValidator
                     track.MissingFrames++;
                 }
 
-                if (track.MissingFrames > Math.Max(24, confirmationFrameCount))
+                int removalLimit = track.HasBeenConfirmed
+                    ? continuityHoldFrames
+                    : Math.Max(24, confirmationFrameCount);
+                if (track.MissingFrames > removalLimit)
                 {
                     _tracks.RemoveAt(index);
                 }
@@ -822,18 +991,257 @@ namespace FireCandidateValidator
                     track.UpwardSamples + track.ExpansionSamples >=
                     requiredPlumeSamples;
 
-                if (track.MissingFrames <= Math.Max(12, confirmationFrameCount / 3) &&
+                bool rigidMovingObject =
+                    !isInfrared &&
+                    IsRigidMovingObjectTrack(
+                        track,
+                        confirmationFrameCount,
+                        frameWidth,
+                        frameHeight);
+                bool movingSmokeSource =
+                    !isInfrared &&
+                    IsMovingSmokeSourceTrack(
+                        track,
+                        confirmationFrameCount,
+                        frameWidth,
+                        frameHeight);
+                bool roadTrafficAggregate =
+                    !isInfrared &&
+                    IsRoadTrafficAggregateTrack(
+                        track,
+                        confirmationFrameCount,
+                        frameWidth,
+                        frameHeight);
+
+                bool currentlyAccepted =
+                    track.MissingFrames <= Math.Max(12, confirmationFrameCount / 3) &&
                     track.SeenFrames >= confirmationFrameCount &&
                     track.StationaryFrames < confirmationFrameCount &&
                     track.StationaryFrames < stationaryLimit &&
                     directionAccepted &&
-                    plumeEvolutionAccepted)
+                    plumeEvolutionAccepted &&
+                    !rigidMovingObject &&
+                    !movingSmokeSource &&
+                    !roadTrafficAggregate;
+
+                if (currentlyAccepted)
                 {
-                    confirmed.Add(track.EnvelopeRectangle);
+                    track.HasBeenConfirmed = true;
+                    track.LastConfirmedRectangle = track.EnvelopeRectangle;
+                }
+                else if (rigidMovingObject &&
+                         track.MissingFrames == 0 &&
+                         track.SeenFrames >= confirmationFrameCount)
+                {
+                    _lastRigidMotionSuppressedCount++;
+                }
+
+                if (movingSmokeSource &&
+                    track.MissingFrames == 0 &&
+                    track.SeenFrames >= confirmationFrameCount)
+                {
+                    _lastMovingSourceSuppressedCount++;
+                }
+
+                if (roadTrafficAggregate &&
+                    track.MissingFrames == 0 &&
+                    track.SeenFrames >= confirmationFrameCount)
+                {
+                    _lastTrafficAggregateSuppressedCount++;
+                }
+
+                /*
+                 * 2026-09-02: 각 연기 기둥은 독립 ACTIVE Track으로 유지한다.
+                 * 다른 플룸이 검출된 프레임에도 잠시 마스크가 약해진 기존 플룸의
+                 * 마지막 외곽을 유지하며, 실제 후보가 다시 매칭되면 즉시 갱신한다.
+                 * 차량/이동 발생점으로 판정된 Track은 유지 대상에서 제외한다.
+                 */
+                if (track.HasBeenConfirmed &&
+                    track.MissingFrames <= continuityHoldFrames &&
+                    !rigidMovingObject &&
+                    !movingSmokeSource &&
+                    !roadTrafficAggregate)
+                {
+                    if (track.Matched)
+                    {
+                        track.LastConfirmedRectangle = track.EnvelopeRectangle;
+                    }
+
+                    Rect persistentRectangle = track.LastConfirmedRectangle;
+                    if (persistentRectangle != Rect.Empty)
+                    {
+                        AddIndependentCandidate(confirmed, persistentRectangle);
+                        if (!currentlyAccepted)
+                        {
+                            _lastContinuityHeldCount++;
+                        }
+                    }
                 }
             }
 
             return confirmed;
+        }
+
+        /// <summary>
+        /// 여러 차량의 위치가 하나의 Track에 연속 편입되면 하단 발생점 범위가 넓고
+        /// 방향 전환·급격한 점프가 반복된다. 고정 발생점 플룸과 다른 이 조합만
+        /// 도로 다중 객체 Track으로 억제한다.
+        /// </summary>
+        private static bool IsRoadTrafficAggregateTrack(
+            SmokeCandidateTrack track,
+            int confirmationFrameCount,
+            int frameWidth,
+            int frameHeight)
+        {
+            int minimumSamples = Math.Max(8, confirmationFrameCount / 4);
+            if (track.SourceMotionSamples < minimumSamples)
+            {
+                return false;
+            }
+
+            double spanX = track.MaximumSourceX - track.MinimumSourceX;
+            double spanY = track.MaximumSourceY - track.MinimumSourceY;
+            double frameDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(frameWidth * (double)frameWidth +
+                          frameHeight * (double)frameHeight));
+            double sourceSpan = Math.Sqrt(spanX * spanX + spanY * spanY);
+            double envelopeRatio =
+                track.EnvelopeRectangle.Width *
+                (double)track.EnvelopeRectangle.Height /
+                Math.Max(1.0, frameWidth * (double)frameHeight);
+            bool wideMovingSource = sourceSpan / frameDiagonal >= 0.055;
+            bool erraticDirection =
+                track.SourceDirectionChangeSamples >=
+                Math.Max(3, track.SourceMotionSamples / 5);
+            bool repeatedJumps = track.AbruptSourceJumpSamples >= 3;
+            bool oversizedFootprint = envelopeRatio >= 0.080;
+
+            return wideMovingSource &&
+                   (erraticDirection || repeatedJumps || oversizedFootprint);
+        }
+
+        /// <summary>
+        /// 동일 Track이 재생성되며 겹친 경우에만 하나로 합치고, 떨어진 연기 기둥은
+        /// 각각의 BBox로 유지한다.
+        /// </summary>
+        private static void AddIndependentCandidate(IList<Rect> target, Rect candidate)
+        {
+            for (int index = 0; index < target.Count; index++)
+            {
+                Rect existing = target[index];
+                Rect intersection = existing & candidate;
+                double intersectionArea =
+                    Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
+                double smallerArea = Math.Max(
+                    1.0,
+                    Math.Min(
+                        existing.Width * (double)existing.Height,
+                        candidate.Width * (double)candidate.Height));
+
+                if (IntersectionOverUnion(existing, candidate) >= 0.18 ||
+                    intersectionArea / smallerArea >= 0.55)
+                {
+                    target[index] = existing | candidate;
+                    return;
+                }
+            }
+
+            target.Add(candidate);
+        }
+
+        /// <summary>
+        /// 2026-09-02: 도로 차량처럼 형태를 유지한 채 일관된 방향으로 이동하는
+        /// 강체 Track을 연기 플룸과 분리한다. 위치만 빠르게 변하고 변형 표본이
+        /// 적은 경우에만 적용하므로 확산·형상 변화가 있는 공장/화재 연기는 유지한다.
+        /// </summary>
+        private static bool IsRigidMovingObjectTrack(
+            SmokeCandidateTrack track,
+            int confirmationFrameCount,
+            int frameWidth,
+            int frameHeight)
+        {
+            int minimumMotionSamples =
+                Math.Max(8, confirmationFrameCount / 4);
+            if (track.SignificantMotionSamples < minimumMotionSamples)
+            {
+                return false;
+            }
+
+            double rigidRatio =
+                track.RigidTranslationSamples /
+                (double)Math.Max(1, track.SignificantMotionSamples);
+            double coherentRatio =
+                track.CoherentMotionSamples /
+                (double)Math.Max(1, track.SignificantMotionSamples - 1);
+            double deformationRatio =
+                track.DeformationSamples /
+                (double)Math.Max(1, track.SeenFrames - 1);
+
+            Point currentCenter = GetCenter(track.Rectangle);
+            double netDisplacement = Math.Sqrt(
+                Math.Pow(currentCenter.X - track.InitialCenter.X, 2) +
+                Math.Pow(currentCenter.Y - track.InitialCenter.Y, 2));
+            double frameDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(frameWidth * (double)frameWidth +
+                          frameHeight * (double)frameHeight));
+            double initialDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(track.InitialRectangle.Width *
+                              (double)track.InitialRectangle.Width +
+                          track.InitialRectangle.Height *
+                              (double)track.InitialRectangle.Height));
+
+            bool trajectoryIsMaterial =
+                netDisplacement / frameDiagonal >= 0.006 &&
+                netDisplacement / initialDiagonal >= 0.32 &&
+                track.TotalMotion / initialDiagonal >= 0.70;
+            bool directionIsCoherent =
+                coherentRatio >= 0.55 &&
+                track.DirectionChangeSamples <=
+                    Math.Max(2, track.SignificantMotionSamples / 4);
+
+            return trajectoryIsMaterial &&
+                   directionIsCoherent &&
+                   rigidRatio >= 0.55 &&
+                   deformationRatio <= 0.35;
+        }
+
+        private static bool IsMovingSmokeSourceTrack(
+            SmokeCandidateTrack track,
+            int confirmationFrameCount,
+            int frameWidth,
+            int frameHeight)
+        {
+            int minimumSamples = Math.Max(8, confirmationFrameCount / 4);
+            if (track.SourceMotionSamples < minimumSamples)
+            {
+                return false;
+            }
+
+            Point currentSource = GetBottomCenter(track.Rectangle);
+            double netDisplacement = Math.Sqrt(
+                Math.Pow(currentSource.X - track.InitialSourcePoint.X, 2) +
+                Math.Pow(currentSource.Y - track.InitialSourcePoint.Y, 2));
+            double frameDiagonal = Math.Max(1.0,
+                Math.Sqrt(frameWidth * (double)frameWidth +
+                          frameHeight * (double)frameHeight));
+            double initialDiagonal = Math.Max(1.0,
+                Math.Sqrt(track.InitialRectangle.Width *
+                              (double)track.InitialRectangle.Width +
+                          track.InitialRectangle.Height *
+                              (double)track.InitialRectangle.Height));
+            double coherentRatio =
+                track.CoherentSourceMotionSamples /
+                (double)Math.Max(1, track.SourceMotionSamples - 1);
+
+            return netDisplacement / frameDiagonal >= 0.004 &&
+                   netDisplacement / initialDiagonal >= 0.25 &&
+                   track.SourceTotalMotion / initialDiagonal >= 0.65 &&
+                   coherentRatio >= 0.55 &&
+                   track.SourceDirectionChangeSamples <=
+                       Math.Max(2, track.SourceMotionSamples / 4);
         }
 
         /// <summary>
@@ -864,6 +1272,13 @@ namespace FireCandidateValidator
             return new Point(
                 rectangle.X + rectangle.Width / 2,
                 rectangle.Y + rectangle.Height / 2);
+        }
+
+        private static Point GetBottomCenter(Rect rectangle)
+        {
+            return new Point(
+                rectangle.X + rectangle.Width / 2,
+                rectangle.Bottom);
         }
 
         private static double IntersectionOverUnion(Rect left, Rect right)
@@ -905,6 +1320,13 @@ namespace FireCandidateValidator
         {
             internal SmokeCandidateTrack(Rect rectangle)
             {
+                InitialRectangle = rectangle;
+                InitialCenter = GetCenter(rectangle);
+                InitialSourcePoint = GetBottomCenter(rectangle);
+                MinimumSourceX = InitialSourcePoint.X;
+                MaximumSourceX = InitialSourcePoint.X;
+                MinimumSourceY = InitialSourcePoint.Y;
+                MaximumSourceY = InitialSourcePoint.Y;
                 Rectangle = rectangle;
                 EnvelopeRectangle = rectangle;
                 EnvelopeFrames = 1;
@@ -913,6 +1335,12 @@ namespace FireCandidateValidator
             }
 
             internal Rect Rectangle { get; set; }
+
+            internal Rect InitialRectangle { get; }
+
+            internal Point InitialCenter { get; }
+
+            internal Point InitialSourcePoint { get; }
 
             internal Rect EnvelopeRectangle { get; set; }
 
@@ -932,6 +1360,52 @@ namespace FireCandidateValidator
 
             internal int ExpansionSamples { get; set; }
 
+            internal int SignificantMotionSamples { get; set; }
+
+            internal int CoherentMotionSamples { get; set; }
+
+            internal int DirectionChangeSamples { get; set; }
+
+            internal int RigidTranslationSamples { get; set; }
+
+            internal int DeformationSamples { get; set; }
+
+            internal double TotalMotion { get; set; }
+
+            internal double LastMotionX { get; set; }
+
+            internal double LastMotionY { get; set; }
+
+            internal bool HasMotionVector { get; set; }
+
+            internal int SourceMotionSamples { get; set; }
+
+            internal int CoherentSourceMotionSamples { get; set; }
+
+            internal int SourceDirectionChangeSamples { get; set; }
+
+            internal double SourceTotalMotion { get; set; }
+
+            internal double LastSourceMotionX { get; set; }
+
+            internal double LastSourceMotionY { get; set; }
+
+            internal bool HasSourceMotionVector { get; set; }
+
+            internal double MinimumSourceX { get; set; }
+
+            internal double MaximumSourceX { get; set; }
+
+            internal double MinimumSourceY { get; set; }
+
+            internal double MaximumSourceY { get; set; }
+
+            internal int AbruptSourceJumpSamples { get; set; }
+
+            internal bool HasBeenConfirmed { get; set; }
+
+            internal Rect LastConfirmedRectangle { get; set; }
+
             internal bool Matched { get; set; }
         }
 
@@ -947,13 +1421,21 @@ namespace FireCandidateValidator
             IList<Rect> candidates,
             bool isConfirmed,
             int continuousFrames,
-            double largestAreaRatio)
+            double largestAreaRatio,
+            int rigidMotionSuppressedCount = 0,
+            int movingSourceSuppressedCount = 0,
+            int continuityHeldCount = 0,
+            int trafficAggregateSuppressedCount = 0)
         {
             Mask = mask;
             Candidates = candidates;
             IsConfirmed = isConfirmed;
             ContinuousFrames = continuousFrames;
             LargestAreaRatio = largestAreaRatio;
+            RigidMotionSuppressedCount = rigidMotionSuppressedCount;
+            MovingSourceSuppressedCount = movingSourceSuppressedCount;
+            ContinuityHeldCount = continuityHeldCount;
+            TrafficAggregateSuppressedCount = trafficAggregateSuppressedCount;
         }
 
         internal Mat Mask { get; }
@@ -965,6 +1447,14 @@ namespace FireCandidateValidator
         internal int ContinuousFrames { get; }
 
         internal double LargestAreaRatio { get; }
+
+        internal int RigidMotionSuppressedCount { get; }
+
+        internal int MovingSourceSuppressedCount { get; }
+
+        internal int ContinuityHeldCount { get; }
+
+        internal int TrafficAggregateSuppressedCount { get; }
 
         internal static SmokeCandidateAnalysis Empty()
         {

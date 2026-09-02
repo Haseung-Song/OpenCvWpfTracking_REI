@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using Serilog;
 
 namespace OpenCvWpfTracking
@@ -42,6 +45,11 @@ namespace OpenCvWpfTracking
         private static readonly HttpClient HttpClient =
             CreateHttpClient();
 
+        // 2026-08-31: 확대 지도에서 다수 Tile 요청이 AI/영상처리와 CPU·I/O를
+        // 동시에 점유하지 않도록 네트워크 동시 요청 수를 제한한다.
+        private static readonly SemaphoreSlim TileDownloadGate =
+            new SemaphoreSlim(6, 6);
+
         private readonly Grid _root;
         private readonly Image _fallbackImage;
         private readonly Canvas _tileCanvas;
@@ -50,6 +58,9 @@ namespace OpenCvWpfTracking
         private readonly TextBlock _statusText;
 
         private readonly string _tileCacheRoot;
+        private readonly DispatcherTimer _renderDebounceTimer;
+        private CancellationTokenSource _renderCancellation =
+            new CancellationTokenSource();
 
         private double _centerLatitude;
         private double _centerLongitude;
@@ -81,6 +92,16 @@ namespace OpenCvWpfTracking
                     Environment.SpecialFolder.LocalApplicationData),
                 "OpenCvWpfTracking",
                 "MapTiles");
+
+            // Drag/Zoom 입력마다 Canvas를 즉시 재구성하면 타일이 서로 다른
+            // 배율로 섞여 보이고 UI Thread가 과도하게 점유된다. 짧게 묶어서
+            // 마지막 View만 렌더링한다.
+            _renderDebounceTimer =
+                new DispatcherTimer(DispatcherPriority.Background)
+                {
+                    Interval = TimeSpan.FromMilliseconds(45)
+                };
+            _renderDebounceTimer.Tick += RenderDebounceTimer_Tick;
 
             _root = new Grid
             {
@@ -166,6 +187,7 @@ namespace OpenCvWpfTracking
             MouseLeftButtonUp += OpenStreetMapControl_MouseLeftButtonUp;
             MouseMove += OpenStreetMapControl_MouseMove;
             MouseLeave += OpenStreetMapControl_MouseLeave;
+            Unloaded += OpenStreetMapControl_Unloaded;
         }
 
         public double CenterLatitude
@@ -586,6 +608,10 @@ namespace OpenCvWpfTracking
             }
 
             _hasDragged = false;
+
+            // 마지막 Drag 좌표는 Debounce 대기 없이 확정하여 조작 종료 후
+            // 지도가 즉시 선명해지도록 한다.
+            RequestRenderImmediate();
         }
 
         private void RequestRender()
@@ -597,40 +623,84 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            long version =
-                ++_renderVersion;
+            // 연속 Drag 중에도 화면이 멈췄다가 점프하지 않도록 첫 요청 후
+            // 45ms마다 최신 View를 처리하는 Throttle 방식으로 운용한다.
+            if (!_renderDebounceTimer.IsEnabled)
+            {
+                _renderDebounceTimer.Start();
+            }
+        }
 
+        private void RequestRenderImmediate()
+        {
+            if (!IsLoaded ||
+                ActualWidth < 1 ||
+                ActualHeight < 1)
+            {
+                return;
+            }
+
+            _renderDebounceTimer.Stop();
+            StartLatestRender();
+        }
+
+        private void RenderDebounceTimer_Tick(
+            object sender,
+            EventArgs e)
+        {
+            _renderDebounceTimer.Stop();
+            StartLatestRender();
+        }
+
+        private void StartLatestRender()
+        {
+            // 새 Drag/Zoom View가 확정되면 이전 HTTP/Cache 작업도 취소하여
+            // 보이지 않을 타일 요청이 AI/영상처리 자원을 계속 점유하지 않게 한다.
+            _renderCancellation.Cancel();
+            _renderCancellation = new CancellationTokenSource();
             RenderTilesAsync(
-                version);
+                ++_renderVersion,
+                _renderCancellation.Token);
+        }
+
+        private void OpenStreetMapControl_Unloaded(
+            object sender,
+            RoutedEventArgs e)
+        {
+            _renderDebounceTimer.Stop();
+            _renderCancellation.Cancel();
+            ++_renderVersion;
         }
 
         private async void RenderTilesAsync(
-            long version)
+            long version,
+            CancellationToken cancellationToken)
         {
+            Stopwatch stopwatch =
+                Stopwatch.StartNew();
+
+            // 비동기 로딩 중 View가 바뀌어도 계산 기준이 섞이지 않도록
+            // 이번 렌더링의 Zoom/크기를 Snapshot으로 고정한다.
+            int renderZoom = _zoom;
+            double renderWidth = ActualWidth;
+            double renderHeight = ActualHeight;
             double centerWorldX;
             double centerWorldY;
 
             LatLonToWorldPixel(
                 _centerLatitude,
                 _centerLongitude,
-                _zoom,
+                renderZoom,
                 out centerWorldX,
                 out centerWorldY);
 
             double viewLeftWorld =
                 centerWorldX -
-                ActualWidth / 2.0;
+                renderWidth / 2.0;
 
             double viewTopWorld =
                 centerWorldY -
-                ActualHeight / 2.0;
-
-            // 2026-08-21:
-            // GLOBAL SYSTEMS Marker를 화면 중앙이 아니라
-            // 실제 회사 위/경도 좌표의 현재 Screen Pixel 위치에 배치한다.
-            UpdateCompanyMarkerPosition(
-                viewLeftWorld,
-                viewTopWorld);
+                renderHeight / 2.0;
 
             int firstTileX =
                 (int)Math.Floor(
@@ -644,21 +714,28 @@ namespace OpenCvWpfTracking
 
             int lastTileX =
                 (int)Math.Floor(
-                    (viewLeftWorld + ActualWidth) /
+                    (viewLeftWorld + renderWidth) /
                     TileSize);
 
             int lastTileY =
                 (int)Math.Floor(
-                    (viewTopWorld + ActualHeight) /
+                    (viewTopWorld + renderHeight) /
                     TileSize);
 
             int tileCount =
-                1 << _zoom;
+                1 << renderZoom;
 
-            _tileCanvas.Children.Clear();
+            // 현재 Canvas는 유지하고, 보이지 않는 준비 Canvas에 새 View를
+            // 완성한 뒤 한 번에 교체한다. 확대 중 깨진 타일 모자이크를 방지한다.
+            Canvas preparedCanvas =
+                new Canvas
+                {
+                    Width = renderWidth,
+                    Height = renderHeight
+                };
 
-            List<Task> tileTasks =
-                new List<Task>();
+            List<Task<bool>> tileTasks =
+                new List<Task<bool>>();
 
             for (int tileY = firstTileY;
                  tileY <= lastTileY;
@@ -700,7 +777,7 @@ namespace OpenCvWpfTracking
 
                     RenderOptions.SetBitmapScalingMode(
                         tileImage,
-                        BitmapScalingMode.HighQuality);
+                        BitmapScalingMode.LowQuality);
 
                     Canvas.SetLeft(
                         tileImage,
@@ -712,49 +789,97 @@ namespace OpenCvWpfTracking
                         Math.Floor(
                             top));
 
-                    _tileCanvas.Children.Add(
+                    preparedCanvas.Children.Add(
                         tileImage);
 
                     tileTasks.Add(
                         LoadTileIntoImageAsync(
                             tileImage,
-                            _zoom,
+                            renderZoom,
                             tileX,
                             tileY,
-                            version));
+                            version,
+                            cancellationToken));
                 }
 
             }
 
             try
             {
-                await Task.WhenAll(
-                    tileTasks);
-            }
-            catch
-            {
-                // Individual tile failures are already handled.
-            }
+                bool[] tileResults =
+                    await Task.WhenAll(tileTasks);
 
-            if (version !=
-                _renderVersion)
-            {
-                return;
-            }
+                if (version != _renderVersion)
+                {
+                    return;
+                }
 
-            _statusText.Text =
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "OPENSTREETMAP  Z{0}",
-                    _zoom);
+                int loadedTileCount = 0;
+                foreach (bool loaded in tileResults)
+                {
+                    if (loaded)
+                    {
+                        loadedTileCount++;
+                    }
+                }
+
+                // 전부 실패한 경우 기존 정상 View를 보존하고 Fallback 상태만
+                // 유지한다. 부분 성공은 모든 요청 종료 후 한 번에 교체된다.
+                if (loadedTileCount > 0)
+                {
+                    _tileCanvas.Children.Clear();
+                    while (preparedCanvas.Children.Count > 0)
+                    {
+                        UIElement child = preparedCanvas.Children[0];
+                        preparedCanvas.Children.RemoveAt(0);
+                        _tileCanvas.Children.Add(child);
+                    }
+
+                    // 2026-08-21: 회사 Marker도 Tile 교체 시점에 같은 좌표계로
+                    // 갱신하여 이전 배율 지도와 새 Marker가 섞이지 않게 한다.
+                    UpdateCompanyMarkerPosition(
+                        viewLeftWorld,
+                        viewTopWorld);
+                }
+
+                _statusText.Text =
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "OPENSTREETMAP  Z{0}",
+                        renderZoom);
+
+                stopwatch.Stop();
+                if (stopwatch.ElapsedMilliseconds >= 250)
+                {
+                    Log.Information(
+                        "[MAP] Tile Render Completed / ZOOM={Zoom} / LOADED={Loaded}/{Total} / ELAPSED_MS={ElapsedMs}",
+                        renderZoom,
+                        loadedTileCount,
+                        tileResults.Length,
+                        stopwatch.ElapsedMilliseconds);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 최신 Drag/Zoom 요청이 이전 렌더링을 정상적으로 대체한 경우다.
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(
+                    ex,
+                    "[MAP] Tile Render Failed / ZOOM={Zoom} / VERSION={Version}",
+                    renderZoom,
+                    version);
+            }
         }
 
-        private async Task LoadTileIntoImageAsync(
+        private async Task<bool> LoadTileIntoImageAsync(
             Image image,
             int zoom,
             int x,
             int y,
-            long version)
+            long version,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -762,14 +887,15 @@ namespace OpenCvWpfTracking
                     await GetTileBytesAsync(
                         zoom,
                         x,
-                        y);
+                        y,
+                        cancellationToken);
 
                 if (bytes == null ||
                     bytes.Length == 0 ||
                     version !=
                     _renderVersion)
                 {
-                    return;
+                    return false;
                 }
 
                 BitmapImage bitmap =
@@ -791,8 +917,13 @@ namespace OpenCvWpfTracking
                             "[MAP] OpenStreetMap Tile Load Recovered");
                     }
 
+                    return true;
                 }
 
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
             }
             catch (Exception ex)
             {
@@ -810,12 +941,14 @@ namespace OpenCvWpfTracking
                 // The fallback tactical map remains visible behind the tile layer.
             }
 
+            return false;
         }
 
         private async Task<byte[]> GetTileBytesAsync(
             int zoom,
             int x,
-            int y)
+            int y,
+            CancellationToken cancellationToken)
         {
             string cachePath =
                 System.IO.Path.Combine(
@@ -833,8 +966,11 @@ namespace OpenCvWpfTracking
             {
                 try
                 {
-                    return File.ReadAllBytes(
-                        cachePath);
+                    // 확대창에서는 한 화면에 수십 개의 Cache 파일을 읽는다.
+                    // 동기 I/O로 UI Thread를 막지 않도록 Worker Thread에서 처리한다.
+                    return await Task.Run(
+                        () => File.ReadAllBytes(cachePath),
+                        cancellationToken);
                 }
                 catch
                 {
@@ -851,9 +987,21 @@ namespace OpenCvWpfTracking
                     x,
                     y);
 
-            byte[] bytes =
-                await HttpClient.GetByteArrayAsync(
-                    tileUrl);
+            byte[] bytes;
+            await TileDownloadGate.WaitAsync(cancellationToken);
+            try
+            {
+                using (HttpResponseMessage response =
+                    await HttpClient.GetAsync(tileUrl, cancellationToken))
+                {
+                    response.EnsureSuccessStatusCode();
+                    bytes = await response.Content.ReadAsByteArrayAsync();
+                }
+            }
+            finally
+            {
+                TileDownloadGate.Release();
+            }
 
             try
             {
@@ -868,9 +1016,9 @@ namespace OpenCvWpfTracking
                         directory);
                 }
 
-                File.WriteAllBytes(
-                    cachePath,
-                    bytes);
+                await Task.Run(
+                    () => File.WriteAllBytes(cachePath, bytes),
+                    cancellationToken);
             }
             catch
             {

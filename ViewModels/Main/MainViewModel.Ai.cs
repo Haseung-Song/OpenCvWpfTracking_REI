@@ -27,10 +27,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly object _aiUiUpdateSync = new object();
         private readonly Dictionary<int, Action> _pendingAiUiUpdates =
             new Dictionary<int, Action>();
+        private readonly Dictionary<int, bool> _pendingAiUiUpdateHasDetection =
+            new Dictionary<int, bool>();
         private bool _isAiUiDrainScheduled;
         private bool _isApplicationShutdownRequested;
         private int _coalescedAiUiUpdateCount;
         private bool _hasAppliedDefaultAiModelMapping;
+        private const int AiDisplayHoldMilliseconds = 750;
+        private DateTime _lastEoAiDisplayDetectionTime = DateTime.MinValue;
+        private DateTime _lastIrAiDisplayDetectionTime = DateTime.MinValue;
+        private bool _isEoAiDisplayHoldActive;
+        private bool _isIrAiDisplayHoldActive;
 
         #region [AI Detector Communication]
 
@@ -347,8 +354,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * AI 수신 Thread까지 대기시켰다. 비동기 최신값 병합 Queue를 사용하여
              * 촬영 중에도 TCP 수신을 계속하고 UI 복귀 직후 최신 BBox를 반영한다.
              */
+            bool containsDisplayDetection =
+                result.Boxes.Any(box =>
+                    box.NormalizedConfidence >= AiDisplayConfidenceThreshold);
             QueueAiDetectionUiUpdate(result.RtspIndex, () =>
             {
+                // 2026-08-31: PTZ 이동·잔진동 프레임은 AI Agent가 SMOKE로
+                // 오인할 수 있으므로 파노라마 안정 구간에서만 신규 AI 결과를 반영한다.
+                if (IsPanoramaMotionDetectionSuppressed())
+                {
+                    ClearAiSmokeCandidateSnapshots();
+                    if (_activeAiEvents.TryGetValue(
+                            result.RtspIndex,
+                            out FireEventRecord motionClearedEvent))
+                    {
+                        motionClearedEvent.MarkCleared(receiveTime);
+                        _activeAiEvents.Remove(result.RtspIndex);
+                        ActiveAiCount = _activeAiEvents.Count;
+                        AppendFireEventAudit(motionClearedEvent, "PANORAMA_MOVE_CLEARED");
+                        NotifyAiEventSummaryChanged();
+                        ConsoleLogHelper.State(
+                            "AI EVENT",
+                            "AI event cleared for panorama motion / EVENT_ID=" +
+                            motionClearedEvent.EventId +
+                            " / CAMERA=" + motionClearedEvent.Camera);
+                    }
+
+                    if (result.RtspIndex == 0)
+                    {
+                        EoDetectionBoxes.Clear();
+                    }
+                    else if (result.RtspIndex == 1)
+                    {
+                        IrDetectionBoxes.Clear();
+                    }
+
+                    return;
+                }
+
                 // 2026-08-31: 현재 RTSP Mapping과 모델 클래스 목록으로 Class Index를 실제 명칭으로 해석한다.
                 ResolveAiDetectionClassNames(result);
                 UpdateAiSmokeCandidateSnapshot(result, receiveTime);
@@ -401,7 +444,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         UpdateDetectionBoxes(
                             EoDetectionBoxes,
-                            rtspIndex0DisplayBoxes);
+                            rtspIndex0DisplayBoxes,
+                            0,
+                            receiveTime);
                         break;
 
                     case 1:
@@ -445,7 +490,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         UpdateDetectionBoxes(
                             IrDetectionBoxes,
-                            rtspIndex1DisplayBoxes);
+                            rtspIndex1DisplayBoxes,
+                            1,
+                            receiveTime);
                         break;
 
                     default:
@@ -454,7 +501,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         break;
                 }
 
-            });
+            }, containsDisplayDetection);
 
             /// <summary>
             /// 탐지 객체 존재 여부
@@ -507,7 +554,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void QueueAiDetectionUiUpdate(
             int rtspIndex,
-            Action updateAction)
+            Action updateAction,
+            bool containsDetection)
         {
             bool shouldSchedule = false;
 
@@ -521,9 +569,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (_pendingAiUiUpdates.ContainsKey(rtspIndex))
                 {
                     _coalescedAiUiUpdateCount++;
+                    bool pendingHasDetection =
+                        _pendingAiUiUpdateHasDetection.TryGetValue(
+                            rtspIndex,
+                            out bool pendingValue) && pendingValue;
+                    // 2026-09-02: UI가 바쁜 순간 검출 Frame 직후의 빈 Frame이
+                    // pending 작업을 덮어써 BBox가 한 번도 보이지 않는 현상을 막는다.
+                    if (pendingHasDetection && !containsDetection)
+                    {
+                        return;
+                    }
                 }
 
                 _pendingAiUiUpdates[rtspIndex] = updateAction;
+                _pendingAiUiUpdateHasDetection[rtspIndex] = containsDetection;
 
                 if (!_isAiUiDrainScheduled)
                 {
@@ -584,6 +643,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (_isApplicationShutdownRequested)
                 {
                     _pendingAiUiUpdates.Clear();
+                    _pendingAiUiUpdateHasDetection.Clear();
                     _isAiUiDrainScheduled = false;
                     _coalescedAiUiUpdateCount = 0;
                     return;
@@ -594,6 +654,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     .Select(item => item.Value)
                     .ToList();
                 _pendingAiUiUpdates.Clear();
+                _pendingAiUiUpdateHasDetection.Clear();
                 _isAiUiDrainScheduled = false;
                 coalescedCount = _coalescedAiUiUpdateCount;
                 _coalescedAiUiUpdateCount = 0;
@@ -633,6 +694,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             lock (_aiUiUpdateSync)
             {
                 _pendingAiUiUpdates.Clear();
+                _pendingAiUiUpdateHasDetection.Clear();
                 _isAiUiDrainScheduled = false;
                 _coalescedAiUiUpdateCount = 0;
             }
@@ -705,6 +767,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _isApplicationShutdownRequested = true;
                 _pendingAiUiUpdates.Clear();
+                _pendingAiUiUpdateHasDetection.Clear();
                 _isAiUiDrainScheduled = false;
                 _coalescedAiUiUpdateCount = 0;
             }
@@ -1246,15 +1309,71 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void UpdateDetectionBoxes(
             ObservableCollection<AiDetectionBox> targetBoxes,
-            List<AiDetectionBox> sourceBoxes)
+            List<AiDetectionBox> sourceBoxes,
+            int rtspIndex,
+            DateTime receiveTime)
         {
+            bool hasDetection = sourceBoxes != null && sourceBoxes.Count > 0;
+            DateTime lastDetectionTime = rtspIndex == 0
+                ? _lastEoAiDisplayDetectionTime
+                : _lastIrAiDisplayDetectionTime;
+            bool holdActive = !hasDetection &&
+                (receiveTime - lastDetectionTime).TotalMilliseconds >= 0 &&
+                (receiveTime - lastDetectionTime).TotalMilliseconds <
+                    AiDisplayHoldMilliseconds;
+
+            if (holdActive)
+            {
+                SetAiDisplayHoldState(rtspIndex, true);
+                return;
+            }
+
+            SetAiDisplayHoldState(rtspIndex, false);
+            if (hasDetection)
+            {
+                if (rtspIndex == 0)
+                {
+                    _lastEoAiDisplayDetectionTime = receiveTime;
+                }
+                else
+                {
+                    _lastIrAiDisplayDetectionTime = receiveTime;
+                }
+            }
+
             targetBoxes.Clear();
 
-            foreach (AiDetectionBox box in sourceBoxes)
+            foreach (AiDetectionBox box in sourceBoxes ?? new List<AiDetectionBox>())
             {
                 targetBoxes.Add(box);
             }
 
+        }
+
+        private void SetAiDisplayHoldState(int rtspIndex, bool active)
+        {
+            bool previous = rtspIndex == 0
+                ? _isEoAiDisplayHoldActive
+                : _isIrAiDisplayHoldActive;
+            if (previous == active)
+            {
+                return;
+            }
+
+            if (rtspIndex == 0)
+            {
+                _isEoAiDisplayHoldActive = active;
+            }
+            else
+            {
+                _isIrAiDisplayHoldActive = active;
+            }
+
+            ConsoleLogHelper.State(
+                "AI BBOX HOLD",
+                (active ? "Short detection gap retained" : "Hold ended") +
+                " / CHANNEL=" + (rtspIndex == 0 ? "EO" : "IR") +
+                " / HOLD_MS=" + AiDisplayHoldMilliseconds);
         }
 
         /// <summary>
@@ -1276,6 +1395,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 EoDetectionBoxes.Clear();
                 IrDetectionBoxes.Clear();
+                _lastEoAiDisplayDetectionTime = DateTime.MinValue;
+                _lastIrAiDisplayDetectionTime = DateTime.MinValue;
+                _isEoAiDisplayHoldActive = false;
+                _isIrAiDisplayHoldActive = false;
 
                 DateTime clearedTime = DateTime.Now;
                 foreach (FireEventRecord activeEvent in _activeAiEvents.Values.ToList())
