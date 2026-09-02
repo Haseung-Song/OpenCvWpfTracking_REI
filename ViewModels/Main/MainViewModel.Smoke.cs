@@ -31,8 +31,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private DateTime _latestIrAiVehicleCandidateTime = DateTime.MinValue;
         private bool _isSmokeDetectionEnabled;
         private int _smokeDetectionSourceIndex;
-        // 2026-08-31: 실운용 초기 오탐 억제를 위해 BALANCED를 기본값으로 사용한다.
-        // 필요할 때만 UI에서 SENSITIVE 또는 STRICT로 변경한다.
+        // 2026-09-02 V17: 원거리 탐지와 근거리 건물·산·수목 오탐의
+        // 균형을 위해 SMOKE 콤보박스와 실제 내부 임계값은 BALANCED를 사용한다.
         private int _smokeSensitivityIndex = 1;
         private double _smokeMinimumAreaRatio = 0.0015;
         private double _smokeChangeThresholdRatio = 0.035;
@@ -282,16 +282,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             TryRunAiUiAction(() =>
             {
-                IsThermalFireDetectionEnabled = enabled;
-                IsSmokeDetectionEnabled = enabled;
-                if (!enabled)
+                if (enabled)
                 {
-                    ResetFireSmokeFrameAnalysis(reason);
+                    IsThermalFireDetectionEnabled = true;
+                    IsSmokeDetectionEnabled = true;
+                }
+                else
+                {
+                    // 2026-09-02 V18: AI 연결 해제 시 영상처리 탐지기도
+                    // 함께 해제하는 기존 운용 연동을 복원한다.
+                    IsThermalFireDetectionEnabled = false;
+                    IsSmokeDetectionEnabled = false;
+                    ClearAiSmokeCandidateSnapshots();
                 }
             }, "FIRE/SMOKE detector connection sync");
 
             ConsoleLogHelper.State("FIRE / SMOKE",
-                "AI connection detector sync / ENABLED=" + enabled + " / REASON=" + reason);
+                "AI connection mode changed / AI=" + (enabled ? "ON" : "OFF") +
+                " / VIDEO_FIRE=" + IsThermalFireDetectionEnabled +
+                " / VIDEO_SMOKE=" + IsSmokeDetectionEnabled +
+                " / REASON=" + reason);
         }
 
         /// <summary>
@@ -516,7 +526,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     new List<Rect>(),
                     new List<Rect>(),
                     SmokeBoxGroupingMode,
-                    false);
+                    false,
+                    AiPowerStatusText == "ON");
                 return disabledResult;
             }
 
@@ -530,7 +541,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 GetRecentAiSmokeCandidates(isInfrared),
                 GetRecentAiVehicleCandidates(isInfrared),
                 SmokeBoxGroupingMode,
-                compensateCameraMotion);
+                compensateCameraMotion,
+                AiPowerStatusText == "ON");
             return result;
         }
 

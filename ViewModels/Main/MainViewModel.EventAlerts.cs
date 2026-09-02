@@ -210,12 +210,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            AiDetectionBox largestBox =
+            // 2026-09-02 V17: 목록의 TYPE/CONF/BBOX가 서로 다른 객체에서
+            // 조합되지 않도록 최고 CONF 객체 한 건을 대표 스냅샷으로 사용한다.
+            AiDetectionBox representativeBox =
                 boxes
-                    .OrderByDescending(box => Math.Max(0, box.Width) * Math.Max(0, box.Height))
+                    .OrderByDescending(box => box.NormalizedConfidence)
+                    .ThenByDescending(box => Math.Max(0, box.Width) * Math.Max(0, box.Height))
                     .First();
             string resolvedDetectionType =
-                GetAiEventDetectionType(largestBox);
+                GetAiEventDetectionType(representativeBox);
 
             if (_activeAiEvents.TryGetValue(
                     result.RtspIndex,
@@ -224,11 +227,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 2026-08-26: BBox 수는 행 정보에만 갱신하고 ACTIVE 알림 수는 활성 이벤트 행 수로 유지한다.
                 existingEvent.UpdateObjectCount(boxes.Count);
                 existingEvent.UpdateDetectionType(resolvedDetectionType);
+                existingEvent.UpdateAiSnapshot(
+                    representativeBox.NormalizedConfidence * 100.0,
+                    representativeBox.Width,
+                    representativeBox.Height);
                 ActiveAiCount = _activeAiEvents.Count;
                 return;
             }
 
-            double maximumConfidence = boxes.Max(box => box.NormalizedConfidence);
             string camera = result.RtspIndex == 0 ? "EO" : "IR";
 
             FireEventRecord aiEvent =
@@ -238,11 +244,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     null,
                     camera,
                     resolvedDetectionType,
-                    (maximumConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
+                    (representativeBox.NormalizedConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
                     boxes.Count,
-                    Math.Max(0, largestBox.Width),
-                    Math.Max(0, largestBox.Height),
-                    Math.Max(0, largestBox.Width) * Math.Max(0, largestBox.Height),
+                    Math.Max(0, representativeBox.Width),
+                    Math.Max(0, representativeBox.Height),
+                    Math.Max(0, representativeBox.Width) * Math.Max(0, representativeBox.Height),
                     "AI AGENT",
                     "ACTIVE");
 

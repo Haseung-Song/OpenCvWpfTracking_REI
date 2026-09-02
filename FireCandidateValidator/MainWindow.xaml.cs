@@ -530,16 +530,14 @@ namespace FireCandidateValidator
                             fireCandidates,
                             _currentSource.Width,
                             _currentSource.Height,
-                            isInfrared,
-                            fireAnalysis.ContinuousFrames);
+                            isInfrared);
                     IList<double> smokeVisionScores =
                         UpdateTestVisionScores(
                             "SMOKE",
                             smokeCandidates,
                             _currentSource.Width,
                             _currentSource.Height,
-                            isInfrared,
-                            smokeAnalysis.ContinuousFrames);
+                            isInfrared);
 
                     using (Mat displaySource = ApplySelectedPalette(_currentSource))
                     {
@@ -552,13 +550,15 @@ namespace FireCandidateValidator
                                     rendered.Width / 1280.0,
                                     rendered.Height / 720.0));
 
+                        List<CvRect> occupiedLabelRects = new List<CvRect>();
                         DrawValidatorCandidates(
                             rendered,
                             fireCandidates,
                             fireVisionScores,
                             "FIRE",
                             new Scalar(255, 0, 255),
-                            displayScale);
+                            displayScale,
+                            occupiedLabelRects);
                         DrawValidatorCandidates(
                             rendered,
                             smokeCandidates,
@@ -567,7 +567,8 @@ namespace FireCandidateValidator
                             isInfrared
                                 ? new Scalar(0, 215, 255)
                                 : new Scalar(255, 255, 0),
-                            displayScale);
+                            displayScale,
+                            occupiedLabelRects);
 
                         ReplaceRendered(rendered);
                     }
@@ -704,7 +705,8 @@ namespace FireCandidateValidator
             IList<double> visionScores,
             string label,
             Scalar color,
-            double displayScale)
+            double displayScale,
+            IList<CvRect> occupiedLabelRects)
         {
             int lineThickness =
                 Math.Max(3, (int)Math.Round(2.0 * displayScale));
@@ -722,33 +724,50 @@ namespace FireCandidateValidator
                     displayRect,
                     color,
                     lineThickness);
+                string displayName = string.Equals(label, "FIRE", StringComparison.OrdinalIgnoreCase)
+                    ? "Fire"
+                    : string.Equals(label, "SMOKE", StringComparison.OrdinalIgnoreCase)
+                        ? "Smoke"
+                        : "IR Smoke Candidate";
                 string displayLabel =
-                    label + " #" + (index + 1) + " | VISION " +
+                    "VP #" + (index + 1) + " | " + displayName + " " +
                     (index < visionScores.Count ? visionScores[index] : 0.0)
                         .ToString("F1", CultureInfo.InvariantCulture) + "%";
                 int baseline;
-                double fontScale =
-                    Math.Max(0.8, 0.8 * displayScale);
+                // 2026-09-02 V17: Viewer AI Overlay와 같은 시각 크기로 통일한다.
+                double fontScale = Math.Max(0.72, 0.72 * displayScale);
+                int fontThickness = Math.Max(2, (int)Math.Round(displayScale));
                 CvSize labelSize =
                     Cv2.GetTextSize(
                         displayLabel,
                         HersheyFonts.HersheySimplex,
                         fontScale,
-                        Math.Max(2, lineThickness - 1),
+                        fontThickness,
                         out baseline);
                 int labelX =
                     Math.Max(0, Math.Min(displayRect.X, rendered.Width - labelSize.Width - 6));
-                int labelY =
-                    Math.Max(labelSize.Height + 6, Math.Min(displayRect.Y - 7, rendered.Height - baseline - 2));
+                int labelY = Math.Max(
+                    labelSize.Height + 6,
+                    Math.Min(displayRect.Y - 7, rendered.Height - baseline - 2));
+                int labelTop = Math.Max(0, labelY - labelSize.Height - 5);
+                int labelHeight = labelSize.Height + baseline + 7;
+                CvRect labelRect = new CvRect(
+                    labelX,
+                    labelTop,
+                    Math.Min(labelSize.Width + 6, rendered.Width - labelX),
+                    Math.Min(labelHeight, rendered.Height - labelTop));
+                while (occupiedLabelRects.Any(existing =>
+                           (existing & labelRect) != CvRect.Empty) &&
+                       labelRect.Y > labelHeight + 3)
+                {
+                    labelRect.Y -= labelHeight + 3;
+                }
+                occupiedLabelRects.Add(labelRect);
+                labelTop = labelRect.Y;
+                labelY = labelTop + labelSize.Height + 5;
                 Cv2.Rectangle(
                     rendered,
-                    new CvRect(
-                        labelX,
-                        Math.Max(0, labelY - labelSize.Height - 5),
-                        Math.Min(labelSize.Width + 6, rendered.Width - labelX),
-                        Math.Min(
-                            labelSize.Height + baseline + 7,
-                            rendered.Height - Math.Max(0, labelY - labelSize.Height - 5))),
+                    labelRect,
                     new Scalar(24, 24, 24),
                     -1);
                 Cv2.PutText(
@@ -758,7 +777,7 @@ namespace FireCandidateValidator
                     HersheyFonts.HersheySimplex,
                     fontScale,
                     color,
-                    Math.Max(2, lineThickness - 1));
+                    fontThickness);
             }
 
         }
@@ -1024,8 +1043,7 @@ namespace FireCandidateValidator
             IList<CvRect> candidates,
             int frameWidth,
             int frameHeight,
-            bool isInfrared,
-            int continuousFrames)
+            bool isInfrared)
         {
             if (!_testVisionScoreTracks.TryGetValue(detectionType, out List<TestVisionScoreTrack> tracks))
             {
@@ -1070,36 +1088,39 @@ namespace FireCandidateValidator
                     tracks.Add(matched);
                 }
 
-                double score =
-                    string.Equals(detectionType, "FIRE", StringComparison.OrdinalIgnoreCase)
-                        ? CalculateTestFireVisionScore(candidate, continuousFrames)
-                        : CalculateTestSmokeVisionScore(
-                            matched,
-                            candidate,
-                            frameWidth,
-                            frameHeight,
-                            isInfrared,
-                            Math.Max(0.0, (nowUtc - matched.FirstSeenUtc).TotalSeconds));
+                double elapsedSeconds = Math.Max(
+                    0.0,
+                    (nowUtc - matched.FirstSeenUtc).TotalSeconds);
+                if (!matched.IsScoreFinalized)
+                {
+                    // 2026-09-02 V17: TEST FIRE/SMOKE 모두 Viewer와 동일한
+                    // BBox Track별 1.5초 시공간 증거식을 사용한다.
+                    matched.Score = CalculateTestVisionScore(
+                        matched,
+                        candidate,
+                        frameWidth,
+                        frameHeight,
+                        isInfrared,
+                        elapsedSeconds);
+                    if (elapsedSeconds >= 1.5)
+                    {
+                        matched.IsScoreFinalized = true;
+                        Console.WriteLine(
+                            "[TEST V.SCORE] " + detectionType +
+                            " finalized / SCORE=" + matched.Score.ToString("F1") +
+                            " / BBOX=" + candidate.Width + "x" + candidate.Height);
+                    }
+                }
                 matched.Rectangle = candidate;
-                matched.Score = score;
                 matched.Matched = true;
-                scores.Add(score);
+                scores.Add(matched.Score);
             }
 
             tracks.RemoveAll(track => !track.Matched);
             return scores;
         }
 
-        private static double CalculateTestFireVisionScore(CvRect candidate, int continuousFrames)
-        {
-            double area = Math.Max(0.0, candidate.Width * (double)candidate.Height);
-            return Math.Min(
-                96.0,
-                70.0 + Math.Min(16.0, Math.Max(0, continuousFrames) * 2.5) +
-                Math.Min(10.0, Math.Sqrt(area) / 12.0));
-        }
-
-        private static double CalculateTestSmokeVisionScore(
+        private static double CalculateTestVisionScore(
             TestVisionScoreTrack track,
             CvRect candidate,
             int frameWidth,
@@ -1496,6 +1517,8 @@ namespace FireCandidateValidator
             public DateTime FirstSeenUtc { get; set; }
 
             public double Score { get; set; }
+
+            public bool IsScoreFinalized { get; set; }
 
             public bool Matched { get; set; }
         }

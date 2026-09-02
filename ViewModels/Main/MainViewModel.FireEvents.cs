@@ -29,6 +29,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _objectCount;
         private string _detectionType;
         private string _confidence;
+        private int _pixelWidth;
+        private int _pixelHeight;
+        private double _pixelArea;
 
         internal FireEventRecord(
             int eventId,
@@ -51,9 +54,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _detectionType = detectionType;
             _confidence = NormalizeConfidenceText(detectionType, confidence);
             _objectCount = objectCount;
-            PixelWidth = pixelWidth;
-            PixelHeight = pixelHeight;
-            PixelArea = pixelArea;
+            _pixelWidth = pixelWidth;
+            _pixelHeight = pixelHeight;
+            _pixelArea = pixelArea;
             // 2026-08-21: 협소한 이벤트 UI와 CSV에서 테스트 입력 경로를 간결하게 통일한다.
             DetectionSource = string.Equals(
                 detectionSource,
@@ -112,11 +115,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public int ObjectCount => _objectCount;
 
-        public int PixelWidth { get; }
+        public int PixelWidth => _pixelWidth;
 
-        public int PixelHeight { get; }
+        public int PixelHeight => _pixelHeight;
 
-        public double PixelArea { get; }
+        public double PixelArea => _pixelArea;
 
         public string PixelSizeText => PixelWidth + " x " + PixelHeight;
 
@@ -181,6 +184,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _confidence = value;
             OnPropertyChanged(nameof(Confidence));
+        }
+
+        /// <summary>
+        /// 2026-09-02 V17: AI 화면 BBox와 ACTIVE 이벤트 행이 서로 다른 시점의
+        /// CONF/BBOX를 표시하지 않도록 대표 객체의 최신 스냅샷을 반영한다.
+        /// ID와 최초 탐지 시각은 유지하며 CLEARED 뒤에는 마지막 값이 고정된다.
+        /// </summary>
+        internal void UpdateAiSnapshot(double confidence, int pixelWidth, int pixelHeight)
+        {
+            string confidenceText = Math.Max(0.0, Math.Min(100.0, confidence))
+                .ToString("F1", CultureInfo.InvariantCulture) + "%";
+            if (_confidence != confidenceText)
+            {
+                _confidence = confidenceText;
+                OnPropertyChanged(nameof(Confidence));
+            }
+
+            int normalizedWidth = Math.Max(0, pixelWidth);
+            int normalizedHeight = Math.Max(0, pixelHeight);
+            if (_pixelWidth == normalizedWidth && _pixelHeight == normalizedHeight)
+            {
+                return;
+            }
+
+            _pixelWidth = normalizedWidth;
+            _pixelHeight = normalizedHeight;
+            _pixelArea = normalizedWidth * (double)normalizedHeight;
+            OnPropertyChanged(nameof(PixelWidth));
+            OnPropertyChanged(nameof(PixelHeight));
+            OnPropertyChanged(nameof(PixelArea));
+            OnPropertyChanged(nameof(PixelSizeText));
+            OnPropertyChanged(nameof(PixelSizeCompactText));
+            OnPropertyChanged(nameof(PixelAreaDisplayText));
         }
 
         /// <summary>

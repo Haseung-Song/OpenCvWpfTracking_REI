@@ -21,6 +21,8 @@ namespace OpenCvWpfTracking.Services.Video
         private int _candidateFrameCount;
         private int _clearFrameCount;
         private double _latchedVisionScore;
+        private readonly List<FireVisionScoreTrack> _visionScoreTracks =
+            new List<FireVisionScoreTrack>();
         private bool _isFireCandidateDetected;
         private Rect _trackedCandidateRect = Rect.Empty;
         private readonly List<FireCandidateTrack> _candidateTracks =
@@ -343,18 +345,16 @@ namespace OpenCvWpfTracking.Services.Video
 
                 bool previousState = _isFireCandidateDetected;
                 UpdateConfirmation(selectedRect != Rect.Empty);
-                double visionScore = Math.Min(
-                    96.0,
-                    70.0 + Math.Min(16.0, _candidateFrameCount * 2.5) +
-                    Math.Min(10.0, Math.Sqrt(Math.Max(0.0, selectedArea)) / 12.0));
-                if (!previousState && _isFireCandidateDetected)
+                IList<double> fireVisionScores = _isFireCandidateDetected
+                    ? AssignVisionScores(persistentRects, frame.Width, frame.Height)
+                    : new List<double>();
+                if (!_isFireCandidateDetected && _visionScoreTracks.Count > 0)
                 {
-                    _latchedVisionScore = visionScore;
+                    _visionScoreTracks.Clear();
                 }
-                else if (!_isFireCandidateDetected)
-                {
-                    _latchedVisionScore = 0.0;
-                }
+                _latchedVisionScore = fireVisionScores.Count > 0
+                    ? fireVisionScores[0]
+                    : 0.0;
 
                 currentGray.CopyTo(_previousGray);
                 cleanedMask.CopyTo(_previousCandidateMask);
@@ -367,7 +367,9 @@ namespace OpenCvWpfTracking.Services.Video
                             frame,
                             persistentRects[index],
                             index + 1,
-                            _latchedVisionScore);
+                            index < fireVisionScores.Count
+                                ? fireVisionScores[index]
+                                : _latchedVisionScore);
                     }
                 }
 
@@ -396,7 +398,8 @@ namespace OpenCvWpfTracking.Services.Video
                     resultRect,
                     persistentRects.Count,
                     _latchedVisionScore,
-                    _isFireCandidateDetected ? persistentRects : new List<Rect>());
+                    _isFireCandidateDetected ? persistentRects : new List<Rect>(),
+                    _isFireCandidateDetected ? fireVisionScores : new List<double>());
             }
 
         }
@@ -498,7 +501,7 @@ namespace OpenCvWpfTracking.Services.Video
                         frame.Height / 720.0));
             int lineThickness =
                 Math.Max(3, (int)Math.Round(2.0 * displayScale));
-            double labelFontScale = Math.Max(0.45, 0.42 * displayScale);
+            double labelFontScale = Math.Max(0.36, 0.34 * displayScale);
             Rect displayRect =
                 CreateVisibleDetectionRect(
                     rect,
@@ -512,18 +515,39 @@ namespace OpenCvWpfTracking.Services.Video
                 displayRect,
                 fireOverlayColor,
                 lineThickness);
+            string label =
+                "VP #" + detectionOrder + " | Fire " +
+                visionScore.ToString("F1") + "%";
+            int baseline;
+            int fontThickness = Math.Max(1, (int)Math.Round(displayScale));
+            Size labelSize = Cv2.GetTextSize(
+                label,
+                HersheyFonts.HersheySimplex,
+                labelFontScale,
+                fontThickness,
+                out baseline);
+            int labelX = Math.Max(0, Math.Min(displayRect.X, frame.Width - labelSize.Width - 6));
+            int labelY = Math.Max(
+                labelSize.Height + 6,
+                Math.Min(displayRect.Y - 7, frame.Height - baseline - 2));
+            int labelTop = Math.Max(0, labelY - labelSize.Height - 5);
+            Cv2.Rectangle(
+                frame,
+                new Rect(
+                    labelX,
+                    labelTop,
+                    Math.Min(labelSize.Width + 6, frame.Width - labelX),
+                    Math.Min(labelSize.Height + baseline + 7, frame.Height - labelTop)),
+                new Scalar(24, 24, 24),
+                -1);
             Cv2.PutText(
                 frame,
-                "FIRE #" + detectionOrder + " | VISION " + visionScore.ToString("F1") + "%",
-                new Point(
-                    displayRect.X,
-                    Math.Max(
-                        (int)Math.Round(28 * displayScale),
-                        displayRect.Y - (int)Math.Round(8 * displayScale))),
+                label,
+                new Point(labelX + 3, labelY),
                 HersheyFonts.HersheySimplex,
                 labelFontScale,
                 fireOverlayColor,
-                Math.Max(1, (int)Math.Round(displayScale)));
+                fontThickness);
         }
 
         /// <summary>
@@ -619,6 +643,148 @@ namespace OpenCvWpfTracking.Services.Video
             double intersection = Math.Max(0, right - left) * Math.Max(0, bottom - top);
             double union = first.Width * first.Height + second.Width * second.Height - intersection;
             return union <= 0 ? 0 : intersection / union;
+        }
+
+        /// <summary>
+        /// 2026-09-02 V17: FIRE도 SMOKE와 동일하게 BBox Track별로 1.5초 동안
+        /// 면적·지속·상향·확산·이동·형상 변화를 합산하고 이후 점수를 고정한다.
+        /// </summary>
+        private IList<double> AssignVisionScores(
+            IList<Rect> candidates,
+            int frameWidth,
+            int frameHeight)
+        {
+            DateTime nowUtc = DateTime.UtcNow;
+            foreach (FireVisionScoreTrack track in _visionScoreTracks)
+            {
+                track.Matched = false;
+            }
+
+            List<double> scores = new List<double>();
+            foreach (Rect candidate in candidates ?? new List<Rect>())
+            {
+                FireVisionScoreTrack matched = null;
+                double bestMatch = 0.0;
+                foreach (FireVisionScoreTrack track in _visionScoreTracks)
+                {
+                    if (track.Matched)
+                    {
+                        continue;
+                    }
+
+                    Rect intersection = track.Rectangle & candidate;
+                    double intersectionArea = Math.Max(0, intersection.Width) *
+                        Math.Max(0, intersection.Height);
+                    double smallerArea = Math.Max(
+                        1.0,
+                        Math.Min(
+                            track.Rectangle.Width * (double)track.Rectangle.Height,
+                            candidate.Width * (double)candidate.Height));
+                    double match = intersectionArea / smallerArea;
+                    if (match > bestMatch)
+                    {
+                        bestMatch = match;
+                        matched = track;
+                    }
+                }
+
+                if (matched == null || bestMatch < 0.25)
+                {
+                    matched = new FireVisionScoreTrack
+                    {
+                        InitialRectangle = candidate,
+                        FirstSeenUtc = nowUtc
+                    };
+                    _visionScoreTracks.Add(matched);
+                }
+
+                if (!matched.IsScoreFinalized)
+                {
+                    double elapsedSeconds = Math.Max(
+                        0.0,
+                        (nowUtc - matched.FirstSeenUtc).TotalSeconds);
+                    matched.Score = CalculateVisionScore(
+                        matched,
+                        candidate,
+                        frameWidth,
+                        frameHeight,
+                        elapsedSeconds);
+                    if (elapsedSeconds >= 1.5)
+                    {
+                        matched.IsScoreFinalized = true;
+                        ConsoleLogHelper.State(
+                            "FIRE V.SCORE",
+                            "Track score finalized / CAMERA=IR / SCORE=" +
+                            matched.Score.ToString("F1") +
+                            " / BBOX=" + candidate.Width + "x" + candidate.Height);
+                    }
+                }
+
+                matched.Rectangle = candidate;
+                matched.Matched = true;
+                scores.Add(matched.Score);
+            }
+
+            _visionScoreTracks.RemoveAll(track => !track.Matched);
+            return scores;
+        }
+
+        private static double CalculateVisionScore(
+            FireVisionScoreTrack track,
+            Rect candidate,
+            int frameWidth,
+            int frameHeight,
+            double elapsedSeconds)
+        {
+            double frameArea = Math.Max(1.0, frameWidth * (double)frameHeight);
+            double areaRatio = candidate.Width * candidate.Height / frameArea;
+            double verticality = candidate.Height /
+                (double)Math.Max(1, candidate.Width + candidate.Height);
+            double aspectBalance = Math.Min(candidate.Width, candidate.Height) /
+                (double)Math.Max(1, Math.Max(candidate.Width, candidate.Height));
+            double initialArea = Math.Max(
+                1.0,
+                track.InitialRectangle.Width * (double)track.InitialRectangle.Height);
+            double currentArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
+            double expansionRatio = currentArea / initialArea - 1.0;
+            double initialCenterX = track.InitialRectangle.X + track.InitialRectangle.Width / 2.0;
+            double initialCenterY = track.InitialRectangle.Y + track.InitialRectangle.Height / 2.0;
+            double currentCenterX = candidate.X + candidate.Width / 2.0;
+            double currentCenterY = candidate.Y + candidate.Height / 2.0;
+            double deltaX = currentCenterX - initialCenterX;
+            double deltaY = currentCenterY - initialCenterY;
+            double frameDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
+            double motionRatio = Math.Sqrt(deltaX * deltaX + deltaY * deltaY) / frameDiagonal;
+            double upwardRatio = Math.Max(0.0, initialCenterY - currentCenterY) /
+                Math.Max(1.0, frameHeight);
+            double initialAspect = track.InitialRectangle.Width /
+                (double)Math.Max(1, track.InitialRectangle.Height);
+            double currentAspect = candidate.Width /
+                (double)Math.Max(1, candidate.Height);
+            double shapeChange = Math.Abs(currentAspect - initialAspect) /
+                Math.Max(0.25, initialAspect);
+
+            double score = 20.0 +
+                Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) +
+                Math.Min(4.0, verticality * 7.0) +
+                Math.Min(3.0, aspectBalance * 3.0) +
+                Math.Min(20.0, elapsedSeconds / 1.5 * 20.0) +
+                Math.Min(8.0, upwardRatio * 160.0) +
+                Math.Min(10.0, Math.Max(0.0, expansionRatio) * 12.0) +
+                Math.Min(5.0, motionRatio * 100.0) +
+                Math.Min(5.0, shapeChange * 8.0);
+
+            if (elapsedSeconds >= 0.5 &&
+                motionRatio < 0.006 &&
+                Math.Abs(expansionRatio) < 0.10 &&
+                shapeChange < 0.10)
+            {
+                score -= 15.0;
+            }
+
+            return Math.Max(5.0, Math.Min(92.0, score));
         }
 
         /// <summary>
@@ -935,6 +1101,7 @@ namespace OpenCvWpfTracking.Services.Video
             _clearFrameCount = 0;
             _isFireCandidateDetected = false;
             _latchedVisionScore = 0.0;
+            _visionScoreTracks.Clear();
             _trackedCandidateRect = Rect.Empty;
             _candidateTracks.Clear();
             _lastTrackContinuityLogTime = DateTime.MinValue;
@@ -958,7 +1125,18 @@ namespace OpenCvWpfTracking.Services.Video
                 Rect.Empty,
                 0,
                 0.0,
-                new List<Rect>());
+                new List<Rect>(),
+                new List<double>());
+        }
+
+        private sealed class FireVisionScoreTrack
+        {
+            internal Rect InitialRectangle { get; set; }
+            internal Rect Rectangle { get; set; }
+            internal double Score { get; set; }
+            internal DateTime FirstSeenUtc { get; set; }
+            internal bool IsScoreFinalized { get; set; }
+            internal bool Matched { get; set; }
         }
 
         private sealed class FireCandidateTrack
@@ -993,7 +1171,8 @@ namespace OpenCvWpfTracking.Services.Video
             Rect candidateRect,
             int candidateCount,
             double visionScore,
-            IList<Rect> candidateRects)
+            IList<Rect> candidateRects,
+            IList<double> candidateScores)
         {
             IsDetected = isDetected;
             StateChanged = stateChanged;
@@ -1004,6 +1183,9 @@ namespace OpenCvWpfTracking.Services.Video
             CandidateRects = candidateRects == null
                 ? new List<Rect>()
                 : new List<Rect>(candidateRects);
+            CandidateScores = candidateScores == null
+                ? new List<double>()
+                : new List<double>(candidateScores);
         }
 
         internal bool IsDetected { get; }
@@ -1013,6 +1195,7 @@ namespace OpenCvWpfTracking.Services.Video
         internal int CandidateCount { get; }
         internal double VisionScore { get; }
         internal IList<Rect> CandidateRects { get; }
+        internal IList<double> CandidateScores { get; }
     }
 
 }

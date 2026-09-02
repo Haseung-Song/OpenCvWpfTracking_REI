@@ -435,7 +435,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             UpdateVisionBBoxEvents(
                 camera, "FIRE", result.CandidateRects,
-                result.CandidateRects.Select(item => result.VisionScore).ToList(),
+                result.CandidateScores,
                 "IMAGE PROCESSING");
         }
 

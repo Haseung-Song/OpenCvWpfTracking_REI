@@ -174,3 +174,18 @@ REI 화재·연기 알림 업데이트 (2026-09-02)
    - 2026-09-02 사용자 제공 XAML을 REI MainWindow의 최종 화면 기준본으로 적용했습니다.
    - 기존 FIRE/SMOKE/AI 탐지 로직과 _16 차량 오탐 억제 로직은 변경하지 않았습니다.
    - REI Viewer와 TEST 프로그램을 Debug/Release x64로 재빌드해 XAML·코드비하인드 호환성을 검증했습니다.
+
+22. AI 이벤트 실시간 동기화·VP Overlay 통일·추가 오탐 억제 (V17)
+   - AI ACTIVE 이벤트 행의 CONF와 BBOX를 최신 AI 패킷의 최고 CONF 대표 객체 기준으로 실시간 갱신합니다.
+   - 이벤트 ID와 최초 탐지 시각은 유지하고 CLEARED 전환 시 마지막 CONF/BBOX를 고정합니다.
+   - 서로 다른 AI 객체의 TYPE·CONF·BBOX가 한 행에 섞이지 않도록 대표 객체 선택 기준을 단일화했습니다.
+   - Viewer와 TEST 영상처리 라벨을 `VP #n | Fire/Smoke xx.x%` 형식으로 통일했습니다.
+   - 영상처리 라벨 크기는 AI 수준으로 유지하고 작은 BBox를 가리지 않도록 기존 BBox 위쪽 외부 배치로 복원했습니다.
+   - BALANCED/STRICT에서 하단 발생점 이동 범위와 플룸 변형 지속성을 추가 검증해 차량·가림 오탐을 억제합니다.
+   - SENSITIVE, IR 보조 판정, 다중 플룸 및 AI 하이브리드 중복 억제 구조는 보존했습니다.
+   - 추가 발생점 억제는 `SMOKE ROAD MOTION` 제한 로그의 SOURCE 값으로 확인합니다.
+   - FIRE V.SCORE의 기존 70점대 단일 고정식을 제거하고 SMOKE와 동일한 BBox별 1.5초 시공간 증거식과 5~92점 범위를 적용했습니다.
+   - Viewer FIRE 이벤트와 TEST FIRE 표시도 후보별 점수를 사용하며 확정 시 `FIRE V.SCORE`/`TEST V.SCORE` 로그를 기록합니다.
+   - AI OFF 시 영상처리 FIRE/SMOKE 설정·기준 프레임·Track을 초기화하지 않고 AI 중복 억제 Snapshot만 제거합니다.
+   - AI OFF EO 단독 모드는 기존 검증을 유지하면서 확인 시간을 36프레임에서 24프레임으로 단축하고 `SMOKE FALLBACK` 로그를 기록합니다.
+   - SMOKE 기본 감도는 근거리 건물·산·수목 오탐을 고려해 BALANCED로 유지합니다.

@@ -427,7 +427,11 @@ namespace FireCandidateValidator
                         Math.Max(1, confirmationFrameCount),
                         source.Width,
                         source.Height,
-                        isInfrared);
+                        isInfrared,
+                        ResolveFalsePositiveSuppressionLevel(
+                            isInfrared,
+                            minimumAreaRatio,
+                            changeThresholdRatio));
 
                 _continuousCandidateFrames = 0;
                 foreach (SmokeCandidateTrack track in _tracks)
@@ -654,7 +658,8 @@ namespace FireCandidateValidator
             int confirmationFrameCount,
             int frameWidth,
             int frameHeight,
-            bool isInfrared)
+            bool isInfrared,
+            int falsePositiveSuppressionLevel)
         {
             _lastRigidMotionSuppressedCount = 0;
             _lastMovingSourceSuppressedCount = 0;
@@ -982,14 +987,34 @@ namespace FireCandidateValidator
                 bool directionAccepted =
                     directionalSamples < 3 ||
                     track.UpwardSamples + 1 >= track.DownwardSamples;
-                int requiredDynamicSamples =
-                    Math.Max(4, confirmationFrameCount / 5);
-                int requiredPlumeSamples =
-                    Math.Max(2, confirmationFrameCount / 10);
+                int requiredDynamicSamples = Math.Max(
+                    4,
+                    confirmationFrameCount /
+                    (falsePositiveSuppressionLevel >= 2
+                        ? 3
+                        : falsePositiveSuppressionLevel == 1 ? 4 : 5));
+                int requiredPlumeSamples = Math.Max(
+                    2,
+                    confirmationFrameCount /
+                    (falsePositiveSuppressionLevel >= 2
+                        ? 6
+                        : falsePositiveSuppressionLevel == 1 ? 8 : 10));
                 bool plumeEvolutionAccepted =
                     track.DynamicSamples >= requiredDynamicSamples &&
                     track.UpwardSamples + track.ExpansionSamples >=
                     requiredPlumeSamples;
+                bool sourceStabilityAccepted =
+                    isInfrared ||
+                    HasStableSmokeSource(
+                        track,
+                        falsePositiveSuppressionLevel,
+                        frameWidth,
+                        frameHeight);
+                bool plumeShapeAccepted =
+                    falsePositiveSuppressionLevel == 0 ||
+                    track.UpwardSamples > 0 ||
+                    track.DeformationSamples >=
+                        (falsePositiveSuppressionLevel >= 2 ? 4 : 3);
 
                 bool rigidMovingObject =
                     !isInfrared &&
@@ -1020,6 +1045,8 @@ namespace FireCandidateValidator
                     track.StationaryFrames < stationaryLimit &&
                     directionAccepted &&
                     plumeEvolutionAccepted &&
+                    sourceStabilityAccepted &&
+                    plumeShapeAccepted &&
                     !rigidMovingObject &&
                     !movingSmokeSource &&
                     !roadTrafficAggregate;
@@ -1036,7 +1063,7 @@ namespace FireCandidateValidator
                     _lastRigidMotionSuppressedCount++;
                 }
 
-                if (movingSmokeSource &&
+                if ((movingSmokeSource || !sourceStabilityAccepted) &&
                     track.MissingFrames == 0 &&
                     track.SeenFrames >= confirmationFrameCount)
                 {
@@ -1058,6 +1085,8 @@ namespace FireCandidateValidator
                  */
                 if (track.HasBeenConfirmed &&
                     track.MissingFrames <= continuityHoldFrames &&
+                    sourceStabilityAccepted &&
+                    plumeShapeAccepted &&
                     !rigidMovingObject &&
                     !movingSmokeSource &&
                     !roadTrafficAggregate)
@@ -1080,6 +1109,67 @@ namespace FireCandidateValidator
             }
 
             return confirmed;
+        }
+
+        /// <summary>
+        /// 2026-09-02 V17: BALANCED/STRICT는 도로 ROI나 모션 히트맵 없이
+        /// Track 하단 발생점의 이동 범위만 추가 확인한다. 실제 플룸은 상단이
+        /// 변형되어도 발생점이 비교적 고정되지만 차량·가림 변화는 하단까지 이동한다.
+        /// SENSITIVE는 기존 판정을 유지한다.
+        /// </summary>
+        private static bool HasStableSmokeSource(
+            SmokeCandidateTrack track,
+            int suppressionLevel,
+            int frameWidth,
+            int frameHeight)
+        {
+            if (suppressionLevel <= 0)
+            {
+                return true;
+            }
+
+            int minimumSamples = suppressionLevel >= 2 ? 4 : 5;
+            if (track.SourceMotionSamples < minimumSamples)
+            {
+                return true;
+            }
+
+            double spanX = track.MaximumSourceX - track.MinimumSourceX;
+            double spanY = track.MaximumSourceY - track.MinimumSourceY;
+            double sourceSpan = Math.Sqrt(spanX * spanX + spanY * spanY);
+            double frameDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
+            double initialDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(
+                    track.InitialRectangle.Width * (double)track.InitialRectangle.Width +
+                    track.InitialRectangle.Height * (double)track.InitialRectangle.Height));
+            double frameLimit = suppressionLevel >= 2 ? 0.010 : 0.016;
+            double objectLimit = suppressionLevel >= 2 ? 0.55 : 0.80;
+
+            return sourceSpan / frameDiagonal <= frameLimit &&
+                   sourceSpan / initialDiagonal <= objectLimit;
+        }
+
+        private static int ResolveFalsePositiveSuppressionLevel(
+            bool isInfrared,
+            double minimumAreaRatio,
+            double changeThresholdRatio)
+        {
+            if (isInfrared)
+            {
+                return 0;
+            }
+
+            if (minimumAreaRatio >= 0.0025 || changeThresholdRatio >= 0.050)
+            {
+                return 2;
+            }
+
+            return minimumAreaRatio >= 0.0010 || changeThresholdRatio >= 0.030
+                ? 1
+                : 0;
         }
 
         /// <summary>

@@ -19,6 +19,8 @@ namespace OpenCvWpfTracking.Services.Video
         private int _visionStableFrames;
         private bool _wasAiSmokeSuppressionActive;
         private bool _wasAiVehicleSuppressionActive;
+        private bool? _lastStandaloneFallbackMode;
+        private int _lastReportedConfirmationFrames = -1;
         private double _latchedVisionScore;
         private readonly List<VisionScoreTrack> _visionScoreTracks = new List<VisionScoreTrack>();
         private readonly List<Rect> _lastVisibleCandidates =
@@ -45,7 +47,8 @@ namespace OpenCvWpfTracking.Services.Video
             IList<Rect> aiSmokeCandidates,
             IList<Rect> aiVehicleCandidates,
             int smokeBoxGroupingMode,
-            bool compensateCameraMotion = false)
+            bool compensateCameraMotion = false,
+            bool aiDetectorAvailable = true)
         {
             if (!isEnabled || frame == null || frame.Empty())
             {
@@ -60,7 +63,22 @@ namespace OpenCvWpfTracking.Services.Video
                 // 지속되는 변화만 확정한다. 기준 갱신 뒤 사라지는 건물·창틀의
                 // 일시적인 밝기 변화는 이벤트로 승격하지 않는다.
                 // IR 보조 후보는 기존 14프레임 기준을 유지한다.
-                int confirmationFrames = isInfrared ? 14 : 36;
+                bool standaloneFallbackMode = !aiDetectorAvailable;
+                int confirmationFrames = isInfrared
+                    ? 14
+                    : standaloneFallbackMode ? 24 : 36;
+                if (_lastStandaloneFallbackMode != standaloneFallbackMode ||
+                    _lastReportedConfirmationFrames != confirmationFrames)
+                {
+                    _lastStandaloneFallbackMode = standaloneFallbackMode;
+                    _lastReportedConfirmationFrames = confirmationFrames;
+                    ConsoleLogHelper.State(
+                        "SMOKE FALLBACK",
+                        "AI-independent confirmation mode / CHANNEL=" +
+                        (isInfrared ? "IR" : "EO") +
+                        " / ACTIVE=" + standaloneFallbackMode +
+                        " / CONFIRM_FRAMES=" + confirmationFrames);
+                }
 
                 using (SmokeCandidateAnalysis analysis =
                        _analyzer.Analyze(
@@ -274,6 +292,8 @@ namespace OpenCvWpfTracking.Services.Video
             _visionStableFrames = 0;
             _wasAiSmokeSuppressionActive = false;
             _wasAiVehicleSuppressionActive = false;
+            _lastStandaloneFallbackMode = null;
+            _lastReportedConfirmationFrames = -1;
             _latchedVisionScore = 0.0;
             _visionScoreTracks.Clear();
             _lastVisibleCandidates.Clear();
@@ -322,14 +342,13 @@ namespace OpenCvWpfTracking.Services.Video
             Scalar color = isInfrared
                 ? new Scalar(0, 215, 255)
                 : new Scalar(255, 255, 0);
-            // 2026-08-27: IR 단독 영상은 실제 연기를 확정할 수 없으므로 후보 상태로 명확히 표시한다.
-            string prefix = isInfrared ? "IR SMOKE CANDIDATE" : "SMOKE";
             double scale =
                 Math.Max(
                     1.0,
                     Math.Max(frame.Width / 1280.0, frame.Height / 720.0));
             int thickness = Math.Max(3, (int)Math.Round(2.0 * scale));
-            double fontScale = Math.Max(0.45, 0.42 * scale);
+            // 2026-09-02 V17: AI Overlay의 16px 라벨과 축소 표시 크기를 맞춘다.
+            double fontScale = Math.Max(0.36, 0.34 * scale);
             int fontThickness = Math.Max(1, (int)Math.Round(scale));
 
             for (int index = 0; index < candidates.Count; index++)
@@ -337,7 +356,9 @@ namespace OpenCvWpfTracking.Services.Video
                 Rect rect = candidates[index];
                 double visionScore = index < visionScores.Count ? visionScores[index] : 0.0;
                 string label =
-                    prefix + " #" + (index + 1) + " | VISION " + visionScore.ToString("F1") + "%";
+                    "VP #" + (index + 1) + " | " +
+                    (isInfrared ? "IR Smoke Candidate" : "Smoke") + " " +
+                    visionScore.ToString("F1") + "%";
                 int baseline;
                 Size labelSize =
                     Cv2.GetTextSize(
@@ -348,19 +369,23 @@ namespace OpenCvWpfTracking.Services.Video
                         out baseline);
                 int labelX =
                     Math.Max(0, Math.Min(rect.X, frame.Width - labelSize.Width - 6));
-                int labelY =
-                    Math.Max(labelSize.Height + 6, Math.Min(rect.Y - 7, frame.Height - baseline - 2));
+                // 2026-09-02 V17: 작은 BBox에서 라벨이 영상을 가리지 않도록
+                // 기존처럼 BBox 위쪽 외부에 두고 화면 상단에서만 내부로 보정한다.
+                int labelY = Math.Max(
+                    labelSize.Height + 6,
+                    Math.Min(rect.Y - 7, frame.Height - baseline - 2));
+                int labelTop = Math.Max(0, labelY - labelSize.Height - 5);
 
                 Cv2.Rectangle(frame, rect, color, thickness);
                 Cv2.Rectangle(
                     frame,
                     new Rect(
                         labelX,
-                        Math.Max(0, labelY - labelSize.Height - 5),
+                        labelTop,
                         Math.Min(labelSize.Width + 6, frame.Width - labelX),
                         Math.Min(
                             labelSize.Height + baseline + 7,
-                            frame.Height - Math.Max(0, labelY - labelSize.Height - 5))),
+                            frame.Height - labelTop)),
                     new Scalar(24, 24, 24),
                     -1);
                 Cv2.PutText(
