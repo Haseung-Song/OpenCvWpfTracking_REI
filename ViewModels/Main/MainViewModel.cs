@@ -1262,7 +1262,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [AI Tracking] 자동 추적 사용 여부
         /// </summary>
-        private bool _isAutoTrackingEnabled;
+        // AUTO TRACKING은 후속 구현 전에도 기본 선택 상태로 표시한다.
+        private bool _isAutoTrackingEnabled = true;
 
         /// <summary>
         /// [EO / IR] 영상 중앙 십자선 표시 여부

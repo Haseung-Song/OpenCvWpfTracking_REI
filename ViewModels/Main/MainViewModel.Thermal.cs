@@ -1,5 +1,7 @@
 using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Services.Video;
+using System;
+using System.IO;
 using System.Windows.Media;
 using System.Linq;
 using System.Windows.Input;
@@ -33,6 +35,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private Brush _thermalWhiteHotButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
         private Brush _thermalRainbowButtonBackground = Brushes.WhiteSmoke;
         private Brush _thermalRainbowButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+        private bool _isFireDiagnosticEnabled;
+        private string _fireDiagnosticPathText = "OFF";
 
         public Brush ThermalBlackHotButtonBackground { get => _thermalBlackHotButtonBackground; private set { _thermalBlackHotButtonBackground = value; OnPropertyChanged(); } }
         public Brush ThermalBlackHotButtonForeground { get => _thermalBlackHotButtonForeground; private set { _thermalBlackHotButtonForeground = value; OnPropertyChanged(); } }
@@ -54,6 +58,64 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public Brush ThermalFireBoxMode1Background { get => _thermalFireBoxMode1Background; private set { _thermalFireBoxMode1Background = value; OnPropertyChanged(); } }
         public Brush ThermalFireBoxMode2Background { get => _thermalFireBoxMode2Background; private set { _thermalFireBoxMode2Background = value; OnPropertyChanged(); } }
 
+        public bool IsFireDiagnosticEnabled
+        {
+            get => _isFireDiagnosticEnabled;
+            set
+            {
+                if (_isFireDiagnosticEnabled == value)
+                {
+                    return;
+                }
+
+                if (value)
+                {
+                    string sessionDirectory = Path.Combine(
+                        AppDomain.CurrentDomain.BaseDirectory,
+                        "FireDiagnostics",
+                        "Viewer_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+                    try
+                    {
+                        _eoFireDetectionService.StartDiagnostic(Path.Combine(sessionDirectory, "EO"), "EO");
+                        _irFireDetectionService.StartDiagnostic(Path.Combine(sessionDirectory, "IR"), "IR");
+                        _isFireDiagnosticEnabled = true;
+                        FireDiagnosticPathText = sessionDirectory;
+                    }
+                    catch (Exception exception)
+                    {
+                        _eoFireDetectionService.StopDiagnostic();
+                        _irFireDetectionService.StopDiagnostic();
+                        _isFireDiagnosticEnabled = false;
+                        FireDiagnosticPathText = "ERROR : " + exception.Message;
+                        ConsoleLogHelper.Error("FIRE DIAGNOSTIC", "Live diagnostic start failed", exception);
+                    }
+                }
+                else
+                {
+                    _eoFireDetectionService.StopDiagnostic();
+                    _irFireDetectionService.StopDiagnostic();
+                    _isFireDiagnosticEnabled = false;
+                    FireDiagnosticPathText = "OFF";
+                }
+
+                OnPropertyChanged();
+            }
+        }
+
+        public string FireDiagnosticPathText
+        {
+            get => _fireDiagnosticPathText;
+            private set
+            {
+                if (_fireDiagnosticPathText == value)
+                {
+                    return;
+                }
+                _fireDiagnosticPathText = value;
+                OnPropertyChanged();
+            }
+        }
+
         public bool IsThermalFireDetectionEnabled
         {
             get => _isThermalFireDetectionEnabled;
@@ -68,6 +130,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(FirePowerStatusText));
                 OnPropertyChanged(nameof(FireAlertStatusText));
+
+                // Detector와 진단 수집을 동일한 운용 스위치로 유지한다.
+                IsFireDiagnosticEnabled = value;
 
                 ConsoleLogHelper.State(
                     "THERMAL FIRE",

@@ -44,6 +44,13 @@ namespace FireCandidateValidator
         // 2026-08-27: FIRE와 SMOKE 상태 전환을 서로 독립적으로 메인 Viewer에 전달한다.
         private bool _lastPublishedFireState;
         private bool _lastPublishedSmokeState;
+        // 2026-09-03: TEST 전용 진단 출력. 기본 OFF이며 Viewer 탐지 로직에는 관여하지 않는다.
+        private StreamWriter _smokeDiagnosticWriter;
+        private string _smokeDiagnosticDirectory;
+        private int _smokeDiagnosticFrameIndex;
+        private StreamWriter _fireDiagnosticWriter;
+        private string _fireDiagnosticDirectory;
+        private int _fireDiagnosticFrameIndex;
 
         /// <summary>
         /// MainWindow 동작 수행 함수.
@@ -475,6 +482,8 @@ namespace FireCandidateValidator
 
             try
             {
+                using (SmokeDiagnosticCapture smokeDiagnostic =
+                       CreateSmokeDiagnosticCapture(analyzeSmoke))
                 using (FireCandidateAnalysis fireAnalysis =
                        analyzeFire
                            ? _analyzer.Analyze(
@@ -491,9 +500,28 @@ namespace FireCandidateValidator
                                isInfrared,
                                SmokeAreaSlider.Value,
                                SmokeChangeSlider.Value,
-                               confirmationFrames)
+                               confirmationFrames,
+                               false,
+                               smokeDiagnostic)
                            : SmokeCandidateAnalysis.Empty())
                 {
+                    if (smokeDiagnostic != null)
+                    {
+                        smokeDiagnostic.CaptureStage("RAW", _currentSource);
+                        WriteSmokeDiagnosticFrame(smokeDiagnostic, isInfrared);
+                    }
+
+                    try
+                    {
+                        WriteFireDiagnosticFrame(fireAnalysis, isInfrared, analyzeFire);
+                    }
+                    catch (Exception diagnosticException)
+                    {
+                        StopFireDiagnostic();
+                        FireDiagnosticCheckBox.IsChecked = false;
+                        Console.Error.WriteLine("[FIRE DIAGNOSTIC ERROR] " + diagnosticException);
+                    }
+
                     IList<CvRect> fireCandidates =
                         UpdateStableCandidateTracks(
                             fireAnalysis.Candidates,
@@ -1422,6 +1450,301 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
+        /// 2026-09-03: 진단 체크 시에만 프레임별 후보 판정 자료를 수집한다.
+        /// CSV는 모든 후보를 기록하고, PNG는 I/O 부하를 줄이기 위해 15프레임마다 저장한다.
+        /// </summary>
+        private SmokeDiagnosticCapture CreateSmokeDiagnosticCapture(bool analyzeSmoke)
+        {
+            if (!analyzeSmoke ||
+                SmokeDiagnosticCheckBox == null ||
+                SmokeDiagnosticCheckBox.IsChecked != true)
+            {
+                return null;
+            }
+
+            EnsureSmokeDiagnosticSession();
+            _smokeDiagnosticFrameIndex++;
+            return new SmokeDiagnosticCapture();
+        }
+
+        private void EnsureSmokeDiagnosticSession()
+        {
+            if (_smokeDiagnosticWriter != null)
+            {
+                return;
+            }
+
+            string root = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "SmokeDiagnostics");
+            _smokeDiagnosticDirectory = Path.Combine(
+                root,
+                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
+            Directory.CreateDirectory(_smokeDiagnosticDirectory);
+
+            string csvPath = Path.Combine(_smokeDiagnosticDirectory, "smoke_candidates.csv");
+            _smokeDiagnosticWriter = new StreamWriter(csvPath, false, new System.Text.UTF8Encoding(true));
+            _smokeDiagnosticWriter.WriteLine(
+                "FRAME,INPUT,STAGE,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA,FILL,ASPECT,EDGE_DENSITY," +
+                "SEEN,MISSING,DYNAMIC,UPWARD,EXPANSION,DEFORMATION,STATIONARY,RESULT,REJECT_REASON");
+
+            if (SmokeDiagnosticPathText != null)
+            {
+                SmokeDiagnosticPathText.Text = _smokeDiagnosticDirectory;
+            }
+
+            Console.WriteLine("[SMOKE DIAGNOSTIC] START / " + _smokeDiagnosticDirectory);
+        }
+
+        private void WriteSmokeDiagnosticFrame(
+            SmokeDiagnosticCapture diagnostic,
+            bool isInfrared)
+        {
+            if (_smokeDiagnosticWriter == null || diagnostic == null)
+            {
+                return;
+            }
+
+            int candidateIndex = 0;
+            foreach (SmokeDiagnosticRecord record in diagnostic.Records)
+            {
+                candidateIndex++;
+                CvRect rectangle = record.Rectangle;
+                _smokeDiagnosticWriter.WriteLine(string.Join(",", new[]
+                {
+                    _smokeDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
+                    isInfrared ? "IR" : "EO",
+                    record.Stage,
+                    candidateIndex.ToString(CultureInfo.InvariantCulture),
+                    rectangle.X.ToString(CultureInfo.InvariantCulture),
+                    rectangle.Y.ToString(CultureInfo.InvariantCulture),
+                    rectangle.Width.ToString(CultureInfo.InvariantCulture),
+                    rectangle.Height.ToString(CultureInfo.InvariantCulture),
+                    record.Area.ToString("0.###", CultureInfo.InvariantCulture),
+                    record.FillRatio.ToString("0.####", CultureInfo.InvariantCulture),
+                    record.AspectRatio.ToString("0.####", CultureInfo.InvariantCulture),
+                    record.EdgeDensity.ToString("0.####", CultureInfo.InvariantCulture),
+                    record.SeenFrames.ToString(CultureInfo.InvariantCulture),
+                    record.MissingFrames.ToString(CultureInfo.InvariantCulture),
+                    record.DynamicSamples.ToString(CultureInfo.InvariantCulture),
+                    record.UpwardSamples.ToString(CultureInfo.InvariantCulture),
+                    record.ExpansionSamples.ToString(CultureInfo.InvariantCulture),
+                    record.DeformationSamples.ToString(CultureInfo.InvariantCulture),
+                    record.StationaryFrames.ToString(CultureInfo.InvariantCulture),
+                    record.Result,
+                    record.Reason
+                }));
+            }
+
+            if (_smokeDiagnosticFrameIndex == 1 || _smokeDiagnosticFrameIndex % 15 == 0)
+            {
+                string frameDirectory = Path.Combine(
+                    _smokeDiagnosticDirectory,
+                    "frame_" + _smokeDiagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
+                Directory.CreateDirectory(frameDirectory);
+
+                foreach (KeyValuePair<string, Mat> stage in diagnostic.StageMasks)
+                {
+                    Cv2.ImWrite(
+                        Path.Combine(frameDirectory, stage.Key + ".png"),
+                        stage.Value);
+                }
+            }
+
+            if (_smokeDiagnosticFrameIndex % 30 == 0)
+            {
+                _smokeDiagnosticWriter.Flush();
+            }
+        }
+
+        private void SmokeDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!IsInitialized)
+            {
+                return;
+            }
+
+            if (SmokeDiagnosticCheckBox.IsChecked == true)
+            {
+                try
+                {
+                    EnsureSmokeDiagnosticSession();
+                    StatusText.Text = "SMOKE DIAGNOSTIC ON : " + _smokeDiagnosticDirectory;
+                    StatusText.Foreground = Brushes.Gold;
+                }
+                catch (Exception exception)
+                {
+                    SmokeDiagnosticCheckBox.IsChecked = false;
+                    StatusText.Text = "SMOKE 진단 시작 오류 : " + exception.Message;
+                    StatusText.Foreground = Brushes.OrangeRed;
+                    Console.Error.WriteLine("[SMOKE DIAGNOSTIC ERROR] " + exception);
+                }
+            }
+            else
+            {
+                StopSmokeDiagnostic();
+                StatusText.Text = "SMOKE DIAGNOSTIC OFF";
+                StatusText.Foreground = Brushes.LightGreen;
+            }
+        }
+
+        private void StopSmokeDiagnostic()
+        {
+            if (_smokeDiagnosticWriter != null)
+            {
+                _smokeDiagnosticWriter.Flush();
+                _smokeDiagnosticWriter.Dispose();
+                _smokeDiagnosticWriter = null;
+            }
+
+            if (SmokeDiagnosticPathText != null)
+            {
+                SmokeDiagnosticPathText.Text = _smokeDiagnosticDirectory ?? "OFF";
+            }
+
+            _smokeDiagnosticFrameIndex = 0;
+        }
+
+        private void EnsureFireDiagnosticSession()
+        {
+            if (_fireDiagnosticWriter != null)
+            {
+                return;
+            }
+
+            string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FireDiagnostics");
+            _fireDiagnosticDirectory = Path.Combine(
+                root,
+                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
+            Directory.CreateDirectory(_fireDiagnosticDirectory);
+            _fireDiagnosticWriter = new StreamWriter(
+                Path.Combine(_fireDiagnosticDirectory, "fire_candidates.csv"),
+                false,
+                new System.Text.UTF8Encoding(true));
+            _fireDiagnosticWriter.WriteLine(
+                "FRAME,INPUT,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA_RATIO,CONFIRMED,CONTINUOUS_FRAMES");
+            FireDiagnosticPathText.Text = _fireDiagnosticDirectory;
+            Console.WriteLine("[FIRE DIAGNOSTIC] START / " + _fireDiagnosticDirectory);
+        }
+
+        private void WriteFireDiagnosticFrame(
+            FireCandidateAnalysis analysis,
+            bool isInfrared,
+            bool analyzeFire)
+        {
+            if (!analyzeFire || analysis == null || FireDiagnosticCheckBox == null ||
+                FireDiagnosticCheckBox.IsChecked != true)
+            {
+                return;
+            }
+
+            EnsureFireDiagnosticSession();
+            _fireDiagnosticFrameIndex++;
+            double frameArea = Math.Max(1.0, _currentSource.Width * (double)_currentSource.Height);
+            if (analysis.Candidates.Count == 0)
+            {
+                _fireDiagnosticWriter.WriteLine(string.Join(",", new[]
+                {
+                    _fireDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
+                    isInfrared ? "IR" : "EO", "0", "0", "0", "0", "0", "0",
+                    analysis.IsConfirmed ? "TRUE" : "FALSE",
+                    analysis.ContinuousFrames.ToString(CultureInfo.InvariantCulture)
+                }));
+            }
+            else
+            {
+                for (int index = 0; index < analysis.Candidates.Count; index++)
+                {
+                    CvRect rectangle = analysis.Candidates[index];
+                    double areaRatio = rectangle.Width * (double)rectangle.Height / frameArea;
+                    _fireDiagnosticWriter.WriteLine(string.Join(",", new[]
+                    {
+                        _fireDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
+                        isInfrared ? "IR" : "EO",
+                        (index + 1).ToString(CultureInfo.InvariantCulture),
+                        rectangle.X.ToString(CultureInfo.InvariantCulture),
+                        rectangle.Y.ToString(CultureInfo.InvariantCulture),
+                        rectangle.Width.ToString(CultureInfo.InvariantCulture),
+                        rectangle.Height.ToString(CultureInfo.InvariantCulture),
+                        areaRatio.ToString("0.######", CultureInfo.InvariantCulture),
+                        analysis.IsConfirmed ? "TRUE" : "FALSE",
+                        analysis.ContinuousFrames.ToString(CultureInfo.InvariantCulture)
+                    }));
+                }
+            }
+
+            if (_fireDiagnosticFrameIndex == 1 || _fireDiagnosticFrameIndex % 15 == 0)
+            {
+                string frameDirectory = Path.Combine(
+                    _fireDiagnosticDirectory,
+                    "frame_" + _fireDiagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
+                Directory.CreateDirectory(frameDirectory);
+                Cv2.ImWrite(Path.Combine(frameDirectory, "RAW.png"), _currentSource);
+                Cv2.ImWrite(Path.Combine(frameDirectory, "CANDIDATE_MASK.png"), analysis.Mask);
+                using (Mat finalMask = new Mat(_currentSource.Size(), MatType.CV_8UC1, Scalar.Black))
+                {
+                    foreach (CvRect rectangle in analysis.Candidates)
+                    {
+                        Cv2.Rectangle(finalMask, rectangle, Scalar.White, -1);
+                    }
+                    Cv2.ImWrite(Path.Combine(frameDirectory, "FINAL.png"), finalMask);
+                }
+            }
+
+            if (_fireDiagnosticFrameIndex % 30 == 0)
+            {
+                _fireDiagnosticWriter.Flush();
+            }
+        }
+
+        private void FireDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!IsInitialized)
+            {
+                return;
+            }
+
+            try
+            {
+                if (FireDiagnosticCheckBox.IsChecked == true)
+                {
+                    EnsureFireDiagnosticSession();
+                    StatusText.Text = "FIRE DIAGNOSTIC ON : " + _fireDiagnosticDirectory;
+                    StatusText.Foreground = Brushes.Gold;
+                }
+                else
+                {
+                    StopFireDiagnostic();
+                    StatusText.Text = "FIRE DIAGNOSTIC OFF";
+                    StatusText.Foreground = Brushes.LightGreen;
+                }
+            }
+            catch (Exception exception)
+            {
+                FireDiagnosticCheckBox.IsChecked = false;
+                StatusText.Text = "FIRE 진단 시작 오류 : " + exception.Message;
+                StatusText.Foreground = Brushes.OrangeRed;
+                Console.Error.WriteLine("[FIRE DIAGNOSTIC ERROR] " + exception);
+            }
+        }
+
+        private void StopFireDiagnostic()
+        {
+            if (_fireDiagnosticWriter != null)
+            {
+                _fireDiagnosticWriter.Flush();
+                _fireDiagnosticWriter.Dispose();
+                _fireDiagnosticWriter = null;
+            }
+
+            if (FireDiagnosticPathText != null)
+            {
+                FireDiagnosticPathText.Text = _fireDiagnosticDirectory ?? "OFF";
+            }
+            _fireDiagnosticFrameIndex = 0;
+        }
+
+        /// <summary>
         /// 2026-08-27: FIRE/SMOKE 시험 모드와 입력 채널 힌트 변경을 즉시 반영한다.
         /// </summary>
         private void Setting_SelectionChanged(
@@ -1598,6 +1921,8 @@ namespace FireCandidateValidator
         {
             StopVideo();
             StopVideoWriter();
+            StopSmokeDiagnostic();
+            StopFireDiagnostic();
 
             if (_currentSource != null)
             {

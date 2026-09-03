@@ -3,6 +3,9 @@ using OpenCvSharp;
 using OpenCvWpfTracking.Common;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
 
 namespace OpenCvWpfTracking.Services.Video
 {
@@ -29,6 +32,155 @@ namespace OpenCvWpfTracking.Services.Video
         private DateTime _lastRigidMotionLogTime = DateTime.MinValue;
         private DateTime _lastContinuityLogTime = DateTime.MinValue;
         private int _lastReportedVisibleCandidateCount = -1;
+        private bool _lastDetectionWasVerified;
+        private readonly object _diagnosticSync = new object();
+        private StreamWriter _diagnosticWriter;
+        private string _diagnosticDirectory;
+        private string _diagnosticChannel;
+        private int _diagnosticFrameIndex;
+
+        /// <summary>
+        /// 2026-09-03: 실영상 진단은 명시적으로 켠 동안에만 CSV와 단계별 마스크를 기록한다.
+        /// EO/IR 서비스가 각자 전용 폴더와 Writer를 사용해 프레임 스레드 간 혼합을 방지한다.
+        /// </summary>
+        internal void StartDiagnostic(string directory, string channel)
+        {
+            lock (_diagnosticSync)
+            {
+                StopDiagnosticCore();
+                Directory.CreateDirectory(directory);
+                _diagnosticDirectory = directory;
+                _diagnosticChannel = channel;
+                _diagnosticFrameIndex = 0;
+                _diagnosticWriter = new StreamWriter(
+                    Path.Combine(directory, "smoke_candidates.csv"),
+                    false,
+                    new UTF8Encoding(true));
+                _diagnosticWriter.WriteLine(
+                    "FRAME,INPUT,STAGE,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA,FILL,ASPECT,EDGE_DENSITY," +
+                    "SEEN,MISSING,DYNAMIC,UPWARD,EXPANSION,DEFORMATION,STATIONARY,RESULT,REJECT_REASON");
+                _diagnosticWriter.Flush();
+            }
+
+            ConsoleLogHelper.State(
+                "SMOKE DIAGNOSTIC",
+                "Live diagnostic started / CHANNEL=" + channel + " / PATH=" + directory);
+        }
+
+        internal void StopDiagnostic()
+        {
+            string channel;
+            lock (_diagnosticSync)
+            {
+                channel = _diagnosticChannel;
+                StopDiagnosticCore();
+            }
+
+            if (!string.IsNullOrWhiteSpace(channel))
+            {
+                ConsoleLogHelper.State(
+                    "SMOKE DIAGNOSTIC",
+                    "Live diagnostic stopped / CHANNEL=" + channel);
+            }
+        }
+
+        private void StopDiagnosticCore()
+        {
+            if (_diagnosticWriter != null)
+            {
+                _diagnosticWriter.Flush();
+                _diagnosticWriter.Dispose();
+                _diagnosticWriter = null;
+            }
+
+            _diagnosticDirectory = null;
+            _diagnosticChannel = null;
+            _diagnosticFrameIndex = 0;
+        }
+
+        private SmokeDiagnosticCapture CreateDiagnosticCapture()
+        {
+            lock (_diagnosticSync)
+            {
+                if (_diagnosticWriter == null)
+                {
+                    return null;
+                }
+
+                _diagnosticFrameIndex++;
+                return new SmokeDiagnosticCapture();
+            }
+        }
+
+        private void WriteDiagnosticFrame(
+            SmokeDiagnosticCapture diagnostic,
+            Mat frame,
+            bool isInfrared)
+        {
+            if (diagnostic == null)
+            {
+                return;
+            }
+
+            diagnostic.CaptureStage("RAW", frame);
+
+            lock (_diagnosticSync)
+            {
+                if (_diagnosticWriter == null || string.IsNullOrWhiteSpace(_diagnosticDirectory))
+                {
+                    return;
+                }
+
+                int candidateIndex = 0;
+                foreach (SmokeDiagnosticRecord record in diagnostic.Records)
+                {
+                    candidateIndex++;
+                    Rect rectangle = record.Rectangle;
+                    _diagnosticWriter.WriteLine(string.Join(",", new[]
+                    {
+                        _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
+                        isInfrared ? "IR" : "EO",
+                        record.Stage,
+                        candidateIndex.ToString(CultureInfo.InvariantCulture),
+                        rectangle.X.ToString(CultureInfo.InvariantCulture),
+                        rectangle.Y.ToString(CultureInfo.InvariantCulture),
+                        rectangle.Width.ToString(CultureInfo.InvariantCulture),
+                        rectangle.Height.ToString(CultureInfo.InvariantCulture),
+                        record.Area.ToString("0.###", CultureInfo.InvariantCulture),
+                        record.FillRatio.ToString("0.####", CultureInfo.InvariantCulture),
+                        record.AspectRatio.ToString("0.####", CultureInfo.InvariantCulture),
+                        record.EdgeDensity.ToString("0.####", CultureInfo.InvariantCulture),
+                        record.SeenFrames.ToString(CultureInfo.InvariantCulture),
+                        record.MissingFrames.ToString(CultureInfo.InvariantCulture),
+                        record.DynamicSamples.ToString(CultureInfo.InvariantCulture),
+                        record.UpwardSamples.ToString(CultureInfo.InvariantCulture),
+                        record.ExpansionSamples.ToString(CultureInfo.InvariantCulture),
+                        record.DeformationSamples.ToString(CultureInfo.InvariantCulture),
+                        record.StationaryFrames.ToString(CultureInfo.InvariantCulture),
+                        record.Result,
+                        record.Reason
+                    }));
+                }
+
+                // 실시간 영상 처리 지연을 제한하기 위해 단계 이미지는 30프레임 간격으로만 저장한다.
+                if (_diagnosticFrameIndex == 1 || _diagnosticFrameIndex % 30 == 0)
+                {
+                    string frameDirectory = Path.Combine(
+                        _diagnosticDirectory,
+                        "frame_" + _diagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
+                    Directory.CreateDirectory(frameDirectory);
+                    foreach (KeyValuePair<string, Mat> stage in diagnostic.StageMasks)
+                    {
+                        Cv2.ImWrite(Path.Combine(frameDirectory, stage.Key + ".png"), stage.Value);
+                    }
+                }
+
+                if (_diagnosticFrameIndex % 30 == 0)
+                {
+                    _diagnosticWriter.Flush();
+                }
+            }
+        }
         /// <summary>
         /// 2026-08-27: PTZ 이동·Palette·NUC 등 화면 전체 변화 뒤 기준 프레임을 폐기한다.
         /// </summary>
@@ -80,6 +232,7 @@ namespace OpenCvWpfTracking.Services.Video
                         " / CONFIRM_FRAMES=" + confirmationFrames);
                 }
 
+                using (SmokeDiagnosticCapture diagnostic = CreateDiagnosticCapture())
                 using (SmokeCandidateAnalysis analysis =
                        _analyzer.Analyze(
                            frame,
@@ -87,8 +240,10 @@ namespace OpenCvWpfTracking.Services.Video
                            minimumAreaRatio,
                            changeThresholdRatio,
                            confirmationFrames,
-                           compensateCameraMotion))
+                           compensateCameraMotion,
+                           diagnostic))
                 {
+                    WriteDiagnosticFrame(diagnostic, frame, isInfrared);
                     // 2026-09-02: 강체 이동 후보 억제는 정상적인 필터 동작이므로
                     // 이벤트 오류로 기록하지 않고 2초 제한 상태 로그로 남긴다.
                     DateTime now = DateTime.Now;
@@ -192,7 +347,8 @@ namespace OpenCvWpfTracking.Services.Video
                             "Independent plume tracks / CHANNEL=" +
                             (isInfrared ? "IR" : "EO") +
                             " / VISIBLE=" + visibleCandidates.Count +
-                            " / HELD=" + analysis.ContinuityHeldCount);
+                            " / HELD=" + analysis.ContinuityHeldCount +
+                            " / VERIFIED=" + analysis.VerifiedVisibleCount);
                     }
 
                     if (analysis.IsConfirmed &&
@@ -203,18 +359,24 @@ namespace OpenCvWpfTracking.Services.Video
                         _clearFrameCount = 0;
                         _lastVisibleCandidates.Clear();
                         _lastVisibleCandidates.AddRange(visibleCandidates);
+                        _lastDetectionWasVerified =
+                            analysis.VerifiedVisibleCount > 0;
                     }
                     else if (_isDetected)
                     {
                         _clearFrameCount++;
-                        // 2026-08-28: 연기 형태가 잠시 분리되어도 같은 이벤트를
-                        // 반복 생성하지 않도록 약 1초 범위의 미검출을 허용한다.
-                        if (_clearFrameCount >= (isInfrared ? 60 : 90))
+                        // 2026-09-03: 짧게 통과한 일반 후보는 빠르게 해제하되,
+                        // 장시간 확산·변형이 검증된 플룸만 AI BBox처럼 더 오래 유지한다.
+                        int clearFrameLimit = _lastDetectionWasVerified
+                            ? (isInfrared ? 90 : 120)
+                            : (isInfrared ? 45 : 60);
+                        if (_clearFrameCount >= clearFrameLimit)
                         {
                             _isDetected = false;
                             _clearFrameCount = 0;
                             _lastVisibleCandidates.Clear();
                             _visionStableFrames = 0;
+                            _lastDetectionWasVerified = false;
                         }
                     }
 
@@ -299,6 +461,7 @@ namespace OpenCvWpfTracking.Services.Video
             _lastVisibleCandidates.Clear();
             _lastContinuityLogTime = DateTime.MinValue;
             _lastReportedVisibleCandidateCount = -1;
+            _lastDetectionWasVerified = false;
             _analyzer.Reset();
 
             return new SmokeDetectionResult(

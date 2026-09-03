@@ -4,6 +4,7 @@ using OpenCvWpfTracking.Models.AI;
 using OpenCvWpfTracking.Services.Video;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -36,6 +37,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _smokeSensitivityIndex = 1;
         private double _smokeMinimumAreaRatio = 0.0015;
         private double _smokeChangeThresholdRatio = 0.035;
+        private bool _isSmokeDiagnosticEnabled;
+        private string _smokeDiagnosticPathText = "OFF";
         // 2026-08-31: 1=전체 연기 단일 BBox, 2=연기 기둥별 BBox(기본값).
         private int _smokeBoxGroupingMode = 2;
         private Brush _smokeBoxMode1Background =
@@ -286,6 +289,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     IsThermalFireDetectionEnabled = true;
                     IsSmokeDetectionEnabled = true;
+                    IsFireDiagnosticEnabled = true;
+                    IsSmokeDiagnosticEnabled = true;
+                    IsAutoTrackingEnabled = true;
                 }
                 else
                 {
@@ -293,6 +299,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     // 함께 해제하는 기존 운용 연동을 복원한다.
                     IsThermalFireDetectionEnabled = false;
                     IsSmokeDetectionEnabled = false;
+                    IsFireDiagnosticEnabled = false;
+                    IsSmokeDiagnosticEnabled = false;
+                    IsAutoTrackingEnabled = false;
                     ClearAiSmokeCandidateSnapshots();
                 }
             }, "FIRE/SMOKE detector connection sync");
@@ -335,6 +344,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(SmokePowerStatusText));
                 OnPropertyChanged(nameof(FireAlertStatusText));
 
+                // Detector와 진단 수집을 동일한 운용 스위치로 유지한다.
+                IsSmokeDiagnosticEnabled = value;
+
                 ConsoleLogHelper.State(
                     "SMOKE DETECTOR",
                     value
@@ -349,6 +361,77 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public string SmokePowerStatusText =>
             IsSmokeDetectionEnabled ? "ON" : "OFF";
+
+        /// <summary>
+        /// 2026-09-03: 실시간 EO/IR의 후보 마스크와 탈락 단계를 TEST와 같은 형식으로 기록한다.
+        /// 기본 OFF이며 켤 때마다 하나의 Viewer 세션 아래 EO/IR 폴더를 새로 만든다.
+        /// </summary>
+        public bool IsSmokeDiagnosticEnabled
+        {
+            get => _isSmokeDiagnosticEnabled;
+            set
+            {
+                if (_isSmokeDiagnosticEnabled == value)
+                {
+                    return;
+                }
+
+                if (value)
+                {
+                    string sessionDirectory = Path.Combine(
+                        AppDomain.CurrentDomain.BaseDirectory,
+                        "SmokeDiagnostics",
+                        "Viewer_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+
+                    try
+                    {
+                        _eoSmokeDetectionService.StartDiagnostic(
+                            Path.Combine(sessionDirectory, "EO"),
+                            "EO");
+                        _irSmokeDetectionService.StartDiagnostic(
+                            Path.Combine(sessionDirectory, "IR"),
+                            "IR");
+                        _isSmokeDiagnosticEnabled = true;
+                        SmokeDiagnosticPathText = sessionDirectory;
+                    }
+                    catch (Exception exception)
+                    {
+                        _eoSmokeDetectionService.StopDiagnostic();
+                        _irSmokeDetectionService.StopDiagnostic();
+                        _isSmokeDiagnosticEnabled = false;
+                        SmokeDiagnosticPathText = "ERROR : " + exception.Message;
+                        ConsoleLogHelper.Error(
+                            "SMOKE DIAGNOSTIC",
+                            "Live diagnostic start failed",
+                            exception);
+                    }
+                }
+                else
+                {
+                    _eoSmokeDetectionService.StopDiagnostic();
+                    _irSmokeDetectionService.StopDiagnostic();
+                    _isSmokeDiagnosticEnabled = false;
+                    SmokeDiagnosticPathText = "OFF";
+                }
+
+                OnPropertyChanged();
+            }
+        }
+
+        public string SmokeDiagnosticPathText
+        {
+            get => _smokeDiagnosticPathText;
+            private set
+            {
+                if (string.Equals(_smokeDiagnosticPathText, value, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _smokeDiagnosticPathText = value;
+                OnPropertyChanged();
+            }
+        }
 
         /// <summary>
         /// 2026-08-27: 0=AUTO, 1=EO, 2=IR 보조 후보로 제한한다.

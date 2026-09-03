@@ -19,6 +19,7 @@ namespace FireCandidateValidator
         private int _lastMovingSourceSuppressedCount;
         private int _lastContinuityHeldCount;
         private int _lastTrafficAggregateSuppressedCount;
+        private int _lastVerifiedVisibleCount;
         private readonly List<SmokeCandidateTrack> _tracks =
             new List<SmokeCandidateTrack>();
 
@@ -28,7 +29,8 @@ namespace FireCandidateValidator
             double minimumAreaRatio,
             double changeThresholdRatio,
             int confirmationFrameCount,
-            bool compensateCameraMotion = false)
+            bool compensateCameraMotion = false,
+            SmokeDiagnosticCapture diagnostic = null)
         {
             if (source == null || source.Empty())
             {
@@ -40,6 +42,7 @@ namespace FireCandidateValidator
             _lastMovingSourceSuppressedCount = 0;
             _lastContinuityHeldCount = 0;
             _lastTrafficAggregateSuppressedCount = 0;
+            _lastVerifiedVisibleCount = 0;
 
             Mat gray = new Mat();
             Mat blurred = new Mat();
@@ -83,8 +86,13 @@ namespace FireCandidateValidator
                         0.0);
                 }
 
+                // EO 영상은 고배율에서 수 픽셀의 미세 진동만으로도 창문과 외벽
+                // 경계가 연속 변화 후보가 된다. 자동 스캔 여부와 관계없이 EO에는
+                // 저해상도 위상 상관 정합을 적용하고, IR은 기존 조건을 유지한다.
+                bool shouldCompensateCameraMotion =
+                    compensateCameraMotion || !isInfrared;
                 Mat referenceFrame = _previousGray;
-                if (compensateCameraMotion &&
+                if (shouldCompensateCameraMotion &&
                     TryCompensateCameraMotion(
                         blurred,
                         motionCompensatedReference))
@@ -155,6 +163,8 @@ namespace FireCandidateValidator
                         changeMask);
                 }
 
+                diagnostic?.CaptureStage("CHANGE", changeMask);
+
                 if (isInfrared || source.Channels() == 1)
                 {
                     // 2026-08-27: IR 연기 후보는 저대비 이동 영역만 사용한다.
@@ -197,6 +207,8 @@ namespace FireCandidateValidator
                     candidateMask.SetTo(
                         Scalar.Black,
                         infraredHotMask);
+
+                    diagnostic?.CaptureStage("COLOR", candidateMask);
                 }
                 else
                 {
@@ -258,6 +270,8 @@ namespace FireCandidateValidator
                             Scalar.Black,
                             expandedEdges);
                     }
+
+                    diagnostic?.CaptureStage("COLOR_EDGE", candidateMask);
                 }
 
                 using (Mat openKernel =
@@ -280,6 +294,8 @@ namespace FireCandidateValidator
                         MorphTypes.Close,
                         closeKernel);
                 }
+
+                diagnostic?.CaptureStage("MORPH", candidateMask);
 
                 /*
                  * 2026-08-31: 연기는 프레임마다 외곽과 내부 농도가 달라져 단일
@@ -308,15 +324,25 @@ namespace FireCandidateValidator
                     255.0,
                     ThresholdTypes.Binary);
 
+                diagnostic?.CaptureStage("TEMPORAL", candidateMask);
+
                 double frameArea = Math.Max(1.0, source.Width * source.Height);
                 double globalChangeRatio = Cv2.CountNonZero(changeMask) / frameArea;
+                double candidateCoverageRatio =
+                    Cv2.CountNonZero(candidateMask) / frameArea;
+                bool possibleLargePlumeFrame =
+                    !isInfrared &&
+                    globalChangeRatio <= 0.55 &&
+                    candidateCoverageRatio >= 0.06 &&
+                    candidateCoverageRatio <= 0.65;
                 List<Rect> candidates = new List<Rect>();
                 double largestAreaRatio = 0.0;
 
                 // 2026-08-28: 정합 후에도 장면 대부분이 변하면 프리셋 도착 또는
                 // Zoom 변화로 판단하고 현재 프레임을 새 장기 기준으로 사용한다.
-                if (compensateCameraMotion &&
-                    globalChangeRatio > 0.18)
+                if (shouldCompensateCameraMotion &&
+                    globalChangeRatio > 0.18 &&
+                    !possibleLargePlumeFrame)
                 {
                     blurred.CopyTo(_previousGray);
                     _referenceFrameAge = 0;
@@ -333,7 +359,7 @@ namespace FireCandidateValidator
 
                 // 2026-08-27: PTZ 잔진동·노출 변화처럼 화면 넓은 영역이 동시에
                 // 변하는 경우에는 개별 SMOKE 후보를 만들지 않는다.
-                if (globalChangeRatio <= 0.18)
+                if (globalChangeRatio <= 0.18 || possibleLargePlumeFrame)
                 {
                     Cv2.FindContours(
                         candidateMask,
@@ -346,18 +372,21 @@ namespace FireCandidateValidator
                         Math.Max(
                             96.0,
                             frameArea * Math.Max(0.0005, minimumAreaRatio));
-                    double maximumArea =
-                        frameArea * (isInfrared ? 0.45 : 0.25);
+                    double maximumArea = frameArea *
+                        (isInfrared ? 0.45 : possibleLargePlumeFrame ? 0.60 : 0.25);
 
                     foreach (Point[] contour in contours)
                     {
                         double area = Cv2.ContourArea(contour);
+                        Rect rect = Cv2.BoundingRect(contour);
                         if (area < minimumArea || area > maximumArea)
                         {
+                            diagnostic?.AddContour(
+                                rect, area, 0.0, 0.0, 0.0,
+                                "REJECT", "AREA_OUT_OF_RANGE");
                             continue;
                         }
 
-                        Rect rect = Cv2.BoundingRect(contour);
                         double rectangleArea = Math.Max(1.0, rect.Width * rect.Height);
                         double fillRatio = area / rectangleArea;
                         double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
@@ -366,7 +395,7 @@ namespace FireCandidateValidator
                         double minimumFillRatio =
                             isInfrared ? 0.035 : 0.100;
                         double maximumRectangleAreaRatio =
-                            isInfrared ? 0.35 : 0.18;
+                            isInfrared ? 0.35 : possibleLargePlumeFrame ? 0.70 : 0.18;
 
                         if (fillRatio < minimumFillRatio ||
                             fillRatio > 0.92 ||
@@ -375,6 +404,9 @@ namespace FireCandidateValidator
                             rectangleAreaRatio > maximumRectangleAreaRatio ||
                             rect.Height < Math.Max(10, source.Height / 90))
                         {
+                            diagnostic?.AddContour(
+                                rect, area, fillRatio, aspectRatio, 0.0,
+                                "REJECT", "SHAPE_OR_SCALE");
                             continue;
                         }
 
@@ -393,9 +425,22 @@ namespace FireCandidateValidator
 
                                 if (edgeDensity > 0.16 && fillRatio < 0.34)
                                 {
+                                    diagnostic?.AddContour(
+                                        rect, area, fillRatio, aspectRatio, edgeDensity,
+                                        "REJECT", "STRUCTURE_EDGE");
                                     continue;
                                 }
+
+                                diagnostic?.AddContour(
+                                    rect, area, fillRatio, aspectRatio, edgeDensity,
+                                    "PASS", "TRACK_INPUT");
                             }
+                        }
+                        else
+                        {
+                            diagnostic?.AddContour(
+                                rect, area, fillRatio, aspectRatio, 0.0,
+                                "PASS", "TRACK_INPUT");
                         }
 
                         candidates.Add(rect);
@@ -431,7 +476,22 @@ namespace FireCandidateValidator
                         ResolveFalsePositiveSuppressionLevel(
                             isInfrared,
                             minimumAreaRatio,
-                            changeThresholdRatio));
+                            changeThresholdRatio),
+                        diagnostic);
+
+                if (diagnostic != null)
+                {
+                    using (Mat finalMask =
+                           new Mat(source.Size(), MatType.CV_8UC1, Scalar.Black))
+                    {
+                        foreach (Rect confirmedCandidate in confirmedCandidates)
+                        {
+                            Cv2.Rectangle(finalMask, confirmedCandidate, Scalar.White, -1);
+                        }
+
+                        diagnostic.CaptureStage("FINAL", finalMask);
+                    }
+                }
 
                 _continuousCandidateFrames = 0;
                 foreach (SmokeCandidateTrack track in _tracks)
@@ -468,7 +528,8 @@ namespace FireCandidateValidator
                     _lastRigidMotionSuppressedCount,
                     _lastMovingSourceSuppressedCount,
                     _lastContinuityHeldCount,
-                    _lastTrafficAggregateSuppressedCount);
+                    _lastTrafficAggregateSuppressedCount,
+                    _lastVerifiedVisibleCount);
             }
             catch
             {
@@ -585,6 +646,7 @@ namespace FireCandidateValidator
             _lastMovingSourceSuppressedCount = 0;
             _lastContinuityHeldCount = 0;
             _lastTrafficAggregateSuppressedCount = 0;
+            _lastVerifiedVisibleCount = 0;
             _tracks.Clear();
 
             if (_temporalCandidateMask != null)
@@ -659,12 +721,14 @@ namespace FireCandidateValidator
             int frameWidth,
             int frameHeight,
             bool isInfrared,
-            int falsePositiveSuppressionLevel)
+            int falsePositiveSuppressionLevel,
+            SmokeDiagnosticCapture diagnostic)
         {
             _lastRigidMotionSuppressedCount = 0;
             _lastMovingSourceSuppressedCount = 0;
             _lastContinuityHeldCount = 0;
             _lastTrafficAggregateSuppressedCount = 0;
+            _lastVerifiedVisibleCount = 0;
             foreach (SmokeCandidateTrack track in _tracks)
             {
                 track.Matched = false;
@@ -954,9 +1018,12 @@ namespace FireCandidateValidator
                 bestTrack.Matched = true;
             }
 
-            int continuityHoldFrames = isInfrared
-                ? Math.Max(42, confirmationFrameCount * 3)
-                : Math.Max(108, confirmationFrameCount * 3);
+            int ordinaryContinuityHoldFrames = isInfrared
+                ? Math.Max(30, confirmationFrameCount * 2)
+                : Math.Max(36, confirmationFrameCount * 2);
+            int verifiedContinuityHoldFrames = isInfrared
+                ? Math.Max(90, confirmationFrameCount * 4)
+                : Math.Max(150, confirmationFrameCount * 5);
             for (int index = _tracks.Count - 1; index >= 0; index--)
             {
                 SmokeCandidateTrack track = _tracks[index];
@@ -966,8 +1033,10 @@ namespace FireCandidateValidator
                     track.MissingFrames++;
                 }
 
-                int removalLimit = track.HasBeenConfirmed
-                    ? continuityHoldFrames
+                int removalLimit = track.IsVerifiedPlume
+                    ? verifiedContinuityHoldFrames
+                    : track.HasBeenConfirmed
+                    ? ordinaryContinuityHoldFrames
                     : Math.Max(24, confirmationFrameCount);
                 if (track.MissingFrames > removalLimit)
                 {
@@ -984,9 +1053,45 @@ namespace FireCandidateValidator
             {
                 int directionalSamples =
                     track.UpwardSamples + track.DownwardSamples;
-                bool directionAccepted =
+                double trackRectangleAreaRatio =
+                    track.Rectangle.Width * (double)track.Rectangle.Height /
+                    Math.Max(1.0, frameWidth * (double)frameHeight);
+                bool largePlumeCandidate =
+                    !isInfrared &&
+                    trackRectangleAreaRatio >= 0.06 &&
+                    track.SeenFrames >= confirmationFrameCount &&
+                    track.DynamicSamples >= Math.Max(4, confirmationFrameCount / 3) &&
+                    track.DeformationSamples >= Math.Max(2, confirmationFrameCount / 8);
+                bool hyperDynamicBackground =
+                    !isInfrared &&
+                    track.SeenFrames >= Math.Max(90, confirmationFrameCount * 3) &&
+                    trackRectangleAreaRatio <= 0.03 &&
+                    track.DynamicSamples >= track.SeenFrames * 0.72 &&
+                    track.DeformationSamples >= track.SeenFrames * 0.40;
+                bool weakBottomBoundary =
+                    !isInfrared &&
+                    !largePlumeCandidate &&
+                    TouchesBottomBoundary(track.Rectangle, frameWidth, frameHeight) &&
+                    (track.UpwardSamples < Math.Max(2, track.SeenFrames * 0.10) ||
+                     track.UpwardSamples + track.ExpansionSamples <
+                     Math.Max(4, track.SeenFrames * 0.25));
+                bool baseDirectionAccepted =
                     directionalSamples < 3 ||
                     track.UpwardSamples + 1 >= track.DownwardSamples;
+                bool touchesFrameBoundary =
+                    !largePlumeCandidate &&
+                    TouchesFrameBoundary(track.Rectangle, frameWidth, frameHeight);
+                bool maturePlumeEvidence =
+                    !isInfrared &&
+                    !touchesFrameBoundary &&
+                    !hyperDynamicBackground &&
+                    HasMaturePlumeEvidence(
+                        track,
+                        confirmationFrameCount,
+                        frameWidth,
+                        frameHeight);
+                bool directionAccepted =
+                    baseDirectionAccepted || maturePlumeEvidence;
                 int requiredDynamicSamples = Math.Max(
                     4,
                     confirmationFrameCount /
@@ -1005,6 +1110,7 @@ namespace FireCandidateValidator
                     requiredPlumeSamples;
                 bool sourceStabilityAccepted =
                     isInfrared ||
+                    maturePlumeEvidence ||
                     HasStableSmokeSource(
                         track,
                         falsePositiveSuppressionLevel,
@@ -1025,6 +1131,7 @@ namespace FireCandidateValidator
                         frameHeight);
                 bool movingSmokeSource =
                     !isInfrared &&
+                    !maturePlumeEvidence &&
                     IsMovingSmokeSourceTrack(
                         track,
                         confirmationFrameCount,
@@ -1038,9 +1145,12 @@ namespace FireCandidateValidator
                         frameWidth,
                         frameHeight);
 
-                bool currentlyAccepted =
+                bool validationAccepted =
                     track.MissingFrames <= Math.Max(12, confirmationFrameCount / 3) &&
                     track.SeenFrames >= confirmationFrameCount &&
+                    !touchesFrameBoundary &&
+                    !weakBottomBoundary &&
+                    !hyperDynamicBackground &&
                     track.StationaryFrames < confirmationFrameCount &&
                     track.StationaryFrames < stationaryLimit &&
                     directionAccepted &&
@@ -1050,6 +1160,82 @@ namespace FireCandidateValidator
                     !rigidMovingObject &&
                     !movingSmokeSource &&
                     !roadTrafficAggregate;
+
+                if (validationAccepted)
+                {
+                    track.ConsecutiveAcceptedFrames++;
+                }
+                else
+                {
+                    track.ConsecutiveAcceptedFrames = 0;
+                }
+
+                int entryEvidenceFrames = isInfrared ? 3 : 6;
+                bool currentlyAccepted =
+                    validationAccepted &&
+                    track.ConsecutiveAcceptedFrames >= entryEvidenceFrames;
+
+                int verifiedEvidenceFrames = maturePlumeEvidence ? 12 : 45;
+                if (currentlyAccepted &&
+                    track.ConsecutiveAcceptedFrames >= verifiedEvidenceFrames)
+                {
+                    track.IsVerifiedPlume = true;
+                }
+
+                // 강체·교통 특성이 뒤늦게 누적되면 장기 유지 자격을 즉시 취소한다.
+                if (rigidMovingObject || roadTrafficAggregate ||
+                    weakBottomBoundary || hyperDynamicBackground)
+                {
+                    track.IsVerifiedPlume = false;
+                }
+
+                string trackReason = currentlyAccepted
+                    ? "ACCEPTED"
+                    : track.IsVerifiedPlume
+                        ? "VERIFIED_HOLD"
+                    : track.SeenFrames < confirmationFrameCount
+                        ? "CONFIRMING"
+                        : touchesFrameBoundary
+                            ? "FRAME_BOUNDARY"
+                            : weakBottomBoundary
+                                ? "BOTTOM_BOUNDARY_LOW_RISE"
+                                : hyperDynamicBackground
+                                    ? "DYNAMIC_BACKGROUND"
+                            : validationAccepted
+                                ? "ACCEPTANCE_STABILIZING"
+                        : track.StationaryFrames >= Math.Min(confirmationFrameCount, stationaryLimit)
+                            ? "STATIONARY"
+                            : !directionAccepted
+                                ? "DOWNWARD_DOMINANT"
+                                : !plumeEvolutionAccepted
+                                    ? "INSUFFICIENT_PLUME_EVOLUTION"
+                                    : !sourceStabilityAccepted
+                                        ? "MOVING_SOURCE"
+                                        : !plumeShapeAccepted
+                                            ? "RIGID_SHAPE"
+                                            : rigidMovingObject
+                                                ? "RIGID_MOVING_OBJECT"
+                                                : movingSmokeSource
+                                                    ? "MOVING_SOURCE"
+                                                    : roadTrafficAggregate
+                                                        ? "ROAD_TRAFFIC_AGGREGATE"
+                                                        : track.MissingFrames > Math.Max(12, confirmationFrameCount / 3)
+                                                            ? "MISSING"
+                                                            : "TRACK_FILTER";
+
+                diagnostic?.AddTrack(
+                    track.Rectangle,
+                    currentlyAccepted
+                        ? "PASS"
+                        : track.IsVerifiedPlume ? "HOLD" : "REJECT",
+                    trackReason,
+                    track.SeenFrames,
+                    track.MissingFrames,
+                    track.DynamicSamples,
+                    track.UpwardSamples,
+                    track.ExpansionSamples,
+                    track.DeformationSamples,
+                    track.StationaryFrames);
 
                 if (currentlyAccepted)
                 {
@@ -1083,13 +1269,24 @@ namespace FireCandidateValidator
                  * 마지막 외곽을 유지하며, 실제 후보가 다시 매칭되면 즉시 갱신한다.
                  * 차량/이동 발생점으로 판정된 Track은 유지 대상에서 제외한다.
                  */
-                if (track.HasBeenConfirmed &&
-                    track.MissingFrames <= continuityHoldFrames &&
-                    sourceStabilityAccepted &&
-                    plumeShapeAccepted &&
+                bool verifiedPersistence =
+                    track.IsVerifiedPlume &&
                     !rigidMovingObject &&
-                    !movingSmokeSource &&
-                    !roadTrafficAggregate)
+                    !roadTrafficAggregate &&
+                    !weakBottomBoundary &&
+                    !hyperDynamicBackground;
+                int trackContinuityLimit = track.IsVerifiedPlume
+                    ? verifiedContinuityHoldFrames
+                    : ordinaryContinuityHoldFrames;
+
+                if (track.HasBeenConfirmed &&
+                    track.MissingFrames <= trackContinuityLimit &&
+                    (verifiedPersistence ||
+                     (sourceStabilityAccepted &&
+                      plumeShapeAccepted &&
+                      !rigidMovingObject &&
+                      !movingSmokeSource &&
+                      !roadTrafficAggregate)))
                 {
                     if (track.Matched)
                     {
@@ -1100,6 +1297,10 @@ namespace FireCandidateValidator
                     if (persistentRectangle != Rect.Empty)
                     {
                         AddIndependentCandidate(confirmed, persistentRectangle);
+                        if (track.IsVerifiedPlume)
+                        {
+                            _lastVerifiedVisibleCount++;
+                        }
                         if (!currentlyAccepted)
                         {
                             _lastContinuityHeldCount++;
@@ -1109,6 +1310,58 @@ namespace FireCandidateValidator
             }
 
             return confirmed;
+        }
+
+        /// <summary>
+        /// 장시간 누적된 실제 플룸은 BBox 하단점이 외곽 변화 때문에 이동해도
+        /// 확산·변형·동적 표본이 함께 증가한다. 작은 동적 물체와 큰 수목 군집을
+        /// 제외한 이 조합에만 발생점 이동 및 순간 하향 판정 예외를 허용한다.
+        /// </summary>
+        private static bool HasMaturePlumeEvidence(
+            SmokeCandidateTrack track,
+            int confirmationFrameCount,
+            int frameWidth,
+            int frameHeight)
+        {
+            int seen = Math.Max(1, track.SeenFrames);
+            double rectangleAreaRatio =
+                track.Rectangle.Width * (double)track.Rectangle.Height /
+                Math.Max(1.0, frameWidth * (double)frameHeight);
+
+            // 실영상 진단에서 짧은 창문/외벽 반사는 50~80프레임 구간에도
+            // 플룸과 유사한 변형값을 보였다. 따라서 이동 발생점 예외는 단순히
+            // 민감도를 낮추는 용도가 아니라, 3초 이상 누적된 비강체 플룸에만
+            // 허용한다. 큰 하단 수목 후보도 면적 상한으로 제외한다.
+            return seen >= Math.Max(90, confirmationFrameCount * 3) &&
+                   rectangleAreaRatio <= 0.018 &&
+                   track.DynamicSamples >= seen * 0.60 &&
+                   track.DynamicSamples <= seen * 0.85 &&
+                   track.DeformationSamples >= seen * 0.22 &&
+                   track.DeformationSamples <= seen * 0.38 &&
+                   track.ExpansionSamples >= seen * 0.18 &&
+                   track.UpwardSamples + track.ExpansionSamples >= seen * 0.26;
+        }
+
+        private static bool TouchesFrameBoundary(
+            Rect rectangle,
+            int frameWidth,
+            int frameHeight)
+        {
+            int margin = Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
+            // 화면 하단은 차량 화재·근거리 발생점이 실제로 진입할 수 있으므로
+            // 제외하지 않고, 영상 경계 잡음이 빈번한 상단과 좌우만 진입을 막는다.
+            return rectangle.X <= margin ||
+                   rectangle.Y <= margin ||
+                   rectangle.Right >= frameWidth - margin;
+        }
+
+        private static bool TouchesBottomBoundary(
+            Rect rectangle,
+            int frameWidth,
+            int frameHeight)
+        {
+            int margin = Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
+            return rectangle.Bottom >= frameHeight - margin;
         }
 
         /// <summary>
@@ -1494,6 +1747,10 @@ namespace FireCandidateValidator
 
             internal bool HasBeenConfirmed { get; set; }
 
+            internal int ConsecutiveAcceptedFrames { get; set; }
+
+            internal bool IsVerifiedPlume { get; set; }
+
             internal Rect LastConfirmedRectangle { get; set; }
 
             internal bool Matched { get; set; }
@@ -1515,7 +1772,8 @@ namespace FireCandidateValidator
             int rigidMotionSuppressedCount = 0,
             int movingSourceSuppressedCount = 0,
             int continuityHeldCount = 0,
-            int trafficAggregateSuppressedCount = 0)
+            int trafficAggregateSuppressedCount = 0,
+            int verifiedVisibleCount = 0)
         {
             Mask = mask;
             Candidates = candidates;
@@ -1526,6 +1784,7 @@ namespace FireCandidateValidator
             MovingSourceSuppressedCount = movingSourceSuppressedCount;
             ContinuityHeldCount = continuityHeldCount;
             TrafficAggregateSuppressedCount = trafficAggregateSuppressedCount;
+            VerifiedVisibleCount = verifiedVisibleCount;
         }
 
         internal Mat Mask { get; }
@@ -1546,6 +1805,8 @@ namespace FireCandidateValidator
 
         internal int TrafficAggregateSuppressedCount { get; }
 
+        internal int VerifiedVisibleCount { get; }
+
         internal static SmokeCandidateAnalysis Empty()
         {
             return new SmokeCandidateAnalysis(
@@ -1561,6 +1822,163 @@ namespace FireCandidateValidator
             Mask?.Dispose();
         }
 
+    }
+
+    /// <summary>
+    /// 2026-09-03: TEST와 Viewer 진단 모드에서만 사용하는 읽기 전용 자료이다.
+    /// 진단 OFF에서는 null을 전달하므로 기존 탐지 경로와 성능에 영향을 주지 않는다.
+    /// </summary>
+    internal sealed class SmokeDiagnosticCapture : IDisposable
+    {
+        private const int MaximumAreaRejectRecords = 64;
+        private readonly Dictionary<string, Mat> _stageMasks =
+            new Dictionary<string, Mat>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<SmokeDiagnosticRecord> _records =
+            new List<SmokeDiagnosticRecord>();
+        private int _areaRejectRecordCount;
+        private SmokeDiagnosticRecord _areaRejectSummary;
+
+        internal IDictionary<string, Mat> StageMasks => _stageMasks;
+
+        internal IList<SmokeDiagnosticRecord> Records => _records;
+
+        internal void CaptureStage(string stage, Mat mask)
+        {
+            if (mask == null || mask.Empty())
+            {
+                return;
+            }
+
+            if (_stageMasks.TryGetValue(stage, out Mat previous))
+            {
+                previous.Dispose();
+            }
+
+            _stageMasks[stage] = mask.Clone();
+        }
+
+        internal void AddContour(
+            Rect rectangle,
+            double area,
+            double fillRatio,
+            double aspectRatio,
+            double edgeDensity,
+            string result,
+            string reason)
+        {
+            // 면적 탈락 외곽선은 한 프레임에 수백~수천 개가 생길 수 있다.
+            // 대표 64개와 누락 개수 요약만 남겨 장시간 실영상 진단 CSV가
+            // 수백 MB로 커지는 것을 막고, TRACK/구조 탈락 자료는 전부 보존한다.
+            if (string.Equals(
+                    reason,
+                    "AREA_OUT_OF_RANGE",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (_areaRejectRecordCount >= MaximumAreaRejectRecords)
+                {
+                    if (_areaRejectSummary == null)
+                    {
+                        _areaRejectSummary = new SmokeDiagnosticRecord
+                        {
+                            Stage = "SUMMARY",
+                            Result = "INFO",
+                            Reason = "AREA_OUT_OF_RANGE_SUPPRESSED"
+                        };
+                        _records.Add(_areaRejectSummary);
+                    }
+
+                    _areaRejectSummary.Area++;
+                    return;
+                }
+
+                _areaRejectRecordCount++;
+            }
+
+            _records.Add(
+                new SmokeDiagnosticRecord
+                {
+                    Stage = "CONTOUR",
+                    Rectangle = rectangle,
+                    Area = area,
+                    FillRatio = fillRatio,
+                    AspectRatio = aspectRatio,
+                    EdgeDensity = edgeDensity,
+                    Result = result,
+                    Reason = reason
+                });
+        }
+
+        internal void AddTrack(
+            Rect rectangle,
+            string result,
+            string reason,
+            int seenFrames,
+            int missingFrames,
+            int dynamicSamples,
+            int upwardSamples,
+            int expansionSamples,
+            int deformationSamples,
+            int stationaryFrames)
+        {
+            _records.Add(
+                new SmokeDiagnosticRecord
+                {
+                    Stage = "TRACK",
+                    Rectangle = rectangle,
+                    Result = result,
+                    Reason = reason,
+                    SeenFrames = seenFrames,
+                    MissingFrames = missingFrames,
+                    DynamicSamples = dynamicSamples,
+                    UpwardSamples = upwardSamples,
+                    ExpansionSamples = expansionSamples,
+                    DeformationSamples = deformationSamples,
+                    StationaryFrames = stationaryFrames
+                });
+        }
+
+        public void Dispose()
+        {
+            foreach (Mat mask in _stageMasks.Values)
+            {
+                mask.Dispose();
+            }
+
+            _stageMasks.Clear();
+        }
+    }
+
+    internal sealed class SmokeDiagnosticRecord
+    {
+        internal string Stage { get; set; }
+
+        internal Rect Rectangle { get; set; }
+
+        internal double Area { get; set; }
+
+        internal double FillRatio { get; set; }
+
+        internal double AspectRatio { get; set; }
+
+        internal double EdgeDensity { get; set; }
+
+        internal int SeenFrames { get; set; }
+
+        internal int MissingFrames { get; set; }
+
+        internal int DynamicSamples { get; set; }
+
+        internal int UpwardSamples { get; set; }
+
+        internal int ExpansionSamples { get; set; }
+
+        internal int DeformationSamples { get; set; }
+
+        internal int StationaryFrames { get; set; }
+
+        internal string Result { get; set; }
+
+        internal string Reason { get; set; }
     }
 
 }

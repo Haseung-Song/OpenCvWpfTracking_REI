@@ -140,6 +140,8 @@
                         <TextBlock Text="MINIMUM FIRE AREA RATIO" FontWeight="Bold" Margin="0,4,0,0"/>
                         <Slider x:Name="AreaSlider" Minimum="0.0005" Maximum="0.05" Value="0.0015" TickFrequency="0.0005" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
                         <TextBlock x:Name="AreaText" HorizontalAlignment="Right" Text="0.0015"/>
+                        <CheckBox x:Name="FireDiagnosticCheckBox" Content="FIRE DIAGNOSTIC" Margin="0,8,0,0" Foreground="#FFD166" FontWeight="Bold" Checked="FireDiagnosticCheckBox_Changed" Unchecked="FireDiagnosticCheckBox_Changed"/>
+                        <TextBlock x:Name="FireDiagnosticPathText" Text="OFF" TextWrapping="Wrap" Foreground="#FFD166" FontSize="9" Margin="0,3,0,0" ToolTip="FIRE 후보 마스크와 최종 BBox 저장 경로"/>
                     </StackPanel>
                 </Border>
 
@@ -152,6 +154,8 @@
                         <TextBlock Text="MINIMUM SMOKE AREA RATIO" FontWeight="Bold" Margin="0,4,0,0"/>
                         <Slider x:Name="SmokeAreaSlider" Minimum="0.0005" Maximum="0.05" Value="0.0005" TickFrequency="0.0005" IsSnapToTickEnabled="True" ValueChanged="Setting_ValueChanged"/>
                         <TextBlock x:Name="SmokeAreaText" HorizontalAlignment="Right" Text="AREA 0.0005"/>
+                        <CheckBox x:Name="SmokeDiagnosticCheckBox" Content="SMOKE DIAGNOSTIC" Margin="0,8,0,0" Foreground="#FFD166" FontWeight="Bold" Checked="SmokeDiagnosticCheckBox_Changed" Unchecked="SmokeDiagnosticCheckBox_Changed"/>
+                        <TextBlock x:Name="SmokeDiagnosticPathText" Text="OFF" TextWrapping="Wrap" Foreground="#FFD166" FontSize="9" Margin="0,3,0,0" ToolTip="CSV와 단계별 마스크 저장 경로"/>
                     </StackPanel>
                 </Border>
 

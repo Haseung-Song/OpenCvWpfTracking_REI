@@ -2,6 +2,9 @@ using OpenCvSharp;
 using OpenCvWpfTracking.Common;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
 
 namespace OpenCvWpfTracking.Services.Video
 {
@@ -38,6 +41,119 @@ namespace OpenCvWpfTracking.Services.Video
         // 2026-08-18: 팔레트상 계속 붉게 보이는 건물/지면과 실제로 형상이
         // 흔들리는 화염을 구분하기 위한 직전 후보 마스크이다.
         private Mat _previousCandidateMask = new Mat();
+        private readonly object _diagnosticSync = new object();
+        private StreamWriter _diagnosticWriter;
+        private string _diagnosticDirectory;
+        private string _diagnosticChannel;
+        private int _diagnosticFrameIndex;
+
+        internal void StartDiagnostic(string directory, string channel)
+        {
+            lock (_diagnosticSync)
+            {
+                StopDiagnosticCore();
+                Directory.CreateDirectory(directory);
+                _diagnosticDirectory = directory;
+                _diagnosticChannel = channel;
+                _diagnosticWriter = new StreamWriter(
+                    Path.Combine(directory, "fire_candidates.csv"),
+                    false,
+                    new UTF8Encoding(true));
+                _diagnosticWriter.WriteLine(
+                    "FRAME,INPUT,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA_RATIO,DETECTED");
+            }
+        }
+
+        internal void StopDiagnostic()
+        {
+            lock (_diagnosticSync)
+            {
+                StopDiagnosticCore();
+            }
+        }
+
+        private void StopDiagnosticCore()
+        {
+            _diagnosticWriter?.Flush();
+            _diagnosticWriter?.Dispose();
+            _diagnosticWriter = null;
+            _diagnosticDirectory = null;
+            _diagnosticChannel = null;
+            _diagnosticFrameIndex = 0;
+        }
+
+        private void WriteDiagnosticFrame(
+            Mat frame,
+            Mat candidateMask,
+            IList<Rect> candidates,
+            bool detected)
+        {
+            lock (_diagnosticSync)
+            {
+                if (_diagnosticWriter == null || string.IsNullOrWhiteSpace(_diagnosticDirectory))
+                {
+                    return;
+                }
+
+                _diagnosticFrameIndex++;
+                double frameArea = Math.Max(1.0, frame.Width * (double)frame.Height);
+                if (candidates == null || candidates.Count == 0)
+                {
+                    _diagnosticWriter.WriteLine(string.Join(",", new[]
+                    {
+                        _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
+                        _diagnosticChannel, "0", "0", "0", "0", "0", "0",
+                        detected ? "TRUE" : "FALSE"
+                    }));
+                }
+                else
+                {
+                    for (int index = 0; index < candidates.Count; index++)
+                    {
+                        Rect rectangle = candidates[index];
+                        double areaRatio = rectangle.Width * (double)rectangle.Height / frameArea;
+                        _diagnosticWriter.WriteLine(string.Join(",", new[]
+                        {
+                            _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
+                            _diagnosticChannel,
+                            (index + 1).ToString(CultureInfo.InvariantCulture),
+                            rectangle.X.ToString(CultureInfo.InvariantCulture),
+                            rectangle.Y.ToString(CultureInfo.InvariantCulture),
+                            rectangle.Width.ToString(CultureInfo.InvariantCulture),
+                            rectangle.Height.ToString(CultureInfo.InvariantCulture),
+                            areaRatio.ToString("0.######", CultureInfo.InvariantCulture),
+                            detected ? "TRUE" : "FALSE"
+                        }));
+                    }
+                }
+
+                if (_diagnosticFrameIndex == 1 || _diagnosticFrameIndex % 30 == 0)
+                {
+                    string frameDirectory = Path.Combine(
+                        _diagnosticDirectory,
+                        "frame_" + _diagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
+                    Directory.CreateDirectory(frameDirectory);
+                    Cv2.ImWrite(Path.Combine(frameDirectory, "RAW.png"), frame);
+                    Cv2.ImWrite(Path.Combine(frameDirectory, "CANDIDATE_MASK.png"), candidateMask);
+                    using (Mat finalMask = new Mat(frame.Size(), MatType.CV_8UC1, Scalar.Black))
+                    {
+                        if (candidates != null)
+                        {
+                            foreach (Rect rectangle in candidates)
+                            {
+                                Cv2.Rectangle(finalMask, rectangle, Scalar.White, -1);
+                            }
+                        }
+                        Cv2.ImWrite(Path.Combine(frameDirectory, "FINAL.png"), finalMask);
+                    }
+                }
+
+                if (_diagnosticFrameIndex % 30 == 0)
+                {
+                    _diagnosticWriter.Flush();
+                }
+            }
+        }
 
         /// <summary>
         /// 2026-08-27: Palette·NUC 등 영상 조건 변경 뒤 시간축 후보를 초기화한다.
@@ -345,6 +461,18 @@ namespace OpenCvWpfTracking.Services.Video
 
                 bool previousState = _isFireCandidateDetected;
                 UpdateConfirmation(selectedRect != Rect.Empty);
+                try
+                {
+                    WriteDiagnosticFrame(frame, cleanedMask, persistentRects, _isFireCandidateDetected);
+                }
+                catch (Exception diagnosticException)
+                {
+                    StopDiagnostic();
+                    ConsoleLogHelper.Error(
+                        "FIRE DIAGNOSTIC",
+                        "Live diagnostic write failed",
+                        diagnosticException);
+                }
                 IList<double> fireVisionScores = _isFireCandidateDetected
                     ? AssignVisionScores(persistentRects, frame.Width, frame.Height)
                     : new List<double>();
