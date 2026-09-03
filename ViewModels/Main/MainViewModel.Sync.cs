@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
@@ -470,6 +471,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             FocusSyncStatusText =
                 $"APPLYING LEVEL {selectedLevel.Level}";
 
+            // APPLYING 문구를 먼저 화면에 반영한 뒤 Zoom Sync와 동일하게
+            // 장비별 명령 결과와 영상 연결 상태를 합쳐 최종 결과를 표시한다.
+            await Dispatcher.Yield(
+                DispatcherPriority.Background);
+
+            bool isIrConnected =
+                _irDecoder.IsOpened ||
+                _isIrFrameDisplayed;
+
             CancellationTokenSource focusSyncCts =
                 new CancellationTokenSource();
 
@@ -493,9 +503,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         standardPosition);
 
                 Task<bool> irMoveTask =
-                    MoveIrFocusToPositionAsync(
-                        irRawTargetPosition,
-                        focusSyncCts.Token);
+                    isIrConnected
+                        ? MoveIrFocusToPositionAsync(
+                            irRawTargetPosition,
+                            focusSyncCts.Token)
+                        : Task.FromResult(
+                            false);
+
+                if (!isIrConnected)
+                {
+                    ConsoleLogHelper.Command(
+                        "FOCUS SYNC",
+                        "IR move skipped - camera disconnected");
+                }
 
                 if (SelectedEquipmentStatusMode ==
                     EquipmentStatusMode.Environment)
@@ -520,35 +540,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         irResult =
                             await irMoveTask;
-
-                        FocusSyncStatusText =
-                            irResult
-                                ? "IR COMPLETED / EO CTEC NOT CONNECTED"
-                                : "EO / IR COMMAND FAILED";
-
-                        return;
                     }
+                    else
+                    {
+                        int eoRawTarget =
+                            ConvertStandardFocusToCtecRaw(
+                                standardPosition);
 
-                    int eoRawTarget =
-                        ConvertStandardFocusToCtecRaw(
-                            standardPosition);
+                        Task<bool> eoMoveTask =
+                            MoveRooftopEoFocusToRawPositionAsync(
+                                ctecSource,
+                                eoRawTarget,
+                                focusSyncCts.Token);
 
-                    Task<bool> eoMoveTask =
-                        MoveRooftopEoFocusToRawPositionAsync(
-                            ctecSource,
-                            eoRawTarget,
-                            focusSyncCts.Token);
+                        bool[] moveResults =
+                            await Task.WhenAll(
+                                eoMoveTask,
+                                irMoveTask);
 
-                    bool[] moveResults =
-                        await Task.WhenAll(
-                            eoMoveTask,
-                            irMoveTask);
+                        eoResult =
+                            moveResults[0];
 
-                    eoResult =
-                        moveResults[0];
-
-                    irResult =
-                        moveResults[1];
+                        irResult =
+                            moveResults[1];
+                    }
                 }
 
             }
@@ -565,6 +580,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
             }
+
+            eoResult = eoResult &&
+                (_eoDecoder.IsOpened || _isEoFrameDisplayed);
+
+            irResult = irResult &&
+                (_irDecoder.IsOpened || _isIrFrameDisplayed);
 
             FocusSyncStatusText =
                 eoResult && irResult

@@ -88,6 +88,20 @@
               VerticalAlignment="Center"
               IsHitTestVisible="False">
 
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility"
+                            Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsCrosshairVisible}"
+                                     Value="True">
+                            <Setter Property="Visibility"
+                                    Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
             <!-- 검정 외곽선 -->
             <Canvas Width="72"
                     Height="72">

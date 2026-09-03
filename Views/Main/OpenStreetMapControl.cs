@@ -72,10 +72,18 @@ namespace OpenCvWpfTracking
         private double _dragStartCenterWorldX;
         private double _dragStartCenterWorldY;
         private long _renderVersion;
+        private bool _isInitialRenderCompleted;
 
         // OSM Tile 실패 로그가 Tile 개수만큼 반복되지 않도록
         // 현재 Offline/Fallback 상태에서 1회만 기록한다.
         private bool _isTileFallbackLogged;
+
+        /// <summary>
+        /// 최초 화면에 필요한 모든 타일 요청이 끝나고 하나의 일관된 View가
+        /// 준비되었을 때 한 번만 발생한다. 확대 창은 이 시점까지 Loading
+        /// 화면을 유지하여 이전 정적 지도가 순간적으로 노출되지 않게 한다.
+        /// </summary>
+        public event EventHandler InitialRenderCompleted;
 
         public OpenStreetMapControl()
         {
@@ -847,6 +855,22 @@ namespace OpenCvWpfTracking
                         CultureInfo.InvariantCulture,
                         "OPENSTREETMAP  Z{0}",
                         renderZoom);
+
+                if (!_isInitialRenderCompleted)
+                {
+                    _isInitialRenderCompleted =
+                        true;
+
+                    InitialRenderCompleted?.Invoke(
+                        this,
+                        EventArgs.Empty);
+
+                    Log.Information(
+                        "[MAP] Initial View Ready / ZOOM={Zoom} / LOADED={Loaded}/{Total}",
+                        renderZoom,
+                        loadedTileCount,
+                        tileResults.Length);
+                }
 
                 stopwatch.Stop();
                 if (stopwatch.ElapsedMilliseconds >= 250)

@@ -13,6 +13,7 @@ namespace OpenCvWpfTracking
     public sealed class CompanyMapWindow : Window
     {
         private readonly OpenStreetMapControl _mapControl;
+        private readonly Border _loadingOverlay;
 
         public CompanyMapWindow(
             double latitude,
@@ -94,6 +95,17 @@ namespace OpenCvWpfTracking
             _mapControl =
                 new OpenStreetMapControl();
 
+            // 최초 타일 묶음이 준비되기 전 정적 Fallback 지도가 확대되어
+            // 순간 노출되지 않도록 지도는 준비 완료 시점에 한 번에 표시한다.
+            _mapControl.Opacity =
+                0.0;
+
+            _mapControl.IsHitTestVisible =
+                false;
+
+            _mapControl.InitialRenderCompleted +=
+                MapControl_InitialRenderCompleted;
+
             _mapControl.SetView(
                 latitude,
                 longitude,
@@ -113,14 +125,59 @@ namespace OpenCvWpfTracking
                 _mapControl,
                 1);
 
+            _loadingOverlay =
+                new Border
+                {
+                    Background =
+                        new SolidColorBrush(
+                            Color.FromRgb(
+                                28,
+                                33,
+                                39)),
+                    Child =
+                        new TextBlock
+                        {
+                            Text = "OPENSTREETMAP LOADING...",
+                            Foreground = Brushes.White,
+                            FontSize = 18,
+                            FontWeight = FontWeights.Bold,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        }
+                };
+
+            Grid.SetRow(
+                _loadingOverlay,
+                1);
+
             root.Children.Add(
                 header);
 
             root.Children.Add(
                 _mapControl);
 
+            root.Children.Add(
+                _loadingOverlay);
+
             Content =
                 root;
+        }
+
+        private void MapControl_InitialRenderCompleted(
+            object sender,
+            System.EventArgs e)
+        {
+            _mapControl.Opacity =
+                1.0;
+
+            _mapControl.IsHitTestVisible =
+                true;
+
+            _loadingOverlay.Visibility =
+                Visibility.Collapsed;
+
+            Log.Information(
+                "[MAP] Expanded Map Initial View Displayed");
         }
 
         private void MapControl_MouseDoubleClick(
@@ -148,6 +205,9 @@ namespace OpenCvWpfTracking
             object sender,
             System.EventArgs e)
         {
+            _mapControl.InitialRenderCompleted -=
+                MapControl_InitialRenderCompleted;
+
             Log.Information(
                 "[MAP] Expanded Map Window Close");
         }
