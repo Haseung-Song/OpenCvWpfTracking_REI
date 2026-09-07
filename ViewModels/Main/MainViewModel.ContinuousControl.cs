@@ -907,6 +907,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
                             GopEoCtecControlSpeed);
+                if (!result)
+                {
+                    _activeEoCtecSource = null;
+                    Console.WriteLine("[CONTROL] EO ZOOM CTEC FAILED; FALLBACK : CONTROL AGENT");
+                    result = _controlCommandService.StartEoZoomTele();
+                }
             }
             else
             {
@@ -990,6 +996,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
                             GopEoCtecControlSpeed);
+                if (!result)
+                {
+                    _activeEoCtecSource = null;
+                    Console.WriteLine("[CONTROL] EO ZOOM CTEC FAILED; FALLBACK : CONTROL AGENT");
+                    result = _controlCommandService.StartEoZoomWide();
+                }
             }
             else
             {
@@ -1089,6 +1101,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
                             GopEoCtecControlSpeed);
+                if (!result)
+                {
+                    _activeEoCtecSource = null;
+                    Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
+                    result = _controlCommandService.StartEoFocusNear();
+                }
             }
             else
             {
@@ -1188,6 +1206,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
                             GopEoCtecControlSpeed);
+                if (!result)
+                {
+                    _activeEoCtecSource = null;
+                    Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
+                    result = _controlCommandService.StartEoFocusFar();
+                }
             }
             else
             {
@@ -1561,7 +1585,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine("[CONTROL] IR ZOOM IN START");
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService.StartIrZoomTele();
+            bool result = _controlCommandService.StartIrZoomTele();
+            BeginEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrZoom,
+                +1,
+                result);
         }
 
         /// <summary>
@@ -1575,7 +1603,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine("[CONTROL] IR ZOOM OUT START");
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService.StartIrZoomWide();
+            bool result = _controlCommandService.StartIrZoomWide();
+            BeginEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrZoom,
+                -1,
+                result);
         }
 
         /// <summary>
@@ -1589,7 +1621,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine("[CONTROL] IR ZOOM STOP");
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService.StopIrZoom();
+            bool result = _controlCommandService.StopIrZoom();
+            CompleteEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrZoom,
+                result);
 
             _currentMoveType = ContinuousMoveType.None;
         }
@@ -1605,7 +1640,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine("[CONTROL] IR FOCUS NEAR START");
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService.StartIrFocusNear();
+            bool result = _controlCommandService.StartIrFocusNear();
+            BeginEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrFocus,
+                +1,
+                result);
         }
 
         /// <summary>
@@ -1619,7 +1658,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine("[CONTROL] IR FOCUS FAR START");
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService.StartIrFocusFar();
+            bool result = _controlCommandService.StartIrFocusFar();
+            BeginEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrFocus,
+                -1,
+                result);
         }
 
         /// <summary>
@@ -1631,7 +1674,74 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine("[CONTROL] IR FOCUS STOP");
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService.StopIrFocus();
+            bool result = _controlCommandService.StopIrFocus();
+            CompleteEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrFocus,
+                result);
+
+            _currentMoveType = ContinuousMoveType.None;
+        }
+
+        private void BeginEnvironmentIrManualEstimate(
+            ContinuousMoveType moveType,
+            int direction,
+            bool commandResult)
+        {
+            if (!commandResult ||
+                SelectedEquipmentStatusMode != EquipmentStatusMode.Environment ||
+                Interlocked.Read(ref _irLensStatusVersion) > 0)
+            {
+                return;
+            }
+
+            _environmentIrManualMoveType = moveType;
+            _environmentIrManualMoveDirection = direction;
+            _environmentIrManualMoveStartedUtc = DateTime.UtcNow;
+        }
+
+        private void CompleteEnvironmentIrManualEstimate(
+            ContinuousMoveType moveType,
+            bool commandResult)
+        {
+            if (!commandResult ||
+                _environmentIrManualMoveType != moveType ||
+                _environmentIrManualMoveStartedUtc == default(DateTime) ||
+                Interlocked.Read(ref _irLensStatusVersion) > 0)
+            {
+                return;
+            }
+
+            double elapsedMs = Math.Max(
+                0.0,
+                (DateTime.UtcNow - _environmentIrManualMoveStartedUtc)
+                    .TotalMilliseconds);
+
+            int fullTravelMs = moveType == ContinuousMoveType.IrZoom
+                ? EnvironmentIrZoomFullTravelMs
+                : EnvironmentIrFocusFullTravelMs;
+
+            int delta = (int)Math.Round(
+                elapsedMs * 1000.0 / fullTravelMs) *
+                _environmentIrManualMoveDirection;
+
+            if (moveType == ContinuousMoveType.IrZoom)
+            {
+                ApplyEnvironmentIrCommandedPosition(
+                    _currentIrZoom + delta,
+                    null,
+                    "ENVIRONMENT MANUAL ZOOM ESTIMATE");
+            }
+            else
+            {
+                ApplyEnvironmentIrCommandedPosition(
+                    null,
+                    _currentIrFocus + delta,
+                    "ENVIRONMENT MANUAL FOCUS ESTIMATE");
+            }
+
+            _environmentIrManualMoveType = ContinuousMoveType.None;
+            _environmentIrManualMoveStartedUtc = default(DateTime);
+            _environmentIrManualMoveDirection = 0;
         }
 
         /// <summary>

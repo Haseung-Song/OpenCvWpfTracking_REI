@@ -698,6 +698,36 @@
             </Border>
         </ControlTemplate>
 
+        <!-- PRESET L/W 전용: 기본 흰색 ScrollBar 트랙을 제거하고 콘텐츠와 같은 계열로 표시한다. -->
+        <Style x:Key="PresetScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent" Margin="2,0,0,0">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Background="Transparent" Opacity="0"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Background="#87939B" MinHeight="28">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="#AAB5BC" BorderThickness="1" CornerRadius="4"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Background="Transparent" Opacity="0"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <!--
@@ -1901,6 +1931,39 @@
                                                                             통신 설정 탭 내부로 이동하여 데모 화면의 빈 공간을
                                                                             줄이고 모든 연결 설정을 한 화면에서 관리한다.
                                                                         -->
+                                                                        <!--
+                                                                            AI Agent 연결 제어는 FIRE/SMOKE까지 함께 전환하므로
+                                                                            개별 AI 설정 카드 밖의 독립된 연결 영역으로 구분한다.
+                                                                        -->
+                                                                        <Border Margin="0,0,0,8"
+                                                                                Padding="8"
+                                                                                Background="#394148"
+                                                                                BorderBrush="#6F8996"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="DETECTOR CONNECTION"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"
+                                                                                           Margin="0,0,0,7"/>
+                                                                                <UniformGrid Columns="2">
+                                                                                    <Button Content="CONNECT"
+                                                                                            Height="30"
+                                                                                            Margin="0,0,3,0"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#1F4F4A"
+                                                                                            Command="{Binding ConnectAiAgentCommand}"/>
+                                                                                    <Button Content="DISCONNECT"
+                                                                                            Height="30"
+                                                                                            Margin="3,0,0,0"
+                                                                                            Style="{StaticResource AiSettingButtonStyle}"
+                                                                                            Background="#5A3030"
+                                                                                            Command="{Binding DisconnectAiAgentCommand}"/>
+                                                                                </UniformGrid>
+                                                                            </StackPanel>
+                                                                        </Border>
+
                                                                         <Border Padding="10"
                                                                                 Background="#464D54"
                                                                                 BorderBrush="#81909A"
@@ -1933,31 +1996,6 @@
                                                                                                      Mode=TwoWay,
                                                                                                      UpdateSourceTrigger=PropertyChanged}"/>
                                                                                 </Grid>
-
-                                                                                <!--
-                                                                                    AI Agent 수동 연결 / 연결 해제
-
-                                                                                    프로그램 시작 시에는 AI Agent에 자동 연결하지 않으며,
-                                                                                    사용자가 각 버튼을 누른 경우에만 연결 상태를 변경한다.
-                                                                                -->
-                                                                                <UniformGrid Columns="2"
-                                                                                             Margin="0,0,0,12">
-
-                                                                                    <Button Content="AI CONNECT"
-                                                                                            Height="30"
-                                                                                            Margin="0,0,3,0"
-                                                                                            Style="{StaticResource AiSettingButtonStyle}"
-                                                                                            Background="#1F4F4A"
-                                                                                            Command="{Binding ConnectAiAgentCommand}"/>
-
-                                                                                    <Button Content="AI DISCONNECT"
-                                                                                            Height="30"
-                                                                                            Margin="3,0,0,0"
-                                                                                            Style="{StaticResource AiSettingButtonStyle}"
-                                                                                            Background="#5A3030"
-                                                                                            Command="{Binding DisconnectAiAgentCommand}"/>
-
-                                                                                </UniformGrid>
 
                                                                                 <!-- [AI Detector] 분석 대상 EO / IR RTSP 프리셋 -->
                                                                                 <ComboBox Height="28"
@@ -2801,8 +2839,10 @@
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,10,8,14">
-                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,4">
+                                                                  Margin="0,5,4,6"
+                                                                  Padding="4,8,8,12">
+                                                        <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/></ScrollViewer.Resources>
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,8">
                                                             <!-- [EO / IR] 영상 Overlay 표시 제어 -->
                                                             <Border Margin="0,2,3,0"
                                                                     Background="#5F666D"
@@ -3365,8 +3405,10 @@
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,10,8,14">
-                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,4">
+                                                                  Margin="0,5,4,6"
+                                                                  Padding="4,8,8,12">
+                                                        <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/></ScrollViewer.Resources>
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,8">
 
                                                             <!-- 프리셋 추가 / 갱신 / 제거 -->
                                                             <Border Margin="0,10,5,0"
@@ -3582,6 +3624,16 @@
                                                                                Foreground="White"
                                                                                FontWeight="Bold"
                                                                                Margin="0,0,0,5"/>
+
+                                                                    <Border Background="#566168" BorderBrush="#95A5B0" BorderThickness="1" CornerRadius="4" Padding="7" Margin="0,0,0,8">
+                                                                        <StackPanel>
+                                                                            <TextBlock Text="PRESET SCAN ORDER" HorizontalAlignment="Center" Foreground="White" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
+                                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                                                <RadioButton Content="SAVED ORDER" GroupName="LaPresetScanOrder" IsChecked="{Binding IsPresetSavedOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold" Margin="0,0,18,0"/>
+                                                                                <RadioButton Content="NEAREST" GroupName="LaPresetScanOrder" IsChecked="{Binding IsPresetNearestOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Border>
 
                                                                     <Grid Margin="0,0,0,8">
                                                                         <Grid.ColumnDefinitions>
@@ -3914,6 +3966,16 @@
                                                                                Foreground="White"
                                                                                FontWeight="Bold"
                                                                                Margin="0,0,0,5"/>
+
+                                                                    <Border Background="#566168" BorderBrush="#95A5B0" BorderThickness="1" CornerRadius="4" Padding="7" Margin="0,0,0,8">
+                                                                        <StackPanel>
+                                                                            <TextBlock Text="PRESET SCAN ORDER" HorizontalAlignment="Center" Foreground="White" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
+                                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                                                <RadioButton Content="SAVED ORDER" GroupName="WebPresetScanOrder" IsChecked="{Binding IsPresetSavedOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold" Margin="0,0,18,0"/>
+                                                                                <RadioButton Content="NEAREST" GroupName="WebPresetScanOrder" IsChecked="{Binding IsPresetNearestOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Border>
 
                                                                     <Grid Margin="0,0,0,8">
                                                                         <Grid.ColumnDefinitions>
@@ -4631,13 +4693,13 @@
                                                      Grid.ColumnSpan="2"
                                                      Columns="2">
 
-                                            <Button Content="AI CONNECT"
+                                            <Button Content="CONNECT"
                                                     Margin="0,0,3,0"
                                                     Style="{StaticResource AiSettingButtonStyle}"
                                                     Background="#1F4F4A"
                                                     Command="{Binding ConnectAiAgentCommand}"/>
 
-                                            <Button Content="AI DISCONNECT"
+                                            <Button Content="DISCONNECT"
                                                     Margin="3,0,0,0"
                                                     Style="{StaticResource AiSettingButtonStyle}"
                                                     Background="#5A3030"

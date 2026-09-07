@@ -151,6 +151,7 @@
     <Compile Include="ViewModels\Main\MainViewModel.EventAlerts.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.MoveControl.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Panorama.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.PresetStorage.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Properties.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Smoke.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Sync.cs" />

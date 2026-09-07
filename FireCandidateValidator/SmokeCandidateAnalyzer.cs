@@ -1,6 +1,7 @@
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FireCandidateValidator
 {
@@ -30,7 +31,9 @@ namespace FireCandidateValidator
             double changeThresholdRatio,
             int confirmationFrameCount,
             bool compensateCameraMotion = false,
-            SmokeDiagnosticCapture diagnostic = null)
+            SmokeDiagnosticCapture diagnostic = null,
+            bool highZoomMode = false,
+            double highZoomStrength = 0.0)
         {
             if (source == null || source.Empty())
             {
@@ -128,7 +131,9 @@ namespace FireCandidateValidator
                         4,
                         Math.Min(
                             40,
-                            (int)Math.Round(changeThresholdRatio * 255.0)));
+                            (int)Math.Round(
+                                changeThresholdRatio *
+                                255.0)));
                 if (isInfrared || source.Channels() == 1)
                 {
                     Cv2.Threshold(
@@ -336,6 +341,7 @@ namespace FireCandidateValidator
                     candidateCoverageRatio >= 0.06 &&
                     candidateCoverageRatio <= 0.65;
                 List<Rect> candidates = new List<Rect>();
+                double zoomStrength = Math.Max(0.0, Math.Min(1.0, highZoomStrength));
                 double largestAreaRatio = 0.0;
 
                 // 2026-08-28: 정합 후에도 장면 대부분이 변하면 프리셋 도착 또는
@@ -373,7 +379,7 @@ namespace FireCandidateValidator
                             96.0,
                             frameArea * Math.Max(0.0005, minimumAreaRatio));
                     double maximumArea = frameArea *
-                        (isInfrared ? 0.45 : possibleLargePlumeFrame ? 0.60 : 0.25);
+                        (isInfrared ? 0.45 : possibleLargePlumeFrame ? 0.60 : highZoomMode ? 0.40 + 0.06 * zoomStrength : 0.25);
 
                     foreach (Point[] contour in contours)
                     {
@@ -392,15 +398,15 @@ namespace FireCandidateValidator
                         double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
                         double rectangleAreaRatio = rectangleArea / frameArea;
 
-                        double minimumFillRatio =
-                            isInfrared ? 0.035 : 0.100;
-                        double maximumRectangleAreaRatio =
-                            isInfrared ? 0.35 : possibleLargePlumeFrame ? 0.70 : 0.18;
+                    double minimumFillRatio =
+                            isInfrared ? 0.035 : highZoomMode ? 0.075 - 0.005 * zoomStrength : 0.100;
+                    double maximumRectangleAreaRatio =
+                            isInfrared ? 0.35 : possibleLargePlumeFrame ? 0.70 : highZoomMode ? 0.32 + 0.05 * zoomStrength : 0.18;
 
                         if (fillRatio < minimumFillRatio ||
                             fillRatio > 0.92 ||
                             aspectRatio < 0.08 ||
-                            aspectRatio > (isInfrared ? 8.0 : 5.0) ||
+                            aspectRatio > (isInfrared ? 8.0 : highZoomMode ? 6.5 + 0.30 * zoomStrength : 5.0) ||
                             rectangleAreaRatio > maximumRectangleAreaRatio ||
                             rect.Height < Math.Max(10, source.Height / 90))
                         {
@@ -477,6 +483,8 @@ namespace FireCandidateValidator
                             isInfrared,
                             minimumAreaRatio,
                             changeThresholdRatio),
+                        highZoomMode,
+                        zoomStrength,
                         diagnostic);
 
                 if (diagnostic != null)
@@ -722,6 +730,8 @@ namespace FireCandidateValidator
             int frameHeight,
             bool isInfrared,
             int falsePositiveSuppressionLevel,
+            bool highZoomMode,
+            double highZoomStrength,
             SmokeDiagnosticCapture diagnostic)
         {
             _lastRigidMotionSuppressedCount = 0;
@@ -773,6 +783,32 @@ namespace FireCandidateValidator
                         score = 0.08 + (1.0 - centerDistance / allowedDistance) * 0.20;
                     }
 
+                    // 고배율에서는 플룸 상단이 크게 갈라져 중심/IoU가 끊겨도
+                    // 굴뚝에 해당하는 하단 발생점은 좁은 범위에 남는다. 작은 후보와
+                    // 짧은 누락에만 이 보조 매칭을 허용하여 창문 간 Track 점프를 막는다.
+                    if (highZoomMode && !isInfrared && score < 0.08 &&
+                        track.MissingFrames <= 12)
+                    {
+                        Point matchPreviousSource = GetBottomCenter(track.Rectangle);
+                        Point matchCurrentSource = GetBottomCenter(candidate);
+                        double sourceDx = Math.Abs(matchCurrentSource.X - matchPreviousSource.X);
+                        double sourceDy = Math.Abs(matchCurrentSource.Y - matchPreviousSource.Y);
+                        double areaRatio = Math.Max(
+                            track.Rectangle.Width * (double)track.Rectangle.Height,
+                            candidate.Width * (double)candidate.Height) /
+                            Math.Max(1.0, Math.Min(
+                                track.Rectangle.Width * (double)track.Rectangle.Height,
+                                candidate.Width * (double)candidate.Height));
+                        double sourceXFactor = 0.25 + 0.03 * highZoomStrength;
+                        double sourceYFactor = 0.15 + 0.03 * highZoomStrength;
+                        if (sourceDx <= Math.Max(10.0, Math.Min(track.Rectangle.Width, candidate.Width) * sourceXFactor) &&
+                            sourceDy <= Math.Max(8.0, Math.Min(track.Rectangle.Height, candidate.Height) * sourceYFactor) &&
+                            areaRatio <= 3.0 + 0.25 * highZoomStrength)
+                        {
+                            score = 0.085;
+                        }
+                    }
+
                     if (score > bestScore)
                     {
                         bestScore = score;
@@ -821,6 +857,7 @@ namespace FireCandidateValidator
                 double shapeDelta =
                     Math.Abs(currentAspect - previousAspect) /
                     Math.Max(0.25, previousAspect);
+                bestTrack.RecordRecentVerticalMotion(deltaY);
 
                 // 2026-09-02: 차량은 BBox 형태를 거의 유지한 채 한 방향으로
                 // 평행 이동하지만, 실제 연기 플룸은 이동 중 면적·종횡비가 계속
@@ -828,6 +865,11 @@ namespace FireCandidateValidator
                 if (areaDelta >= 0.080 || shapeDelta >= 0.100)
                 {
                     bestTrack.DeformationSamples++;
+                    bestTrack.FreshEvidenceAge = 0;
+                }
+                else
+                {
+                    bestTrack.FreshEvidenceAge++;
                 }
 
                 if (motion >= 1.5)
@@ -942,6 +984,7 @@ namespace FireCandidateValidator
                     if (deltaY <= -verticalThreshold)
                     {
                         bestTrack.UpwardSamples++;
+                        bestTrack.FreshEvidenceAge = 0;
                     }
                     else if (deltaY >= verticalThreshold)
                     {
@@ -956,6 +999,7 @@ namespace FireCandidateValidator
                     if (currentArea >= previousArea * 1.025)
                     {
                         bestTrack.ExpansionSamples++;
+                        bestTrack.FreshEvidenceAge = 0;
                     }
 
                     bestTrack.StationaryFrames =
@@ -1031,6 +1075,7 @@ namespace FireCandidateValidator
                 if (!track.Matched)
                 {
                     track.MissingFrames++;
+                    track.FreshEvidenceAge++;
                 }
 
                 int removalLimit = track.IsVerifiedPlume
@@ -1078,6 +1123,19 @@ namespace FireCandidateValidator
                 bool baseDirectionAccepted =
                     directionalSamples < 3 ||
                     track.UpwardSamples + 1 >= track.DownwardSamples;
+                bool accumulatedDirectionAccepted =
+                    highZoomMode && !isInfrared &&
+                    track.RecentVerticalMotionCount >= 10 &&
+                    track.RecentUpwardSamples >= 3 &&
+                    track.RecentUpwardSamples >= track.RecentDownwardSamples + 2;
+                bool heatShimmerOscillation =
+                    highZoomMode && !isInfrared &&
+                    track.RecentVerticalMotionCount >= 12 &&
+                    track.RecentDirectionChanges >= 7 &&
+                    Math.Abs(track.RecentVerticalNetMotion) <=
+                        track.RecentVerticalAbsoluteMotion * 0.12 &&
+                    trackRectangleAreaRatio <= 0.08 &&
+                    track.DeformationSamples < Math.Max(4, track.SeenFrames / 5);
                 bool touchesFrameBoundary =
                     !largePlumeCandidate &&
                     TouchesFrameBoundary(track.Rectangle, frameWidth, frameHeight);
@@ -1091,7 +1149,8 @@ namespace FireCandidateValidator
                         frameWidth,
                         frameHeight);
                 bool directionAccepted =
-                    baseDirectionAccepted || maturePlumeEvidence;
+                    (baseDirectionAccepted || accumulatedDirectionAccepted || maturePlumeEvidence) &&
+                    !heatShimmerOscillation;
                 int requiredDynamicSamples = Math.Max(
                     4,
                     confirmationFrameCount /
@@ -1151,6 +1210,7 @@ namespace FireCandidateValidator
                     !touchesFrameBoundary &&
                     !weakBottomBoundary &&
                     !hyperDynamicBackground &&
+                    !heatShimmerOscillation &&
                     track.StationaryFrames < confirmationFrameCount &&
                     track.StationaryFrames < stationaryLimit &&
                     directionAccepted &&
@@ -1184,7 +1244,8 @@ namespace FireCandidateValidator
 
                 // 강체·교통 특성이 뒤늦게 누적되면 장기 유지 자격을 즉시 취소한다.
                 if (rigidMovingObject || roadTrafficAggregate ||
-                    weakBottomBoundary || hyperDynamicBackground)
+                    weakBottomBoundary || hyperDynamicBackground ||
+                    heatShimmerOscillation || track.FreshEvidenceAge > 45)
                 {
                     track.IsVerifiedPlume = false;
                 }
@@ -1201,6 +1262,8 @@ namespace FireCandidateValidator
                                 ? "BOTTOM_BOUNDARY_LOW_RISE"
                                 : hyperDynamicBackground
                                     ? "DYNAMIC_BACKGROUND"
+                                    : heatShimmerOscillation
+                                        ? "HEAT_SHIMMER_OSCILLATION"
                             : validationAccepted
                                 ? "ACCEPTANCE_STABILIZING"
                         : track.StationaryFrames >= Math.Min(confirmationFrameCount, stationaryLimit)
@@ -1754,6 +1817,42 @@ namespace FireCandidateValidator
             internal Rect LastConfirmedRectangle { get; set; }
 
             internal bool Matched { get; set; }
+
+            internal int FreshEvidenceAge { get; set; }
+
+            private readonly Queue<double> _recentVerticalMotion = new Queue<double>();
+
+            internal int RecentVerticalMotionCount => _recentVerticalMotion.Count;
+
+            internal int RecentUpwardSamples => _recentVerticalMotion.Count(value => value <= -1.0);
+
+            internal int RecentDownwardSamples => _recentVerticalMotion.Count(value => value >= 1.0);
+
+            internal double RecentVerticalNetMotion => _recentVerticalMotion.Sum();
+
+            internal double RecentVerticalAbsoluteMotion => _recentVerticalMotion.Sum(value => Math.Abs(value));
+
+            internal int RecentDirectionChanges
+            {
+                get
+                {
+                    int changes = 0;
+                    int previousSign = 0;
+                    foreach (double value in _recentVerticalMotion)
+                    {
+                        int sign = value <= -1.0 ? -1 : value >= 1.0 ? 1 : 0;
+                        if (sign != 0 && previousSign != 0 && sign != previousSign) changes++;
+                        if (sign != 0) previousSign = sign;
+                    }
+                    return changes;
+                }
+            }
+
+            internal void RecordRecentVerticalMotion(double value)
+            {
+                _recentVerticalMotion.Enqueue(value);
+                while (_recentVerticalMotion.Count > 20) _recentVerticalMotion.Dequeue();
+            }
         }
 
     }

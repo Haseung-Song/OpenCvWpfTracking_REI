@@ -1111,6 +1111,38 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
+        /// 환경장비 Web Agent가 IR 상태 패킷을 보내지 않는 경우에만 사용하는
+        /// 성공한 명령값 기반 UI 상태 보완이다. 실제 Function 0x07 패킷이
+        /// 수신되면 실측값으로 다시 덮어쓴다.
+        /// </summary>
+        private void ApplyEnvironmentIrCommandedPosition(
+            int? zoomPosition,
+            int? focusPosition,
+            string reason)
+        {
+            if (zoomPosition.HasValue)
+            {
+                _currentIrZoom =
+                    (ushort)Math.Max(0, Math.Min(1000, zoomPosition.Value));
+            }
+
+            if (focusPosition.HasValue)
+            {
+                _currentIrFocus =
+                    (ushort)Math.Max(0, Math.Min(1000, focusPosition.Value));
+            }
+
+            NotifyIrCurrentStatusChanged();
+
+            ConsoleLogHelper.State(
+                "IR LENS STATUS",
+                "Commanded-position fallback applied" +
+                $" / ZOOM={_currentIrZoom}" +
+                $" / FOCUS={_currentIrFocus}" +
+                $" / REASON={reason}");
+        }
+
+        /// <summary>
         /// [CONTROL AGENT] [IR Camera Status Packet] 파싱
         ///
         /// Function 0x07

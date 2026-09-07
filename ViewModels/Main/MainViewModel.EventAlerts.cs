@@ -488,7 +488,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 2026-08-24: AI 이벤트 CSV를 불러오며 실패한 경우에만 알림창을 표시한다.
+        /// FIRE/SMOKE CSV와 동일하게 AI CSV 불러오기 성공 건수도 즉시 안내한다.
         /// </summary>
         private void LoadAiEvents()
         {
@@ -539,6 +539,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "AI EVENT",
                     "Event CSV loaded / PATH=" + dialog.FileName +
                     " / COUNT=" + AiDetectionEvents.Count);
+
+                MessageBox.Show(
+                    "AI 이벤트 CSV 불러오기가 완료되었습니다.\n" +
+                    "불러온 이벤트: " + AiDetectionEvents.Count + "건",
+                    "CSV 불러오기 완료",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception exception)
             {

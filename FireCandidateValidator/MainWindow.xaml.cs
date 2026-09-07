@@ -1186,7 +1186,7 @@ namespace FireCandidateValidator
             double shapeChange = Math.Abs(currentAspect - initialAspect) /
                 Math.Max(0.25, initialAspect);
 
-            double score = (isInfrared ? 20.0 : 22.0) +
+            double score = 50.0 +
                 Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) +
                 Math.Min(4.0, verticality * 7.0) +
                 Math.Min(3.0, aspectBalance * 3.0) +
@@ -1204,7 +1204,7 @@ namespace FireCandidateValidator
                 score -= 15.0;
             }
 
-            return Math.Max(5.0, Math.Min(92.0, score));
+            return Math.Max(50.0, Math.Min(95.0, score));
         }
 
         /// <summary>

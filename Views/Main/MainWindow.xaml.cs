@@ -1670,7 +1670,9 @@ namespace OpenCvWpfTracking
                 return VideoPopoutCameraType.Ir;
             }
 
-            return null;
+            // 영상 위에 마우스가 없더라도 W/S/A/D가 조용히 무시되지 않도록
+            // 현재 주 화면 카메라를 기본 제어 대상으로 사용한다.
+            return _primaryVideoType;
         }
 
         /// <summary>

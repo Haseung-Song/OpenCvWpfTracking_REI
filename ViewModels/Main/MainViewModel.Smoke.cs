@@ -610,7 +610,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     new List<Rect>(),
                     SmokeBoxGroupingMode,
                     false,
-                    AiPowerStatusText == "ON");
+                    AiPowerStatusText == "ON",
+                    isInfrared ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom());
                 return disabledResult;
             }
 
@@ -625,7 +626,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 GetRecentAiVehicleCandidates(isInfrared),
                 SmokeBoxGroupingMode,
                 compensateCameraMotion,
-                AiPowerStatusText == "ON");
+                AiPowerStatusText == "ON",
+                isInfrared ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom());
             return result;
         }
 

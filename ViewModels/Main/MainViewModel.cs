@@ -176,7 +176,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [5] 4층 개발팀 환경부 열상(IR) PTZ 카메라 RTSP 주소
         /// </summary>
         private const string MoeIrRtspAddress =
-            "rtsp://root:rmffhqjf1!@10.20.30.40:554/cam0_0";
+            "rtsp://root:rmffhqjf1!@192.168.0.101:554/cam0_0";
 
         #endregion
 
@@ -362,6 +362,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 실제 장비 상태값인지 판별하는 데 사용한다.
         /// </summary>
         private long _irLensStatusVersion;
+
+        // 환경부 Web Agent가 Function 0x07 IR 렌즈 상태를 보내지 않을 때
+        // MOE와 동일한 시간/명령값 기반 보완을 사용한다.
+        private const int EnvironmentIrFocusFullTravelMs = 1600;
+        private const int EnvironmentIrFocusHomeMs = 1800;
+        private const int EnvironmentIrZoomFullTravelMs = 5000;
+        private DateTime _environmentIrManualMoveStartedUtc;
+        private ContinuousMoveType _environmentIrManualMoveType =
+            ContinuousMoveType.None;
+        private int _environmentIrManualMoveDirection;
 
         /// <summary>
         /// 프로그램 시작 이후 고정밀 경과시간 측정용
@@ -889,6 +899,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private PanTurnMode _panTurnMode =
             PanTurnMode.Short;
+
+        private PresetScanOrderMode _presetScanOrderMode =
+            PresetScanOrderMode.SavedOrder;
+
+        private bool _isLoadingPresetStorage;
 
         /// <summary>
         /// Pan Absolute 입력값
@@ -2091,6 +2106,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeThermalFeatures();
             InitializeSmokeFeatures();
             InitializeFireEventFeatures();
+            LoadPresetStorage();
 
             ConsoleLogHelper.PrintSection(
                 "[CONTROL AGENT]",

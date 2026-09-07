@@ -208,6 +208,17 @@ namespace FireCandidateValidator
 
                 }
 
+                // 2026-09-07: 큰 IR 화재 후보도 정적인 고온 구조물과 구분할 수 있도록
+                // 완전 우회시키지 않고 완화된 시간축 변화 근거를 요구한다.
+                bool strongLargeTemporalEvidence =
+                    !requiresTemporalMotion ||
+                    (hasMotionReference &&
+                     hasCandidateReference &&
+                     globalMotionRatio <= 0.25 &&
+                     (motionRatio >= 0.004 ||
+                      hotMotionRatio >= 0.008 ||
+                      shapeChangeRatio >= 0.012));
+
                 // 넓은 건물 외벽, 수평 띠 및 작은 점 노이즈를 후보에서 제외한다.
                 // 2026-08-14: The former 60% size limit rejected the real large fire.
                 if (fillRatio < 0.005 ||
@@ -227,6 +238,9 @@ namespace FireCandidateValidator
                       (hotMotionRatio < (isSmallFireCandidate ? 0.006 : 0.018) &&
                        shapeChangeRatio < (isSmallFireCandidate ? 0.008 : 0.020)) ||
                       (rectangleAreaRatio > 0.12 && shapeChangeRatio < 0.060))) ||
+                    (requiresTemporalMotion &&
+                     isStrongLargeFireCandidate &&
+                     !strongLargeTemporalEvidence) ||
                     aspectRatio < 0.05 || aspectRatio > 20.0)
                 {
                     continue;
@@ -244,15 +258,23 @@ namespace FireCandidateValidator
                 // 작은 후보만 시간축 검사를 거쳐 고정 전등 오탐을 억제한다.
                 verticalFlameCandidates = verticalFlameCandidates
                     .Where(rect =>
-                        IsStrongLargeFlameRect(rect, cleanedMask) ||
-                        HasTemporalFlameEvidence(
+                        (IsStrongLargeFlameRect(rect, cleanedMask)
+                            ? HasStrongLargeTemporalFlameEvidence(
+                                rect,
+                                motionMask,
+                                cleanedMask,
+                                candidateChangeMask,
+                                hasMotionReference,
+                                hasCandidateReference,
+                                globalMotionRatio)
+                            : HasTemporalFlameEvidence(
                             rect,
                             motionMask,
                             cleanedMask,
                             candidateChangeMask,
                             hasMotionReference,
                             hasCandidateReference,
-                            globalMotionRatio))
+                            globalMotionRatio)))
                     .ToList();
             }
 
@@ -360,6 +382,39 @@ namespace FireCandidateValidator
                        (hotMotionRatio >= 0.006 || shapeChangeRatio >= 0.008);
             }
 
+        }
+
+        private static bool HasStrongLargeTemporalFlameEvidence(
+            Rect rect,
+            Mat motionMask,
+            Mat candidateMask,
+            Mat candidateChangeMask,
+            bool hasMotionReference,
+            bool hasCandidateReference,
+            double globalMotionRatio)
+        {
+            if (!hasMotionReference || !hasCandidateReference ||
+                globalMotionRatio > 0.25 || rect.Width <= 0 || rect.Height <= 0)
+            {
+                return false;
+            }
+
+            using (Mat motionRoi = new Mat(motionMask, rect))
+            using (Mat candidateRoi = new Mat(candidateMask, rect))
+            using (Mat changeRoi = new Mat(candidateChangeMask, rect))
+            using (Mat hotMotion = new Mat())
+            {
+                double rectangleArea = Math.Max(1.0, rect.Width * rect.Height);
+                double candidatePixels = Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
+                double motionRatio = Cv2.CountNonZero(motionRoi) / rectangleArea;
+                Cv2.BitwiseAnd(motionRoi, candidateRoi, hotMotion);
+                double hotMotionRatio = Cv2.CountNonZero(hotMotion) / candidatePixels;
+                double shapeChangeRatio = Cv2.CountNonZero(changeRoi) / candidatePixels;
+
+                return motionRatio >= 0.004 ||
+                       hotMotionRatio >= 0.008 ||
+                       shapeChangeRatio >= 0.012;
+            }
         }
 
         /// <summary>

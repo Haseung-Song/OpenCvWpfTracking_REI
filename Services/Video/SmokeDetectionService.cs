@@ -38,6 +38,10 @@ namespace OpenCvWpfTracking.Services.Video
         private string _diagnosticDirectory;
         private string _diagnosticChannel;
         private int _diagnosticFrameIndex;
+        private int _diagnosticSnapshotCount;
+        private bool _diagnosticSnapshotLimitLogged;
+        private const int DiagnosticSnapshotIntervalFrames = 300;
+        private const int DiagnosticMaximumSnapshotCount = 120;
 
         /// <summary>
         /// 2026-09-03: 실영상 진단은 명시적으로 켠 동안에만 CSV와 단계별 마스크를 기록한다.
@@ -52,6 +56,8 @@ namespace OpenCvWpfTracking.Services.Video
                 _diagnosticDirectory = directory;
                 _diagnosticChannel = channel;
                 _diagnosticFrameIndex = 0;
+                _diagnosticSnapshotCount = 0;
+                _diagnosticSnapshotLimitLogged = false;
                 _diagnosticWriter = new StreamWriter(
                     Path.Combine(directory, "smoke_candidates.csv"),
                     false,
@@ -96,6 +102,8 @@ namespace OpenCvWpfTracking.Services.Video
             _diagnosticDirectory = null;
             _diagnosticChannel = null;
             _diagnosticFrameIndex = 0;
+            _diagnosticSnapshotCount = 0;
+            _diagnosticSnapshotLimitLogged = false;
         }
 
         private SmokeDiagnosticCapture CreateDiagnosticCapture()
@@ -162,8 +170,12 @@ namespace OpenCvWpfTracking.Services.Video
                     }));
                 }
 
-                // 실시간 영상 처리 지연을 제한하기 위해 단계 이미지는 30프레임 간격으로만 저장한다.
-                if (_diagnosticFrameIndex == 1 || _diagnosticFrameIndex % 30 == 0)
+                // CSV는 연속 분석용으로 유지하되, 용량을 크게 차지하는 단계 이미지는
+                // 약 10초 간격(30fps 기준) 및 채널당 최대 120회로 제한한다.
+                bool snapshotDue = _diagnosticFrameIndex == 1 ||
+                    _diagnosticFrameIndex % DiagnosticSnapshotIntervalFrames == 0;
+                if (snapshotDue &&
+                    _diagnosticSnapshotCount < DiagnosticMaximumSnapshotCount)
                 {
                     string frameDirectory = Path.Combine(
                         _diagnosticDirectory,
@@ -173,6 +185,16 @@ namespace OpenCvWpfTracking.Services.Video
                     {
                         Cv2.ImWrite(Path.Combine(frameDirectory, stage.Key + ".png"), stage.Value);
                     }
+
+                    _diagnosticSnapshotCount++;
+                }
+                else if (snapshotDue && !_diagnosticSnapshotLimitLogged)
+                {
+                    _diagnosticSnapshotLimitLogged = true;
+                    ConsoleLogHelper.State(
+                        "SMOKE DIAGNOSTIC",
+                        "Snapshot limit reached; CSV recording continues / CHANNEL=" +
+                        _diagnosticChannel + " / LIMIT=" + DiagnosticMaximumSnapshotCount);
                 }
 
                 if (_diagnosticFrameIndex % 30 == 0)
@@ -200,7 +222,8 @@ namespace OpenCvWpfTracking.Services.Video
             IList<Rect> aiVehicleCandidates,
             int smokeBoxGroupingMode,
             bool compensateCameraMotion = false,
-            bool aiDetectorAvailable = true)
+            bool aiDetectorAvailable = true,
+            int zoomPosition = 0)
         {
             if (!isEnabled || frame == null || frame.Empty())
             {
@@ -219,6 +242,15 @@ namespace OpenCvWpfTracking.Services.Video
                 int confirmationFrames = isInfrared
                     ? 14
                     : standaloneFallbackMode ? 24 : 36;
+                double highZoomStrength = isInfrared
+                    ? 0.0
+                    : Math.Max(0.0, Math.Min(1.0, (zoomPosition - 700) / 300.0));
+                if (highZoomStrength > 0.0)
+                {
+                    int maximumReduction = 2;
+                    confirmationFrames -= (int)Math.Round(
+                        maximumReduction * highZoomStrength * highZoomStrength);
+                }
                 if (_lastStandaloneFallbackMode != standaloneFallbackMode ||
                     _lastReportedConfirmationFrames != confirmationFrames)
                 {
@@ -241,7 +273,9 @@ namespace OpenCvWpfTracking.Services.Video
                            changeThresholdRatio,
                            confirmationFrames,
                            compensateCameraMotion,
-                           diagnostic))
+                           diagnostic,
+                           highZoomStrength > 0.0,
+                           highZoomStrength))
                 {
                     WriteDiagnosticFrame(diagnostic, frame, isInfrared);
                     // 2026-09-02: 강체 이동 후보 억제는 정상적인 필터 동작이므로
@@ -760,7 +794,7 @@ namespace OpenCvWpfTracking.Services.Video
             double shapeChange = Math.Abs(currentAspect - initialAspect) /
                 Math.Max(0.25, initialAspect);
 
-            double score = (isInfrared ? 20.0 : 22.0) +
+            double score = 50.0 +
                 Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) +
                 Math.Min(4.0, verticality * 7.0) +
                 Math.Min(3.0, aspectBalance * 3.0) +
@@ -780,7 +814,7 @@ namespace OpenCvWpfTracking.Services.Video
                 score -= 15.0;
             }
 
-            return Math.Max(5.0, Math.Min(92.0, score));
+            return Math.Max(50.0, Math.Min(95.0, score));
         }
 
         private static double CalculateRectMatch(Rect left, Rect right)

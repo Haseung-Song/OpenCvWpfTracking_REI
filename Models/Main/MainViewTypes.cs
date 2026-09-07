@@ -55,6 +55,12 @@ namespace OpenCvWpfTracking.Models.Main
         Short
     }
 
+    public enum PresetScanOrderMode
+    {
+        SavedOrder,
+        NearestOrder
+    }
+
     /// <summary>
     /// [EO / IR Zoom Synchronization]
     ///
@@ -110,6 +116,10 @@ namespace OpenCvWpfTracking.Models.Main
         /// 1 ~ 63
         /// </summary>
         public int Number { get; }
+
+        public string Name { get; set; }
+
+        public int SavedOrder { get; set; }
 
         /// <summary>
         /// 등록 명령 송신 시점의 Pan 상태값
@@ -168,7 +178,9 @@ namespace OpenCvWpfTracking.Models.Main
             string eoZoomText,
             string eoFocusText,
             string irZoomText,
-            string irFocusText)
+            string irFocusText,
+            string name = null,
+            int savedOrder = 0)
         {
             Number =
                 number;
@@ -190,6 +202,13 @@ namespace OpenCvWpfTracking.Models.Main
 
             IrFocusText =
                 irFocusText ?? "-";
+
+            Name =
+                string.IsNullOrWhiteSpace(name)
+                    ? $"P{number:00}"
+                    : name;
+
+            SavedOrder = savedOrder;
         }
 
     }

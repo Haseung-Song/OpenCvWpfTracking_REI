@@ -831,6 +831,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         }
 
+        public bool IsPresetSavedOrderMode
+        {
+            get => _presetScanOrderMode == PresetScanOrderMode.SavedOrder;
+            set
+            {
+                if (!value || _presetScanOrderMode == PresetScanOrderMode.SavedOrder) return;
+                _presetScanOrderMode = PresetScanOrderMode.SavedOrder;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsPresetNearestOrderMode));
+                SavePresetStorage();
+            }
+        }
+
+        public bool IsPresetNearestOrderMode
+        {
+            get => _presetScanOrderMode == PresetScanOrderMode.NearestOrder;
+            set
+            {
+                if (!value || _presetScanOrderMode == PresetScanOrderMode.NearestOrder) return;
+                _presetScanOrderMode = PresetScanOrderMode.NearestOrder;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsPresetSavedOrderMode));
+                SavePresetStorage();
+            }
+        }
+
         /// <summary>
         /// Pan Absolute 목표값
         /// </summary>
@@ -1097,6 +1123,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     safeValue;
 
                 OnPropertyChanged();
+                SavePresetStorage();
             }
 
         }
@@ -1125,6 +1152,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     safeValue;
 
                 OnPropertyChanged();
+                SavePresetStorage();
             }
 
         }
@@ -1351,6 +1379,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     safeValue;
 
                 OnPropertyChanged();
+                SavePresetStorage();
             }
 
         }
@@ -1385,6 +1414,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     safeValue;
 
                 OnPropertyChanged();
+                SavePresetStorage();
             }
 
         }

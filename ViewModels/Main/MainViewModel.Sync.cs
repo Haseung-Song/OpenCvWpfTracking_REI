@@ -99,6 +99,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         .SetIrZoomPosition(
                             standardPosition);
 
+                if (environmentIrResult)
+                {
+                    ApplyEnvironmentIrCommandedPosition(
+                        standardPosition,
+                        null,
+                        "ENVIRONMENT ZOOM SYNC");
+                }
+
                 environmentEoResult = environmentEoResult &&
                     (_eoDecoder.IsOpened || _isEoFrameDisplayed);
                 environmentIrResult = environmentIrResult &&
@@ -502,14 +510,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ConvertIrFocusStandardToStatusPosition(
                         standardPosition);
 
-                Task<bool> irMoveTask =
-                    isIrConnected
-                        ? MoveIrFocusToPositionAsync(
-                            irRawTargetPosition,
-                            focusSyncCts.Token)
-                        : Task.FromResult(
-                            false);
-
                 if (!isIrConnected)
                 {
                     ConsoleLogHelper.Command(
@@ -528,11 +528,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             .EoFocusGoPosition(
                                 standardPosition);
 
-                    irResult =
-                        await irMoveTask;
+                    if (!isIrConnected)
+                    {
+                        irResult = false;
+                    }
+                    else
+                    {
+                        irResult = Interlocked.Read(ref _irLensStatusVersion) > 0
+                            ? await MoveIrFocusToPositionAsync(
+                                irRawTargetPosition,
+                                focusSyncCts.Token)
+                            : await MoveEnvironmentIrFocusWithoutFeedbackAsync(
+                                standardPosition,
+                                focusSyncCts.Token);
+                    }
                 }
                 else
                 {
+                    Task<bool> irMoveTask =
+                        isIrConnected
+                            ? MoveIrFocusToPositionAsync(
+                                irRawTargetPosition,
+                                focusSyncCts.Token)
+                            : Task.FromResult(false);
+
                     RtspSourceOption ctecSource =
                         _connectedEoCtecSource;
 
@@ -591,6 +610,75 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 eoResult && irResult
                     ? $"COMPLETED / LEVEL {selectedLevel.Level}"
                     : $"INCOMPLETE / EO={eoResult} / IR={irResult}";
+        }
+
+        /// <summary>
+        /// Function 0x07 피드백이 없는 환경장비에서 FAR 끝점을 확보한 뒤
+        /// 목표 비율만큼 NEAR로 이동하는 MOE 공통 보완 경로이다.
+        /// </summary>
+        private async Task<bool> MoveEnvironmentIrFocusWithoutFeedbackAsync(
+            int targetPosition,
+            CancellationToken cancellationToken)
+        {
+            int safeTarget = Math.Max(0, Math.Min(1000, targetPosition));
+
+            ConsoleLogHelper.Command(
+                "IR FOCUS SYNC",
+                $"No Function 0x07 feedback; timed fallback / TARGET={safeTarget}");
+
+            bool homeStarted = _controlCommandService.StartIrFocusFar();
+            if (!homeStarted)
+            {
+                return false;
+            }
+
+            try
+            {
+                await Task.Delay(EnvironmentIrFocusHomeMs, cancellationToken);
+            }
+            finally
+            {
+                _controlCommandService.StopIrFocus();
+            }
+
+            ApplyEnvironmentIrCommandedPosition(
+                null,
+                0,
+                "ENVIRONMENT FOCUS HOME ESTIMATE");
+
+            if (safeTarget == 0)
+            {
+                return true;
+            }
+
+            await Task.Delay(120, cancellationToken);
+
+            bool moveStarted = _controlCommandService.StartIrFocusNear();
+            if (!moveStarted)
+            {
+                return false;
+            }
+
+            int moveDurationMs = Math.Max(
+                80,
+                (int)Math.Round(
+                    EnvironmentIrFocusFullTravelMs * safeTarget / 1000.0));
+
+            try
+            {
+                await Task.Delay(moveDurationMs, cancellationToken);
+            }
+            finally
+            {
+                _controlCommandService.StopIrFocus();
+            }
+
+            ApplyEnvironmentIrCommandedPosition(
+                null,
+                safeTarget,
+                "ENVIRONMENT FOCUS TIMED ESTIMATE");
+
+            return true;
         }
 
         /// <summary>

@@ -90,6 +90,10 @@ namespace OpenCvWpfTracking
             {
                 _subscribedViewModel.PropertyChanged -=
                     SubscribedViewModel_PropertyChanged;
+                _subscribedViewModel.AiDetectionEvents.CollectionChanged -=
+                    AiDetectionEvents_CollectionChanged;
+                _subscribedViewModel.FireDetectionEvents.CollectionChanged -=
+                    FireDetectionEvents_CollectionChanged;
             }
 
             _subscribedViewModel = viewModel;
@@ -100,6 +104,10 @@ namespace OpenCvWpfTracking
                 _hadActiveFireEvent = _subscribedViewModel.ActiveFireCount > 0;
                 _subscribedViewModel.PropertyChanged +=
                     SubscribedViewModel_PropertyChanged;
+                _subscribedViewModel.AiDetectionEvents.CollectionChanged +=
+                    AiDetectionEvents_CollectionChanged;
+                _subscribedViewModel.FireDetectionEvents.CollectionChanged +=
+                    FireDetectionEvents_CollectionChanged;
             }
             else
             {
@@ -107,6 +115,32 @@ namespace OpenCvWpfTracking
                 _hadActiveFireEvent = false;
             }
 
+        }
+
+        /// <summary>
+        /// Active 개수가 이미 1 이상인 상태에서도 새 BBox 이벤트가 추가되면
+        /// 실제 이벤트 종류의 하위 탭으로 즉시 전환한다.
+        /// </summary>
+        private void AiDetectionEvents_CollectionChanged(
+            object sender,
+            NotifyCollectionChangedEventArgs e)
+        {
+            if (e.Action == NotifyCollectionChangedAction.Add &&
+                e.NewItems != null && e.NewItems.Count > 0)
+            {
+                QueueNewEventTabSelection(0);
+            }
+        }
+
+        private void FireDetectionEvents_CollectionChanged(
+            object sender,
+            NotifyCollectionChangedEventArgs e)
+        {
+            if (e.Action == NotifyCollectionChangedAction.Add &&
+                e.NewItems != null && e.NewItems.Count > 0)
+            {
+                QueueNewEventTabSelection(1);
+            }
         }
 
         private void SubscribedViewModel_PropertyChanged(
