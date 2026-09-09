@@ -113,6 +113,16 @@
             <Setter Property="TextWrapping" Value="NoWrap"/>
         </Style>
 
+        <!-- 2026-09-08: IR SMOKE 등 TYPE 문자열이 인접 열로 넘어가지 않도록 압축 표시한다. -->
+        <Style x:Key="CompactEventTypeCellTextStyle"
+               TargetType="{x:Type TextBlock}"
+               BasedOn="{StaticResource CenteredEventCellTextStyle}">
+            <Setter Property="FontSize" Value="8.5"/>
+            <Setter Property="FontStretch" Value="Condensed"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+        </Style>
+
         <Style TargetType="{x:Type DataGridRow}">
             <Setter Property="Background" Value="#40474E"/>
             <Setter Property="Foreground" Value="White"/>
@@ -186,9 +196,9 @@
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="28" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="100" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
+                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="96" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
                             <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="35" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="TYPE" SortMemberPath="DetectionType" Binding="{Binding DetectionType}" Width="50" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="TYPE" SortMemberPath="DetectionType" Binding="{Binding DetectionType}" Width="54" ElementStyle="{StaticResource CompactEventTypeCellTextStyle}"/>
                             <DataGridTextColumn Header="CONF" SortMemberPath="Confidence" Binding="{Binding Confidence}" Width="42" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="BBOX(px)" SortMemberPath="PixelArea" Binding="{Binding PixelSizeCompactText}" Width="*" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="STATE" SortMemberPath="Status" Binding="{Binding Status}" Width="52" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
@@ -282,9 +292,9 @@
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="28" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="100" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
+                            <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="96" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
                             <DataGridTextColumn Header="CAM" SortMemberPath="Camera" Binding="{Binding Camera}" Width="35" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
-                            <DataGridTextColumn Header="TYPE" SortMemberPath="DetectionType" Binding="{Binding DetectionType}" Width="45" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
+                            <DataGridTextColumn Header="TYPE" SortMemberPath="DetectionType" Binding="{Binding DetectionType}" Width="54" ElementStyle="{StaticResource CompactEventTypeCellTextStyle}"/>
                             <DataGridTextColumn Header="V.SCORE" SortMemberPath="Confidence" Binding="{Binding Confidence}" Width="60" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="BBOX(px)" SortMemberPath="PixelArea" Binding="{Binding PixelSizeCompactText}" Width="*" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="STATE" SortMemberPath="Status" Binding="{Binding Status}" Width="52" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>

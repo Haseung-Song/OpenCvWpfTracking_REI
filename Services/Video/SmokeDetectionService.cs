@@ -758,6 +758,8 @@ namespace OpenCvWpfTracking.Services.Video
 
         // 2026-08-31: V.SCORE는 확률이 아니라 Track의 시공간 연기 증거 점수이다.
         // 최초 약 1~2초 동안 지속·상향 이동·확산·형상 변화를 누적한 뒤 고정한다.
+        // 2026-09-08 V23: 짧게 나타났다 사라지는 오탐은 지속성 감점을 적용해
+        // 낮은 점수로 표시하고, 1.5초 이상 유지된 후보의 기존 점수는 보존한다.
         private static double CalculateCandidateVisionScore(
             VisionScoreTrack track, Rect candidate,
             int frameWidth, int frameHeight, bool isInfrared,
@@ -804,6 +806,9 @@ namespace OpenCvWpfTracking.Services.Video
                 Math.Min(5.0, motionRatio * 100.0) +
                 Math.Min(5.0, shapeChange * 8.0);
 
+            double persistenceRatio = Math.Min(1.0, elapsedSeconds / 1.5);
+            score -= (1.0 - persistenceRatio) * 30.0;
+
             // 센서 좌표에 고정되고 크기·형상이 거의 변하지 않는 후보는
             // 물방울·렌즈 얼룩 가능성이 높으므로 해당 후보만 감점한다.
             if (elapsedSeconds >= 0.5 &&
@@ -814,7 +819,7 @@ namespace OpenCvWpfTracking.Services.Video
                 score -= 15.0;
             }
 
-            return Math.Max(50.0, Math.Min(95.0, score));
+            return Math.Max(15.0, Math.Min(95.0, score));
         }
 
         private static double CalculateRectMatch(Rect left, Rect right)

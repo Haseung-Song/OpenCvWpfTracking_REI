@@ -24,6 +24,46 @@ namespace OpenCvWpfTracking.Properties {
 
         }
 
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("rtsp://root:rmffhqjf1!@192.168.1.2:554/AVStream1_1")]
+        public string SavedEoRtspUrl {
+            get { return ((string)(this["SavedEoRtspUrl"])); }
+            set { this["SavedEoRtspUrl"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("rtsp://root:rmffhqjf1!@192.168.0.121:554/cam0_0")]
+        public string SavedIrRtspUrl {
+            get { return ((string)(this["SavedIrRtspUrl"])); }
+            set { this["SavedIrRtspUrl"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 GOP 주간(EO)")]
+        public string SavedEoRtspPreset {
+            get { return ((string)(this["SavedEoRtspPreset"])); }
+            set { this["SavedEoRtspPreset"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 GOP 열상(IR)")]
+        public string SavedIrRtspPreset {
+            get { return ((string)(this["SavedIrRtspPreset"])); }
+            set { this["SavedIrRtspPreset"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 GOP EO/IR - LA 방식")]
+        public string SavedControlAgentProfile {
+            get { return ((string)(this["SavedControlAgentProfile"])); }
+            set { this["SavedControlAgentProfile"] = value; }
+        }
+
     }
 
 }

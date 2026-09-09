@@ -1360,10 +1360,13 @@
                                            FontWeight="Bold"/>
 
                                 <TextBlock Grid.Row="1"
-                                           Text="EO 16:9 / IR 5:4 FULL FRAME · AI BBOX SYNC"
                                            Foreground="#6F8A99"
                                            FontSize="10.5"
-                                           VerticalAlignment="Center"/>
+                                           VerticalAlignment="Center">
+                                    <Run Text="EO 16:9 / IR 5:4 FULL FRAME · AI BBOX SYNC · "/>
+                                    <!-- 2026-09-08: Run.Text 기본 TwoWay 처리로 인한 읽기 전용 속성 예외 방지. -->
+                                    <Run Text="{Binding SelectedPanoramaCaptureSummary, Mode=OneWay}" Foreground="#8FD3FF"/>
+                                </TextBlock>
 
                                 <StackPanel Grid.Row="2"
                                             Orientation="Horizontal"
@@ -1385,6 +1388,18 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Resources>
+                                    <TextBlock Text="CAPTURE RANGE"
+                                               Foreground="#AFC8D8"
+                                               FontSize="10"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+                                    <ComboBox ItemsSource="{Binding PanoramaCaptureRangeOptions}"
+                                              SelectedIndex="{Binding SelectedPanoramaCaptureOptionIndex, Mode=TwoWay}"
+                                              IsEnabled="{Binding IsOperationCommandEnabled}"
+                                              Width="170"
+                                              Height="26"
+                                              Margin="7,0,10,0"
+                                              FontWeight="Bold"/>
                                     <Button x:Name="NewPanoramaButton"
                                             Content="360° 파노라마 촬영"
                                             Width="165"
@@ -1655,6 +1670,7 @@
                                                                                 <RowDefinition Height="Auto"/>
                                                                                 <RowDefinition Height="Auto"/>
                                                                                 <RowDefinition Height="Auto"/>
+                                                                                <RowDefinition Height="Auto"/>
                                                                             </Grid.RowDefinitions>
                                                                             <Grid.ColumnDefinitions>
                                                                                 <ColumnDefinition Width="*"/>
@@ -1688,39 +1704,49 @@
                                                                                            VerticalAlignment="Center"/>
                                                                             </StackPanel>
 
-                                                                            <TextBlock Grid.Row="1"
+                                                                            <ComboBox Grid.Row="1"
+                                                                                      Grid.ColumnSpan="2"
+                                                                                      Margin="0,10,0,0"
+                                                                                      Style="{StaticResource CommunicationComboBoxStyle}"
+                                                                                      ItemsSource="{Binding ControlAgentProfiles}"
+                                                                                      DisplayMemberPath="DisplayName"
+                                                                                      SelectedItem="{Binding SelectedControlAgentProfile, Mode=TwoWay}"/>
+
+                                                                            <TextBlock Grid.Row="2"
                                                                                        Grid.Column="0"
                                                                                        Text="IP ADDRESS"
                                                                                        Foreground="#4FD1C5"
                                                                                        FontSize="11"
                                                                                        Margin="0,10,0,4"/>
 
-                                                                            <TextBlock Grid.Row="1"
+                                                                            <TextBlock Grid.Row="2"
                                                                                        Grid.Column="1"
                                                                                        Text="PORT"
                                                                                        Foreground="#4FD1C5"
                                                                                        FontSize="11"
                                                                                        Margin="6,10,0,4"/>
 
-                                                                            <TextBox Grid.Row="2"
+                                                                            <TextBox Grid.Row="3"
                                                                                      Grid.Column="0"
                                                                                      Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                     IsReadOnly="True"
                                                                                      Text="{Binding ControlAgentIp,
                                                                                              Mode=TwoWay,
                                                                                              UpdateSourceTrigger=PropertyChanged}"/>
 
-                                                                            <TextBox Grid.Row="2"
+                                                                            <TextBox Grid.Row="3"
                                                                                      Grid.Column="1"
                                                                                      Margin="6,0,0,0"
                                                                                      MaxLength="5"
                                                                                      Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                     IsReadOnly="True"
                                                                                      Text="{Binding ControlAgentPortText,
                                                                                              Mode=TwoWay,
                                                                                              UpdateSourceTrigger=PropertyChanged}"/>
                                                                         </Grid>
 
                                                                         <!-- Control Agent 설정값 적용 시점 안내 -->
-                                                                        <TextBlock Text="※ 입력한 Control Agent IP / Port는 다음 장비 연결 시 적용됩니다."
+                                                                        <TextBlock Text="※ 프로필 선택 시 Control Agent와 EO/IR 카메라가 한 세트로 적용됩니다."
                                                                                    Foreground="#B8C0C8"
                                                                                    FontSize="10"
                                                                                    TextWrapping="Wrap"
@@ -3475,6 +3501,7 @@
                                                                         <Button Grid.Column="0"
                                                                                 IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                 Content="REGISTER / UPDATE"
+                                                                                FontSize="9.5"
                                                                                 Height="30"
                                                                                 Margin="0,0,4,0"
                                                                                 Style="{StaticResource EoControlButtonStyle}"
@@ -3817,6 +3844,7 @@
                                                                         <Button Grid.Column="0"
                                                                                 IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                 Content="REGISTER / UPDATE"
+                                                                                FontSize="9.5"
                                                                                 Height="30"
                                                                                 Margin="0,0,4,0"
                                                                                 Style="{StaticResource EoControlButtonStyle}"

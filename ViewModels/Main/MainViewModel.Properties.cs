@@ -1559,6 +1559,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsEoRtspDirectInput));
+                SaveRtspCommunicationSettings();
             }
 
         }
@@ -1618,6 +1619,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsIrRtspDirectInput));
+                SaveRtspCommunicationSettings();
             }
 
         }
@@ -2839,6 +2841,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "4층 환경부 PTZ 주간(EO)",
                     MoeEoRtspAddress),
 
+                // 2026-09-08: 신규 옥상 MR300 주간 카메라.
+                new RtspSourceOption(
+                    RooftopMr300EoDisplayName,
+                    RooftopMr300EoRtspAddress),
+
                 new RtspSourceOption(
                     "직접 입력",
                     string.Empty,
@@ -2865,6 +2872,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 new RtspSourceOption(
                     "4층 환경부 PTZ 열상(IR)",
                     MoeIrRtspAddress),
+
+                // 2026-09-08: 신규 옥상 MR300 열상 카메라.
+                new RtspSourceOption(
+                    RooftopMr300IrDisplayName,
+                    RooftopMr300IrRtspAddress),
 
                 new RtspSourceOption(
                     "직접 입력",

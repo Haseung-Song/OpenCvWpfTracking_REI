@@ -159,7 +159,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 ConsoleLogHelper.Info(
                     "EO PANORAMA / STITCH",
-                    "Panorama processing started / MODE=COLUMN_FIRST" +
+                    "Panorama processing started / MODE=SHARED_LONGITUDE_ROW_FIRST" +
                     " / OUTPUT=" + outputPath);
 
                 int sourceRowIndex = 0;
@@ -191,83 +191,92 @@ namespace OpenCvWpfTracking.Services.Video
                     sourceRowIndex++;
                 }
 
-                if (frameRows.Count < 2)
+                if (frameRows.Count < 1)
                 {
                     throw new InvalidOperationException(
-                        "세로 화각 파노라마에는 서로 다른 Tilt 촬영 행이 2개 이상 필요합니다.");
+                        "파노라마에는 Tilt 촬영 행이 1개 이상 필요합니다.");
                 }
 
-                /*
-                 * COLUMN-FIRST PRIMARY PATH
-                 *
-                 * Upper/Lower 360 파노라마를 각각 독립적으로 만든 뒤 마지막에 붙이면
-                 * 두 Stitcher의 카메라 추정 결과가 달라져 같은 건물이 서로 다른
-                 * 위치/스케일/곡률로 만들어질 수 있다.
-                 *
-                 * 현재 촬영 구조는 두 Row가 같은 Pan index(0,10,...350°)를 가지므로
-                 * 같은 Pan의 +Tilt/-Tilt 두 프레임을 먼저 세로로 결합한다.
-                 *
-                 * 중요한 안정성 원칙:
-                 *  - column마다 별도의 Y warp를 하지 않는다.
-                 *  - 모든 36개 column에 동일 overlap과 동일 Global Y offset을 적용한다.
-                 *  - Perspective / Remap / Piecewise / Per-frame pose를 사용하지 않는다.
-                 */
-                bool canUseColumnFirst =
-                    frameRows.Count == 2 &&
-                    frameRows[0].Count == frameRows[1].Count &&
+#if DEBUG
+                SavePanoramaDebugCapture(frameRows, outputPath);
+#endif
+
+                // 2026-09-09: 같은 Pan의 서로 다른 Tilt 원본을 먼저 합치면 원근/시차가
+                // 픽셀에 고정되어 난간과 건물이 잘린다. 36개 Pan을 공통 각도 폭으로
+                // 행별 완성한 후 동일 경도 좌표에서만 세로 결합한다.
+                bool canUseSharedGlobalColumn =
+                    frameRows.All(row => row.Count == frameRows[0].Count) &&
                     frameRows[0].Count >= 24;
 
-                if (canUseColumnFirst)
+                if (canUseSharedGlobalColumn)
                 {
                     try
                     {
-                        bool columnUsedFixedAngleFallback;
-
-                        panorama =
-                            ComposeColumnFirstFullCircle(
-                                frameRows[0],
-                                frameRows[1],
-                                out columnUsedFixedAngleFallback);
+                        panorama = frameRows.Count == 1
+                            ? ComposeSharedLongitudeSingleRow(frameRows[0])
+                            : ComposeSharedLongitudeRowFirstPanorama(frameRows, outputPath);
 
                         ConsoleLogHelper.State(
-                            "EO PANORAMA / COLUMN",
-                            "Column-first panorama completed" +
-                            " / COLUMNS=" + frameRows[0].Count +
-                            " / FALLBACK=" + columnUsedFixedAngleFallback +
+                            "EO PANORAMA / ROW",
+                            "Shared-longitude row-first panorama completed" +
+                            " / ROWS=" + frameRows.Count +
+                            " / FRAMES_PER_ROW=" + frameRows[0].Count +
                             " / RESULT=" + panorama.Width + "x" + panorama.Height);
                     }
-                    catch (Exception columnException)
+                    catch (Exception rowFirstException)
                     {
-                        ConsoleLogHelper.Warning(
-                            "EO PANORAMA / COLUMN",
-                            "Column-first path failed; " +
-                            "falling back to legacy row-first merge" +
-                            " / TYPE=" + columnException.GetType().Name +
-                            " / MESSAGE=" + columnException.Message);
-
                         panorama?.Dispose();
                         panorama = null;
+
+                        ConsoleLogHelper.Warning(
+                            "EO PANORAMA / FALLBACK",
+                            "Shared-longitude row-first failed; trying retained column-first" +
+                            " / TYPE=" + rowFirstException.GetType().Name +
+                            " / MESSAGE=" + rowFirstException.Message);
+
+                        try
+                        {
+                            bool usedFixedAngleFallback;
+                            panorama = frameRows.Count == 2
+                                ? ComposeV21TwoRowColumnFirst(
+                                    frameRows[0], frameRows[1], out usedFixedAngleFallback)
+                                : ComposeColumnFirstFullCircle(
+                                    frameRows, outputPath, out usedFixedAngleFallback);
+
+                            if (usedFixedAngleFallback)
+                                throw new InvalidOperationException(
+                                    "Column-first 특징점 정합 대신 고정각 복구가 선택되었습니다.");
+                        }
+                        catch (Exception columnException)
+                        {
+                            panorama?.Dispose();
+                            panorama = null;
+                            throw new InvalidOperationException(
+                                "공통 경도 Row-first와 보존된 Column-first 정합이 모두 실패했습니다. " +
+                                "잘못 결합된 영상은 저장하지 않습니다.",
+                                new AggregateException(rowFirstException, columnException));
+                        }
                     }
 
                 }
 
-                /*
-                 * 안전 복구 경로:
-                 * Column-first가 장면 특징 부족/OpenCV 예외 등으로 실패한 경우에만
-                 * 기존 Row-first 로직을 그대로 사용한다.
-                 */
                 if (panorama == null ||
                     panorama.Empty())
                 {
-                    panorama =
-                        ComposeLegacyRowFirstPanorama(
-                            frameRows);
+                    throw new InvalidOperationException(
+                        "공통 좌표계 파노라마 결과가 비어 있습니다.");
                 }
 
+#if DEBUG
+                SavePanoramaDebugMat(outputPath, "output", "panorama_before_crop.jpg", panorama);
+#endif
                 BitmapSource result =
                     SaveAndConvert(
                         panorama,
                         outputPath);
+#if DEBUG
+                SavePanoramaDebugMat(outputPath, "output", "panorama_final.jpg", panorama);
+#endif
 
                 ConsoleLogHelper.State(
                     "EO PANORAMA / SAVE",
@@ -303,85 +312,174 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// 같은 Pan index의 Upper/Lower Tilt Frame을 먼저 하나의 세로 Column으로 만든 뒤
-        /// 36개의 Column을 Pan 순서대로 360° 정합한다.
-        /// Column별 독립 Y 보정은 하지 않고 모든 Column에 공통 Geometry만 적용한다.
+        /// 2026-09-09: 제공된 V21 R3의 검증된 2행 기본 경로를 보존한다.
+        /// 같은 Pan의 Upper/Lower를 먼저 합치고 단 하나의 Stitcher 좌표계로 정합한다.
         /// </summary>
-        private static Mat ComposeColumnFirstFullCircle(
+        private static Mat ComposeV21TwoRowColumnFirst(
             IList<Mat> upperFrames,
             IList<Mat> lowerFrames,
             out bool usedFixedAngleFallback)
         {
             usedFixedAngleFallback = false;
-
-            if (upperFrames == null ||
-                lowerFrames == null ||
-                upperFrames.Count != lowerFrames.Count ||
-                upperFrames.Count < 24)
-            {
+            if (upperFrames == null || lowerFrames == null ||
+                upperFrames.Count != lowerFrames.Count || upperFrames.Count < 24)
                 throw new InvalidOperationException(
-                    "Column-first 파노라마에는 동일 개수의 Upper/Lower Pan 프레임이 필요합니다.");
-            }
+                    "V21 2행 파노라마에는 동일 개수의 Upper/Lower 프레임이 필요합니다.");
 
-            int frameCount =
-                upperFrames.Count;
-
-            ValidateColumnPairFrameSizes(
-                upperFrames,
-                lowerFrames);
-
-            int nominalOverlap =
-                Math.Max(
-                    24,
-                    (int)Math.Round(
-                        Math.Min(
-                            upperFrames[0].Height,
-                            lowerFrames[0].Height) *
-                        0.38));
-
-            nominalOverlap =
-                Math.Min(
-                    nominalOverlap,
-                    Math.Min(
-                        upperFrames[0].Height,
-                        lowerFrames[0].Height) - 1);
+            ValidateColumnPairFrameSizes(upperFrames, lowerFrames);
+            int nominalOverlap = Math.Max(24, (int)Math.Round(
+                Math.Min(upperFrames[0].Height, lowerFrames[0].Height) * 0.38));
+            nominalOverlap = Math.Min(nominalOverlap,
+                Math.Min(upperFrames[0].Height, lowerFrames[0].Height) - 1);
 
             int stableOverlap;
             int stableVerticalOffset;
+            EstimateStableColumnPairGeometry(upperFrames, lowerFrames,
+                nominalOverlap, out stableOverlap, out stableVerticalOffset);
 
-            EstimateStableColumnPairGeometry(
-                upperFrames,
-                lowerFrames,
-                nominalOverlap,
-                out stableOverlap,
-                out stableVerticalOffset);
+            List<Mat> columns = new List<Mat>(upperFrames.Count);
+            try
+            {
+                for (int index = 0; index < upperFrames.Count; index++)
+                    columns.Add(MergeTiltPairAtSamePan(
+                        upperFrames[index], lowerFrames[index],
+                        stableOverlap, stableVerticalOffset));
+
+                return StitchMatsWithFallback(
+                    columns, "V21_TWO_ROW_COLUMN_FIRST",
+                    out usedFixedAngleFallback, false);
+            }
+            finally
+            {
+                DisposeAll(columns);
+            }
+        }
+
+        /// <summary>
+        /// 같은 Pan index의 Upper/Lower Tilt Frame을 먼저 하나의 세로 Column으로 만든 뒤
+        /// 36개의 Column을 Pan 순서대로 360° 정합한다.
+        /// Column별 독립 Y 보정은 하지 않고 모든 Column에 공통 Geometry만 적용한다.
+        /// </summary>
+        private static Mat ComposeColumnFirstFullCircle(
+            IList<List<Mat>> frameRows,
+            string outputPath,
+            out bool usedFixedAngleFallback)
+        {
+            usedFixedAngleFallback = false;
+
+            if (frameRows == null ||
+                frameRows.Count < 1 ||
+                frameRows[0] == null ||
+                frameRows[0].Count < 24 ||
+                frameRows.Any(row => row == null || row.Count != frameRows[0].Count))
+            {
+                throw new InvalidOperationException(
+                    "Column-first 파노라마에는 동일 개수의 N-Row Pan 프레임이 필요합니다.");
+            }
+
+            int frameCount =
+                frameRows[0].Count;
+
+            for (int rowIndex = 1; rowIndex < frameRows.Count; rowIndex++)
+            {
+                ValidateColumnPairFrameSizes(frameRows[0], frameRows[rowIndex]);
+            }
+
+            List<int> stableOverlaps = new List<int>(Math.Max(0, frameRows.Count - 1));
+            List<int> stableVerticalOffsets = new List<int>(Math.Max(0, frameRows.Count - 1));
+            List<double> stablePairExposureGains = new List<double>(Math.Max(0, frameRows.Count - 1));
+
+            for (int rowIndex = 0; rowIndex < frameRows.Count - 1; rowIndex++)
+            {
+                IList<Mat> upperFrames = frameRows[rowIndex];
+                IList<Mat> lowerFrames = frameRows[rowIndex + 1];
+                int nominalOverlap = CalculateNominalVerticalOverlap(
+                    Math.Min(upperFrames[0].Height, lowerFrames[0].Height),
+                    frameRows.Count);
+                nominalOverlap = Math.Min(
+                    nominalOverlap,
+                    Math.Min(upperFrames[0].Height, lowerFrames[0].Height) - 1);
+
+                int stableOverlap;
+                int stableVerticalOffset;
+                EstimateStableColumnPairGeometry(
+                    upperFrames,
+                    lowerFrames,
+                    nominalOverlap,
+                    out stableOverlap,
+                    out stableVerticalOffset);
+                stableOverlaps.Add(stableOverlap);
+                stableVerticalOffsets.Add(stableVerticalOffset);
+                stablePairExposureGains.Add(EstimateStableRowExposureGain(
+                    upperFrames, lowerFrames, stableOverlap));
+#if DEBUG
+                SavePanoramaDebugGeometry(outputPath, rowIndex, nominalOverlap,
+                    stableOverlap, stableVerticalOffset);
+#endif
+
+                ConsoleLogHelper.State(
+                    "EO PANORAMA / COLUMN",
+                    "Shared adjacent-row geometry estimated" +
+                    " / ROW_PAIR=" + (rowIndex + 1) + "-" + (rowIndex + 2) +
+                    " / COLUMNS=" + frameCount +
+                    " / NOMINAL_OVERLAP=" + nominalOverlap +
+                    " / STABLE_OVERLAP=" + stableOverlap +
+                    " / GLOBAL_Y_OFFSET_PX=" + stableVerticalOffset +
+                    " / LOCAL_WARP=DISABLED");
+            }
+
+            Mat[] columns = new Mat[frameCount];
+            double[] rowExposureGains = BuildCenterAnchoredRowGains(
+                stablePairExposureGains, frameRows.Count);
 
             ConsoleLogHelper.State(
-                "EO PANORAMA / COLUMN",
-                "Shared Upper/Lower geometry estimated" +
-                " / COLUMNS=" + frameCount +
-                " / NOMINAL_OVERLAP=" + nominalOverlap +
-                " / STABLE_OVERLAP=" + stableOverlap +
-                " / GLOBAL_Y_OFFSET_PX=" + stableVerticalOffset +
-                " / LOCAL_WARP=DISABLED");
-
-            List<Mat> columns =
-                new List<Mat>(frameCount);
+                "EO PANORAMA / EXPOSURE",
+                "Global center-anchored row gains / VALUES=[" +
+                string.Join(", ", rowExposureGains.Select(gain => gain.ToString("F3"))) + "]");
 
             try
             {
-                for (int index = 0;
-                     index < frameCount;
-                     index++)
+                // 독립 Pan column을 2개씩 병렬 처리해 144/180장 처리시간을 제한한다.
+                System.Threading.Tasks.Parallel.For(0, frameCount,
+                    new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 2 },
+                    index =>
                 {
-                    Mat column =
-                        MergeTiltPairAtSamePan(
-                            upperFrames[index],
-                            lowerFrames[index],
-                            stableOverlap,
-                            stableVerticalOffset);
+                    List<Mat> normalizedRows = frameRows
+                        .Select(row => row[index].Clone())
+                        .ToList();
+                    for (int rowIndex = 0; rowIndex < normalizedRows.Count; rowIndex++)
+                        ApplyUniformExposureGain(normalizedRows[rowIndex], rowExposureGains[rowIndex]);
 
-                    columns.Add(column);
+                    Mat column = normalizedRows[0].Clone();
+
+                    try
+                    {
+                        for (int rowIndex = 1; rowIndex < frameRows.Count; rowIndex++)
+                        {
+                            Mat combined = MergeTiltRowIntoColumn(
+                                column,
+                                normalizedRows[rowIndex],
+                                stableOverlaps[rowIndex - 1],
+                                stableVerticalOffsets[rowIndex - 1]);
+                            column.Dispose();
+                            column = combined;
+                        }
+
+                        columns[index] = column;
+#if DEBUG
+                        if (index == 0 || index == 9 || index == 18 || index == 27)
+                        {
+                            SavePanoramaDebugMat(outputPath, "columns",
+                                "column_" + index.ToString("D2") + ".jpg", column);
+                        }
+#endif
+                        column = null;
+                    }
+                    finally
+                    {
+                        column?.Dispose();
+                        DisposeAll(normalizedRows);
+                    }
 
                     if (index == 0 ||
                         index == frameCount - 1 ||
@@ -389,23 +487,28 @@ namespace OpenCvWpfTracking.Services.Video
                     {
                         ConsoleLogHelper.State(
                             "EO PANORAMA / COLUMN",
-                            "Tilt pair merged" +
+                            "Tilt column merged" +
                             " / INDEX=" + index +
+                            " / ROWS=" + frameRows.Count +
                             " / PAN_STEP_INDEX=" + index +
-                            " / RESULT=" + column.Width + "x" + column.Height);
+                            " / RESULT=" + columns[index].Width + "x" +
+                            columns[index].Height);
                     }
 
-                }
+                });
 
-                /*
-                 * 모든 Column은 같은 Pan 순서의 10° 촬영 결과다.
-                 * 기존 행별 Stitch와 동일한 24장 핵심 프레임 선택/정합/Fallback을 재사용한다.
-                 */
-                Mat panorama =
-                    StitchMatsWithFallback(
-                        columns,
-                        "COLUMN_FIRST",
-                        out usedFixedAngleFallback);
+                Stopwatch horizontalStopwatch = Stopwatch.StartNew();
+                Mat panorama = StitchMatsWithFallback(
+                    columns,
+                    "SHARED_GLOBAL_COLUMN_" + frameRows.Count + "ROW",
+                    out usedFixedAngleFallback,
+                    false);
+                horizontalStopwatch.Stop();
+                ConsoleLogHelper.State(
+                    "EO PANORAMA / PERFORMANCE",
+                    "Shared-global multi-row feature composition completed" +
+                    " / COLUMNS=" + columns.Length +
+                    " / ELAPSED_MS=" + horizontalStopwatch.ElapsedMilliseconds);
 
                 return panorama;
             }
@@ -414,6 +517,47 @@ namespace OpenCvWpfTracking.Services.Video
                 DisposeAll(columns);
             }
 
+        }
+
+        private static int CalculateNominalVerticalOverlap(int frameHeight, int rowCount)
+        {
+            // 2 Row는 현장 검증된 기존 38% Geometry를 그대로 보존한다.
+            if (rowCount <= 2) return Math.Max(24, (int)Math.Round(frameHeight * 0.38));
+
+            double tiltStepDegrees = rowCount * 12.0 / (rowCount - 1);
+            double overlapRatio = (LegacyVerticalAovDegrees - tiltStepDegrees) /
+                                  LegacyVerticalAovDegrees;
+            overlapRatio = Math.Max(0.45, Math.Min(0.72, overlapRatio));
+            return Math.Max(24, (int)Math.Round(frameHeight * overlapRatio));
+        }
+
+        private static Mat MergeTiltRowIntoColumn(
+            Mat accumulatedUpper,
+            Mat nextRow,
+            int overlap,
+            int verticalOffset)
+        {
+            if (accumulatedUpper == null || nextRow == null ||
+                accumulatedUpper.Empty() || nextRow.Empty() ||
+                accumulatedUpper.Width != nextRow.Width ||
+                accumulatedUpper.Type() != nextRow.Type())
+            {
+                throw new InvalidOperationException(
+                    "N-Row Column-first 입력 Frame의 크기 또는 형식이 올바르지 않습니다.");
+            }
+
+            int safeOverlap = Math.Max(
+                24,
+                Math.Min(overlap, Math.Min(accumulatedUpper.Height, nextRow.Height) - 1));
+
+            using (Mat shiftedNext = ShiftRowVertically(nextRow, verticalOffset))
+            {
+                // 각 원본 Row는 Center Anchor 기준으로 이미 한 번만 정규화되었다.
+                return MergeRowsOnAdaptiveHorizontalSeam(
+                    accumulatedUpper,
+                    shiftedNext,
+                    safeOverlap);
+            }
         }
 
         /// <summary>
@@ -457,7 +601,7 @@ namespace OpenCvWpfTracking.Services.Video
 
             }
 
-            if (overlapSamples.Count == 0)
+            if (overlapSamples.Count < 3)
             {
                 stableOverlap =
                     nominalOverlap;
@@ -493,7 +637,7 @@ namespace OpenCvWpfTracking.Services.Video
 
             }
 
-            if (offsetSamples.Count == 0)
+            if (offsetSamples.Count < 3)
             {
                 stableVerticalOffset =
                     0;
@@ -511,6 +655,16 @@ namespace OpenCvWpfTracking.Services.Video
                     Math.Min(
                         8,
                         stableVerticalOffset));
+
+            double confidence = Math.Min(overlapSamples.Count, offsetSamples.Count) /
+                                (double)Math.Max(1, (upperFrames.Count + sampleStep - 1) / sampleStep);
+            ConsoleLogHelper.State(
+                "EO PANORAMA / ROW GEOMETRY",
+                "VALID_SAMPLES=" + Math.Min(overlapSamples.Count, offsetSamples.Count) +
+                " / OVERLAP=" + stableOverlap +
+                " / Y_OFFSET=" + stableVerticalOffset +
+                " / CONFIDENCE=" + confidence.ToString("F2") +
+                " / FALLBACK=" + (overlapSamples.Count < 3 || offsetSamples.Count < 3));
         }
 
         /// <summary>
@@ -610,82 +764,142 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// 기존 Upper 360 + Lower 360을 마지막에 합치는 Row-first 로직.
-        /// Column-first 실패 시 안전 복구용으로 그대로 유지한다.
+        /// 모든 행에 동일한 10도당 픽셀 폭과 동일한 시작 경도를 적용한다.
+        /// 행마다 독립 Stitcher가 폭/배율을 바꾸지 않으므로 과거 Row-first의
+        /// 수평 띠와 경도 불일치를 막고, Column-first의 선행 구조물 절단도 피한다.
         /// </summary>
-        private static Mat ComposeLegacyRowFirstPanorama(
-            IList<List<Mat>> frameRows)
+        private static Mat ComposeSharedLongitudeRowFirstPanorama(
+            IList<List<Mat>> frameRows,
+            string outputPath)
         {
-            List<Mat> stitchedRows =
-                new List<Mat>();
+            if (frameRows == null || frameRows.Count < 2 ||
+                frameRows.Any(row => row == null || row.Count != frameRows[0].Count || row.Count < 24))
+                throw new InvalidOperationException(
+                    "공통 경도 Row-first에는 동일 개수의 10도 간격 프레임이 필요합니다.");
 
+            List<int> contributionCandidates = frameRows
+                .Select((row, index) => EstimateFixedAngleContributionWidth(
+                    row, "SHARED_ROW_GEOMETRY=" + (index + 1)))
+                .OrderBy(value => value)
+                .ToList();
+            int sharedContributionWidth = contributionCandidates[contributionCandidates.Count / 2];
+            int centerRowIndex = (frameRows.Count - 1) / 2;
+            double[] sharedPanGains = EstimateCyclicExposureGains(
+                frameRows[centerRowIndex], sharedContributionWidth, sharedContributionWidth);
+            List<double> pairRowGains = new List<double>(frameRows.Count - 1);
+            List<int> sharedVerticalOverlaps = new List<int>(frameRows.Count - 1);
+            List<int> sharedVerticalOffsets = new List<int>(frameRows.Count - 1);
+            int exposureOverlap = CalculateNominalVerticalOverlap(
+                frameRows[0][0].Height, frameRows.Count);
+            for (int rowIndex = 0; rowIndex < frameRows.Count - 1; rowIndex++)
+            {
+                int stableOverlap;
+                int stableOffset;
+                EstimateStableColumnPairGeometry(
+                    frameRows[rowIndex], frameRows[rowIndex + 1], exposureOverlap,
+                    out stableOverlap, out stableOffset);
+                sharedVerticalOverlaps.Add(stableOverlap);
+                sharedVerticalOffsets.Add(stableOffset);
+                pairRowGains.Add(EstimateStableRowExposureGain(
+                    frameRows[rowIndex], frameRows[rowIndex + 1], stableOverlap));
+            }
+            double[] sharedRowGains = BuildCenterAnchoredRowGains(
+                pairRowGains, frameRows.Count);
+            Mat[] stitchedRows = new Mat[frameRows.Count];
+            Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
-                bool useFixedAngleForAllRows =
-                    false;
-
-                for (int rowIndex = 0;
-                     rowIndex < frameRows.Count;
-                     rowIndex++)
-                {
-                    ConsoleLogHelper.Info(
-                        "EO PANORAMA / STITCH",
-                        "Legacy horizontal row stitching started / ROW=" +
-                        (rowIndex + 1) +
-                        " / FRAMES=" + frameRows[rowIndex].Count);
-
-                    bool rowUsedFixedAngleFallback;
-
-                    stitchedRows.Add(
-                        StitchMatsWithFallback(
-                            frameRows[rowIndex],
-                            "ROW=" + (rowIndex + 1),
-                            out rowUsedFixedAngleFallback));
-
-                    useFixedAngleForAllRows |=
-                        rowUsedFixedAngleFallback;
-                }
-
-                if (useFixedAngleForAllRows)
-                {
-                    DisposeAll(stitchedRows);
-                    stitchedRows.Clear();
-
-                    ConsoleLogHelper.Warning(
-                        "EO PANORAMA / FALLBACK",
-                        "Legacy row-first: at least one row required fixed-angle recovery; " +
-                        "all rows are rebuilt with identical 10-degree geometry");
-
-                    for (int rowIndex = 0;
-                         rowIndex < frameRows.Count;
-                         rowIndex++)
+                System.Threading.Tasks.Parallel.For(0, frameRows.Count,
+                    new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 2 },
+                    rowIndex =>
                     {
-                        stitchedRows.Add(
-                            ComposeFixedAngleFullCircle(
-                                frameRows[rowIndex],
-                                "ROW=" + (rowIndex + 1),
-                                "ROW_GEOMETRY_NORMALIZATION"));
-                    }
+                        stitchedRows[rowIndex] = ComposeFixedAngleFullCircle(
+                            frameRows[rowIndex],
+                            "SHARED_ROW_FIRST=" + (rowIndex + 1),
+                            "COMMON_10_DEGREE_GEOMETRY",
+                            sharedContributionWidth,
+                            sharedPanGains,
+                            sharedRowGains[rowIndex]);
+                    });
 
-                }
+                if (stitchedRows.Any(row => row == null || row.Empty()) ||
+                    stitchedRows.Any(row => row.Width != stitchedRows[0].Width))
+                    throw new InvalidOperationException(
+                        "행별 360도 결과가 동일한 공통 경도 폭을 유지하지 못했습니다.");
 
-                Mat result =
-                    BlendRowsVertically(
-                        stitchedRows,
-                        useFixedAngleForAllRows);
-
+                Mat result = MergeSharedLongitudeRows(
+                    stitchedRows, sharedVerticalOverlaps, sharedVerticalOffsets);
+                ValidateFullCircleRow(result, frameRows[0],
+                    "SHARED_LONGITUDE_ROW_FIRST_" + frameRows.Count + "ROW");
+                stopwatch.Stop();
                 ConsoleLogHelper.State(
-                    "EO PANORAMA / SEAM",
-                    "Legacy row-first merge completed" +
-                    " / RESULT=" + result.Width + "x" + result.Height);
-
+                    "EO PANORAMA / PERFORMANCE",
+                    "Shared-longitude Row-first composition completed" +
+                    " / ROWS=" + frameRows.Count +
+                    " / FRAMES=" + frameRows.Sum(row => row.Count) +
+                    " / COMMON_CONTRIBUTION_PX=" + sharedContributionWidth +
+                    " / CANDIDATES=[" + string.Join(",", contributionCandidates) + "]" +
+                    " / ROW_GAINS=[" + string.Join(",",
+                        sharedRowGains.Select(value => value.ToString("F3"))) + "]" +
+                    " / OVERLAPS=[" + string.Join(",", sharedVerticalOverlaps) + "]" +
+                    " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds);
+#if DEBUG
+                SavePanoramaDebugMat(outputPath, "row_first", "shared_row_first.jpg", result);
+#endif
                 return result;
             }
             finally
             {
                 DisposeAll(stitchedRows);
             }
+        }
 
+        /// <summary>
+        /// 단일 행도 36개 입력 전체와 명시적인 10도 경도를 사용한다.
+        /// </summary>
+        private static Mat ComposeSharedLongitudeSingleRow(IList<Mat> frames)
+        {
+            int contributionWidth = EstimateFixedAngleContributionWidth(
+                frames, "SHARED_SINGLE_ROW_GEOMETRY");
+            return ComposeFixedAngleFullCircle(frames, "SHARED_SINGLE_ROW",
+                "EXPLICIT_10_DEGREE_GEOMETRY", contributionWidth);
+        }
+
+        private static Mat MergeSharedLongitudeRows(
+            IList<Mat> rows,
+            IList<int> overlaps,
+            IList<int> verticalOffsets)
+        {
+            if (rows == null || rows.Count < 2 ||
+                overlaps == null || overlaps.Count != rows.Count - 1 ||
+                verticalOffsets == null || verticalOffsets.Count != rows.Count - 1 ||
+                rows.Any(row => row == null || row.Empty() || row.Width != rows[0].Width))
+                throw new InvalidOperationException(
+                    "공통 경도 세로 결합 입력 또는 원본 기반 Geometry가 올바르지 않습니다.");
+
+            Mat result = rows[0].Clone();
+            try
+            {
+                for (int rowIndex = 1; rowIndex < rows.Count; rowIndex++)
+                {
+                    int overlap = Math.Max(24, Math.Min(overlaps[rowIndex - 1],
+                        Math.Min(result.Height, rows[rowIndex].Height) - 1));
+                    using (Mat alignedNext = ShiftRowVertically(
+                        rows[rowIndex], verticalOffsets[rowIndex - 1]))
+                    {
+                        Mat combined = MergeRowsOnAdaptiveHorizontalSeam(
+                            result, alignedNext, overlap);
+                        result.Dispose();
+                        result = combined;
+                    }
+                }
+
+                return result.Clone();
+            }
+            finally
+            {
+                result.Dispose();
+            }
         }
 
         /// <summary>
@@ -694,7 +908,8 @@ namespace OpenCvWpfTracking.Services.Video
         private static Mat StitchMatsWithFallback(
             IList<Mat> frames,
             string stage,
-            out bool usedFixedAngleFallback)
+            out bool usedFixedAngleFallback,
+            bool allowFixedAngleFallback = true)
         {
             usedFixedAngleFallback = false;
 
@@ -733,6 +948,11 @@ namespace OpenCvWpfTracking.Services.Video
                 when (stitchException is OpenCVException ||
                       stitchException is InvalidOperationException)
                 {
+                    if (!allowFixedAngleFallback)
+                        throw new InvalidOperationException(
+                            stage + " 특징점 파노라마 정합 중 예외가 발생했습니다.",
+                            stitchException);
+
                     ConsoleLogHelper.Warning(
                         "EO PANORAMA / STITCH",
                         stage + " / Panorama pipeline exception; " +
@@ -765,6 +985,10 @@ namespace OpenCvWpfTracking.Services.Video
                 if (panoramaStatus != Stitcher.Status.OK ||
                     panorama.Empty())
                 {
+                    if (!allowFixedAngleFallback)
+                        throw new InvalidOperationException(
+                            stage + " 특징점 파노라마 정합 실패: " + panoramaStatus);
+
                     ConsoleLogHelper.Warning(
                         "EO PANORAMA / STITCH",
                         stage + " / 360-degree Panorama mode failed; " +
@@ -799,6 +1023,9 @@ namespace OpenCvWpfTracking.Services.Video
                     }
                     catch (InvalidOperationException validationException)
                     {
+                        if (!allowFixedAngleFallback)
+                            throw;
+
                         ConsoleLogHelper.Warning(
                             "EO PANORAMA / STITCH",
                             stage + " / Feature panorama coverage rejected; " +
@@ -883,6 +1110,27 @@ namespace OpenCvWpfTracking.Services.Video
             string stage,
             string reason)
         {
+            return ComposeFixedAngleFullCircle(frames, stage, reason, 0);
+        }
+
+        private static Mat ComposeFixedAngleFullCircle(
+            IList<Mat> frames,
+            string stage,
+            string reason,
+            int forcedContributionWidth)
+        {
+            return ComposeFixedAngleFullCircle(
+                frames, stage, reason, forcedContributionWidth, null, 1.0);
+        }
+
+        private static Mat ComposeFixedAngleFullCircle(
+            IList<Mat> frames,
+            string stage,
+            string reason,
+            int forcedContributionWidth,
+            double[] sharedPanGains,
+            double rowGain)
+        {
             if (frames == null || frames.Count < 24)
             {
                 throw new InvalidOperationException(
@@ -890,17 +1138,29 @@ namespace OpenCvWpfTracking.Services.Video
             }
 
             Mat reference = frames[0];
-            int contributionWidth =
-                EstimateFixedAngleContributionWidth(
-                    frames,
-                    stage);
+            int maximumContributionWidth = Math.Max(24, (reference.Width - 2) / 3);
+            int contributionWidth = forcedContributionWidth > 0
+                ? Math.Max(24, Math.Min(maximumContributionWidth, forcedContributionWidth))
+                : EstimateFixedAngleContributionWidth(frames, stage);
 
-            int blendWidth =
-                Math.Max(
-                    48,
-                    Math.Min(
-                        160,
-                        contributionWidth / 2));
+            // 2026-09-08: 출력 Pan strip 전체를 실제 좌/우 overlap으로 합성한다.
+            // 일부 경계만 blend하고 중앙 strip을 그대로 복사할 때 생긴 사각형을 제거한다.
+            int blendWidth = contributionWidth;
+
+            double[] cyclicExposureGains =
+                sharedPanGains != null && sharedPanGains.Length == frames.Count
+                    ? sharedPanGains
+                    : EstimateCyclicExposureGains(frames, contributionWidth, blendWidth);
+            List<Mat> normalizedFrames = frames.Select(frame => frame.Clone()).ToList();
+            for (int index = 0; index < normalizedFrames.Count; index++)
+                ApplyUniformExposureGain(normalizedFrames[index], Math.Max(0.70,
+                    Math.Min(1.35, cyclicExposureGains[index] * rowGain)));
+            reference = normalizedFrames[0];
+
+            ConsoleLogHelper.State(
+                "EO PANORAMA / EXPOSURE",
+                stage + " / Cyclic Pan gains / VALUES=[" +
+                string.Join(", ", cyclicExposureGains.Select(gain => gain.ToString("F3"))) + "]");
 
             int outputWidth =
                 contributionWidth * frames.Count;
@@ -918,7 +1178,7 @@ namespace OpenCvWpfTracking.Services.Video
                      index < frames.Count;
                      index++)
                 {
-                    Mat frame = frames[index];
+                    Mat frame = normalizedFrames[index];
 
                     if (frame.Width != reference.Width ||
                         frame.Height != reference.Height ||
@@ -958,8 +1218,8 @@ namespace OpenCvWpfTracking.Services.Video
                     int previousIndex =
                         (currentIndex - 1 + frames.Count) % frames.Count;
 
-                    Mat previousFrame = frames[previousIndex];
-                    Mat currentFrame = frames[currentIndex];
+                    Mat previousFrame = normalizedFrames[previousIndex];
+                    Mat currentFrame = normalizedFrames[currentIndex];
                     int centerX = reference.Width / 2;
                     int previousStart =
                         centerX + contributionWidth / 2;
@@ -1011,8 +1271,63 @@ namespace OpenCvWpfTracking.Services.Video
             finally
             {
                 result.Dispose();
+                DisposeAll(normalizedFrames);
             }
 
+        }
+
+        // 2026-09-08: 동일 장면인 인접 Pan overlap만 비교하여 실제 장면의 명암은
+        // 보존하고 프레임별 자동노출 차이만 원형(cyclic) 최소 드리프트로 보정한다.
+        private static double[] EstimateCyclicExposureGains(
+            IList<Mat> frames, int contributionWidth, int blendWidth)
+        {
+            int count = frames.Count;
+            double[] transitions = new double[count];
+            int centerX = frames[0].Width / 2;
+            int previousStart = centerX + contributionWidth / 2;
+            int currentStart = centerX - contributionWidth / 2;
+            int sampleWidth = Math.Max(8, Math.Min(blendWidth, frames[0].Width - previousStart));
+
+            for (int current = 0; current < count; current++)
+            {
+                int previous = (current - 1 + count) % count;
+                using (Mat previousRoi = new Mat(frames[previous],
+                    new Rect(previousStart, 0, sampleWidth, frames[previous].Height)))
+                using (Mat currentRoi = new Mat(frames[current],
+                    new Rect(currentStart, 0, sampleWidth, frames[current].Height)))
+                using (Mat previousGray = new Mat())
+                using (Mat currentGray = new Mat())
+                {
+                    Cv2.CvtColor(previousRoi, previousGray, ColorConversionCodes.BGR2GRAY);
+                    Cv2.CvtColor(currentRoi, currentGray, ColorConversionCodes.BGR2GRAY);
+                    double previousMean = Math.Max(12.0, Cv2.Mean(previousGray).Val0);
+                    double currentMean = Math.Max(12.0, Cv2.Mean(currentGray).Val0);
+                    transitions[current] = Math.Log(Math.Max(0.88,
+                        Math.Min(1.14, previousMean / currentMean)));
+                }
+            }
+
+            double[] logGains = new double[count];
+            for (int index = 1; index < count; index++)
+                logGains[index] = logGains[index - 1] + transitions[index];
+
+            double closureError = logGains[count - 1] + transitions[0];
+            for (int index = 0; index < count; index++)
+                logGains[index] -= closureError * index / count;
+
+            // 장면 내용 차이로 발생한 단일 Pan 보정 급변은 원형 저역통과로 억제한다.
+            for (int pass = 0; pass < 2; pass++)
+            {
+                double[] smoothed = new double[count];
+                for (int index = 0; index < count; index++)
+                    smoothed[index] = (logGains[(index - 1 + count) % count] +
+                        2.0 * logGains[index] + logGains[(index + 1) % count]) / 4.0;
+                logGains = smoothed;
+            }
+            double meanLog = logGains.Average();
+
+            return logGains.Select(value => Math.Max(0.78,
+                Math.Min(1.28, Math.Exp(value - meanLog)))).ToArray();
         }
 
         /// <summary>
@@ -1173,63 +1488,31 @@ namespace OpenCvWpfTracking.Services.Video
             Mat previous,
             Mat current)
         {
-            const int FeatherRadius = 1;
-
             int[] seam =
                 FindLowCostVerticalSeam(
                     previous,
                     current);
 
-            float[] previousWeights =
-                new float[previous.Height * previous.Width];
-            float[] currentWeights =
-                new float[previous.Height * previous.Width];
-
-            for (int y = 0; y < previous.Height; y++)
+            // 2026-09-09: 수직 Pan 경계만 더 깊은 피라미드로 혼합한다.
+            // 고주파 구조(난간/건물)는 seam 가까이에서 전환하고, 저주파 밝기/감마는
+            // 더 넓게 완화하여 확대 시 보이는 직사각형 프레임 경계를 줄인다.
+            using (Mat previousTransposed = new Mat())
+            using (Mat currentTransposed = new Mat())
+            using (Mat blendedTransposed = new Mat())
             {
-                for (int x = 0; x < previous.Width; x++)
+                Cv2.Transpose(previous, previousTransposed);
+                Cv2.Transpose(current, currentTransposed);
+                using (Mat multiBand = BlendRowsMultiBand(
+                    previousTransposed,
+                    currentTransposed,
+                    seam,
+                    6,
+                    16))
                 {
-                    int index = y * previous.Width + x;
-                    double currentWeight =
-                        (x - (seam[y] - FeatherRadius)) /
-                        (double)(FeatherRadius * 2);
-
-                    currentWeight =
-                        Math.Max(
-                            0.0,
-                            Math.Min(
-                                1.0,
-                                currentWeight));
-
-                    currentWeights[index] = (float)currentWeight;
-                    previousWeights[index] = (float)(1.0 - currentWeight);
+                    Cv2.Transpose(multiBand, blendedTransposed);
+                    return blendedTransposed.Clone();
                 }
-
             }
-
-            using (Mat previousWeightMat = new Mat(
-                previous.Height,
-                previous.Width,
-                MatType.CV_32FC1))
-            using (Mat currentWeightMat = new Mat(
-                previous.Height,
-                previous.Width,
-                MatType.CV_32FC1))
-            {
-                previousWeightMat.SetArray(previousWeights);
-                currentWeightMat.SetArray(currentWeights);
-
-                Mat blended = new Mat();
-                Cv2.BlendLinear(
-                    previous,
-                    current,
-                    previousWeightMat,
-                    currentWeightMat,
-                    blended);
-
-                return blended;
-            }
-
         }
 
         /// <summary>
@@ -1272,7 +1555,7 @@ namespace OpenCvWpfTracking.Services.Video
 
                 using (Mat kernel = Cv2.GetStructuringElement(
                     MorphShapes.Rect,
-                    new Size(7, 7)))
+                    new Size(9, 9)))
                 {
                     Cv2.Dilate(previousEdges, previousEdges, kernel);
                     Cv2.Dilate(currentEdges, currentEdges, kernel);
@@ -1283,7 +1566,7 @@ namespace OpenCvWpfTracking.Services.Video
                     grayDifference,
                     1.0,
                     combinedEdges,
-                    1.35,
+                    1.75,
                     0.0,
                     grayDifference);
 
@@ -1300,7 +1583,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     previousRow[x] =
                         costs[x] +
-                        Math.Abs(x - width / 2) / 2;
+                        Math.Abs(x - width / 2) / 16;
                 }
 
                 for (int y = 1; y < height; y++)
@@ -1327,7 +1610,7 @@ namespace OpenCvWpfTracking.Services.Video
                         currentRow[x] =
                             bestCost +
                             costs[y * width + x] +
-                            Math.Abs(x - width / 2) / 2;
+                            Math.Abs(x - width / 2) / 16;
 
                         parentDirections[y * width + x] =
                             (sbyte)(bestPreviousX - x);
@@ -1376,19 +1659,59 @@ namespace OpenCvWpfTracking.Services.Video
                     ? 0
                     : sourceFrames[0].Width;
 
+            int sourceHeight =
+                sourceFrames.Count == 0
+                    ? 0
+                    : sourceFrames[0].Height;
+
             double aspectRatio =
                 panorama.Height <= 0
                     ? 0.0
                     : panorama.Width / (double)panorama.Height;
 
+            // 2026-09-09: 3~5행은 세로 화각 증가로 결과 높이가 커지므로
+            // Width/Height를 수평 360° 범위 판정에 사용하지 않는다.
+            // OpenCV STATUS=OK 이후 최소 수평 폭은 계속 엄격하게 검사한다.
+            bool isSharedLongitudeRowFirst =
+                !string.IsNullOrWhiteSpace(stage) &&
+                stage.IndexOf("SHARED_LONGITUDE_ROW_FIRST_", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool hasVariableMultiRowHeight =
+                !string.IsNullOrWhiteSpace(stage) &&
+                (isSharedLongitudeRowFirst ||
+                 stage.IndexOf("_3ROW", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 stage.IndexOf("_4ROW", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 stage.IndexOf("_5ROW", StringComparison.OrdinalIgnoreCase) >= 0);
+
+            /*
+             * 2026-09-09: CompositingResol은 전체 합성 픽셀 예산을 제한하므로
+             * 3→4→5행으로 Column 높이가 증가하면 정상 360° 결과의 폭은
+             * 높이 비율의 제곱근에 반비례해 감소한다.
+             *
+             * 실제 측정:
+             * 3행 Column 1920x2078 → Panorama 3377x610
+             * 4행 Column 1920x2523 → Panorama 3077x652
+             *
+             * 따라서 고정 폭이나 행별 magic number 대신 sqrt(W/H)로 기준을
+             * 연속 보정한다. 2400px 절대 하한은 부분 파노라마 저장을 막는다.
+             */
+            double multiRowWidthScale =
+                hasVariableMultiRowHeight && sourceHeight > 0
+                    ? Math.Sqrt(sourceWidth / (double)sourceHeight)
+                    : 1.0;
+
             int minimumWidth =
                 Math.Max(
-                    3000,
-                    (int)Math.Round(sourceWidth * 1.8));
+                    hasVariableMultiRowHeight ? 2400 : 3000,
+                    (int)Math.Round(
+                        sourceWidth * 1.75 * multiRowWidthScale));
+
+            bool aspectRatioPassed =
+                hasVariableMultiRowHeight ||
+                aspectRatio >= 5.5;
 
             bool isFullCircle =
                 panorama.Width >= minimumWidth &&
-                aspectRatio >= 5.5;
+                aspectRatioPassed;
 
             double legacyExpectedWidth =
                 sourceWidth /
@@ -1406,6 +1729,10 @@ namespace OpenCvWpfTracking.Services.Video
                 stage + " / Full-circle coverage validation" +
                 " / RESULT=" + panorama.Width + "x" + panorama.Height +
                 " / ASPECT=" + aspectRatio.ToString("F2") +
+                " / ASPECT_GATE=" +
+                (hasVariableMultiRowHeight ? "INFORMATIONAL_MULTIROW" : "MIN_5.5") +
+                " / SOURCE_COLUMN=" + sourceWidth + "x" + sourceHeight +
+                " / WIDTH_SCALE=" + multiRowWidthScale.ToString("F3") +
                 " / MIN_WIDTH=" + minimumWidth +
                 " / PASS=" + isFullCircle);
 
@@ -1415,238 +1742,6 @@ namespace OpenCvWpfTracking.Services.Video
                     "360도 전체 범위를 충족하지 못한 부분 파노라마가 생성되어 " +
                     "저장을 중단했습니다. (" + stage +
                     ", 결과 " + panorama.Width + "x" + panorama.Height + ")");
-            }
-
-        }
-
-        /// <summary>
-        /// BlendRowsVertically 동작 수행 함수.
-        /// </summary>
-        private static Mat BlendRowsVertically(
-            IList<Mat> rows,
-            bool preserveFixedAngleFullCircle)
-        {
-            int targetWidth =
-                rows.Min(row => row.Width);
-
-            List<Mat> normalizedRows =
-                new List<Mat>();
-
-            try
-            {
-                foreach (Mat row in rows)
-                {
-                    double scale =
-                        targetWidth /
-                        (double)row.Width;
-
-                    Mat resized =
-                        new Mat();
-
-                    Cv2.Resize(
-                        row,
-                        resized,
-                        new Size(
-                            targetWidth,
-                            Math.Max(
-                                1,
-                                (int)Math.Round(row.Height * scale))),
-                        0,
-                        0,
-                        InterpolationFlags.Area);
-
-                    normalizedRows.Add(resized);
-                }
-
-                Mat result =
-                    normalizedRows[0].Clone();
-
-                for (int rowIndex = 1;
-                     rowIndex < normalizedRows.Count;
-                     rowIndex++)
-                {
-                    Mat next =
-                        normalizedRows[rowIndex];
-
-                    int nominalOverlap =
-                        Math.Max(
-                            24,
-                            (int)Math.Round(
-                                Math.Min(result.Height, next.Height) *
-                                0.38));
-
-                    nominalOverlap =
-                        Math.Min(
-                            nominalOverlap,
-                            Math.Min(result.Height, next.Height) - 1);
-
-                    int shift =
-                        preserveFixedAngleFullCircle
-                            ? 0
-                            : EstimateCyclicHorizontalShift(
-                                result,
-                                next,
-                                nominalOverlap);
-
-                    Mat alignedUpper = null;
-                    Mat alignedNext = null;
-
-                    try
-                    {
-                        AlignRowsWithoutWrapSeam(
-                            result,
-                            next,
-                            shift,
-                            out alignedUpper,
-                            out alignedNext);
-
-                        int overlap =
-                            EstimateVerticalRowOverlap(
-                                alignedUpper,
-                                alignedNext,
-                                nominalOverlap);
-
-                        /*
-                         * 근거리 난간은 상/하 Tilt에서 시차가 커서 넓게 blend하면
-                         * 두 겹으로 보인다. 영상 전체를 warp하지 않고 lower row에
-                         * 단 하나의 Y offset만 적용한다.
-                         */
-                        int verticalOffset =
-                            EstimateGlobalVerticalOffset(
-                                alignedUpper,
-                                alignedNext,
-                                overlap);
-
-                        using (Mat verticallyAlignedNext =
-                            ShiftRowVertically(
-                                alignedNext,
-                                verticalOffset))
-                        {
-                            ApplyRowExposureGain(
-                                alignedUpper,
-                                verticallyAlignedNext,
-                                overlap);
-
-                            ConsoleLogHelper.State(
-                                "EO PANORAMA / SEAM",
-                                "Rows aligned / LOWER_ROW=" + (rowIndex + 1) +
-                                " / NOMINAL_OVERLAP=" + nominalOverlap +
-                                " / ESTIMATED_OVERLAP=" + overlap +
-                                " / HORIZONTAL_SHIFT_PX=" + shift +
-                                " / VERTICAL_OFFSET_PX=" + verticalOffset +
-                                " / COMMON_WIDTH=" + alignedUpper.Width +
-                                " / WRAP_SEAM=REMOVED" +
-                                " / FIXED_ANGLE_FULL_CIRCLE=" +
-                                preserveFixedAngleFullCircle);
-
-                            Mat combined =
-                                MergeRowsOnAdaptiveHorizontalSeam(
-                                    alignedUpper,
-                                    verticallyAlignedNext,
-                                    overlap);
-
-                            result.Dispose();
-                            result = combined;
-                        }
-
-                    }
-                    finally
-                    {
-                        alignedUpper?.Dispose();
-                        alignedNext?.Dispose();
-                    }
-
-                }
-
-                return result;
-            }
-            finally
-            {
-                DisposeAll(normalizedRows);
-            }
-
-        }
-
-        /// <summary>
-        /// 두 360° 행의 시작 seam 위치 차이를 순환 이동으로 보정한다.
-        /// 전체 해상도에서 비교하지 않고 축소된 겹침 영역의 평균 절대 오차를
-        /// 사용하므로 큰 파노라마에서도 메모리와 처리 시간을 제한한다.
-        /// </summary>
-        private static int EstimateCyclicHorizontalShift(
-            Mat upper,
-            Mat lower,
-            int overlap)
-        {
-            const int AnalysisWidth = 720;
-            const int AnalysisHeight = 96;
-
-            using (Mat upperOverlap = new Mat(
-                upper,
-                new Rect(0, upper.Height - overlap, upper.Width, overlap)))
-            using (Mat lowerOverlap = new Mat(
-                lower,
-                new Rect(0, 0, lower.Width, overlap)))
-            using (Mat upperGray = new Mat())
-            using (Mat lowerGray = new Mat())
-            using (Mat upperSmall = new Mat())
-            using (Mat lowerSmall = new Mat())
-            using (Mat upperStructure = new Mat())
-            using (Mat lowerStructure = new Mat())
-            {
-                Cv2.CvtColor(upperOverlap, upperGray, ColorConversionCodes.BGR2GRAY);
-                Cv2.CvtColor(lowerOverlap, lowerGray, ColorConversionCodes.BGR2GRAY);
-                Cv2.Resize(upperGray, upperSmall, new Size(AnalysisWidth, AnalysisHeight));
-                Cv2.Resize(lowerGray, lowerSmall, new Size(AnalysisWidth, AnalysisHeight));
-
-                BuildStructuralMap(upperSmall, upperStructure);
-                BuildStructuralMap(lowerSmall, lowerStructure);
-
-                upperStructure.GetArray(out byte[] upperPixels);
-                lowerStructure.GetArray(out byte[] lowerPixels);
-
-                int bestShift = 0;
-                long bestCost = long.MaxValue;
-                int maximumShift = AnalysisWidth / 10;
-                int marginX = AnalysisWidth / 20;
-
-                for (int shift = -maximumShift; shift <= maximumShift; shift++)
-                {
-                    long cost = 0;
-                    int sampleCount = 0;
-
-                    for (int y = 4; y < AnalysisHeight - 4; y += 2)
-                    {
-                        int rowOffset = y * AnalysisWidth;
-
-                        for (int x = marginX; x < AnalysisWidth - marginX; x += 3)
-                        {
-                            int lowerX = (x + shift + AnalysisWidth) % AnalysisWidth;
-                            cost += Math.Abs(
-                                upperPixels[rowOffset + x] -
-                                lowerPixels[rowOffset + lowerX]);
-                            sampleCount++;
-                        }
-
-                    }
-
-                    if (sampleCount > 0)
-                    {
-                        cost /= sampleCount;
-                    }
-
-                    // 큰 이동이 거의 같은 비용이라면 0에 가까운 정합을 우선한다.
-                    cost += Math.Abs(shift) / 3;
-
-                    if (cost < bestCost)
-                    {
-                        bestCost = cost;
-                        bestShift = shift;
-                    }
-
-                }
-
-                return (int)Math.Round(
-                    bestShift * upper.Width / (double)AnalysisWidth);
             }
 
         }
@@ -1859,84 +1954,6 @@ namespace OpenCvWpfTracking.Services.Video
                     destination);
             }
 
-        }
-
-        /// <summary>
-        /// ShiftCyclicHorizontally 동작 수행 함수.
-        /// </summary>
-        private static Mat ShiftCyclicHorizontally(
-            Mat source,
-            int shift)
-        {
-            int normalizedShift =
-                ((shift % source.Width) + source.Width) % source.Width;
-
-            if (normalizedShift == 0)
-            {
-                return source.Clone();
-            }
-
-            Mat shifted =
-                new Mat(source.Size(), source.Type(), Scalar.Black);
-
-            int firstWidth =
-                source.Width - normalizedShift;
-
-            using (Mat sourceFirst = new Mat(
-                source,
-                new Rect(normalizedShift, 0, firstWidth, source.Height)))
-            using (Mat targetFirst = new Mat(
-                shifted,
-                new Rect(0, 0, firstWidth, source.Height)))
-            using (Mat sourceSecond = new Mat(
-                source,
-                new Rect(0, 0, normalizedShift, source.Height)))
-            using (Mat targetSecond = new Mat(
-                shifted,
-                new Rect(firstWidth, 0, normalizedShift, source.Height)))
-            {
-                sourceFirst.CopyTo(targetFirst);
-                sourceSecond.CopyTo(targetSecond);
-            }
-
-            return shifted;
-        }
-
-        /// <summary>
-        /// 원형 이동은 한 행의 좌우 끝을 영상 중간에서 다시 연결하여 건물,
-        /// 사다리와 안테나가 수직으로 잘리는 인위적 seam을 만든다. 대신 두 행의
-        /// 실제 공통 수평 구간만 잘라 동일 좌표로 맞춘다. 폭은 |shift|만큼
-        /// 줄지만 영상 내부에 wrap 경계가 삽입되지 않는다.
-        /// </summary>
-        private static void AlignRowsWithoutWrapSeam(
-            Mat upper,
-            Mat lower,
-            int shift,
-            out Mat alignedUpper,
-            out Mat alignedLower)
-        {
-            int maximumShift =
-                Math.Max(0, Math.Min(upper.Width, lower.Width) - 64);
-
-            int safeShift =
-                Math.Max(-maximumShift, Math.Min(maximumShift, shift));
-
-            int upperX = safeShift < 0 ? -safeShift : 0;
-            int lowerX = safeShift > 0 ? safeShift : 0;
-            int commonWidth =
-                Math.Min(
-                    upper.Width - upperX,
-                    lower.Width - lowerX);
-
-            alignedUpper =
-                new Mat(
-                    upper,
-                    new Rect(upperX, 0, commonWidth, upper.Height)).Clone();
-
-            alignedLower =
-                new Mat(
-                    lower,
-                    new Rect(lowerX, 0, commonWidth, lower.Height)).Clone();
         }
 
         /// <summary>
@@ -2213,6 +2230,61 @@ namespace OpenCvWpfTracking.Services.Video
         /// 상/하 row overlap의 평균 밝기만 가볍게 맞춘다.
         /// 기하를 건드리지 않고 gain은 ±6%로 제한한다.
         /// </summary>
+        // 2026-09-08: Brown-Lowe gain compensation 원칙을 Row 전체의 공통 gain으로 제한 적용한다.
+        // Column마다 서로 다른 gain을 적용하면 360° 결과에 세로 밝기 띠가 생기므로 중앙값 하나만 사용한다.
+        private static double EstimateStableRowExposureGain(
+            IList<Mat> upperFrames, IList<Mat> lowerFrames, int overlap)
+        {
+            List<double> gains = new List<double>();
+            int sampleStep = Math.Max(1, upperFrames.Count / 12);
+            for (int index = 0; index < upperFrames.Count; index += sampleStep)
+            {
+                Mat upper = upperFrames[index];
+                Mat lower = lowerFrames[index];
+                int safeOverlap = Math.Min(overlap, Math.Min(upper.Height, lower.Height) - 1);
+                int margin = Math.Max(4, safeOverlap / 8);
+                int sampleHeight = Math.Max(1, safeOverlap - margin * 2);
+                using (Mat upperRoi = new Mat(upper,
+                    new Rect(0, upper.Height - safeOverlap + margin, upper.Width, sampleHeight)))
+                using (Mat lowerRoi = new Mat(lower,
+                    new Rect(0, margin, lower.Width, sampleHeight)))
+                using (Mat upperGray = new Mat())
+                using (Mat lowerGray = new Mat())
+                {
+                    Cv2.CvtColor(upperRoi, upperGray, ColorConversionCodes.BGR2GRAY);
+                    Cv2.CvtColor(lowerRoi, lowerGray, ColorConversionCodes.BGR2GRAY);
+                    double upperMean = Cv2.Mean(upperGray).Val0;
+                    double lowerMean = Cv2.Mean(lowerGray).Val0;
+                    if (upperMean >= 12.0 && lowerMean >= 12.0)
+                        gains.Add(upperMean / lowerMean);
+                }
+            }
+
+            if (gains.Count < 3) return 1.0;
+            gains.Sort();
+            return Math.Max(0.85, Math.Min(1.15, gains[gains.Count / 2]));
+        }
+
+        private static double[] BuildCenterAnchoredRowGains(
+            IList<double> pairGains, int rowCount)
+        {
+            double[] result = Enumerable.Repeat(1.0, rowCount).ToArray();
+            int center = (rowCount - 1) / 2;
+            for (int row = center + 1; row < rowCount; row++)
+                result[row] = Math.Max(0.80, Math.Min(1.25,
+                    result[row - 1] * pairGains[row - 1]));
+            for (int row = center - 1; row >= 0; row--)
+                result[row] = Math.Max(0.80, Math.Min(1.25,
+                    result[row + 1] / pairGains[row]));
+            return result;
+        }
+
+        private static void ApplyUniformExposureGain(Mat image, double gain)
+        {
+            if (image == null || image.Empty() || Math.Abs(gain - 1.0) < 0.002) return;
+            image.ConvertTo(image, image.Type(), gain, 0.0);
+        }
+
         private static void ApplyRowExposureGain(
             Mat upper,
             Mat lower,
@@ -2303,6 +2375,70 @@ namespace OpenCvWpfTracking.Services.Video
 
         }
 
+#if DEBUG
+        private static string GetPanoramaDebugRoot(string outputPath)
+        {
+            string directory = Path.GetDirectoryName(outputPath);
+            if (string.IsNullOrWhiteSpace(directory)) directory = AppDomain.CurrentDomain.BaseDirectory;
+            return Path.Combine(directory, "panorama_debug");
+        }
+
+        private static void SavePanoramaDebugCapture(IList<List<Mat>> rows, string outputPath)
+        {
+            try
+            {
+                string directory = Path.Combine(GetPanoramaDebugRoot(outputPath), "capture");
+                Directory.CreateDirectory(directory);
+                for (int row = 0; row < rows.Count; row++)
+                    for (int pan = 0; pan < rows[row].Count; pan++)
+                        Cv2.ImWrite(Path.Combine(directory,
+                            "row_" + row.ToString("D2") + "_pan_" + pan.ToString("D3") + ".jpg"),
+                            rows[row][pan]);
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Warning("EO PANORAMA / DEBUG", "Capture debug save skipped / " + ex.Message);
+            }
+        }
+
+        private static void SavePanoramaDebugMat(string outputPath, string folder, string name, Mat image)
+        {
+            if (image == null || image.Empty()) return;
+            try
+            {
+                string directory = Path.Combine(GetPanoramaDebugRoot(outputPath), folder);
+                Directory.CreateDirectory(directory);
+                Cv2.ImWrite(Path.Combine(directory, name), image,
+                    new ImageEncodingParam(ImwriteFlags.JpegQuality, 92));
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Warning("EO PANORAMA / DEBUG", "Intermediate debug save skipped / " + ex.Message);
+            }
+        }
+
+        private static void SavePanoramaDebugGeometry(string outputPath, int pairIndex,
+            int nominalOverlap, int stableOverlap, int verticalOffset)
+        {
+            try
+            {
+                string directory = Path.Combine(GetPanoramaDebugRoot(outputPath), "geometry");
+                Directory.CreateDirectory(directory);
+                File.WriteAllText(Path.Combine(directory,
+                    "row_pair_" + (pairIndex + 1) + "_" + (pairIndex + 2) + ".txt"),
+                    "PAIR=" + (pairIndex + 1) + "-" + (pairIndex + 2) + Environment.NewLine +
+                    "NOMINAL_OVERLAP=" + nominalOverlap + Environment.NewLine +
+                    "STABLE_OVERLAP=" + stableOverlap + Environment.NewLine +
+                    "GLOBAL_Y_OFFSET_PX=" + verticalOffset + Environment.NewLine +
+                    "LOCAL_WARP=DISABLED" + Environment.NewLine);
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Warning("EO PANORAMA / DEBUG", "Geometry debug save skipped / " + ex.Message);
+            }
+        }
+#endif
+
         /// <summary>
         /// 상·하단 행에서 영상 차이와 구조물 윤곽 비용이 가장 작은 수평 이음선을
         /// 선택하고 제한된 폭만 smooth feathering하여 절단과 이중 흐림을 줄인다.
@@ -2349,100 +2485,134 @@ namespace OpenCvWpfTracking.Services.Video
 
             }
 
-            const int BlendChunkHeight = 64;
-            int featherRadius =
-                Math.Max(
-                    1,
-                    Math.Min(
-                        2,
-                        overlap / 96));
-
-            for (int chunkTop = 0;
-                 chunkTop < overlap;
-                 chunkTop += BlendChunkHeight)
+            using (Mat upperOverlap = new Mat(upper,
+                new Rect(0, upper.Height - overlap, upper.Width, overlap)))
+            using (Mat lowerOverlap = new Mat(lower,
+                new Rect(0, 0, lower.Width, overlap)))
+            using (Mat blendedOverlap = BlendRowsMultiBand(upperOverlap, lowerOverlap, seam))
+            using (Mat overlapTarget = new Mat(combined,
+                new Rect(0, upper.Height - overlap, upper.Width, overlap)))
             {
-                int chunkHeight =
-                    Math.Min(
-                        BlendChunkHeight,
-                        overlap - chunkTop);
-
-                float[] upperWeightValues =
-                    new float[chunkHeight * upper.Width];
-                float[] lowerWeightValues =
-                    new float[chunkHeight * upper.Width];
-
-                for (int x = 0; x < upper.Width; x++)
-                {
-                    int seamY =
-                        Math.Max(
-                            featherRadius + 1,
-                            Math.Min(
-                                overlap - featherRadius - 1,
-                                seam[x]));
-
-                    for (int localY = 0; localY < chunkHeight; localY++)
-                    {
-                        int y = chunkTop + localY;
-                        int index = localY * upper.Width + x;
-                        double progress =
-                            (y - (seamY - featherRadius)) /
-                            (double)(featherRadius * 2);
-
-                        progress =
-                            Math.Max(0.0, Math.Min(1.0, progress));
-
-                        double lowerWeight =
-                            progress * progress * (3.0 - 2.0 * progress);
-
-                        lowerWeightValues[index] = (float)lowerWeight;
-                        upperWeightValues[index] = (float)(1.0 - lowerWeight);
-                    }
-
-                }
-
-                using (Mat upperChunk = new Mat(
-                    upper,
-                    new Rect(
-                        0,
-                        upper.Height - overlap + chunkTop,
-                        upper.Width,
-                        chunkHeight)))
-                using (Mat lowerChunk = new Mat(
-                    lower,
-                    new Rect(0, chunkTop, lower.Width, chunkHeight)))
-                using (Mat blendedChunk = new Mat())
-                using (Mat upperWeights = new Mat(
-                    chunkHeight,
-                    upper.Width,
-                    MatType.CV_32FC1))
-                using (Mat lowerWeights = new Mat(
-                    chunkHeight,
-                    upper.Width,
-                    MatType.CV_32FC1))
-                using (Mat chunkTarget = new Mat(
-                    combined,
-                    new Rect(
-                        0,
-                        upper.Height - overlap + chunkTop,
-                        upper.Width,
-                        chunkHeight)))
-                {
-                    upperWeights.SetArray(upperWeightValues);
-                    lowerWeights.SetArray(lowerWeightValues);
-
-                    Cv2.BlendLinear(
-                        upperChunk,
-                        lowerChunk,
-                        upperWeights,
-                        lowerWeights,
-                        blendedChunk);
-
-                    blendedChunk.CopyTo(chunkTarget);
-                }
-
+                blendedOverlap.CopyTo(overlapTarget);
             }
 
             return combined;
+        }
+
+        /// <summary>
+        /// 2026-09-08: Burt-Adelson multiresolution spline을 세로 Row overlap에 적용한다.
+        /// 고주파 디테일은 seam 가까이에서 전환하고 저주파 밝기 차이는 넓게 완화한다.
+        /// </summary>
+        private static Mat BlendRowsMultiBand(Mat upper, Mat lower, int[] seam)
+        {
+            // 2026-09-09 R19: 행 사이의 저주파 밝기 차가 적응형 seam 모양을 따라
+            // 대각선으로 드러나지 않도록 Pan 경계와 같은 깊이까지 완화한다.
+            // Laplacian 고주파 대역은 여전히 좁은 seam을 사용하므로 구조물 형상은 보존한다.
+            return BlendRowsMultiBand(upper, lower, seam, 6, 16);
+        }
+
+        private static Mat BlendRowsMultiBand(
+            Mat upper,
+            Mat lower,
+            int[] seam,
+            int maximumLevels,
+            int minimumPyramidSize)
+        {
+            maximumLevels = Math.Max(1, maximumLevels);
+            minimumPyramidSize = Math.Max(8, minimumPyramidSize);
+            List<Mat> upperGaussian = new List<Mat>();
+            List<Mat> lowerGaussian = new List<Mat>();
+            List<Mat> maskGaussian = new List<Mat>();
+            List<Mat> upperLaplacian = new List<Mat>();
+            List<Mat> lowerLaplacian = new List<Mat>();
+            List<Mat> blendedLevels = new List<Mat>();
+            Mat reconstructed = null;
+            try
+            {
+                Mat upperFloat = new Mat(); Mat lowerFloat = new Mat();
+                upper.ConvertTo(upperFloat, MatType.CV_32FC3, 1.0 / 255.0);
+                lower.ConvertTo(lowerFloat, MatType.CV_32FC3, 1.0 / 255.0);
+                upperGaussian.Add(upperFloat); lowerGaussian.Add(lowerFloat);
+
+                float[] weights = new float[upper.Width * upper.Height];
+                int radius = Math.Max(4, Math.Min(12, upper.Height / 48));
+                for (int x = 0; x < upper.Width; x++)
+                {
+                    int seamY = Math.Max(radius + 1, Math.Min(upper.Height - radius - 1, seam[x]));
+                    for (int y = 0; y < upper.Height; y++)
+                    {
+                        double value = (seamY + radius - y) / (double)(radius * 2);
+                        value = Math.Max(0.0, Math.Min(1.0, value));
+                        weights[y * upper.Width + x] = (float)(value * value * (3.0 - 2.0 * value));
+                    }
+                }
+                Mat baseMask = new Mat(upper.Height, upper.Width, MatType.CV_32FC1);
+                baseMask.SetArray(weights); maskGaussian.Add(baseMask);
+
+                int levels = 1;
+                while (levels < maximumLevels && Math.Min(
+                           upperGaussian[levels - 1].Width, upperGaussian[levels - 1].Height) >= minimumPyramidSize)
+                {
+                    Mat nextUpper = new Mat(); Mat nextLower = new Mat(); Mat nextMask = new Mat();
+                    Cv2.PyrDown(upperGaussian[levels - 1], nextUpper);
+                    Cv2.PyrDown(lowerGaussian[levels - 1], nextLower);
+                    Cv2.PyrDown(maskGaussian[levels - 1], nextMask);
+                    upperGaussian.Add(nextUpper); lowerGaussian.Add(nextLower); maskGaussian.Add(nextMask);
+                    levels++;
+                }
+
+                for (int level = 0; level < levels - 1; level++)
+                {
+                    Mat expandedUpper = new Mat(); Mat expandedLower = new Mat();
+                    Cv2.PyrUp(upperGaussian[level + 1], expandedUpper, upperGaussian[level].Size());
+                    Cv2.PyrUp(lowerGaussian[level + 1], expandedLower, lowerGaussian[level].Size());
+                    Mat upperBand = new Mat(); Mat lowerBand = new Mat();
+                    Cv2.Subtract(upperGaussian[level], expandedUpper, upperBand);
+                    Cv2.Subtract(lowerGaussian[level], expandedLower, lowerBand);
+                    expandedUpper.Dispose(); expandedLower.Dispose();
+                    upperLaplacian.Add(upperBand); lowerLaplacian.Add(lowerBand);
+                }
+                upperLaplacian.Add(upperGaussian[levels - 1].Clone());
+                lowerLaplacian.Add(lowerGaussian[levels - 1].Clone());
+
+                for (int level = 0; level < levels; level++)
+                {
+                    using (Mat mask3 = new Mat())
+                    using (Mat ones = Mat.Ones(maskGaussian[level].Size(), MatType.CV_32FC1))
+                    using (Mat inverseMask = new Mat())
+                    using (Mat inverseMask3 = new Mat())
+                    using (Mat weightedUpper = new Mat())
+                    using (Mat weightedLower = new Mat())
+                    {
+                        Cv2.Merge(new[] { maskGaussian[level], maskGaussian[level], maskGaussian[level] }, mask3);
+                        Cv2.Subtract(ones, maskGaussian[level], inverseMask);
+                        Cv2.Merge(new[] { inverseMask, inverseMask, inverseMask }, inverseMask3);
+                        Cv2.Multiply(upperLaplacian[level], mask3, weightedUpper);
+                        Cv2.Multiply(lowerLaplacian[level], inverseMask3, weightedLower);
+                        Mat blended = new Mat();
+                        Cv2.Add(weightedUpper, weightedLower, blended);
+                        blendedLevels.Add(blended);
+                    }
+                }
+
+                reconstructed = blendedLevels[levels - 1].Clone();
+                for (int level = levels - 2; level >= 0; level--)
+                {
+                    Mat expanded = new Mat();
+                    Cv2.PyrUp(reconstructed, expanded, blendedLevels[level].Size());
+                    reconstructed.Dispose(); reconstructed = new Mat();
+                    Cv2.Add(expanded, blendedLevels[level], reconstructed); expanded.Dispose();
+                }
+                Mat output = new Mat();
+                reconstructed.ConvertTo(output, MatType.CV_8UC3, 255.0);
+                return output;
+            }
+            finally
+            {
+                reconstructed?.Dispose(); DisposeAll(upperGaussian); DisposeAll(lowerGaussian);
+                DisposeAll(maskGaussian); DisposeAll(upperLaplacian); DisposeAll(lowerLaplacian);
+                DisposeAll(blendedLevels);
+            }
         }
 
         /// <summary>
@@ -2596,8 +2766,13 @@ namespace OpenCvWpfTracking.Services.Video
                             bestPreviousY = y + 1;
                         }
 
+                        // 겹침 중앙을 향한 약한 prior로 저텍스처 바닥/하늘에서 seam이
+                        // 장거리 대각선으로 표류하는 현상만 억제한다. 구조물 회피 비용보다
+                        // 충분히 작아서 난간/건물 보호 경로는 그대로 우선한다.
                         current[y] =
-                            bestPreviousCost + costPixels[y * analysisWidth + x];
+                            bestPreviousCost +
+                            costPixels[y * analysisWidth + x] +
+                            Math.Abs(y - analysisHeight / 2) / 16.0;
                         directions[x * analysisHeight + y] =
                             (sbyte)(bestPreviousY - y);
                     }
@@ -2625,6 +2800,32 @@ namespace OpenCvWpfTracking.Services.Video
                     bestY += directions[x * analysisHeight + bestY];
                     reducedSeam[x - 1] = bestY;
                 }
+
+                // 축소 좌표에서 약 33열 이동 평균을 적용해 짧은 지그재그와 꺾임을 제거한다.
+                // 긴 구조물을 피하기 위한 완만한 경로 변화는 보존한다.
+                int[] smoothedSeam = new int[analysisWidth];
+                const int seamSmoothingRadius = 16;
+                long seamWindowSum = 0;
+                int seamWindowStart = 0;
+                int seamWindowEnd = -1;
+                for (int x = 0; x < analysisWidth; x++)
+                {
+                    int desiredStart = Math.Max(0, x - seamSmoothingRadius);
+                    int desiredEnd = Math.Min(analysisWidth - 1, x + seamSmoothingRadius);
+                    while (seamWindowEnd < desiredEnd)
+                    {
+                        seamWindowEnd++;
+                        seamWindowSum += reducedSeam[seamWindowEnd];
+                    }
+                    while (seamWindowStart < desiredStart)
+                    {
+                        seamWindowSum -= reducedSeam[seamWindowStart];
+                        seamWindowStart++;
+                    }
+                    smoothedSeam[x] = (int)Math.Round(
+                        seamWindowSum / (double)(seamWindowEnd - seamWindowStart + 1));
+                }
+                reducedSeam = smoothedSeam;
 
                 int[] fullSeam = new int[upper.Width];
 

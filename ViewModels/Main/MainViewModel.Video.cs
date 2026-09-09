@@ -86,6 +86,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IrSourceAddress =
                 irRtspAddress;
 
+            // 2026-09-08: 검증을 통과한 직접 입력/프리셋 주소를 다음 실행에 복원한다.
+            SaveRtspCommunicationSettings();
+
             if (IsAllVideoConnected())
             {
                 // 2026-08-14: 이미 재생 중인 RTSP 프레임과 BBox를 절대 초기화하지 않는다.
@@ -747,7 +750,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             else
             {
                 EoStatusText =
-                    "[EO] Connect Failed";
+                    _eoDecoder.IsAuthenticationFailure
+                        ? "[EO] RTSP 인증 실패 (401)"
+                        : "[EO] Connect Failed";
             }
 
             /*
@@ -841,7 +846,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             else
             {
                 IrStatusText =
-                    "[IR] Connect Failed";
+                    _irDecoder.IsAuthenticationFailure
+                        ? "[IR] RTSP 인증 실패 (401)"
+                        : "[IR] Connect Failed";
             }
 
             return new VideoConnectResult
@@ -1002,6 +1009,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         $"[{streamName}] RTSP Reconnect Success");
 
                     return;
+                }
+
+                if (decoder.IsAuthenticationFailure)
+                {
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (streamName == "EO") EoStatusText = "[EO] RTSP 인증 실패 (401)";
+                        else IrStatusText = "[IR] RTSP 인증 실패 (401)";
+                    });
                 }
 
                 try
@@ -1375,7 +1391,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                                     UpdateVisionBBoxEvents(
                                         streamName,
-                                        smokeResult.IsInfraredSupport ? "IR SMOKE CANDIDATE" : "SMOKE",
+                                        // 2026-09-08: 이벤트 표에는 의미를 유지한 간결한 TYPE을 표시한다.
+                                        smokeResult.IsInfraredSupport ? "IR SMOKE" : "SMOKE",
                                         smokeResult.CandidateRects,
                                         smokeResult.CandidateScores,
                                         smokeResult.IsInfraredSupport

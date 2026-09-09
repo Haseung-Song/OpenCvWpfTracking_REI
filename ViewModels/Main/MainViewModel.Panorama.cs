@@ -23,13 +23,61 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private const double PanoramaCaptureStepDegrees = 10.0;
         private const int PanoramaCaptureFrameCount = 36;
-        private const int PanoramaCaptureRowCount = 2;
-        private const double PanoramaCaptureTiltOffsetDegrees = 12.0;
-        private const double PanoramaPanTolerance = 0.05;
-        private const int PanoramaPanStableSampleCount = 4;
+        // 2026-09-08: 현장 장비의 상태 Packet 지연·0.1° 내외 정착 편차로 인한
+        // 허위 timeout을 방지한다. 10° 촬영 간격 대비 충분히 작은 허용 범위다.
+        private const double PanoramaPanTolerance = 0.15;
+        private const int PanoramaPanStableSampleCount = 3;
         private const int PanoramaCapturePositionSpeed = 15;
         private const int PanoramaMaximumEoZoomPosition = 100;
         private const int PanoramaDetectionSettleMs = 400;
+
+        private static readonly IList<string> PanoramaCaptureRangeOptionItems =
+            new List<string>
+            {
+                "12° / 36 FRAMES",
+                "24° / 72 FRAMES",
+                "36° / 108 FRAMES",
+                "48° / 144 FRAMES",
+                "60° / 180 FRAMES"
+            }.AsReadOnly();
+
+        private int _selectedPanoramaCaptureOptionIndex = 1;
+
+        public IList<string> PanoramaCaptureRangeOptions =>
+            PanoramaCaptureRangeOptionItems;
+
+        public int SelectedPanoramaCaptureOptionIndex
+        {
+            get => _selectedPanoramaCaptureOptionIndex;
+            set
+            {
+                int safeValue = Math.Max(0, Math.Min(4, value));
+                if (_selectedPanoramaCaptureOptionIndex == safeValue)
+                {
+                    return;
+                }
+
+                _selectedPanoramaCaptureOptionIndex = safeValue;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedPanoramaCaptureSummary));
+                OnPropertyChanged(nameof(SelectedPanoramaTiltRangeDegrees));
+                OnPropertyChanged(nameof(SelectedPanoramaRowCount));
+                OnPropertyChanged(nameof(SelectedPanoramaTotalFrameCount));
+            }
+        }
+
+        public int SelectedPanoramaTiltRangeDegrees =>
+            (_selectedPanoramaCaptureOptionIndex + 1) * 12;
+
+        public int SelectedPanoramaRowCount =>
+            _selectedPanoramaCaptureOptionIndex + 1;
+
+        public int SelectedPanoramaTotalFrameCount =>
+            SelectedPanoramaRowCount * PanoramaCaptureFrameCount;
+
+        public string SelectedPanoramaCaptureSummary =>
+            "TILT " + SelectedPanoramaTiltRangeDegrees + "° / " +
+            SelectedPanoramaTotalFrameCount + " FRAMES";
 
         /// <summary>
         /// 2026-08-18: 자동 파노라마 촬영 중 수동 장비 제어 잠금 상태.
@@ -162,7 +210,53 @@ namespace OpenCvWpfTracking.ViewModels.Main
                        "현재 값: " + eoZoom;
             }
 
+            try
+            {
+                BuildPanoramaTiltTargets(
+                    _selectedPanoramaCaptureOptionIndex,
+                    _currentTilt);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+
             return null;
+        }
+
+        private static IList<double> BuildPanoramaTiltTargets(
+            int optionIndex,
+            double startTilt)
+        {
+            int safeOptionIndex = Math.Max(0, Math.Min(4, optionIndex));
+            int rowCount = safeOptionIndex + 1;
+            double tiltRange = rowCount * 12.0;
+            List<double> targets = new List<double>(rowCount);
+
+            if (rowCount == 1)
+            {
+                targets.Add(startTilt);
+            }
+            else
+            {
+                double upperOffset = tiltRange / 2.0;
+                double step = tiltRange / (rowCount - 1);
+                for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
+                {
+                    targets.Add(startTilt + upperOffset - rowIndex * step);
+                }
+            }
+
+            if (targets.Exists(target => target < -90.0 || target > 90.0))
+            {
+                throw new InvalidOperationException(
+                    "선택한 파노라마 Tilt 범위가 장비 허용범위(-90°~90°)를 초과합니다. " +
+                    "시작 Tilt를 중앙 쪽으로 이동하거나 더 작은 촬영 범위를 선택하십시오. " +
+                    "START=" + startTilt.ToString("F2") + "°, " +
+                    "TARGET=" + string.Join(", ", targets.ConvertAll(target => target.ToString("F2") + "°")));
+            }
+
+            return targets.AsReadOnly();
         }
 
         /// <summary>
@@ -194,6 +288,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double originalTilt =
                 _currentTilt;
 
+            int selectedOptionIndex =
+                _selectedPanoramaCaptureOptionIndex;
+
+            IList<double> tiltTargets =
+                BuildPanoramaTiltTargets(
+                    selectedOptionIndex,
+                    originalTilt);
+
+            int selectedTiltRangeDegrees =
+                (selectedOptionIndex + 1) * 12;
+
+            int totalFrameCount =
+                tiltTargets.Count * PanoramaCaptureFrameCount;
+
+            // 2026-09-08: UI 범위와 실제 장비 Tilt Target의 연결을 명시한다.
+            ConsoleLogHelper.StateSection(
+                "PANORAMA CONFIG", "Capture range resolved", string.Empty,
+                "RANGE=" + selectedTiltRangeDegrees,
+                "ROW_COUNT=" + tiltTargets.Count,
+                "TOTAL_FRAME=" + totalFrameCount,
+                "TILT_TARGETS=[" + string.Join(", ",
+                    new List<double>(tiltTargets).ConvertAll(target => target.ToString("F2"))) + "]");
+
             /*
              * PANORAMA 전용 PT 속도는 수동 Slider와 분리한다.
              *
@@ -210,13 +327,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     capturePositionSpeed);
 
             List<IList<BitmapSource>> capturedRows =
-                new List<IList<BitmapSource>>(PanoramaCaptureRowCount);
+                new List<IList<BitmapSource>>(tiltTargets.Count);
 
             ConsoleLogHelper.Info(
                 "EO PANORAMA",
                 "360-degree capture started / " +
-                "ROWS=2 / COUNT_PER_ROW=36 / STEP=10deg / " +
-                "TILT_OFFSET=+-12deg / MANUAL_SLIDER_SPEED=" + PanTiltSpeedLevel +
+                "OPTION=" + (selectedOptionIndex + 1) +
+                " / TILT_RANGE=" + selectedTiltRangeDegrees + "deg" +
+                " / ROWS=" + tiltTargets.Count +
+                " / COUNT_PER_ROW=" + PanoramaCaptureFrameCount +
+                " / TOTAL_COUNT=" + totalFrameCount +
+                " / STEP=10deg / TILT_TARGETS=" +
+                string.Join(",", new List<double>(tiltTargets).ConvertAll(target => target.ToString("F2"))) +
+                " / MANUAL_SLIDER_SPEED=" + PanTiltSpeedLevel +
                 " / CAPTURE_SPEED_FIXED=" + capturePositionSpeed + "deg/s" +
                 " / STABLE=" + frameStabilizationMs + "ms / " +
                 "START_PAN=" + originalPan.ToString("F2") +
@@ -229,29 +352,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
             try
             {
                 for (int rowIndex = 0;
-                     rowIndex < PanoramaCaptureRowCount;
+                     rowIndex < tiltTargets.Count;
                      rowIndex++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
                     double targetTilt =
-                        ClampPanoramaTilt(
-                            originalTilt +
-                            (rowIndex == 0
-                                ? PanoramaCaptureTiltOffsetDegrees
-                                : -PanoramaCaptureTiltOffsetDegrees));
+                        tiltTargets[rowIndex];
+                    // 2026-09-08: Row마다 진행 방향을 교대하여 Pan 축 누적 회전을 방지한다.
+                    bool reversePanDirection = rowIndex % 2 == 1;
+                    double rowStartPan = NormalizePanoramaPan(
+                        originalPan + (reversePanDirection
+                            ? (PanoramaCaptureFrameCount - 1) * PanoramaCaptureStepDegrees
+                            : 0.0));
 
                     ConsoleLogHelper.Command(
                         "EO PANORAMA / CAPTURE",
                         "Row positioning started / ROW=" + (rowIndex + 1) +
                         " / TARGET_TILT=" + targetTilt.ToString("F2") +
-                        " / START_PAN=" + originalPan.ToString("F2"));
+                        " / START_PAN=" + rowStartPan.ToString("F2") +
+                        " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD"));
 
                     progress?.Report(
                         string.Format(
-                            "360° PANORAMA / 세로 촬영 {0}/{1} 준비 / TILT {2:F0}°",
+                            "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} 준비 / TILT {4:F0}°",
+                            selectedOptionIndex + 1,
+                            selectedTiltRangeDegrees,
                             rowIndex + 1,
-                            PanoramaCaptureRowCount,
+                            tiltTargets.Count,
                             targetTilt));
 
                     if (!await MoveTiltForPanoramaAsync(
@@ -272,12 +400,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     if (rowIndex > 0 &&
                         !await MovePanForPanoramaAsync(
-                            originalPan,
+                            rowStartPan,
                             capturePositionSpeed,
                             cancellationToken))
                     {
                         throw new InvalidOperationException(
-                            "두 번째 세로 촬영 시작 Pan 위치로 복귀하지 못했습니다.");
+                            (rowIndex + 1) + "번째 Row 촬영 시작 Pan 위치로 복귀하지 못했습니다.");
                     }
 
                     List<BitmapSource> capturedFrames =
@@ -289,15 +417,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
+                        int logicalPanIndex = reversePanDirection
+                            ? PanoramaCaptureFrameCount - 1 - index
+                            : index;
                         double targetPan =
                             NormalizePanoramaPan(
                                 originalPan +
-                                index * PanoramaCaptureStepDegrees);
+                                logicalPanIndex * PanoramaCaptureStepDegrees);
 
                         progress?.Report(
                             string.Format(
-                                "360° PANORAMA / {0}행 이동 {1}/{2} / PAN {3:F0}° / TILT {4:F0}°",
+                                "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} / FRAME {4}/{5} 이동 / PAN {6:F0}° / TILT {7:F0}°",
+                                selectedOptionIndex + 1,
+                                selectedTiltRangeDegrees,
                                 rowIndex + 1,
+                                tiltTargets.Count,
                                 index + 1,
                                 PanoramaCaptureFrameCount,
                                 targetPan,
@@ -322,6 +456,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             "EO PANORAMA / MOVE",
                             "Pan arrived / ROW=" + (rowIndex + 1) +
                             " / FRAME=" + (index + 1) + "/" + PanoramaCaptureFrameCount +
+                            " / CANONICAL_FRAME=" + (logicalPanIndex + 1) +
+                            " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD") +
                             " / TARGET=" + targetPan.ToString("F2") +
                             " / ACTUAL=" + _currentPan.ToString("F2"));
 
@@ -364,27 +500,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         progress?.Report(
                             string.Format(
-                                "360° PANORAMA / {0}행 촬영 {1}/{2} / 전체 {3}/{4}",
+                                "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} / FRAME {4}/{5}",
+                                selectedOptionIndex + 1,
+                                selectedTiltRangeDegrees,
                                 rowIndex + 1,
-                                index + 1,
-                                PanoramaCaptureFrameCount,
+                                tiltTargets.Count,
                                 rowIndex * PanoramaCaptureFrameCount + index + 1,
-                                PanoramaCaptureRowCount * PanoramaCaptureFrameCount));
+                                totalFrameCount));
                     }
 
+                    // 역방향 촬영 Row도 합성 입력은 정방향 Pan 순서로 통일한다.
+                    if (reversePanDirection) capturedFrames.Reverse();
                     capturedRows.Add(capturedFrames);
 
                     ConsoleLogHelper.State(
                         "EO PANORAMA / CAPTURE",
                         "Row capture completed / ROW=" + (rowIndex + 1) +
-                        " / FRAMES=" + capturedFrames.Count);
+                        " / FRAMES=" + capturedFrames.Count +
+                        " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD") +
+                        " / STORED_ORDER=CANONICAL_FORWARD");
                 }
 
                 ConsoleLogHelper.State(
                     "EO PANORAMA",
                     "Frame capture completed / ROWS=" + capturedRows.Count +
                     " / TOTAL_COUNT=" +
-                    (PanoramaCaptureRowCount * PanoramaCaptureFrameCount));
+                    totalFrameCount);
 
                 return capturedRows;
             }
@@ -592,9 +733,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             int timeoutMs =
                 Math.Max(
-                    4000,
+                    8000,
                     Math.Min(
-                        30000,
+                        45000,
                         (int)(distance /
                               positionSpeed *
                               1000.0) +

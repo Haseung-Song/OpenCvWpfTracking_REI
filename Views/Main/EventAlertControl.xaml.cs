@@ -416,7 +416,8 @@ namespace OpenCvWpfTracking
             private int _pageIndex;
             private int _pageSize = FixedPageSize;
             private double _lastAvailableHeight = -1.0;
-            private EventRecordComparer _activeComparer;
+            private EventRecordComparer _activeComparer =
+                new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
 
             internal EventPageController(
                 DataGrid grid,
@@ -438,11 +439,19 @@ namespace OpenCvWpfTracking
                 if (_view != null)
                 {
                     _view.Filter = IsVisibleOnCurrentPage;
+                    if (_view is ListCollectionView initialListView)
+                    {
+                        initialListView.CustomSort = _activeComparer;
+                    }
                 }
 
                 if (_source is INotifyCollectionChanged observableSource)
                 {
                     observableSource.CollectionChanged += OnSourceCollectionChanged;
+                }
+                foreach (FireEventRecord item in _source?.Cast<FireEventRecord>() ?? Enumerable.Empty<FireEventRecord>())
+                {
+                    item.PropertyChanged += EventRecord_PropertyChanged;
                 }
 
                 _grid.SizeChanged += OnGridSizeChanged;
@@ -632,7 +641,29 @@ namespace OpenCvWpfTracking
 
             private void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
+                if (e.OldItems != null)
+                {
+                    foreach (FireEventRecord item in e.OldItems.OfType<FireEventRecord>())
+                    {
+                        item.PropertyChanged -= EventRecord_PropertyChanged;
+                    }
+                }
+                if (e.NewItems != null)
+                {
+                    foreach (FireEventRecord item in e.NewItems.OfType<FireEventRecord>())
+                    {
+                        item.PropertyChanged += EventRecord_PropertyChanged;
+                    }
+                }
                 Refresh();
+            }
+
+            private void EventRecord_PropertyChanged(object sender, PropertyChangedEventArgs e)
+            {
+                if (e.PropertyName == nameof(FireEventRecord.Status))
+                {
+                    Refresh();
+                }
             }
 
             private void Refresh()
@@ -686,6 +717,13 @@ namespace OpenCvWpfTracking
                     }
 
                     int result;
+                    bool leftActive = string.Equals(leftEvent.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase);
+                    bool rightActive = string.Equals(rightEvent.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase);
+                    if (leftActive != rightActive)
+                    {
+                        return leftActive ? -1 : 1;
+                    }
+
                     switch (_sortMemberPath)
                     {
                         case "DetectedTime":

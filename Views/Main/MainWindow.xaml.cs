@@ -888,7 +888,9 @@ namespace OpenCvWpfTracking
                     "EO 카메라가 자동으로 360° 회전합니다.\n\n" +
                     "- EO Zoom: 광각 0~100 / 1000 권장\n" +
                     "- 촬영 중 다른 Pan/Tilt/Zoom 조작 금지\n" +
-                    "- 10° 간격, 총 36개 위치 촬영 후 자동 합성\n\n" +
+                    "- 선택 범위: " + vm.SelectedPanoramaTiltRangeDegrees + "°\n" +
+                    "- Tilt Row: " + vm.SelectedPanoramaRowCount + "개\n" +
+                    "- 10° 간격, 총 " + vm.SelectedPanoramaTotalFrameCount + " Frame 촬영 후 자동 합성\n\n" +
                     "촬영을 시작하시겠습니까?",
                     "360° 파노라마 촬영",
                     MessageBoxButton.YesNo,

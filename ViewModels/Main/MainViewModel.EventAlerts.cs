@@ -18,8 +18,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private int _nextAiEventId = 1;
         private bool _isAiCsvHistoryLoaded;
-        private readonly Dictionary<int, FireEventRecord> _activeAiEvents =
-            new Dictionary<int, FireEventRecord>();
+        // 2026-09-09: 채널당 한 행이 아니라 화면의 AI 객체별로 ACTIVE 상태를 보존한다.
+        // Key = RTSP channel + ObjectId + ClassIndex.
+        private readonly Dictionary<string, AiEventTrack> _activeAiEvents =
+            new Dictionary<string, AiEventTrack>(StringComparer.Ordinal);
+
+        private sealed class AiEventTrack
+        {
+            internal int RtspIndex { get; set; }
+            internal long ObjectId { get; set; }
+            internal int ClassIndex { get; set; }
+            internal DateTime LastSeen { get; set; }
+            internal FireEventRecord Event { get; set; }
+        }
         private DispatcherTimer _testProgramEventTimer;
         private int _processedTestProgramEventLineCount;
         private readonly List<FireEventRecord> _activeTestFireEvents =
@@ -189,89 +200,82 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     .Where(box => box.NormalizedConfidence >= AiDisplayConfidenceThreshold)
                     .ToList();
 
-            if (boxes.Count == 0)
+            HashSet<string> seenKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (AiDetectionBox box in boxes)
             {
-                if (!_activeAiEvents.TryGetValue(
-                        result.RtspIndex,
-                        out FireEventRecord clearedEvent))
+                string key = GetAiEventKey(result.RtspIndex, box);
+                seenKeys.Add(key);
+                string resolvedDetectionType = GetAiEventDetectionType(box);
+
+                if (_activeAiEvents.TryGetValue(key, out AiEventTrack existingTrack))
                 {
-                    return;
+                    existingTrack.LastSeen = receiveTime;
+                    existingTrack.Event.UpdateObjectCount(1);
+                    existingTrack.Event.UpdateDetectionType(resolvedDetectionType);
+                    existingTrack.Event.UpdateAiSnapshot(
+                        box.NormalizedConfidence * 100.0,
+                        box.Width,
+                        box.Height);
+                    box.DetectionEventId = existingTrack.Event.EventId;
+                    continue;
                 }
 
-                clearedEvent.MarkCleared(receiveTime);
-                _activeAiEvents.Remove(result.RtspIndex);
-                ActiveAiCount = _activeAiEvents.Count;
-                AppendFireEventAudit(clearedEvent, "CLEARED");
-                NotifyAiEventSummaryChanged();
+                string camera = result.RtspIndex == 0 ? "EO" : "IR";
+                FireEventRecord aiEvent = new FireEventRecord(
+                    _nextAiEventId++, receiveTime, null, camera, resolvedDetectionType,
+                    (box.NormalizedConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
+                    1, Math.Max(0, box.Width), Math.Max(0, box.Height),
+                    Math.Max(0, box.Width) * (double)Math.Max(0, box.Height),
+                    "AI AGENT", "ACTIVE");
+                if (_isAiCsvHistoryLoaded)
+                {
+                    aiEvent.MarkLiveAfterCsvLoad();
+                }
+
+                _activeAiEvents[key] = new AiEventTrack
+                {
+                    RtspIndex = result.RtspIndex,
+                    ObjectId = box.ObjectId,
+                    ClassIndex = box.ClassIndex,
+                    LastSeen = receiveTime,
+                    Event = aiEvent
+                };
+                box.DetectionEventId = aiEvent.EventId;
+                AiDetectionEvents.Insert(0, aiEvent);
+                TrimEventCollection(AiDetectionEvents);
+                _lastAiDetectedTime = receiveTime;
+                AppendFireEventAudit(aiEvent, "DETECTED");
+                ConsoleLogHelper.Warning(
+                    "AI EVENT",
+                    "ACTION=CREATE / EVENT_ID=" + aiEvent.EventId +
+                    " / CAMERA=" + camera + " / OBJECT_ID=" + box.ObjectId +
+                    " / CLASS=" + resolvedDetectionType);
+            }
+
+            foreach (KeyValuePair<string, AiEventTrack> pair in _activeAiEvents
+                .Where(item => item.Value.RtspIndex == result.RtspIndex &&
+                               !seenKeys.Contains(item.Key) &&
+                               (receiveTime - item.Value.LastSeen).TotalMilliseconds >= AiDisplayHoldMilliseconds)
+                .ToList())
+            {
+                pair.Value.Event.MarkCleared(receiveTime);
+                AppendFireEventAudit(pair.Value.Event, "CLEARED");
+                _activeAiEvents.Remove(pair.Key);
                 ConsoleLogHelper.State(
                     "AI EVENT",
-                    "AI cleared / EVENT_ID=" + clearedEvent.EventId +
-                    " / CAMERA=" + clearedEvent.Camera);
-                return;
+                    "ACTION=CLEAR / EVENT_ID=" + pair.Value.Event.EventId +
+                    " / OBJECT_ID=" + pair.Value.ObjectId + " / REASON=HOLD_EXPIRED");
             }
 
-            // 2026-09-02 V17: 목록의 TYPE/CONF/BBOX가 서로 다른 객체에서
-            // 조합되지 않도록 최고 CONF 객체 한 건을 대표 스냅샷으로 사용한다.
-            AiDetectionBox representativeBox =
-                boxes
-                    .OrderByDescending(box => box.NormalizedConfidence)
-                    .ThenByDescending(box => Math.Max(0, box.Width) * Math.Max(0, box.Height))
-                    .First();
-            string resolvedDetectionType =
-                GetAiEventDetectionType(representativeBox);
-
-            if (_activeAiEvents.TryGetValue(
-                    result.RtspIndex,
-                    out FireEventRecord existingEvent))
-            {
-                // 2026-08-26: BBox 수는 행 정보에만 갱신하고 ACTIVE 알림 수는 활성 이벤트 행 수로 유지한다.
-                existingEvent.UpdateObjectCount(boxes.Count);
-                existingEvent.UpdateDetectionType(resolvedDetectionType);
-                existingEvent.UpdateAiSnapshot(
-                    representativeBox.NormalizedConfidence * 100.0,
-                    representativeBox.Width,
-                    representativeBox.Height);
-                ActiveAiCount = _activeAiEvents.Count;
-                return;
-            }
-
-            string camera = result.RtspIndex == 0 ? "EO" : "IR";
-
-            FireEventRecord aiEvent =
-                new FireEventRecord(
-                    _nextAiEventId++,
-                    receiveTime,
-                    null,
-                    camera,
-                    resolvedDetectionType,
-                    (representativeBox.NormalizedConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
-                    boxes.Count,
-                    Math.Max(0, representativeBox.Width),
-                    Math.Max(0, representativeBox.Height),
-                    Math.Max(0, representativeBox.Width) * Math.Max(0, representativeBox.Height),
-                    "AI AGENT",
-                    "ACTIVE");
-
-            if (_isAiCsvHistoryLoaded)
-            {
-                aiEvent.MarkLiveAfterCsvLoad();
-            }
-
-            _activeAiEvents[result.RtspIndex] = aiEvent;
-            AiDetectionEvents.Insert(0, aiEvent);
-            TrimEventCollection(AiDetectionEvents);
-            _lastAiDetectedTime = receiveTime;
             ActiveAiCount = _activeAiEvents.Count;
-            AppendFireEventAudit(aiEvent, "DETECTED");
             NotifyAiEventSummaryChanged();
+        }
 
-            ConsoleLogHelper.Warning(
-                "AI EVENT",
-                "AI detected / EVENT_ID=" + aiEvent.EventId +
-                " / CAMERA=" + camera +
-                " / OBJECTS=" + aiEvent.ObjectCount +
-                " / CONFIDENCE=" + aiEvent.Confidence +
-                " / BBOX=" + aiEvent.PixelSizeText);
+        private static string GetAiEventKey(int rtspIndex, AiDetectionBox box)
+        {
+            return rtspIndex.ToString(CultureInfo.InvariantCulture) + ":" +
+                   box.ObjectId.ToString(CultureInfo.InvariantCulture) + ":" +
+                   box.ClassIndex.ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>

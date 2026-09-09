@@ -97,6 +97,12 @@ namespace OpenCvWpfTracking.Services.Video
         /// </summary>
         public int VideoHeight { get; private set; }
 
+        // 2026-09-08: RTSP 인증 실패를 일반 Open 실패와 구분한다.
+        public int LastOpenErrorCode { get; private set; }
+        public string LastOpenErrorText { get; private set; }
+        public bool IsAuthenticationFailure =>
+            LastOpenErrorCode == ffmpeg.AVERROR_HTTP_UNAUTHORIZED;
+
         #endregion
 
         #region [Constructor]
@@ -134,6 +140,8 @@ namespace OpenCvWpfTracking.Services.Video
         public bool Open(string rtspUrl)
         {
             Close();
+            LastOpenErrorCode = 0;
+            LastOpenErrorText = string.Empty;
 
             /// <summary>
             /// [RTSP] 연결 시도 로그
@@ -172,8 +180,13 @@ namespace OpenCvWpfTracking.Services.Video
 
             if (result < 0)
             {
+                LastOpenErrorCode = result;
+                LastOpenErrorText = GetOpenErrorText(result);
+
                 Console.WriteLine(
-                    $"[{_streamName}] [FFmpeg RTSP] avformat_open_input Failed");
+                    IsAuthenticationFailure
+                        ? $"[{_streamName}] [RTSP AUTH] Authentication Failed / RESULT=401 Unauthorized"
+                        : $"[{_streamName}] [FFmpeg RTSP] avformat_open_input Failed / RESULT={LastOpenErrorText}");
 
                 Console.WriteLine();
 
@@ -201,6 +214,13 @@ namespace OpenCvWpfTracking.Services.Video
             Console.WriteLine();
 
             return true;
+        }
+
+        private static string GetOpenErrorText(int errorCode)
+        {
+            if (errorCode == ffmpeg.AVERROR_HTTP_UNAUTHORIZED) return "401 Unauthorized";
+            if (errorCode == ffmpeg.AVERROR_HTTP_BAD_REQUEST) return "400 Bad Request";
+            return errorCode.ToString();
         }
 
         /// <summary>

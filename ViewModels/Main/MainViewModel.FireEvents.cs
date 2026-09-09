@@ -186,6 +186,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(Confidence));
         }
 
+        internal void UpdateVisionSnapshot(double score, int pixelWidth, int pixelHeight)
+        {
+            UpdateVisionScore(score);
+            int normalizedWidth = Math.Max(0, pixelWidth);
+            int normalizedHeight = Math.Max(0, pixelHeight);
+            if (_pixelWidth == normalizedWidth && _pixelHeight == normalizedHeight)
+            {
+                return;
+            }
+
+            _pixelWidth = normalizedWidth;
+            _pixelHeight = normalizedHeight;
+            _pixelArea = normalizedWidth * (double)normalizedHeight;
+            OnPropertyChanged(nameof(PixelWidth));
+            OnPropertyChanged(nameof(PixelHeight));
+            OnPropertyChanged(nameof(PixelArea));
+            OnPropertyChanged(nameof(PixelSizeText));
+            OnPropertyChanged(nameof(PixelSizeCompactText));
+            OnPropertyChanged(nameof(PixelAreaDisplayText));
+        }
+
         /// <summary>
         /// 2026-09-02 V17: AI 화면 BBox와 ACTIVE 이벤트 행이 서로 다른 시점의
         /// CONF/BBOX를 표시하지 않도록 대표 객체의 최신 스냅샷을 반영한다.
@@ -290,11 +311,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isFireCsvHistoryLoaded;
         private int _activeFireCount;
         private DateTime? _lastFireDetectedTime;
+        private long _nextVisionTrackId = 1;
         private readonly List<VisionBBoxEventTrack> _activeVisionBBoxEvents =
             new List<VisionBBoxEventTrack>();
 
         private sealed class VisionBBoxEventTrack
         {
+            internal long TrackId { get; set; }
             internal string Camera { get; set; }
             internal string DetectionType { get; set; }
             internal CvRect Rectangle { get; set; }
@@ -395,25 +418,55 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 track.Matched = false;
             }
 
+            // 2026-09-09: 후보 순서에 따라 Track을 잘못 빼앗지 않도록 모든 조합을
+            // 점수순으로 먼저 매칭한다. 검출기가 Track ID를 제공하지 않아 내부 ID를 사용한다.
+            List<Tuple<double, VisionBBoxEventTrack, int>> matches =
+                new List<Tuple<double, VisionBBoxEventTrack, int>>();
+            List<VisionBBoxEventTrack> channelTracks = _activeVisionBBoxEvents
+                .Where(item => item.Camera == camera && item.DetectionType == detectionType)
+                .ToList();
             for (int candidateIndex = 0; candidateIndex < safeCandidates.Count; candidateIndex++)
             {
+                foreach (VisionBBoxEventTrack track in channelTracks)
+                {
+                    double score = VisionBBoxMatchRatio(track.Rectangle, safeCandidates[candidateIndex]);
+                    if (score >= 0.20)
+                    {
+                        matches.Add(Tuple.Create(score, track, candidateIndex));
+                    }
+                }
+            }
+
+            HashSet<int> matchedCandidateIndexes = new HashSet<int>();
+            foreach (Tuple<double, VisionBBoxEventTrack, int> match in matches.OrderByDescending(item => item.Item1))
+            {
+                if (match.Item2.Matched || matchedCandidateIndexes.Contains(match.Item3))
+                {
+                    continue;
+                }
+
+                CvRect candidate = safeCandidates[match.Item3];
+                double score = candidateScores != null && match.Item3 < candidateScores.Count
+                    ? candidateScores[match.Item3]
+                    : 0.0;
+                match.Item2.Rectangle = candidate;
+                match.Item2.LastSeen = now;
+                match.Item2.Matched = true;
+                match.Item2.Event.UpdateVisionSnapshot(score, candidate.Width, candidate.Height);
+                matchedCandidateIndexes.Add(match.Item3);
+            }
+
+            for (int candidateIndex = 0; candidateIndex < safeCandidates.Count; candidateIndex++)
+            {
+                if (matchedCandidateIndexes.Contains(candidateIndex))
+                {
+                    continue;
+                }
+
                 CvRect candidate = safeCandidates[candidateIndex];
                 double visionScore = candidateScores != null && candidateIndex < candidateScores.Count
                     ? candidateScores[candidateIndex]
                     : 0.0;
-                VisionBBoxEventTrack matched = _activeVisionBBoxEvents
-                    .Where(item => !item.Matched && item.Camera == camera && item.DetectionType == detectionType)
-                    .OrderByDescending(item => VisionBBoxMatchRatio(item.Rectangle, candidate))
-                    .FirstOrDefault(item => VisionBBoxMatchRatio(item.Rectangle, candidate) >= 0.25);
-
-                if (matched != null)
-                {
-                    matched.Rectangle = candidate;
-                    matched.LastSeen = now;
-                    matched.Matched = true;
-                    matched.Event.UpdateVisionScore(visionScore);
-                    continue;
-                }
 
                 FireEventRecord record = new FireEventRecord(
                     _nextFireEventId++, now, null, camera, detectionType,
@@ -428,6 +481,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _activeVisionBBoxEvents.Add(new VisionBBoxEventTrack
                 {
+                    TrackId = _nextVisionTrackId++,
                     Camera = camera,
                     DetectionType = detectionType,
                     Rectangle = candidate,
@@ -440,7 +494,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _lastFireDetectedTime = now;
                 AppendFireEventAudit(record, "DETECTED");
                 ConsoleLogHelper.Warning("VISION BBOX EVENT",
-                    "BBox registered / EVENT_ID=" + record.EventId +
+                    "ACTION=CREATE / EVENT_ID=" + record.EventId +
+                    " / TRACK_ID=" + (_nextVisionTrackId - 1) +
                     " / CAMERA=" + camera + " / TYPE=" + detectionType +
                     " / SCORE=" + record.Confidence +
                     " / BBOX=" + record.PixelSizeCompactText);
@@ -448,19 +503,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             foreach (VisionBBoxEventTrack expired in _activeVisionBBoxEvents
                 .Where(item => item.Camera == camera && item.DetectionType == detectionType &&
-                               !item.Matched && (now - item.LastSeen).TotalSeconds >= 1.0)
+                               !item.Matched)
                 .ToList())
             {
                 expired.Event.MarkCleared(now);
                 AppendFireEventAudit(expired.Event, "CLEARED");
                 _activeVisionBBoxEvents.Remove(expired);
                 ConsoleLogHelper.State("VISION BBOX EVENT",
-                    "BBox cleared / EVENT_ID=" + expired.Event.EventId +
-                    " / CAMERA=" + camera + " / TYPE=" + detectionType);
+                    "ACTION=CLEAR / EVENT_ID=" + expired.Event.EventId +
+                    " / TRACK_ID=" + expired.TrackId +
+                    " / CAMERA=" + camera + " / TYPE=" + detectionType +
+                    " / REASON=TRACK_EXPIRED");
             }
 
             RefreshActiveFireCount();
             NotifyFireEventSummaryChanged();
+#if DEBUG
+            int channelTrackCount = _activeVisionBBoxEvents.Count(item =>
+                item.Camera == camera && item.DetectionType == detectionType);
+            if (channelTrackCount != safeCandidates.Count)
+            {
+                ConsoleLogHelper.Warning("EVENT SYNC WARNING",
+                    "VISION_BBOX_ACTIVE=" + safeCandidates.Count +
+                    " / VISION_EVENT_ACTIVE=" + channelTrackCount +
+                    " / CAMERA=" + camera + " / TYPE=" + detectionType);
+            }
+#endif
         }
 
         private static double VisionBBoxMatchRatio(CvRect left, CvRect right)
@@ -473,11 +541,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double deltaX = (left.X + left.Width / 2.0) - (right.X + right.Width / 2.0);
             double deltaY = (left.Y + left.Height / 2.0) - (right.Y + right.Height / 2.0);
             double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
-            double allowedDistance = Math.Max(20.0,
-                Math.Max(Math.Max(left.Width, left.Height), Math.Max(right.Width, right.Height)) * 0.65);
-            return overlap >= 0.25 || distance > allowedDistance
+            double allowedDistance = Math.Max(24.0,
+                Math.Max(Math.Max(left.Width, left.Height), Math.Max(right.Width, right.Height)) * 1.10);
+            return overlap >= 0.20 || distance > allowedDistance
                 ? overlap
-                : 0.25 + (1.0 - distance / allowedDistance) * 0.20;
+                : 0.20 + (1.0 - distance / allowedDistance) * 0.35;
         }
 
         /// <summary>

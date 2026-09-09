@@ -364,21 +364,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (IsPanoramaMotionDetectionSuppressed())
                 {
                     ClearAiSmokeCandidateSnapshots();
-                    if (_activeAiEvents.TryGetValue(
-                            result.RtspIndex,
-                            out FireEventRecord motionClearedEvent))
+                    List<AiEventTrack> motionClearedEvents = _activeAiEvents
+                        .Where(item => item.Value.RtspIndex == result.RtspIndex)
+                        .Select(item => item.Value)
+                        .ToList();
+                    foreach (AiEventTrack motionClearedTrack in motionClearedEvents)
                     {
+                        FireEventRecord motionClearedEvent = motionClearedTrack.Event;
                         motionClearedEvent.MarkCleared(receiveTime);
-                        _activeAiEvents.Remove(result.RtspIndex);
-                        ActiveAiCount = _activeAiEvents.Count;
                         AppendFireEventAudit(motionClearedEvent, "PANORAMA_MOVE_CLEARED");
-                        NotifyAiEventSummaryChanged();
                         ConsoleLogHelper.State(
                             "AI EVENT",
                             "AI event cleared for panorama motion / EVENT_ID=" +
                             motionClearedEvent.EventId +
                             " / CAMERA=" + motionClearedEvent.Camera);
                     }
+                    foreach (string motionKey in _activeAiEvents
+                        .Where(item => item.Value.RtspIndex == result.RtspIndex)
+                        .Select(item => item.Key)
+                        .ToList())
+                    {
+                        _activeAiEvents.Remove(motionKey);
+                    }
+                    ActiveAiCount = _activeAiEvents.Count;
+                    NotifyAiEventSummaryChanged();
 
                     if (result.RtspIndex == 0)
                     {
@@ -395,11 +404,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 2026-08-31: 현재 RTSP Mapping과 모델 클래스 목록으로 Class Index를 실제 명칭으로 해석한다.
                 ResolveAiDetectionClassNames(result);
                 UpdateAiSmokeCandidateSnapshot(result, receiveTime);
-                UpdateAiDetectionEvent(result, receiveTime);
-                int detectionEventId =
-                    _activeAiEvents.TryGetValue(result.RtspIndex, out FireEventRecord activeEvent)
-                        ? activeEvent.EventId
-                        : 0;
 
                 switch (result.RtspIndex)
                 {
@@ -408,6 +412,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         {
                             return;
                         }
+
+                        UpdateAiDetectionEvent(result, receiveTime);
 
                         /// <summary>
                         /// [RTSP Index 0]
@@ -434,7 +440,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 {
                                     // 2026-08-26: 화면에 남은 객체 기준으로 1부터 순번을 부여한다.
                                     box.DisplayOrder = index + 1;
-                                    box.DetectionEventId = detectionEventId;
                                     return ConvertBoxForDisplay(
                                         box,
                                         EoVideoWidth,
@@ -454,6 +459,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         {
                             return;
                         }
+
+                        UpdateAiDetectionEvent(result, receiveTime);
 
                         /// <summary>
                         /// [RTSP Index 1]
@@ -480,7 +487,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 {
                                     // 2026-08-26: EO와 동일한 AI BBox 순번 정책을 IR에도 적용한다.
                                     box.DisplayOrder = index + 1;
-                                    box.DetectionEventId = detectionEventId;
                                     return ConvertBoxForDisplay(
                                         box,
                                         IrVideoWidth,
@@ -1024,14 +1030,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task<bool> RequestAiDetectorRtspAddressSetAsync()
         {
+            string eoAddress = AiRtsp0Address?.Trim();
+            string irAddress = AiRtsp1Address?.Trim();
+
+            if (!IsValidRtspAddress(eoAddress) ||
+                !IsValidRtspAddress(irAddress) ||
+                string.Equals(eoAddress, irAddress, StringComparison.OrdinalIgnoreCase))
+            {
+                AiSettingStatusText = "RTSP CONFIG ERROR";
+                ConsoleLogHelper.Warning(
+                    "AI RTSP CONFIG ERROR",
+                    "Invalid or duplicated EO/IR RTSP URL");
+                return false;
+            }
+
             /// <summary>
             /// [Viewer] 영상 연결 주소 갱신
             ///
             /// 이후 장비 연결 해제 후 다시 연결하면
             /// 변경된 RTSP 주소로 [EO] / [IR] 영상 연결을 시도한다.
             /// </summary>
-            EoSourceAddress = AiRtsp0Address;
-            IrSourceAddress = AiRtsp1Address;
+            EoSourceAddress = eoAddress;
+            IrSourceAddress = irAddress;
+            _selectedEoRtspSource = SelectedAiEoRtspSource;
+            _selectedIrRtspSource = SelectedAiIrRtspSource;
+            SaveRtspCommunicationSettings();
 
             OnPropertyChanged(nameof(EoSourceAddress));
             OnPropertyChanged(nameof(IrSourceAddress));
@@ -1322,13 +1345,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 (receiveTime - lastDetectionTime).TotalMilliseconds <
                     AiDisplayHoldMilliseconds;
 
-            if (holdActive)
-            {
-                SetAiDisplayHoldState(rtspIndex, true);
-                return;
-            }
-
-            SetAiDisplayHoldState(rtspIndex, false);
+            SetAiDisplayHoldState(rtspIndex, holdActive);
             if (hasDetection)
             {
                 if (rtspIndex == 0)
@@ -1341,12 +1358,40 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
             }
 
-            targetBoxes.Clear();
-
+            // 2026-09-09: 객체별 Event Track을 단일 상태 원본으로 사용한다.
+            // 이번 패킷에서 빠진 객체도 750ms Hold 동안 기존 BBox와 ACTIVE Event를 함께 유지한다.
+            Dictionary<string, AiDetectionBox> merged = new Dictionary<string, AiDetectionBox>(StringComparer.Ordinal);
             foreach (AiDetectionBox box in sourceBoxes ?? new List<AiDetectionBox>())
             {
+                merged[GetAiEventKey(rtspIndex, box)] = box;
+            }
+
+            foreach (AiDetectionBox previousBox in targetBoxes)
+            {
+                string key = GetAiEventKey(rtspIndex, previousBox);
+                if (!merged.ContainsKey(key) && _activeAiEvents.ContainsKey(key))
+                {
+                    merged[key] = previousBox;
+                }
+            }
+
+            targetBoxes.Clear();
+            int displayOrder = 1;
+            foreach (AiDetectionBox box in merged.Values.OrderBy(item => item.DetectionEventId))
+            {
+                box.DisplayOrder = displayOrder++;
                 targetBoxes.Add(box);
             }
+
+#if DEBUG
+            int channelEventCount = _activeAiEvents.Count(item => item.Value.RtspIndex == rtspIndex);
+            if (targetBoxes.Count != channelEventCount)
+            {
+                ConsoleLogHelper.Warning("EVENT SYNC WARNING",
+                    "AI_BBOX_ACTIVE=" + targetBoxes.Count + " / AI_EVENT_ACTIVE=" + channelEventCount +
+                    " / CHANNEL=" + (rtspIndex == 0 ? "EO" : "IR"));
+            }
+#endif
 
         }
 
@@ -1401,8 +1446,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _isIrAiDisplayHoldActive = false;
 
                 DateTime clearedTime = DateTime.Now;
-                foreach (FireEventRecord activeEvent in _activeAiEvents.Values.ToList())
+                foreach (AiEventTrack activeTrack in _activeAiEvents.Values.ToList())
                 {
+                    FireEventRecord activeEvent = activeTrack.Event;
                     activeEvent.MarkCleared(clearedTime);
 
                     try

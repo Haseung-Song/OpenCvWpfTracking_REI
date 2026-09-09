@@ -939,6 +939,11 @@ namespace OpenCvWpfTracking.Services.Video
                 Math.Min(5.0, motionRatio * 100.0) +
                 Math.Min(5.0, shapeChange * 8.0);
 
+            // 2026-09-08 V23: 순간 열반사·노이즈 후보는 낮게 시작한다.
+            // 1.5초 이상 유지된 실제 화점은 기존의 성숙 점수 산식을 그대로 사용한다.
+            double persistenceRatio = Math.Min(1.0, elapsedSeconds / 1.5);
+            score -= (1.0 - persistenceRatio) * 30.0;
+
             if (elapsedSeconds >= 0.5 &&
                 motionRatio < 0.006 &&
                 Math.Abs(expansionRatio) < 0.10 &&
@@ -947,7 +952,7 @@ namespace OpenCvWpfTracking.Services.Video
                 score -= 15.0;
             }
 
-            return Math.Max(50.0, Math.Min(95.0, score));
+            return Math.Max(15.0, Math.Min(95.0, score));
         }
 
         /// <summary>

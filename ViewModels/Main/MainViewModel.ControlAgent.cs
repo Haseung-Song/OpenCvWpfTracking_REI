@@ -296,6 +296,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
+            if (string.Equals(eoRtspAddress, irRtspAddress,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                EoStatusText = "[EO] RTSP Config Error";
+                IrStatusText = "[IR] RTSP Config Error";
+                ConsoleLogHelper.Warning(
+                    "RTSP CONFIG ERROR",
+                    "EO and IR RTSP URLs must be different");
+                return false;
+            }
+
             return true;
         }
 
@@ -322,7 +333,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            return string.Equals(
+            bool supportedScheme = string.Equals(
                        uri.Scheme,
                        "rtsp",
                        StringComparison.OrdinalIgnoreCase) ||
@@ -330,6 +341,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                        uri.Scheme,
                        "rtsps",
                        StringComparison.OrdinalIgnoreCase);
+
+            return supportedScheme &&
+                   !string.IsNullOrWhiteSpace(uri.Host) &&
+                   uri.Port > 0 && uri.Port <= 65535;
         }
 
         /// <summary>
