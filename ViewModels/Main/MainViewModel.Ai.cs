@@ -585,6 +585,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         return;
                     }
+
                 }
 
                 _pendingAiUiUpdates[rtspIndex] = updateAction;
@@ -1242,7 +1243,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         {
                             model.Classes.Add(className);
                         }
+
                     }
+
                 }
 
                 models.Add(model);
@@ -1322,6 +1325,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ? model.Classes[box.ClassIndex]
                         : null;
             }
+
         }
 
         /// <summary>
@@ -1356,6 +1360,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _lastIrAiDisplayDetectionTime = receiveTime;
                 }
+
             }
 
             // 2026-09-09: 객체별 Event Track을 단일 상태 원본으로 사용한다.
@@ -1373,6 +1378,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     merged[key] = previousBox;
                 }
+
             }
 
             targetBoxes.Clear();

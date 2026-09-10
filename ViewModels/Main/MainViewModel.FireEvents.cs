@@ -434,7 +434,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         matches.Add(Tuple.Create(score, track, candidateIndex));
                     }
+
                 }
+
             }
 
             HashSet<int> matchedCandidateIndexes = new HashSet<int>();

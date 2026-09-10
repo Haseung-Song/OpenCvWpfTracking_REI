@@ -88,6 +88,7 @@ namespace OpenCvWpfTracking.Services.Video
                     "SMOKE DIAGNOSTIC",
                     "Live diagnostic stopped / CHANNEL=" + channel);
             }
+
         }
 
         private void StopDiagnosticCore()
@@ -118,6 +119,7 @@ namespace OpenCvWpfTracking.Services.Video
                 _diagnosticFrameIndex++;
                 return new SmokeDiagnosticCapture();
             }
+
         }
 
         private void WriteDiagnosticFrame(
@@ -201,7 +203,9 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     _diagnosticWriter.Flush();
                 }
+
             }
+
         }
         /// <summary>
         /// 2026-08-27: PTZ 이동·Palette·NUC 등 화면 전체 변화 뒤 기준 프레임을 폐기한다.
@@ -325,6 +329,7 @@ namespace OpenCvWpfTracking.Services.Video
                             _clearFrameCount = 0;
                             _visionStableFrames = 0;
                         }
+
                     }
 
                     // 2026-09-02: AI가 CAR/TRUCK/BUS 등으로 확인한 주변은
@@ -359,6 +364,7 @@ namespace OpenCvWpfTracking.Services.Video
                             _clearFrameCount = 0;
                             _visionStableFrames = 0;
                         }
+
                     }
                     // 2026-08-31: 구분 방식 1은 화면 내 확정 연기를 하나의 외곽으로,
                     // 구분 방식 2는 독립된 연기 기둥별 외곽으로 표시한다.
@@ -412,6 +418,7 @@ namespace OpenCvWpfTracking.Services.Video
                             _visionStableFrames = 0;
                             _lastDetectionWasVerified = false;
                         }
+
                     }
 
                     // 2026-08-31: 확정 연기의 마스크가 잠시 끊겨도 마지막 안정 BBox를
@@ -447,6 +454,7 @@ namespace OpenCvWpfTracking.Services.Video
                             largest = candidate;
                             largestArea = area;
                         }
+
                     }
 
                     return new SmokeDetectionResult(
@@ -462,6 +470,7 @@ namespace OpenCvWpfTracking.Services.Video
                         displayCandidates,
                         displayScores);
                 }
+
             }
             catch (Exception exception)
             {
@@ -478,6 +487,7 @@ namespace OpenCvWpfTracking.Services.Video
 
                 return ResetDetectionState(isInfrared);
             }
+
         }
 
         private SmokeDetectionResult ResetDetectionState(bool isInfrared)
@@ -594,6 +604,7 @@ namespace OpenCvWpfTracking.Services.Video
                     color,
                     fontThickness);
             }
+
         }
 
         private static IList<Rect> RemoveAiOverlappingCandidates(
@@ -623,12 +634,14 @@ namespace OpenCvWpfTracking.Services.Video
                         duplicate = true;
                         break;
                     }
+
                 }
 
                 if (!duplicate)
                 {
                     filtered.Add(vision);
                 }
+
             }
 
             return filtered;
@@ -681,12 +694,14 @@ namespace OpenCvWpfTracking.Services.Video
                         vehicleGeneratedChange = true;
                         break;
                     }
+
                 }
 
                 if (!vehicleGeneratedChange)
                 {
                     filtered.Add(smoke);
                 }
+
             }
 
             return filtered;
@@ -719,6 +734,7 @@ namespace OpenCvWpfTracking.Services.Video
                         bestMatch = match;
                         matched = track;
                     }
+
                 }
 
                 if (matched == null || bestMatch < 0.25)
@@ -746,6 +762,7 @@ namespace OpenCvWpfTracking.Services.Video
                             " / SCORE=" + matched.Score.ToString("F1") +
                             " / BBOX=" + candidate.Width + "x" + candidate.Height);
                     }
+
                 }
                 matched.Rectangle = candidate;
                 matched.Matched = true;
@@ -881,6 +898,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     filtered.Add(smokeCandidate);
                 }
+
             }
 
             return filtered;

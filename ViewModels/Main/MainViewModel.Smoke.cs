@@ -60,6 +60,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _smokeBoxMode1Background = value;
                 OnPropertyChanged();
             }
+
         }
 
         public Brush SmokeBoxMode2Background
@@ -70,6 +71,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _smokeBoxMode2Background = value;
                 OnPropertyChanged();
             }
+
         }
 
         private void InitializeSmokeFeatures()
@@ -133,6 +135,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     vehicleSnapshot.Add(rectangle);
                 }
+
             }
 
             lock (_aiSmokeCandidateSync)
@@ -157,6 +160,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         _latestEoAiVehicleCandidates.AddRange(vehicleSnapshot);
                         _latestEoAiVehicleCandidateTime = receiveTime;
                     }
+
                 }
                 else
                 {
@@ -168,8 +172,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         _latestIrAiVehicleCandidates.AddRange(vehicleSnapshot);
                         _latestIrAiVehicleCandidateTime = receiveTime;
                     }
+
                 }
+
             }
+
         }
 
         private static bool IsAiVehicleClass(string className)
@@ -220,6 +227,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 return hybridExclusions;
             }
+
         }
 
         private IList<Rect> GetRecentAiVehicleCandidates(bool isInfrared)
@@ -238,6 +246,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ? _latestIrAiVehicleCandidates
                     : _latestEoAiVehicleCandidates);
             }
+
         }
 
         /// <summary>
@@ -260,6 +269,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ? _latestIrAiFireCandidates
                     : _latestEoAiFireCandidates);
             }
+
         }
 
         private void ClearAiSmokeCandidateSnapshots()
@@ -279,6 +289,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _latestEoAiVehicleCandidateTime = DateTime.MinValue;
                 _latestIrAiVehicleCandidateTime = DateTime.MinValue;
             }
+
         }
 
         private void SetFireSmokeDetectorsForAiConnection(bool enabled, string reason)
@@ -405,6 +416,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             "Live diagnostic start failed",
                             exception);
                     }
+
                 }
                 else
                 {
@@ -416,6 +428,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
             }
+
         }
 
         public string SmokeDiagnosticPathText
@@ -431,6 +444,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _smokeDiagnosticPathText = value;
                 OnPropertyChanged();
             }
+
         }
 
         /// <summary>

@@ -542,6 +542,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 standardPosition,
                                 focusSyncCts.Token);
                     }
+
                 }
                 else
                 {
@@ -583,6 +584,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         irResult =
                             moveResults[1];
                     }
+
                 }
 
             }

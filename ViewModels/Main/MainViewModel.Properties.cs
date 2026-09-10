@@ -842,6 +842,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsPresetNearestOrderMode));
                 SavePresetStorage();
             }
+
         }
 
         public bool IsPresetNearestOrderMode
@@ -855,6 +856,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsPresetSavedOrderMode));
                 SavePresetStorage();
             }
+
         }
 
         /// <summary>
@@ -2818,16 +2820,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 통신 설정 탭의 [EO RTSP] 카메라 선택 목록
         ///
-        /// 기존 InitializeDefaultSourceAddress()에서 주석을 변경하며 사용하던
-        /// [1층 ADS] / [옥상 GOP] / [환경부 PTZ] 주소를 UI에서 선택하도록 제공한다.
+        /// Control Agent 프로필과 같은 순서로
+        /// 옥상 GOP(LA) / 옥상 MR300(O-Droid) / 환경부 PTZ(Web Agent)의
+        /// 3개 장비 주소를 UI에서 선택하도록 제공한다.
         /// </summary>
         public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; }
             = new ObservableCollection<RtspSourceOption>
             {
-                new RtspSourceOption(
-                    "1층 생산팀 ADS 주간(EO)",
-                    AdsEoRtspAddress),
-
                 new RtspSourceOption(
                     "옥상 GOP 주간(EO)",
                     GopEoRtspAddress,
@@ -2837,14 +2836,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     GopEoControlPassword,
                     GopEoControlUseHttps),
 
-                new RtspSourceOption(
-                    "4층 환경부 PTZ 주간(EO)",
-                    MoeEoRtspAddress),
-
                 // 2026-09-08: 신규 옥상 MR300 주간 카메라.
                 new RtspSourceOption(
                     RooftopMr300EoDisplayName,
                     RooftopMr300EoRtspAddress),
+
+                new RtspSourceOption(
+                    "환경부(MOE) PTZ 주간(EO)",
+                    MoeEoRtspAddress),
 
                 new RtspSourceOption(
                     "직접 입력",
@@ -2862,21 +2861,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             = new ObservableCollection<RtspSourceOption>
             {
                 new RtspSourceOption(
-                    "1층 생산팀 ADS 열상(IR)",
-                    AdsIrRtspAddress),
-
-                new RtspSourceOption(
                     "옥상 GOP 열상(IR)",
                     GopIrRtspAddress),
-
-                new RtspSourceOption(
-                    "4층 환경부 PTZ 열상(IR)",
-                    MoeIrRtspAddress),
 
                 // 2026-09-08: 신규 옥상 MR300 열상 카메라.
                 new RtspSourceOption(
                     RooftopMr300IrDisplayName,
                     RooftopMr300IrRtspAddress),
+
+                new RtspSourceOption(
+                    "환경부(MOE) PTZ 열상(IR)",
+                    MoeIrRtspAddress),
 
                 new RtspSourceOption(
                     "직접 입력",

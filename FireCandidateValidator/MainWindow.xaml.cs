@@ -641,6 +641,7 @@ namespace FireCandidateValidator
                         smokeCandidates,
                         smokeVisionScores);
                 }
+
             }
             catch (Exception exception)
             {
@@ -719,6 +720,7 @@ namespace FireCandidateValidator
                 {
                     filteredCandidates.Add(smokeCandidate);
                 }
+
             }
 
             return filteredCandidates;
@@ -1103,6 +1105,7 @@ namespace FireCandidateValidator
                         bestMatch = match;
                         matched = track;
                     }
+
                 }
 
                 if (matched == null || bestMatch < 0.25)
@@ -1138,6 +1141,7 @@ namespace FireCandidateValidator
                             " finalized / SCORE=" + matched.Score.ToString("F1") +
                             " / BBOX=" + candidate.Width + "x" + candidate.Height);
                     }
+
                 }
                 matched.Rectangle = candidate;
                 matched.Matched = true;
@@ -1553,12 +1557,14 @@ namespace FireCandidateValidator
                         Path.Combine(frameDirectory, stage.Key + ".png"),
                         stage.Value);
                 }
+
             }
 
             if (_smokeDiagnosticFrameIndex % 30 == 0)
             {
                 _smokeDiagnosticWriter.Flush();
             }
+
         }
 
         private void SmokeDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -1583,6 +1589,7 @@ namespace FireCandidateValidator
                     StatusText.Foreground = Brushes.OrangeRed;
                     Console.Error.WriteLine("[SMOKE DIAGNOSTIC ERROR] " + exception);
                 }
+
             }
             else
             {
@@ -1590,6 +1597,7 @@ namespace FireCandidateValidator
                 StatusText.Text = "SMOKE DIAGNOSTIC OFF";
                 StatusText.Foreground = Brushes.LightGreen;
             }
+
         }
 
         private void StopSmokeDiagnostic()
@@ -1675,6 +1683,7 @@ namespace FireCandidateValidator
                         analysis.ContinuousFrames.ToString(CultureInfo.InvariantCulture)
                     }));
                 }
+
             }
 
             if (_fireDiagnosticFrameIndex == 1 || _fireDiagnosticFrameIndex % 15 == 0)
@@ -1693,12 +1702,14 @@ namespace FireCandidateValidator
                     }
                     Cv2.ImWrite(Path.Combine(frameDirectory, "FINAL.png"), finalMask);
                 }
+
             }
 
             if (_fireDiagnosticFrameIndex % 30 == 0)
             {
                 _fireDiagnosticWriter.Flush();
             }
+
         }
 
         private void FireDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -1722,6 +1733,7 @@ namespace FireCandidateValidator
                     StatusText.Text = "FIRE DIAGNOSTIC OFF";
                     StatusText.Foreground = Brushes.LightGreen;
                 }
+
             }
             catch (Exception exception)
             {
@@ -1730,6 +1742,7 @@ namespace FireCandidateValidator
                 StatusText.Foreground = Brushes.OrangeRed;
                 Console.Error.WriteLine("[FIRE DIAGNOSTIC ERROR] " + exception);
             }
+
         }
 
         private void StopFireDiagnostic()
@@ -1767,6 +1780,7 @@ namespace FireCandidateValidator
             {
                 ProcessCurrentFrame(true);
             }
+
         }
 
         /// <summary>

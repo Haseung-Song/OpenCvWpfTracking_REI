@@ -415,6 +415,7 @@ namespace FireCandidateValidator
                        hotMotionRatio >= 0.008 ||
                        shapeChangeRatio >= 0.012;
             }
+
         }
 
         /// <summary>

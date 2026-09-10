@@ -459,6 +459,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
+        /// 2026-09-10: EO 광학 줌이 커질수록 같은 PT 속도도 화면에서는 더 크게
+        /// 이동해 보이므로, 조그 명령에 사용하는 실제 Protocol 속도를 낮춘다.
+        /// UI Slider 값은 사용자가 선택한 기준 속도로 유지하며 광각(1x)에서는
+        /// 기존 속도를 그대로 사용한다. 최대 줌에서도 조작이 멈추지 않도록
+        /// 기준 속도의 20%를 하한으로 둔다.
+        /// </summary>
+        private byte ApplyZoomAdaptivePanTiltSpeed(
+            byte baseProtocolSpeed,
+            out ushort standardZoom,
+            out double speedScale)
+        {
+            standardZoom =
+                GetCurrentPresetStandardZoom();
+
+            double opticalZoomRatio =
+                1.0 +
+                standardZoom / 1000.0 * 49.0;
+
+            speedScale =
+                Math.Max(
+                    0.20,
+                    1.0 / Math.Sqrt(opticalZoomRatio));
+
+            int adaptiveSpeed =
+                (int)Math.Round(
+                    baseProtocolSpeed * speedScale);
+
+            return (byte)Math.Max(
+                1,
+                Math.Min(
+                    63,
+                    adaptiveSpeed));
+        }
+
+        /// <summary>
         /// Pan / Tilt 이동에 사용할 Pelco-D 속도를 조회한다.
         ///
         /// UI 속도가 0이면 이동 패킷을 보내지 않고 STOP을 송신한 뒤
@@ -467,13 +502,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool TryGetPanTiltProtocolSpeed(
             out byte protocolSpeed)
         {
-            protocolSpeed =
+            byte baseProtocolSpeed =
                 ConvertPanTiltSpeedLevel(
                     PanTiltSpeedLevel);
 
-            if (protocolSpeed > 0)
+            protocolSpeed = baseProtocolSpeed;
+
+            if (baseProtocolSpeed > 0)
             {
+                protocolSpeed =
+                    ApplyZoomAdaptivePanTiltSpeed(
+                        baseProtocolSpeed,
+                        out ushort standardZoom,
+                        out double speedScale);
+
                 ClearActivePanTiltAbsoluteMove();
+
+                ConsoleLogHelper.State(
+                    "PAN / TILT SPEED",
+                    $"Zoom-adaptive jog speed / UI_SPEED={PanTiltSpeedLevel} / " +
+                    $"BASE_PROTOCOL_SPEED={baseProtocolSpeed} / EO_ZOOM={standardZoom}/1000 / " +
+                    $"SCALE={speedScale:F3} / EFFECTIVE_PROTOCOL_SPEED={protocolSpeed}");
 
                 return true;
             }
@@ -913,6 +962,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine("[CONTROL] EO ZOOM CTEC FAILED; FALLBACK : CONTROL AGENT");
                     result = _controlCommandService.StartEoZoomTele();
                 }
+
             }
             else
             {
@@ -1002,6 +1052,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine("[CONTROL] EO ZOOM CTEC FAILED; FALLBACK : CONTROL AGENT");
                     result = _controlCommandService.StartEoZoomWide();
                 }
+
             }
             else
             {
@@ -1107,6 +1158,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
                     result = _controlCommandService.StartEoFocusNear();
                 }
+
             }
             else
             {
@@ -1212,6 +1264,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
                     result = _controlCommandService.StartEoFocusFar();
                 }
+
             }
             else
             {
@@ -2189,6 +2242,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 await WaitForControlAgentLensStatusAfterStopAsync(
                                     ContinuousMoveType.EoZoom);
                             }
+
                         }
 
                         break;

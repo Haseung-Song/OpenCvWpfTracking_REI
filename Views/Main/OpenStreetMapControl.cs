@@ -35,6 +35,8 @@ namespace OpenCvWpfTracking
         private const int TileSize = 256;
         private const int MinimumZoom = 3;
         private const int MaximumZoom = 19;
+        private const int DragRenderIntervalMilliseconds = 45;
+        private const int WheelRenderDebounceMilliseconds = 120;
 
         // GLOBAL SYSTEMS
         // 265, Techno 2-ro, Yuseong-gu, Daejeon
@@ -107,7 +109,7 @@ namespace OpenCvWpfTracking
             _renderDebounceTimer =
                 new DispatcherTimer(DispatcherPriority.Background)
                 {
-                    Interval = TimeSpan.FromMilliseconds(45)
+                    Interval = TimeSpan.FromMilliseconds(DragRenderIntervalMilliseconds)
                 };
             _renderDebounceTimer.Tick += RenderDebounceTimer_Tick;
 
@@ -493,7 +495,7 @@ namespace OpenCvWpfTracking
                 _centerLatitude,
                 _centerLongitude);
 
-            RequestRender();
+            RequestWheelRender();
 
             e.Handled = true;
         }
@@ -635,8 +637,34 @@ namespace OpenCvWpfTracking
             // 45ms마다 최신 View를 처리하는 Throttle 방식으로 운용한다.
             if (!_renderDebounceTimer.IsEnabled)
             {
+                _renderDebounceTimer.Interval =
+                    TimeSpan.FromMilliseconds(DragRenderIntervalMilliseconds);
+
                 _renderDebounceTimer.Start();
             }
+
+        }
+
+        private void RequestWheelRender()
+        {
+            if (!IsLoaded ||
+                ActualWidth < 1 ||
+                ActualHeight < 1)
+            {
+                return;
+            }
+
+            // 휠 연속 입력은 마지막 확대값만 렌더링한다. 기존 45ms throttle은
+            // 휠 동작 중에도 중간 Zoom마다 타일 Canvas와 HTTP 작업을 만들었기 때문에
+            // 실시간 이벤트 UI와 Dispatcher 시간을 경쟁했다.
+            _renderCancellation.Cancel();
+            ++_renderVersion;
+
+            _renderDebounceTimer.Stop();
+            _renderDebounceTimer.Interval =
+                TimeSpan.FromMilliseconds(WheelRenderDebounceMilliseconds);
+
+            _renderDebounceTimer.Start();
         }
 
         private void RequestRenderImmediate()
@@ -665,7 +693,9 @@ namespace OpenCvWpfTracking
             // 새 Drag/Zoom View가 확정되면 이전 HTTP/Cache 작업도 취소하여
             // 보이지 않을 타일 요청이 AI/영상처리 자원을 계속 점유하지 않게 한다.
             _renderCancellation.Cancel();
+            _renderCancellation.Dispose();
             _renderCancellation = new CancellationTokenSource();
+
             RenderTilesAsync(
                 ++_renderVersion,
                 _renderCancellation.Token);
@@ -829,6 +859,7 @@ namespace OpenCvWpfTracking
                     {
                         loadedTileCount++;
                     }
+
                 }
 
                 // 전부 실패한 경우 기존 정상 View를 보존하고 Fallback 상태만
@@ -882,6 +913,7 @@ namespace OpenCvWpfTracking
                         tileResults.Length,
                         stopwatch.ElapsedMilliseconds);
                 }
+
             }
             catch (OperationCanceledException)
             {
@@ -895,6 +927,7 @@ namespace OpenCvWpfTracking
                     renderZoom,
                     version);
             }
+
         }
 
         private async Task<bool> LoadTileIntoImageAsync(
@@ -1021,6 +1054,7 @@ namespace OpenCvWpfTracking
                     response.EnsureSuccessStatusCode();
                     bytes = await response.Content.ReadAsByteArrayAsync();
                 }
+
             }
             finally
             {

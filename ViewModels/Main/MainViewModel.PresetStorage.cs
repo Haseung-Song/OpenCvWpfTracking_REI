@@ -58,6 +58,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         PresetPoints.Add(preset);
                     }
+
                 }
 
                 ReorderPresetCollections();
@@ -75,6 +76,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 _isLoadingPresetStorage = false;
             }
+
         }
 
         private void SavePresetStorage()
@@ -105,11 +107,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     File.Move(temporaryPath, PresetStoragePath);
                 }
+
             }
             catch (Exception ex)
             {
                 ConsoleLogHelper.Error("PRESET STORAGE", "Save failed", ex);
             }
+
         }
 
         private static void AppendPresetStorageLines(
@@ -135,6 +139,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     preset.IrFocusText
                 }));
             }
+
         }
 
         private void PreparePresetForUpsert(
@@ -163,6 +168,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 target.Add(preset);
             }
+
         }
 
         private PresetPointOption[] CreatePresetScanQueue(IEnumerable<PresetPointOption> source)
@@ -203,4 +209,5 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private static int ClampPresetScanSetting(int value) => Math.Max(1, Math.Min(60, value));
     }
+
 }

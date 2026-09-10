@@ -130,6 +130,7 @@ namespace OpenCvWpfTracking
             {
                 QueueNewEventTabSelection(0);
             }
+
         }
 
         private void FireDetectionEvents_CollectionChanged(
@@ -141,6 +142,7 @@ namespace OpenCvWpfTracking
             {
                 QueueNewEventTabSelection(1);
             }
+
         }
 
         private void SubscribedViewModel_PropertyChanged(
@@ -331,6 +333,7 @@ namespace OpenCvWpfTracking
                     "EVENT UI",
                     "Keyboard page navigation failed / " + exception.Message);
             }
+
         }
         private void AiDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _aiPager?.DeleteSelected();
         private void FireDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _firePager?.DeleteSelected();
@@ -443,6 +446,7 @@ namespace OpenCvWpfTracking
                     {
                         initialListView.CustomSort = _activeComparer;
                     }
+
                 }
 
                 if (_source is INotifyCollectionChanged observableSource)
@@ -647,6 +651,7 @@ namespace OpenCvWpfTracking
                     {
                         item.PropertyChanged -= EventRecord_PropertyChanged;
                     }
+
                 }
                 if (e.NewItems != null)
                 {
@@ -654,6 +659,7 @@ namespace OpenCvWpfTracking
                     {
                         item.PropertyChanged += EventRecord_PropertyChanged;
                     }
+
                 }
                 Refresh();
             }
@@ -664,6 +670,7 @@ namespace OpenCvWpfTracking
                 {
                     Refresh();
                 }
+
             }
 
             private void Refresh()

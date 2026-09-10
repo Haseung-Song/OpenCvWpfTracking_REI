@@ -256,6 +256,7 @@ namespace OpenCvWpfTracking.Services.Video
                                 "잘못 결합된 영상은 저장하지 않습니다.",
                                 new AggregateException(rowFirstException, columnException));
                         }
+
                     }
 
                 }
@@ -353,6 +354,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 DisposeAll(columns);
             }
+
         }
 
         /// <summary>
@@ -558,6 +560,7 @@ namespace OpenCvWpfTracking.Services.Video
                     shiftedNext,
                     safeOverlap);
             }
+
         }
 
         /// <summary>
@@ -656,13 +659,29 @@ namespace OpenCvWpfTracking.Services.Video
                         8,
                         stableVerticalOffset));
 
-            double confidence = Math.Min(overlapSamples.Count, offsetSamples.Count) /
-                                (double)Math.Max(1, (upperFrames.Count + sampleStep - 1) / sampleStep);
+            string overlapSampleLog = string.Join(",", overlapSamples);
+            string offsetSampleLog = string.Join(",", offsetSamples);
+            int overlapMedian = stableOverlap;
+            int offsetMedian = stableVerticalOffset;
+            double overlapMad = overlapSamples.Count == 0 ? 0.0 :
+                overlapSamples.Select(value => Math.Abs(value - overlapMedian)).OrderBy(value => value)
+                    .ElementAt(overlapSamples.Count / 2);
+            double offsetMad = offsetSamples.Count == 0 ? 0.0 :
+                offsetSamples.Select(value => Math.Abs(value - offsetMedian)).OrderBy(value => value)
+                    .ElementAt(offsetSamples.Count / 2);
+            double sampleCoverage = Math.Min(overlapSamples.Count, offsetSamples.Count) /
+                                    (double)Math.Max(1, (upperFrames.Count + sampleStep - 1) / sampleStep);
+            double stability = 1.0 / (1.0 + overlapMad / 12.0 + offsetMad / 3.0);
+            double confidence = Math.Max(0.0, Math.Min(1.0, sampleCoverage * stability));
             ConsoleLogHelper.State(
                 "EO PANORAMA / ROW GEOMETRY",
                 "VALID_SAMPLES=" + Math.Min(overlapSamples.Count, offsetSamples.Count) +
+                " / OVERLAP_SAMPLES=[" + overlapSampleLog + "]" +
+                " / OFFSET_SAMPLES=[" + offsetSampleLog + "]" +
                 " / OVERLAP=" + stableOverlap +
                 " / Y_OFFSET=" + stableVerticalOffset +
+                " / OVERLAP_MAD=" + overlapMad.ToString("F1") +
+                " / OFFSET_MAD=" + offsetMad.ToString("F1") +
                 " / CONFIDENCE=" + confidence.ToString("F2") +
                 " / FALLBACK=" + (overlapSamples.Count < 3 || offsetSamples.Count < 3));
         }
@@ -696,7 +715,7 @@ namespace OpenCvWpfTracking.Services.Video
 
             int safeOverlap =
                 Math.Max(
-                    24,
+                    30,
                     Math.Min(
                         overlap,
                         Math.Min(
@@ -778,35 +797,56 @@ namespace OpenCvWpfTracking.Services.Video
                     "공통 경도 Row-first에는 동일 개수의 10도 간격 프레임이 필요합니다.");
 
             List<int> contributionCandidates = frameRows
-                .Select((row, index) => EstimateFixedAngleContributionWidth(
-                    row, "SHARED_ROW_GEOMETRY=" + (index + 1)))
+                .Select((row, index) =>
+                    EstimateFixedAngleContributionWidth(
+                        row,
+                        "SHARED_ROW_GEOMETRY=" + (index + 1)))
                 .OrderBy(value => value)
                 .ToList();
+
             int sharedContributionWidth = contributionCandidates[contributionCandidates.Count / 2];
             int centerRowIndex = (frameRows.Count - 1) / 2;
+
             double[] sharedPanGains = EstimateCyclicExposureGains(
-                frameRows[centerRowIndex], sharedContributionWidth, sharedContributionWidth);
+                frameRows[centerRowIndex],
+                sharedContributionWidth,
+                sharedContributionWidth);
+
             List<double> pairRowGains = new List<double>(frameRows.Count - 1);
             List<int> sharedVerticalOverlaps = new List<int>(frameRows.Count - 1);
             List<int> sharedVerticalOffsets = new List<int>(frameRows.Count - 1);
+
             int exposureOverlap = CalculateNominalVerticalOverlap(
-                frameRows[0][0].Height, frameRows.Count);
+                frameRows[0][0].Height,
+                frameRows.Count);
+
             for (int rowIndex = 0; rowIndex < frameRows.Count - 1; rowIndex++)
             {
                 int stableOverlap;
                 int stableOffset;
+
                 EstimateStableColumnPairGeometry(
-                    frameRows[rowIndex], frameRows[rowIndex + 1], exposureOverlap,
-                    out stableOverlap, out stableOffset);
+                    frameRows[rowIndex],
+                    frameRows[rowIndex + 1],
+                    exposureOverlap,
+                    out stableOverlap,
+                    out stableOffset);
+
                 sharedVerticalOverlaps.Add(stableOverlap);
                 sharedVerticalOffsets.Add(stableOffset);
                 pairRowGains.Add(EstimateStableRowExposureGain(
-                    frameRows[rowIndex], frameRows[rowIndex + 1], stableOverlap));
+                    frameRows[rowIndex],
+                    frameRows[rowIndex + 1],
+                    stableOverlap));
             }
+
             double[] sharedRowGains = BuildCenterAnchoredRowGains(
-                pairRowGains, frameRows.Count);
+                pairRowGains,
+                frameRows.Count);
+
             Mat[] stitchedRows = new Mat[frameRows.Count];
             Stopwatch stopwatch = Stopwatch.StartNew();
+
             try
             {
                 System.Threading.Tasks.Parallel.For(0, frameRows.Count,
@@ -820,6 +860,11 @@ namespace OpenCvWpfTracking.Services.Video
                             sharedContributionWidth,
                             sharedPanGains,
                             sharedRowGains[rowIndex]);
+#if DEBUG
+                        SavePanoramaDebugMat(outputPath, "rows",
+                            "row_" + (rowIndex + 1).ToString("D2") + "_360.jpg",
+                            stitchedRows[rowIndex]);
+#endif
                     });
 
                 if (stitchedRows.Any(row => row == null || row.Empty()) ||
@@ -828,10 +873,18 @@ namespace OpenCvWpfTracking.Services.Video
                         "행별 360도 결과가 동일한 공통 경도 폭을 유지하지 못했습니다.");
 
                 Mat result = MergeSharedLongitudeRows(
-                    stitchedRows, sharedVerticalOverlaps, sharedVerticalOffsets);
-                ValidateFullCircleRow(result, frameRows[0],
+                    stitchedRows,
+                    sharedVerticalOverlaps,
+                    sharedVerticalOffsets,
+                    outputPath);
+
+                ValidateFullCircleRow(
+                    result,
+                    frameRows[0],
                     "SHARED_LONGITUDE_ROW_FIRST_" + frameRows.Count + "ROW");
+
                 stopwatch.Stop();
+
                 ConsoleLogHelper.State(
                     "EO PANORAMA / PERFORMANCE",
                     "Shared-longitude Row-first composition completed" +
@@ -852,6 +905,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 DisposeAll(stitchedRows);
             }
+
         }
 
         /// <summary>
@@ -868,7 +922,8 @@ namespace OpenCvWpfTracking.Services.Video
         private static Mat MergeSharedLongitudeRows(
             IList<Mat> rows,
             IList<int> overlaps,
-            IList<int> verticalOffsets)
+            IList<int> verticalOffsets,
+            string outputPath)
         {
             if (rows == null || rows.Count < 2 ||
                 overlaps == null || overlaps.Count != rows.Count - 1 ||
@@ -888,10 +943,16 @@ namespace OpenCvWpfTracking.Services.Video
                         rows[rowIndex], verticalOffsets[rowIndex - 1]))
                     {
                         Mat combined = MergeRowsOnAdaptiveHorizontalSeam(
-                            result, alignedNext, overlap);
+                            result, alignedNext, overlap, outputPath, rowIndex - 1);
+#if DEBUG
+                        SavePanoramaDebugMat(outputPath, "merged_rows",
+                            "through_row_" + (rowIndex + 1).ToString("D2") + ".jpg",
+                            combined);
+#endif
                         result.Dispose();
                         result = combined;
                     }
+
                 }
 
                 return result.Clone();
@@ -900,6 +961,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 result.Dispose();
             }
+
         }
 
         /// <summary>
@@ -1305,6 +1367,7 @@ namespace OpenCvWpfTracking.Services.Video
                     transitions[current] = Math.Log(Math.Max(0.88,
                         Math.Min(1.14, previousMean / currentMean)));
                 }
+
             }
 
             double[] logGains = new double[count];
@@ -1512,7 +1575,9 @@ namespace OpenCvWpfTracking.Services.Video
                     Cv2.Transpose(multiBand, blendedTransposed);
                     return blendedTransposed.Clone();
                 }
+
             }
+
         }
 
         /// <summary>
@@ -1529,6 +1594,7 @@ namespace OpenCvWpfTracking.Services.Video
             using (Mat previousEdges = new Mat())
             using (Mat currentEdges = new Mat())
             using (Mat combinedEdges = new Mat())
+            using (Mat parallaxMask = new Mat())
             {
                 Cv2.Absdiff(
                     previous,
@@ -1545,6 +1611,18 @@ namespace OpenCvWpfTracking.Services.Video
                     grayDifference,
                     new Size(3, 3),
                     0);
+
+                // 2026-09-10 R23: 근거리 난간/옥상 경계의 잔여 시차 영역을 넓게
+                // 보호하여 수직 Pan seam이 구조의 중간을 가르는 경우를 줄인다.
+                Cv2.Threshold(grayDifference, parallaxMask, 24, 255,
+                    ThresholdTypes.Binary);
+                using (Mat parallaxKernel = Cv2.GetStructuringElement(
+                    MorphShapes.Rect, new Size(15, 15)))
+                {
+                    Cv2.Dilate(parallaxMask, parallaxMask, parallaxKernel);
+                }
+                Cv2.AddWeighted(grayDifference, 1.0, parallaxMask, 1.25, 0.0,
+                    grayDifference);
 
                 // 사다리/안테나/건물 외곽처럼 강한 구조를 seam이 직접
                 // 통과하지 않도록 양쪽 영상의 edge 주변에 보호 비용을 준다.
@@ -1574,6 +1652,8 @@ namespace OpenCvWpfTracking.Services.Video
 
                 int width = grayDifference.Width;
                 int height = grayDifference.Height;
+                int stableSeamAnchor = FindStableVerticalSeamAnchor(
+                    costs, width, height);
                 int[] previousRow = new int[width];
                 int[] currentRow = new int[width];
                 sbyte[] parentDirections =
@@ -1583,7 +1663,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     previousRow[x] =
                         costs[x] +
-                        Math.Abs(x - width / 2) / 16;
+                        Math.Abs(x - stableSeamAnchor) / 8;
                 }
 
                 for (int y = 1; y < height; y++)
@@ -1610,7 +1690,7 @@ namespace OpenCvWpfTracking.Services.Video
                         currentRow[x] =
                             bestCost +
                             costs[y * width + x] +
-                            Math.Abs(x - width / 2) / 16;
+                            Math.Abs(x - stableSeamAnchor) / 8;
 
                         parentDirections[y * width + x] =
                             (sbyte)(bestPreviousX - x);
@@ -1641,9 +1721,78 @@ namespace OpenCvWpfTracking.Services.Video
                         parentDirections[y * width + seam[y]];
                 }
 
-                return seam;
+                int[] smoothed = new int[height];
+                const int smoothingRadius = 12;
+                long windowSum = 0;
+                int windowStart = 0;
+                int windowEnd = -1;
+                for (int y = 0; y < height; y++)
+                {
+                    int desiredStart = Math.Max(0, y - smoothingRadius);
+                    int desiredEnd = Math.Min(height - 1, y + smoothingRadius);
+                    while (windowEnd < desiredEnd)
+                    {
+                        windowEnd++;
+                        windowSum += seam[windowEnd];
+                    }
+                    while (windowStart < desiredStart)
+                    {
+                        windowSum -= seam[windowStart];
+                        windowStart++;
+                    }
+                    smoothed[y] = Math.Max(1, Math.Min(width - 2,
+                        (int)Math.Round(windowSum /
+                            (double)(windowEnd - windowStart + 1))));
+                }
+
+                return smoothed;
             }
 
+        }
+
+        private static int FindStableVerticalSeamAnchor(
+            byte[] costs,
+            int width,
+            int height)
+        {
+            if (costs == null || costs.Length < width * height ||
+                width <= 2 || height <= 0)
+                return Math.Max(1, width / 2);
+
+            double[] columnCosts = new double[width];
+            int sampleStep = Math.Max(1, height / 800);
+            int sampleCount = (height + sampleStep - 1) / sampleStep;
+            for (int x = 0; x < width; x++)
+            {
+                long sum = 0;
+                for (int y = 0; y < height; y += sampleStep)
+                    sum += costs[y * width + x];
+                columnCosts[x] = sum / (double)Math.Max(1, sampleCount);
+            }
+
+            int radius = Math.Max(3, width / 24);
+            int minimumX = Math.Max(radius + 1, (int)Math.Round(width * 0.15));
+            int maximumX = Math.Min(width - radius - 2,
+                (int)Math.Round(width * 0.85));
+            if (minimumX > maximumX) return width / 2;
+
+            int bestX = width / 2;
+            double bestCost = double.MaxValue;
+            for (int x = minimumX; x <= maximumX; x++)
+            {
+                double sum = 0.0;
+                for (int offset = -radius; offset <= radius; offset++)
+                    sum += columnCosts[x + offset];
+                double score = sum / (radius * 2 + 1) +
+                               Math.Abs(x - width / 2) / 40.0;
+                if (score < bestCost)
+                {
+                    bestCost = score;
+                    bestX = x;
+                }
+
+            }
+            return bestX;
         }
 
         /// <summary>
@@ -1758,7 +1907,9 @@ namespace OpenCvWpfTracking.Services.Video
         {
             const int AnalysisWidth = 420;
             const double MinimumOverlapRatio = 0.26;
-            const double MaximumOverlapRatio = 0.56;
+            // N-Row의 명목 overlap은 3/4/5행에서 약 58/62/65%이다.
+            // 과거 56% 상한은 실제 후보를 잘라 동일 난간과 옥상 구조가 두 번 남았다.
+            const double MaximumOverlapRatio = 0.72;
 
             int minimumHeight =
                 Math.Min(upper.Height, lower.Height);
@@ -2258,6 +2409,7 @@ namespace OpenCvWpfTracking.Services.Video
                     if (upperMean >= 12.0 && lowerMean >= 12.0)
                         gains.Add(upperMean / lowerMean);
                 }
+
             }
 
             if (gains.Count < 3) return 1.0;
@@ -2399,6 +2551,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 ConsoleLogHelper.Warning("EO PANORAMA / DEBUG", "Capture debug save skipped / " + ex.Message);
             }
+
         }
 
         private static void SavePanoramaDebugMat(string outputPath, string folder, string name, Mat image)
@@ -2415,6 +2568,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 ConsoleLogHelper.Warning("EO PANORAMA / DEBUG", "Intermediate debug save skipped / " + ex.Message);
             }
+
         }
 
         private static void SavePanoramaDebugGeometry(string outputPath, int pairIndex,
@@ -2436,6 +2590,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 ConsoleLogHelper.Warning("EO PANORAMA / DEBUG", "Geometry debug save skipped / " + ex.Message);
             }
+
         }
 #endif
 
@@ -2446,13 +2601,17 @@ namespace OpenCvWpfTracking.Services.Video
         private static Mat MergeRowsOnAdaptiveHorizontalSeam(
             Mat upper,
             Mat lower,
-            int overlap)
+            int overlap,
+            string debugOutputPath = null,
+            int debugPairIndex = -1)
         {
             int[] seam =
                 FindLowCostSeam(
                     upper,
                     lower,
-                    overlap);
+                    overlap,
+                    debugOutputPath,
+                    debugPairIndex);
 
             Mat combined =
                 new Mat(
@@ -2529,7 +2688,8 @@ namespace OpenCvWpfTracking.Services.Video
             Mat reconstructed = null;
             try
             {
-                Mat upperFloat = new Mat(); Mat lowerFloat = new Mat();
+                Mat upperFloat = new Mat();
+                Mat lowerFloat = new Mat();
                 upper.ConvertTo(upperFloat, MatType.CV_32FC3, 1.0 / 255.0);
                 lower.ConvertTo(lowerFloat, MatType.CV_32FC3, 1.0 / 255.0);
                 upperGaussian.Add(upperFloat); lowerGaussian.Add(lowerFloat);
@@ -2545,6 +2705,7 @@ namespace OpenCvWpfTracking.Services.Video
                         value = Math.Max(0.0, Math.Min(1.0, value));
                         weights[y * upper.Width + x] = (float)(value * value * (3.0 - 2.0 * value));
                     }
+
                 }
                 Mat baseMask = new Mat(upper.Height, upper.Width, MatType.CV_32FC1);
                 baseMask.SetArray(weights); maskGaussian.Add(baseMask);
@@ -2553,7 +2714,9 @@ namespace OpenCvWpfTracking.Services.Video
                 while (levels < maximumLevels && Math.Min(
                            upperGaussian[levels - 1].Width, upperGaussian[levels - 1].Height) >= minimumPyramidSize)
                 {
-                    Mat nextUpper = new Mat(); Mat nextLower = new Mat(); Mat nextMask = new Mat();
+                    Mat nextUpper = new Mat();
+                    Mat nextLower = new Mat();
+                    Mat nextMask = new Mat();
                     Cv2.PyrDown(upperGaussian[levels - 1], nextUpper);
                     Cv2.PyrDown(lowerGaussian[levels - 1], nextLower);
                     Cv2.PyrDown(maskGaussian[levels - 1], nextMask);
@@ -2563,10 +2726,12 @@ namespace OpenCvWpfTracking.Services.Video
 
                 for (int level = 0; level < levels - 1; level++)
                 {
-                    Mat expandedUpper = new Mat(); Mat expandedLower = new Mat();
+                    Mat expandedUpper = new Mat();
+                    Mat expandedLower = new Mat();
                     Cv2.PyrUp(upperGaussian[level + 1], expandedUpper, upperGaussian[level].Size());
                     Cv2.PyrUp(lowerGaussian[level + 1], expandedLower, lowerGaussian[level].Size());
-                    Mat upperBand = new Mat(); Mat lowerBand = new Mat();
+                    Mat upperBand = new Mat();
+                    Mat lowerBand = new Mat();
                     Cv2.Subtract(upperGaussian[level], expandedUpper, upperBand);
                     Cv2.Subtract(lowerGaussian[level], expandedLower, lowerBand);
                     expandedUpper.Dispose(); expandedLower.Dispose();
@@ -2593,6 +2758,7 @@ namespace OpenCvWpfTracking.Services.Video
                         Cv2.Add(weightedUpper, weightedLower, blended);
                         blendedLevels.Add(blended);
                     }
+
                 }
 
                 reconstructed = blendedLevels[levels - 1].Clone();
@@ -2613,6 +2779,7 @@ namespace OpenCvWpfTracking.Services.Video
                 DisposeAll(maskGaussian); DisposeAll(upperLaplacian); DisposeAll(lowerLaplacian);
                 DisposeAll(blendedLevels);
             }
+
         }
 
         /// <summary>
@@ -2621,7 +2788,9 @@ namespace OpenCvWpfTracking.Services.Video
         private static int[] FindLowCostSeam(
             Mat upper,
             Mat lower,
-            int overlap)
+            int overlap,
+            string debugOutputPath = null,
+            int debugPairIndex = -1)
         {
             int analysisWidth =
                 Math.Min(1600, upper.Width);
@@ -2677,7 +2846,7 @@ namespace OpenCvWpfTracking.Services.Video
                 Cv2.Threshold(
                     grayDifference,
                     parallaxMask,
-                    30,
+                    24,
                     255,
                     ThresholdTypes.Binary);
 
@@ -2845,6 +3014,29 @@ namespace OpenCvWpfTracking.Services.Video
                                     reducedSeam[reducedX] *
                                     overlap / (double)analysisHeight)));
                 }
+
+#if DEBUG
+                if (!string.IsNullOrWhiteSpace(debugOutputPath) && debugPairIndex >= 0)
+                {
+                    string prefix = "pair_" + (debugPairIndex + 1) + "_" +
+                                    (debugPairIndex + 2) + "_";
+                    SavePanoramaDebugMat(debugOutputPath, "seams", prefix + "upper_overlap.jpg", upperSmall);
+                    SavePanoramaDebugMat(debugOutputPath, "seams", prefix + "lower_overlap.jpg", lowerSmall);
+                    SavePanoramaDebugMat(debugOutputPath, "seams", prefix + "difference_cost.jpg", grayDifference);
+                    SavePanoramaDebugMat(debugOutputPath, "seams", prefix + "parallax_mask.jpg", parallaxMask);
+                    using (Mat seamVisualization = new Mat())
+                    {
+                        Cv2.CvtColor(grayDifference, seamVisualization, ColorConversionCodes.GRAY2BGR);
+                        for (int x = 1; x < analysisWidth; x++)
+                            Cv2.Line(seamVisualization,
+                                new Point(x - 1, reducedSeam[x - 1]),
+                                new Point(x, reducedSeam[x]),
+                                new Scalar(0, 0, 255), 2);
+                        SavePanoramaDebugMat(debugOutputPath, "seams", prefix + "selected_seam.jpg", seamVisualization);
+                    }
+
+                }
+#endif
 
                 return fullSeam;
             }

@@ -1274,6 +1274,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                                 SetRawEoPanoramaFrame(rawPanoramaFrame);
                             }
+
                         }
 
                         ThermalFireDetectionResult thermalResult =

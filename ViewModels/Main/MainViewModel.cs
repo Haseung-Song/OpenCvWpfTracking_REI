@@ -96,19 +96,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
          */
 
         /// <summary>
-        /// [3] 1층 생산팀 [ADS] 주간(EO) 카메라 RTSP 주소
-        /// </summary>
-        private const string AdsEoRtspAddress =
-            "rtsp://service:Xhddlf1!@192.168.0.100:554/rtsp_tunnel";
-
-        /// <summary>
-        /// [3] 1층 생산팀 [ADS] 열상(IR) 카메라 RTSP 주소
-        /// </summary>
-        private const string AdsIrRtspAddress =
-            "rtsp://admin:admin@192.168.0.101:554/hdmi";
-
-        /// <summary>
-        /// [4] 옥상 [GOP] 주간(EO) 카메라 RTSP 주소
+        /// [1] 옥상 [GOP] 주간(EO) 카메라 RTSP 주소
         /// </summary>
         private const string GopEoRtspAddress =
             "rtsp://root:rmffhqjf1!@192.168.1.2:554/AVStream1_1";
@@ -2170,20 +2158,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// 통신 설정 탭에서 제공하는 카메라 프리셋:
         ///
-        /// [3] 1층 생산팀 ADS 카메라
+        /// [1] 옥상 GOP 카메라
         /// - EO: 주간 카메라
         /// - IR: 열상 카메라
         ///
-        /// [4] 옥상 GOP 카메라
-        /// - EO: 주간 카메라
-        /// - IR: 열상 카메라
-        ///
-        /// [5] 4층 환경부 PTZ 카메라
+        /// [2] 환경부 PTZ 카메라
         /// - EO: 주간 PTZ 카메라
         /// - IR: 열상 PTZ 카메라
         ///
+        /// [3] 옥상 MR300 카메라
+        /// - EO: 주간 카메라
+        /// - IR: 열상 카메라
+        ///
         /// 프로그램 시작 시에는 현재 개발에 사용하는
-        /// [5] 환경부 EO / IR 카메라를 기본 선택한다.
+        /// 환경부 EO / IR 카메라를 기본 선택한다.
         /// </summary>
         private void InitializeDefaultSourceAddress()
         {

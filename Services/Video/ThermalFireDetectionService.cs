@@ -69,6 +69,7 @@ namespace OpenCvWpfTracking.Services.Video
                 _diagnosticWriter.WriteLine(
                     "FRAME,INPUT,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA_RATIO,DETECTED");
             }
+
         }
 
         internal void StopDiagnostic()
@@ -77,6 +78,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 StopDiagnosticCore();
             }
+
         }
 
         private void StopDiagnosticCore()
@@ -134,6 +136,7 @@ namespace OpenCvWpfTracking.Services.Video
                             detected ? "TRUE" : "FALSE"
                         }));
                     }
+
                 }
 
                 bool snapshotDue = _diagnosticFrameIndex == 1 ||
@@ -155,6 +158,7 @@ namespace OpenCvWpfTracking.Services.Video
                             {
                                 Cv2.Rectangle(finalMask, rectangle, Scalar.White, -1);
                             }
+
                         }
                         Cv2.ImWrite(Path.Combine(frameDirectory, "FINAL.png"), finalMask);
                     }
@@ -174,7 +178,9 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     _diagnosticWriter.Flush();
                 }
+
             }
+
         }
 
         /// <summary>
@@ -534,6 +540,7 @@ namespace OpenCvWpfTracking.Services.Video
                                 ? fireVisionScores[index]
                                 : _latchedVisionScore);
                     }
+
                 }
 
                 Rect resultRect = selectedRect;
@@ -551,7 +558,9 @@ namespace OpenCvWpfTracking.Services.Video
                             resultRect = candidate;
                             resultArea = area;
                         }
+
                     }
+
                 }
 
                 return new ThermalFireDetectionResult(
@@ -849,6 +858,7 @@ namespace OpenCvWpfTracking.Services.Video
                         bestMatch = match;
                         matched = track;
                     }
+
                 }
 
                 if (matched == null || bestMatch < 0.25)
@@ -881,6 +891,7 @@ namespace OpenCvWpfTracking.Services.Video
                             matched.Score.ToString("F1") +
                             " / BBOX=" + candidate.Width + "x" + candidate.Height);
                     }
+
                 }
 
                 matched.Rectangle = candidate;
@@ -1005,6 +1016,7 @@ namespace OpenCvWpfTracking.Services.Video
                         bestScore = score;
                         bestTrack = track;
                     }
+
                 }
 
                 if (bestTrack == null || bestScore < 0.08)
@@ -1050,6 +1062,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     _candidateTracks.RemoveAt(index);
                 }
+
             }
 
             heldCandidateCount = 0;
@@ -1067,6 +1080,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     heldCandidateCount++;
                 }
+
             }
 
             return visible;
@@ -1113,12 +1127,14 @@ namespace OpenCvWpfTracking.Services.Video
                         overlapsAi = true;
                         break;
                     }
+
                 }
 
                 if (!overlapsAi)
                 {
                     filtered.Add(candidate);
                 }
+
             }
 
             return filtered;
@@ -1141,7 +1157,9 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     _candidateTracks.RemoveAt(index);
                 }
+
             }
+
         }
 
         /// <summary>

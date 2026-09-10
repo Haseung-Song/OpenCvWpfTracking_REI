@@ -23,6 +23,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             EoPresetName = eoPresetName;
             IrPresetName = irPresetName;
         }
+
     }
 
     public partial class MainViewModel
@@ -53,7 +54,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 new ControlAgentProfileOption(
                     "옥상 MR300 EO/IR - O-droid 방식",
                     "192.168.20.164", "5005",
-                    RooftopMr300EoDisplayName, RooftopMr300IrDisplayName)
+                    RooftopMr300EoDisplayName, RooftopMr300IrDisplayName),
+                new ControlAgentProfileOption(
+                    "환경부(MOE) PTZ EO/IR - Web Agent 방식",
+                    "192.168.20.161", "5005",
+                    "환경부(MOE) PTZ 주간(EO)",
+                    "환경부(MOE) PTZ 열상(IR)")
             };
 
         public ControlAgentProfileOption SelectedControlAgentProfile
@@ -61,11 +67,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _selectedControlAgentProfile ?? ControlAgentProfiles.First();
             set
             {
-                if (value == null || ReferenceEquals(_selectedControlAgentProfile, value)) return;
+                if (value == null || ReferenceEquals(_selectedControlAgentProfile, value))
+                {
+                    return;
+                }
+
                 _selectedControlAgentProfile = value;
+
                 OnPropertyChanged();
                 ApplyControlAgentProfile(value);
             }
+
         }
 
         private void LoadRtspCommunicationSettings()
@@ -140,6 +152,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 _isLoadingRtspCommunicationSettings = false;
             }
+
         }
 
         private void SaveRtspCommunicationSettings()
@@ -179,6 +192,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "Save failed; current runtime values retained",
                     ex);
             }
+
         }
 
         private void ApplyControlAgentProfile(ControlAgentProfileOption profile)
@@ -221,5 +235,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                            option.Address, address, StringComparison.OrdinalIgnoreCase))
                    ?? options.First(option => option.IsDirectInput);
         }
+
     }
+
 }
