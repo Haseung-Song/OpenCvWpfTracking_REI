@@ -72,7 +72,20 @@ namespace OpenCvWpfTracking.Common
         /// </summary>
         public async void Execute(object parameter)
         {
-            await ExecuteAsync();
+            try
+            {
+                await ExecuteAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                // 2026-09-17: STOP에 의한 정상 취소가 UI 스레드까지 전파되어
+                // 프로그램을 종료하지 않도록 최종 명령 경계에서 흡수한다.
+                Debug.WriteLine("[ASYNC COMMAND] Operation canceled by user.");
+            }
+            catch (Exception exception)
+            {
+                Debug.WriteLine("[ASYNC COMMAND ERROR] " + exception);
+            }
         }
 
         /**

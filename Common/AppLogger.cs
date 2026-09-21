@@ -38,6 +38,10 @@ namespace OpenCvWpfTracking.Common
                     logDirectoryPath,
                     "rei-viewer-.log");
 
+            string errorLogFilePath = Path.Combine(
+                logDirectoryPath,
+                "rei-viewer-errors-.log");
+
             Log.Logger =
                 new LoggerConfiguration()
                     .MinimumLevel.Debug()
@@ -54,13 +58,23 @@ namespace OpenCvWpfTracking.Common
                         shared: true,
                         outputTemplate:
                         "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}{NewLine}")
+                    // 2026-09-18: 운용자가 장애만 즉시 찾을 수 있는 별도 오류 요약 파일.
+                    .WriteTo.Logger(errorLogger => errorLogger
+                        .MinimumLevel.Error()
+                        .WriteTo.File(
+                            errorLogFilePath,
+                            rollingInterval: RollingInterval.Day,
+                            retainedFileCountLimit: 30,
+                            shared: true,
+                            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}{NewLine}"))
                     .CreateLogger();
 
             _isInitialized =
                 true;
 
             Log.Information(
-                "[SYSTEM] Logger Initialize Complete");
+                "[SYSTEM] 로그 시작 | APP=REI | ERROR_FILE={ErrorFile} | 오류 형식=코드/기능/원인/조치",
+                errorLogFilePath);
         }
 
         /// <summary>

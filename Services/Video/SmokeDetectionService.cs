@@ -813,7 +813,9 @@ namespace OpenCvWpfTracking.Services.Video
             double shapeChange = Math.Abs(currentAspect - initialAspect) /
                 Math.Max(0.25, initialAspect);
 
-            double score = 50.0 +
+            // 2026-09-17 V25: SMOKE도 30점에서 시작하여 지속·상향·확산·형상
+            // 증거를 합산한다. 단발성 구름/반사 후보가 즉시 고득점이 되는 것을 막는다.
+            double score = 30.0 +
                 Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) +
                 Math.Min(4.0, verticality * 7.0) +
                 Math.Min(3.0, aspectBalance * 3.0) +

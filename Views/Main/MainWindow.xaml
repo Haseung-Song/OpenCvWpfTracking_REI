@@ -45,6 +45,41 @@
     </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <!-- 2026-09-17: 로컬 FIRE/SMOKE 분석 BBox. AI Agent BBox와 독립 표시한다. -->
+        <DataTemplate x:Key="FireSmokeDetectionBoxTemplate">
+            <Canvas Width="{Binding OverlayWidth}"
+                    Height="{Binding OverlayHeight}">
+                <Rectangle Canvas.Left="{Binding BoxOffsetX}"
+                           Canvas.Top="{Binding BoxOffsetY}"
+                           Width="{Binding Width}"
+                           Height="{Binding Height}"
+                           StrokeThickness="4">
+                    <Rectangle.Style>
+                        <Style TargetType="Rectangle">
+                            <Setter Property="Stroke" Value="#FFFF3B30"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DetectionType}" Value="SMOKE">
+                                    <Setter Property="Stroke" Value="#FFFFA000"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Rectangle.Style>
+                </Rectangle>
+                <Border Background="#DD3A1010"
+                        BorderBrush="#FFFF3B30"
+                        BorderThickness="1"
+                        Width="{Binding LabelWidth}"
+                        Canvas.Left="{Binding LabelOffsetX}"
+                        Canvas.Top="{Binding LabelOffsetY}">
+                    <TextBlock Text="{Binding DisplayText}"
+                               Foreground="White"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Padding="5,1"/>
+                </Border>
+            </Canvas>
+        </DataTemplate>
+
         <!-- [EO / IR] 영상 중앙 십자선 공통 Template
 
             화면 전체를 가로지르는 기준선이 아니라
@@ -261,9 +296,12 @@
             <Setter Property="FontSize"
                     Value="12"/>
 
-            <!-- 탭 사이 간격 -->
+            <!-- 2026-09-17: Header 고정 폭/간격 제거 -->
             <Setter Property="Margin"
-                    Value="0,0,1,0"/>
+                    Value="0"/>
+
+            <Setter Property="HorizontalAlignment"
+                    Value="Stretch"/>
 
             <!-- 탭이 남는 공간을 균등하게 사용하도록 설정 -->
             <Setter Property="HorizontalContentAlignment"
@@ -275,8 +313,8 @@
                     <ControlTemplate TargetType="TabItem">
 
                         <Border x:Name="TabBorder"
-                            Width="84.5"
                                 Height="32"
+                                HorizontalAlignment="Stretch"
                                 Background="#4F5860"
                                 BorderBrush="#95A5B0"
                                 BorderThickness="1,1,1,0"
@@ -473,6 +511,23 @@
                 </Trigger>
             </Style.Triggers>
 
+        </Style>
+
+        <!-- 2026-09-17: 운용 제어 하위 탭 4개를 실제 사용 가능 폭 전체에 균등 배치한다. -->
+        <Style x:Key="OperationSubTabControlStyle" TargetType="TabControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <UniformGrid Grid.Row="0" Rows="1" Columns="4" IsItemsHost="True" HorizontalAlignment="Stretch"/>
+                            <Border Grid.Row="1" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- [통신 설정] CONTROL / RTSP 및 AI DETECTOR 하위 탭 전용 스타일
@@ -757,10 +812,13 @@
                 기본 Window Frame을 사용하지 않는 데모 화면에서
                 창 이동 / 최소화 / 최대화 / 종료 기능을 제공한다.
             -->
-            <Border Grid.Row="0"
+                <!-- 2026-09-18: 제목 표시줄 더블클릭도 버튼과 동일한 전체 화면 경로를 사용한다. -->
+                <Border Grid.Row="0"
                     Background="#46515A"
                     BorderBrush="#71808A"
                     BorderThickness="0,0,0,1"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                    MouseLeftButtonDown="WindowTitleBar_MouseLeftButtonDown"
                     CornerRadius="7,7,0,0">
                 <Grid>
                     <TextBlock Text="[REI] EO/IR VIDEO MONITORING &amp; PTZF CONTROL VIEWER"
@@ -901,6 +959,11 @@
                                            RenderOptions.BitmapScalingMode="LowQuality"
                                            SnapsToDevicePixels="True"
                                            UseLayoutRounding="True"/>
+
+                                    <!-- 2026-09-21: SYNC 화각 검증 시 선택한 기준물 좌/우 경계를 표시한다. -->
+                                    <Canvas x:Name="EoFovValidationOverlay"
+                                            Panel.ZIndex="55"
+                                            IsHitTestVisible="False"/>
                                 </Grid>
 
                                 <!-- [AI] [Bounding Box] [Overlay] -->
@@ -925,40 +988,74 @@
                                         <ItemsControl.ItemContainerStyle>
                                             <Style TargetType="ContentPresenter">
                                                 <Setter Property="Canvas.Left"
-                                                        Value="{Binding Left}"/>
+                                                        Value="{Binding OverlayLeft}"/>
                                                 <Setter Property="Canvas.Top"
-                                                        Value="{Binding Top}"/>
+                                                        Value="{Binding OverlayTop}"/>
                                             </Style>
                                         </ItemsControl.ItemContainerStyle>
 
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <!-- [AI] [Bounding Box] 표시 영역 -->
-                                                <Grid>
+                                                <Canvas Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}">
                                                     <!-- 2026-08-26: AI는 형광 라임 BBox와 AI 순번으로 FIRE와 구분한다. -->
-                                                    <Rectangle Width="{Binding Width}"
-                                                                Height="{Binding Height}"
+                                                    <Rectangle Canvas.Left="{Binding BoxOffsetX}"
+                                                                Canvas.Top="{Binding BoxOffsetY}"
+                                                                Width="{Binding RenderWidth}"
+                                                                Height="{Binding RenderHeight}"
                                                                 Stroke="#FF39FF14"
                                                                 StrokeThickness="4"/>
                                                     <!-- [AI] 탐지 객체 이름 / 정확도 표시 -->
                                                     <Border Background="#DD102A10"
                                                              BorderBrush="#FF39FF14"
                                                              BorderThickness="1"
-                                                             HorizontalAlignment="Left"
-                                                             VerticalAlignment="Top">
+                                                             Width="{Binding LabelWidth}"
+                                                             Canvas.Left="{Binding LabelOffsetX}"
+                                                             Canvas.Top="{Binding LabelOffsetY}">
                                                         <TextBlock Text="{Binding DisplayText}"
                                                                     Foreground="#FF39FF14"
                                                                     FontSize="16"
                                                                    FontWeight="Bold"
                                                                    Padding="5,1"/>
                                                     </Border>
-                                                </Grid>
+                                                </Canvas>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
 
                                     </ItemsControl>
 
                                 </Viewbox>
+
+                                <!-- [Local FIRE / SMOKE] Bounding Box Overlay -->
+                                <Viewbox Stretch="Uniform" IsHitTestVisible="False" Panel.ZIndex="20">
+                                    <ItemsControl ItemsSource="{Binding EoFireSmokeDetectionBoxes}"
+                                                  Width="{Binding EoVideoWidth}"
+                                                  Height="{Binding EoVideoHeight}"
+                                                  ItemTemplate="{StaticResource FireSmokeDetectionBoxTemplate}">
+                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle><Style TargetType="ContentPresenter"><Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/><Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/></Style></ItemsControl.ItemContainerStyle>
+                                    </ItemsControl>
+                                </Viewbox>
+
+                                <!-- 2026-09-18: 화재 발생을 BBox 외에도 즉시 인지할 수 있는 영상 경고창 -->
+                                <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                        Margin="0,14,0,0" Padding="18,7" Background="#E6A61B1B"
+                                        BorderBrush="#FFFF6262" BorderThickness="2" IsHitTestVisible="False">
+                                    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding IsEoFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                    </Style></Border.Style>
+                                    <TextBlock Text="⚠ FIRE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                </Border>
+
+                                <!-- 2026-09-21: AI 오버레이와 독립된 로컬 SMOKE 경고 -->
+                                <Border Panel.ZIndex="41" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Margin="0,14,14,0" Padding="18,7" Background="#E68A4B00"
+                                        BorderBrush="#FFFFB300" BorderThickness="2" IsHitTestVisible="False">
+                                    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding IsEoSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                    </Style></Border.Style>
+                                    <TextBlock Text="⚠ SMOKE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                </Border>
 
                                 <!-- [EO] 영상 중앙 십자선 [Overlay]
 
@@ -1065,6 +1162,11 @@
                                         <Image x:Name="IrCameraImageView"
                                                Source="{Binding IRCameraImage}"
                                                Stretch="Uniform"/>
+
+                                        <!-- 2026-09-21: SYNC 화각 검증 시 선택한 기준물 좌/우 경계를 표시한다. -->
+                                        <Canvas x:Name="IrFovValidationOverlay"
+                                                Panel.ZIndex="55"
+                                                IsHitTestVisible="False"/>
                                     </Grid>
 
                                     <!-- [AI] [Bounding Box] [Overlay] -->
@@ -1088,20 +1190,22 @@
                                             <ItemsControl.ItemContainerStyle>
                                                 <Style TargetType="ContentPresenter">
                                                     <Setter Property="Canvas.Left"
-                                                            Value="{Binding Left}"/>
+                                                            Value="{Binding OverlayLeft}"/>
                                                     <Setter Property="Canvas.Top"
-                                                            Value="{Binding Top}"/>
+                                                            Value="{Binding OverlayTop}"/>
                                                 </Style>
                                             </ItemsControl.ItemContainerStyle>
 
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <!-- [AI] [Bounding Box] 표시 영역 -->
-                                                    <Grid>
+                                                    <Canvas Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}">
 
                                                         <!-- 2026-08-26: AI는 형광 라임 BBox와 AI 순번으로 FIRE와 구분한다. -->
-                                                        <Rectangle Width="{Binding Width}"
-                                                                   Height="{Binding Height}"
+                                                        <Rectangle Canvas.Left="{Binding BoxOffsetX}"
+                                                                   Canvas.Top="{Binding BoxOffsetY}"
+                                                                   Width="{Binding RenderWidth}"
+                                                                   Height="{Binding RenderHeight}"
                                                                    Stroke="#FF39FF14"
                                                                    StrokeThickness="4"/>
 
@@ -1109,8 +1213,9 @@
                                                         <Border Background="#DD102A10"
                                                                 BorderBrush="#FF39FF14"
                                                                 BorderThickness="1"
-                                                                HorizontalAlignment="Left"
-                                                                VerticalAlignment="Top">
+                                                                Width="{Binding LabelWidth}"
+                                                                Canvas.Left="{Binding LabelOffsetX}"
+                                                                Canvas.Top="{Binding LabelOffsetY}">
 
                                                             <TextBlock Text="{Binding DisplayText}"
                                                                        Foreground="#FF39FF14"
@@ -1119,13 +1224,42 @@
                                                                        Padding="5,1"/>
                                                         </Border>
 
-                                                    </Grid>
+                                                    </Canvas>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
 
                                         </ItemsControl>
 
                                     </Viewbox>
+
+                                    <!-- [Local FIRE / SMOKE] Bounding Box Overlay -->
+                                    <Viewbox Stretch="Uniform" IsHitTestVisible="False" Panel.ZIndex="20">
+                                        <ItemsControl ItemsSource="{Binding IrFireSmokeDetectionBoxes}"
+                                                      Width="{Binding IrVideoWidth}"
+                                                      Height="{Binding IrVideoHeight}"
+                                                      ItemTemplate="{StaticResource FireSmokeDetectionBoxTemplate}">
+                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle><Style TargetType="ContentPresenter"><Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/><Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/></Style></ItemsControl.ItemContainerStyle>
+                                        </ItemsControl>
+                                    </Viewbox>
+
+                                    <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                            Margin="0,10,0,0" Padding="12,5" Background="#E6A61B1B"
+                                            BorderBrush="#FFFF6262" BorderThickness="2" IsHitTestVisible="False">
+                                        <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers><DataTrigger Binding="{Binding IsIrFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                        </Style></Border.Style>
+                                        <TextBlock Text="⚠ FIRE DETECTED / IR" Foreground="White" FontSize="14" FontWeight="Bold"/>
+                                    </Border>
+
+                                    <Border Panel.ZIndex="41" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,10,10,0" Padding="12,5" Background="#E68A4B00"
+                                            BorderBrush="#FFFFB300" BorderThickness="2" IsHitTestVisible="False">
+                                        <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers><DataTrigger Binding="{Binding IsIrSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                        </Style></Border.Style>
+                                        <TextBlock Text="⚠ SMOKE DETECTED / IR" Foreground="White" FontSize="14" FontWeight="Bold"/>
+                                    </Border>
 
                                     <!-- [IR] 영상 중앙 십자선 [Overlay]
 
@@ -1188,12 +1322,17 @@
                                     <TextBlock Text="{Binding IrStatusText}"
                                                Panel.ZIndex="100"
                                                Margin="0,0,8,2"
-                                               Foreground="#FFB347"
-                                               FontSize="15.5"
+                                               Foreground="#C6E77B"
+                                               FontSize="13"
                                                FontWeight="Bold"
                                                HorizontalAlignment="Right"
                                                VerticalAlignment="Bottom"
-                                               IsHitTestVisible="False"/>
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Effect>
+                                            <DropShadowEffect Color="Black" BlurRadius="1"
+                                                              ShadowDepth="1" Opacity="1"/>
+                                        </TextBlock.Effect>
+                                    </TextBlock>
 
                                 </Grid>
 
@@ -1249,17 +1388,15 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Button Grid.Column="0"
-                                                Content="ROOFTOP"
+                                                Content="LA AGENT"
                                                 Height="25"
                                                 Margin="2,0"
-                                                IsEnabled="{Binding IsOperationCommandEnabled}"
-                                                Command="{Binding ShowRooftopStatusCommand}"/>
+                                                IsHitTestVisible="False"/>
                                         <Button Grid.Column="1"
-                                                Content="ENVIRONMENT"
+                                                Content="WEB AGENT"
                                                 Height="25"
                                                 Margin="2,0"
-                                                IsEnabled="{Binding IsOperationCommandEnabled}"
-                                                Command="{Binding ShowEnvironmentStatusCommand}"/>
+                                                IsHitTestVisible="False"/>
                                     </Grid>
 
                                     <TextBlock Text="{Binding CurrentStatusEquipmentText}"
@@ -1325,7 +1462,7 @@
                                                        FontWeight="Bold"
                                                        HorizontalAlignment="Center"
                                                        TextAlignment="Center">
-                                                <Run Text="CONTROL:" Foreground="#4FD1C5"/><Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="EO:" Foreground="#7DD3FC"/><Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="IR:" Foreground="#C4B5FD"/><Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="AI:" Foreground="#FFD166"/><Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
+                                                <Run Text="CONTROL:" Foreground="#6CB6FF"/><Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="EO:" Foreground="#5EE7F7"/><Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="IR:" Foreground="#C6E77B"/><Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="AI:" Foreground="#39FF14"/><Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
                                             </TextBlock>
                                         </Grid>
                                     </Border>
@@ -1543,7 +1680,7 @@
 
                                     연속 이동 명령의 Data1(Pan) / Data2(Tilt)에 적용하며,
                                     이동 중 값을 변경해도 현재 방향을 유지한 채 즉시 재송신한다.
-                                    장비 허용 범위 0~63 중 운용 UI 범위는 0~50으로 제한한다.
+                                    2026-09-17 Web Agent 운용 규격에 맞춰 UI/전송 범위를 0~60으로 사용한다.
                                 -->
                                 <Border Grid.Row="1"
                                         Margin="0,0,0,7"
@@ -1572,7 +1709,7 @@
 
                                             <TextBlock Grid.Column="1"
                                                        Text="{Binding PanTiltSpeedLevel,
-                                                               StringFormat={}LEVEL : {0} / 50}"
+                                                               StringFormat={}LEVEL : {0} / 60}"
                                                        Foreground="#D0D7DE"
                                                        FontSize="12"
                                                        FontWeight="Bold"
@@ -1580,8 +1717,8 @@
                                         </Grid>
 
                                         <Slider Grid.Row="1"
-                                                Minimum="5"
-                                                Maximum="50"
+                                                Minimum="0"
+                                                Maximum="60"
                                                 TickFrequency="5"
                                                 SmallChange="5"
                                                 LargeChange="5"
@@ -1730,21 +1867,41 @@
 
                                                                             <TextBox Grid.Row="3"
                                                                                      Grid.Column="0"
-                                                                                     Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                     IsReadOnly="True"
                                                                                      Text="{Binding ControlAgentIp,
                                                                                              Mode=TwoWay,
-                                                                                             UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                             UpdateSourceTrigger=PropertyChanged}">
+                                                                                <TextBox.Style>
+                                                                                    <Style TargetType="TextBox"
+                                                                                           BasedOn="{StaticResource CommunicationTextBoxStyle}">
+                                                                                        <Setter Property="IsReadOnly" Value="True"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsControlAgentDirectInput}" Value="True">
+                                                                                                <Setter Property="IsReadOnly" Value="False"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </TextBox.Style>
+                                                                            </TextBox>
 
                                                                             <TextBox Grid.Row="3"
                                                                                      Grid.Column="1"
                                                                                      Margin="6,0,0,0"
                                                                                      MaxLength="5"
-                                                                                     Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                     IsReadOnly="True"
                                                                                      Text="{Binding ControlAgentPortText,
                                                                                              Mode=TwoWay,
-                                                                                             UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                             UpdateSourceTrigger=PropertyChanged}">
+                                                                                <TextBox.Style>
+                                                                                    <Style TargetType="TextBox"
+                                                                                           BasedOn="{StaticResource CommunicationTextBoxStyle}">
+                                                                                        <Setter Property="IsReadOnly" Value="True"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsControlAgentDirectInput}" Value="True">
+                                                                                                <Setter Property="IsReadOnly" Value="False"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </TextBox.Style>
+                                                                            </TextBox>
                                                                         </Grid>
 
                                                                         <!-- Control Agent 설정값 적용 시점 안내 -->
@@ -2206,8 +2363,8 @@
                                                                         <!--
                                                                             [열영상 팔레트 / 화재 후보 검출 시험]
 
-                                                                            팔레트 제어는 ThermalCamCon 실장비 명령의
-                                                                            Address 0x0E / Palette 0x00 ~ 0x09를 사용한다.
+                                                                            환경장비 팔레트 제어는 WebAgent v1.8의
+                                                                            Feature 0x05 / IR Target / Palette 0x00 ~ 0x05를 사용한다.
 
                                                                             화재 후보 검출은 방사 온도값이 아닌
                                                                             IR 영상의 밝기 및 적색 계열 픽셀을 분석하는
@@ -2498,22 +2655,22 @@
                                                                    VerticalAlignment="Center">
                                                             <Run Text="POWER" Foreground="#D0D7DE"/>
                                                             <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="TCP:" Foreground="#4FD1C5"/>
+                                                            <Run Text="TCP:" Foreground="#6CB6FF"/>
                                                             <Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#9FE870"/>
                                                             <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="EO:" Foreground="#7DD3FC"/>
+                                                            <Run Text="EO:" Foreground="#5EE7F7"/>
                                                             <Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#9FE870"/>
                                                             <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="IR:" Foreground="#C4B5FD"/>
+                                                            <Run Text="IR:" Foreground="#C6E77B"/>
                                                             <Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#9FE870"/>
                                                             <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="AI:" Foreground="#A9D6E5"/>
+                                                            <Run Text="AI:" Foreground="#39FF14"/>
                                                             <Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
                                                             <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="FIRE:" Foreground="#A9D6E5"/>
+                                                            <Run Text="FIRE:" Foreground="#FF6B5E"/>
                                                             <Run Text="{Binding FirePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
                                                             <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="SMOKE:" Foreground="#67E8F9"/>
+                                                            <Run Text="SMOKE:" Foreground="#FFA000"/>
                                                             <Run Text="{Binding SmokePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
                                                         </TextBlock>
                                                     </Border>
@@ -2570,17 +2727,17 @@
 
                                                             <Button x:Name="RooftopStatusButton"
                                                                     Grid.Column="0"
-                                                                    Content="ROOFTOP"
+                                                                    Content="LA AGENT"
                                                                     Height="28"
                                                                     Margin="2"
-                                                                    Command="{Binding ShowRooftopStatusCommand}"/>
+                                                                    IsHitTestVisible="False"/>
 
                                                             <Button x:Name="EnvironmentStatusButton"
                                                                     Grid.Column="1"
-                                                                    Content="ENVIRONMENT"
+                                                                    Content="WEB AGENT"
                                                                     Height="28"
                                                                     Margin="2"
-                                                                    Command="{Binding ShowEnvironmentStatusCommand}"/>
+                                                                    IsHitTestVisible="False"/>
                                                         </Grid>
 
                                                         <TextBlock Text="{Binding CurrentStatusEquipmentText}"
@@ -2851,6 +3008,7 @@
                                             SYNC   : Web Agent 기준 EO / IR Zoom / Focus 단계 동기화 -->
                                             <TabControl Grid.Row="1"
                                                         Margin="0,8,0,0"
+                                                        Style="{StaticResource OperationSubTabControlStyle}"
                                                         Background="#5F666D"
                                                         BorderBrush="#95A5B0"
                                                         BorderThickness="1"
@@ -3170,7 +3328,7 @@
                                                                 </Border.Style>
 
                                                                 <StackPanel>
-                                                                    <TextBlock Text="HOME / ZERO"
+                                                                    <TextBlock Text="{Binding HomeControlHeaderText}"
                                                                                HorizontalAlignment="Center"
                                                                                Foreground="White"
                                                                                FontSize="12"
@@ -3183,15 +3341,49 @@
                                                                             Command="{Binding MoveHomePositionCommand}"/>
 
                                                                     <UniformGrid Columns="2">
+                                                                        <UniformGrid.Style>
+                                                                            <!-- 2026-09-16: 별도 Converter 리소스에 의존하지 않아
+                                                                                 단독 배포에서도 XAML 로딩 오류가 발생하지 않게 한다. -->
+                                                                            <Style TargetType="UniformGrid">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsPanTiltZeroVisible}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </UniformGrid.Style>
                                                                         <Button Content="PAN ZERO"
                                                                                 Height="26"
                                                                                 Margin="1"
+                                                                                IsEnabled="{Binding IsPanTiltZeroCommandEnabled}"
+                                                                                ToolTip="WebAgent PAN ZERO 외부 명령 구현 대기"
                                                                                 Command="{Binding SetPanZeroCommand}"/>
                                                                         <Button Content="TILT ZERO"
                                                                                 Height="26"
                                                                                 Margin="1"
+                                                                                IsEnabled="{Binding IsPanTiltZeroCommandEnabled}"
+                                                                                ToolTip="WebAgent TILT ZERO 외부 명령 구현 대기"
                                                                                 Command="{Binding SetTiltZeroCommand}"/>
                                                                     </UniformGrid>
+
+                                                                    <TextBlock Text="WEB AGENT ZERO COMMAND : IMPLEMENTATION PENDING"
+                                                                               Foreground="#FFCC80"
+                                                                               FontSize="9"
+                                                                               FontWeight="Bold"
+                                                                               TextAlignment="Center"
+                                                                               Margin="0,3,0,0">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsRooftopStatusSelected}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
 
                                                                     <TextBlock Text="{Binding HomeZeroStatusText}"
                                                                                Foreground="#F6E05E"
@@ -3203,7 +3395,7 @@
                                                                 </StackPanel>
                                                             </Border>
 
-                                                            <TextBlock Text="PAN : -180° ~ 180°   /   TILT : -90° ~ 90°"
+                                                            <TextBlock Text="{Binding PanTiltCoordinateRangeText}"
                                                                        Foreground="#F6E05E"
                                                                        FontSize="9.5"
                                                                        FontWeight="Bold"
@@ -3226,7 +3418,7 @@
                                                                                FontWeight="Bold"
                                                                                Margin="0,0,0,5"/>
 
-                                                                    <TextBlock Text="Pan Target  (-180° ~ 180°)"
+                                                                    <TextBlock Text="{Binding PanAbsoluteRangeLabel}"
                                                                                Foreground="White"
                                                                                FontSize="12"/>
 
@@ -3245,7 +3437,7 @@
                                                                             Style="{StaticResource EoControlButtonStyle}"
                                                                             Command="{Binding MovePanAbsoluteCommand}"/>
 
-                                                                    <TextBlock Text="Tilt Target  (-90° ~ 90°)"
+                                                                    <TextBlock Text="{Binding TiltAbsoluteRangeLabel}"
                                                                                Foreground="White"
                                                                                FontSize="12"/>
 
@@ -3295,7 +3487,7 @@
                                                                                FontWeight="Bold"
                                                                                Margin="0,0,0,5"/>
 
-                                                                    <TextBlock Text="EO / IR 50x STANDARD"
+                                                                    <TextBlock Text="EO 90x / IR 9x OPTICAL STANDARD"
                                                                                HorizontalAlignment="Center"
                                                                                Foreground="#8FD3FF"
                                                                                FontSize="10"
@@ -3325,13 +3517,13 @@
                                                                                Foreground="White"
                                                                                FontSize="12"/>
 
-                                                                    <TextBlock Text="EO 1.0~50.0x / IR은 동일 진행률로 1.0~5.0x 적용"
+                                                                    <TextBlock Text="EO 1.0~90.0x / IR은 동일 진행률로 1.0~9.0x 적용"
                                                                                Foreground="#8FD3FF"
                                                                                FontSize="9.5"
                                                                                TextWrapping="Wrap"
                                                                                Margin="0,2,0,2"/>
 
-                                                                    <!-- EO 배율 입력 범위: 1.0 ~ 50.0
+                                                                    <!-- EO 배율 입력 범위: 1.0 ~ 90.0
                                                                         입력한 EO 배율을 0 ~ 1000 진행률로 변환한 뒤
                                                                     IR에도 동일 Position 비율을 적용한다. -->
                                                                     <TextBox Text="{Binding ZoomRatioValue, UpdateSourceTrigger=LostFocus}"
@@ -3367,7 +3559,7 @@
                                                                                FontWeight="Bold"
                                                                                Margin="0,0,0,5"/>
 
-                                                                    <TextBlock Text="0 = FAR  /  1000 = NEAR"
+                                                                    <TextBlock Text="EO / IR  /  0 = FAR  /  1000 = NEAR"
                                                                                HorizontalAlignment="Center"
                                                                                Foreground="#8FD3FF"
                                                                                FontSize="10"
@@ -3428,7 +3620,7 @@
 
                                                 <!-- [PRESET] 프리셋 등록 / 이동 / 오토 스캔 제어 -->
                                                 <TabItem x:Name="PresetLTab"
-                                                         Header="PRESET L&#x0a;(LA TEST)">
+                                                         Header="PRESET">
                                                     <!-- 2026-09-10: PTZF와 같은 상하 안전 여백을 사용해 스크롤 끝 위치의 간격을 통일한다. -->
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
@@ -3450,7 +3642,7 @@
 
                                                                 <StackPanel>
 
-                                                                    <TextBlock Text="PRESET L / LA AGENT Ver."
+                                                                    <TextBlock Text="PRESET / COMMON DIRECT PTZF"
                                                                                HorizontalAlignment="Center"
                                                                                Foreground="White"
                                                                                FontWeight="Bold"
@@ -3774,7 +3966,8 @@
                                                     </ScrollViewer>
                                                 </TabItem>
 
-                                                <TabItem Header="PRESET W&#x0a;(DEVICE)">
+                                                <TabItem Header="PRESET W&#x0a;(DEVICE)"
+                                                         Visibility="Collapsed">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
                                                                   CanContentScroll="False"
@@ -4303,16 +4496,16 @@
                                                                                 Margin="0,0,0,0">
 
                                                                         <!--
-                                                                            [IR] FOCUS 표시값은 장비 Raw 값과 반대 방향이다.
-                                                                            FOCUS + : 표시값 0 → 1000 = Raw 감소 = Near
-                                                                            FOCUS - : 표시값 1000 → 0 = Raw 증가 = Far
+                                                                            2026-09-17 실장비 확인:
+                                                                            Near(0x03)는 상태값 감소, Far(0x04)는 상태값 증가.
+                                                                            따라서 표시 기준 FOCUS +는 Far, FOCUS -는 Near로 연결한다.
                                                                         -->
                                                                         <Button Content="FOCUS +"
                                                                                 Width="85"
                                                                                 Margin="5"
                                                                                 Focusable="False"
                                                                                 Style="{StaticResource IrControlButtonStyle}"
-                                                                                PreviewMouseDown="IrFocusNear_MouseDown"
+                                                                                PreviewMouseDown="IrFocusFar_MouseDown"
                                                                                 PreviewMouseUp="MoveStop_MouseUp"
                                                                                 MouseLeave="MoveStop_MouseUp"/>
 
@@ -4321,7 +4514,7 @@
                                                                                 Margin="5"
                                                                                 Focusable="False"
                                                                                 Style="{StaticResource IrControlButtonStyle}"
-                                                                                PreviewMouseDown="IrFocusFar_MouseDown"
+                                                                                PreviewMouseDown="IrFocusNear_MouseDown"
                                                                                 PreviewMouseUp="MoveStop_MouseUp"
                                                                                 MouseLeave="MoveStop_MouseUp"/>
 
@@ -4363,7 +4556,7 @@
                                                                                HorizontalAlignment="Center"
                                                                                Margin="0,0,0,6"/>
 
-                                                                    <TextBlock Text="NORMALIZED POSITION : 0 ~ 1000"
+                                                                    <TextBlock Text="CALIBRATED 10 LEVEL : 100 ~ 1000"
                                                                                Foreground="#B9C4CC"
                                                                                FontSize="10"
                                                                                HorizontalAlignment="Center"
@@ -4394,9 +4587,9 @@
                                                                                 Command="{Binding NextZoomSyncLevelCommand}"/>
                                                                     </Grid>
 
-                                                                    <TextBlock Text="{Binding SelectedZoomSyncPositionText}"
-                                                                               Foreground="#8FD3FF"
-                                                                               FontSize="14"
+                                                                    <TextBlock Text="{Binding SelectedZoomSyncLevelText}"
+                                                                               Foreground="#D6E4EC"
+                                                                               FontSize="11"
                                                                                FontWeight="Bold"
                                                                                HorizontalAlignment="Center"
                                                                                Margin="0,0,0,6"/>
@@ -4421,7 +4614,51 @@
                                                                 </StackPanel>
                                                             </Border>
 
-                                                            <!-- EO / IR Focus 10단계 동기화 -->
+                                                            <!-- 2026-09-21: 표시 크기가 서로 다른 EO/IR 영상에서도
+                                                                 원본 프레임 폭으로 정규화해 10% 화각 오차를 검증한다. -->
+                                                            <Border Background="#2F363D"
+                                                                    BorderBrush="#8A9BA8"
+                                                                    BorderThickness="1"
+                                                                    Padding="11"
+                                                                    Margin="0,6,0,0">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="FOV SYNC VALIDATION"
+                                                                               Foreground="White"
+                                                                               FontWeight="Bold"
+                                                                               HorizontalAlignment="Center"
+                                                                               Margin="0,0,0,5"/>
+
+                                                                    <TextBlock Text="EO LEFT / RIGHT → IR LEFT / RIGHT"
+                                                                               Foreground="#B9C4CC"
+                                                                               FontSize="10"
+                                                                               HorizontalAlignment="Center"
+                                                                               Margin="0,0,0,7"/>
+
+                                                                    <UniformGrid Columns="2">
+                                                                        <Button Content="START"
+                                                                                Height="30"
+                                                                                Margin="2"
+                                                                                Click="StartFovValidation_Click"/>
+                                                                        <Button Content="RESET"
+                                                                                Height="30"
+                                                                                Margin="2"
+                                                                                Click="ResetFovValidation_Click"/>
+                                                                    </UniformGrid>
+
+                                                                    <TextBlock x:Name="FovValidationStatusText"
+                                                                               Text="READY / SELECT LEVEL AND START"
+                                                                               TextWrapping="Wrap"
+                                                                               TextAlignment="Center"
+                                                                               Foreground="#F6E05E"
+                                                                               FontSize="10"
+                                                                               FontWeight="Bold"
+                                                                               HorizontalAlignment="Stretch"
+                                                                               Margin="2,7,2,0"/>
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- 2026-09-21: EO / IR Focus Sync는 현재 운용 요구에서 제외한다.
+                                                                 복구가 쉽도록 XAML과 ViewModel 코드는 삭제하지 않고 주석으로 보존한다.
                                                             <Border Background="#2F363D"
                                                                     BorderBrush="#8A9BA8"
                                                                     BorderThickness="1"
@@ -4490,7 +4727,7 @@
                                                                                HorizontalAlignment="Center"
                                                                                Margin="0,6,0,0"/>
                                                                 </StackPanel>
-                                                            </Border>
+                                                            </Border> -->
                                                         </StackPanel>
                                                     </ScrollViewer>
                                                 </TabItem>

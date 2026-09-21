@@ -73,7 +73,31 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 
         /// 위치: packet[11]
         /// </summary>
-        public byte Checksum => RawData[11];
+        public byte Checksum => RawData[RawData.Length - 1];
+
+        public bool IsVariableLength =>
+            Function >= 0x23 && Function <= 0x2A;
+
+        public int PayloadLength =>
+            IsVariableLength && RawData != null && RawData.Length >= 5
+                ? RawData[2] | RawData[3] << 8
+                : 0;
+
+        public byte[] Payload
+        {
+            get
+            {
+                if (!IsVariableLength || PayloadLength <= 0 ||
+                    RawData.Length < PayloadLength + 5)
+                {
+                    return new byte[0];
+                }
+
+                byte[] payload = new byte[PayloadLength];
+                System.Buffer.BlockCopy(RawData, 4, payload, 0, PayloadLength);
+                return payload;
+            }
+        }
 
         /// <summary>
         /// [IR Camera Status Packet] 여부

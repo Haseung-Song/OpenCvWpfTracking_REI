@@ -197,9 +197,9 @@ namespace OpenCvWpfTracking.Services.Video
                         "파노라마에는 Tilt 촬영 행이 1개 이상 필요합니다.");
                 }
 
-#if DEBUG
+        // 2026-09-17: 행별 비교 산출물은 Release 실장비 시험에서도 필요하므로
+        // 저장 헬퍼 자체는 모든 구성에서 컴파일한다.
                 SavePanoramaDebugCapture(frameRows, outputPath);
-#endif
 
                 // 2026-09-09: 같은 Pan의 서로 다른 Tilt 원본을 먼저 합치면 원근/시차가
                 // 픽셀에 고정되어 난간과 건물이 잘린다. 36개 Pan을 공통 각도 폭으로
@@ -804,7 +804,18 @@ namespace OpenCvWpfTracking.Services.Video
                 .OrderBy(value => value)
                 .ToList();
 
-            int sharedContributionWidth = contributionCandidates[contributionCandidates.Count / 2];
+            // 2026-09-17: LA 1~5행 기준선은 1920px 입력에서 10°당 280px
+            // (360°=10080px)이다. 저특징 하늘 행의 MatchTemplate가 상한 384px을
+            // 선택해 2/3행 결과가 13824px로 늘어나는 경우만 물리 기준선으로 복원한다.
+            // 12° 단일행 경로는 이 보정의 대상이 아니다.
+            int lowerMedianContribution =
+                contributionCandidates[(contributionCandidates.Count - 1) / 2];
+            int calibratedContribution = (int)Math.Round(frameRows[0][0].Width * 7.0 / 48.0);
+            int allowedCalibrationDelta = Math.Max(12, calibratedContribution * 15 / 100);
+            int sharedContributionWidth =
+                Math.Abs(lowerMedianContribution - calibratedContribution) > allowedCalibrationDelta
+                    ? calibratedContribution
+                    : lowerMedianContribution;
             int centerRowIndex = (frameRows.Count - 1) / 2;
 
             double[] sharedPanGains = EstimateCyclicExposureGains(
@@ -860,11 +871,9 @@ namespace OpenCvWpfTracking.Services.Video
                             sharedContributionWidth,
                             sharedPanGains,
                             sharedRowGains[rowIndex]);
-#if DEBUG
                         SavePanoramaDebugMat(outputPath, "rows",
                             "row_" + (rowIndex + 1).ToString("D2") + "_360.jpg",
                             stitchedRows[rowIndex]);
-#endif
                     });
 
                 if (stitchedRows.Any(row => row == null || row.Empty()) ||
@@ -891,14 +900,14 @@ namespace OpenCvWpfTracking.Services.Video
                     " / ROWS=" + frameRows.Count +
                     " / FRAMES=" + frameRows.Sum(row => row.Count) +
                     " / COMMON_CONTRIBUTION_PX=" + sharedContributionWidth +
+                    " / CALIBRATED_BASELINE_PX=" + calibratedContribution +
+                    " / LOWER_MEDIAN_PX=" + lowerMedianContribution +
                     " / CANDIDATES=[" + string.Join(",", contributionCandidates) + "]" +
                     " / ROW_GAINS=[" + string.Join(",",
                         sharedRowGains.Select(value => value.ToString("F3"))) + "]" +
                     " / OVERLAPS=[" + string.Join(",", sharedVerticalOverlaps) + "]" +
                     " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds);
-#if DEBUG
                 SavePanoramaDebugMat(outputPath, "row_first", "shared_row_first.jpg", result);
-#endif
                 return result;
             }
             finally
@@ -2527,7 +2536,6 @@ namespace OpenCvWpfTracking.Services.Video
 
         }
 
-#if DEBUG
         private static string GetPanoramaDebugRoot(string outputPath)
         {
             string directory = Path.GetDirectoryName(outputPath);
@@ -2592,7 +2600,6 @@ namespace OpenCvWpfTracking.Services.Video
             }
 
         }
-#endif
 
         /// <summary>
         /// 상·하단 행에서 영상 차이와 구조물 윤곽 비용이 가장 작은 수평 이음선을

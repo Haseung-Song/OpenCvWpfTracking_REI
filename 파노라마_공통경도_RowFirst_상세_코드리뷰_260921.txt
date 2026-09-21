@@ -1,6 +1,7 @@
 ﻿================================================================================
-REI / MOE V23 R19 공통 경도 Row-first 파노라마 상세 코드 리뷰
-작성/갱신일: 2026-09-10
+REI / MOE 공통 경도 Row-first 파노라마 상세 코드 리뷰
+
+작성/최종 갱신일: 2026-09-21
 ================================================================================
 
 [1. 변경 결론]
@@ -278,3 +279,103 @@ R21 위치 도달 안정화 (2026-09-10)
 - REI CONTROL/RTSP에는 환경부(MOE) PTZ EO/IR - Web Agent 방식(192.168.20.161:5005, 환경부(MOE) PTZ 주간(EO)/열상(IR))을 세 번째 프리셋으로 추가했다.
 - REI/MOE 전체 C# 파일의 연속 scope 종료 빈 줄과 최근 수정 함수의 논리 블록·긴 식 줄바꿈을 정리했다. 확인된 중복 using은 없었고, 중복 계산과 실험 후 미참조 helper는 제거했다.
 - 화재/연기 탐지, 통신, PRESET, AUTO SCAN 및 외부 프로토콜의 동작 순서는 변경하지 않았다.
+
+================================================================================
+[2026-09-17 V25 장비 제어·다중행 정합 업데이트]
+================================================================================
+
+1. 비교 자료 판정
+- LA 정상 결과는 1920px 입력, 36프레임, 10도당 약 280px로 전체 폭 10080px이다.
+- Web Agent 다중행 실패 결과는 저특징 하늘 행에서 10도당 384px가 선택되어 전체 폭이
+  13824px로 과도하게 확장됐다. 사용자가 정정한 Panorama 4.jpg는 비교 대상에서 제외했다.
+
+2. V25 공통 경도 폭 보호
+- 12도 단일행 경로와 기존 정상 결과는 변경하지 않는다.
+- 다중행의 측정 contribution이 물리 기준선 7/48 * SourceWidth(1920px 기준 280px)에서
+  15% 이상 벗어날 때만 기준선으로 복원한다. 정상 측정값에는 강제 보정을 적용하지 않는다.
+- Release에서도 행별 360도 결과와 최종 Row-first 결과를 panorama_debug에 저장해 장비별
+  촬영 문제와 정합 문제를 분리 진단할 수 있게 했다.
+
+3. PTZ 이동 실패 조기 판정
+- COMMAND_SENT와 실제 MOVEMENT_STARTED/TARGET_REACHED를 분리한다.
+- 새 상태 Packet은 수신되지만 1.2초 동안 Pan 변화가 0.15도 미만이면 NO_MOTION으로 판정한다.
+- 실패 시 STOP, 250ms 정착, Speed/Shortest/Absolute 재설정 후 같은 목표를 한 번만 재시도한다.
+- 시작 위치 복귀는 PAN_RESTORED와 TILT_RESTORED를 각각 검증하며 하나라도 실패하면
+  성공으로 표시하지 않고 INCOMPLETE 및 현재/목표 위치를 로그에 남긴다.
+
+4. 운용·회귀 기준
+- 12도 단일행 기준선, 24도 72프레임 5~10회, 36도 및 Frame 31→32 구간을 시험한다.
+- 다중행 1920px 입력 결과가 약 10080px인지, 행별 결과와 최종본의 경도·seam이 일치하는지 확인한다.
+- Pan/Tilt 시작 위치 복귀, 명령 미수신 1회 재시도, 실패 시 불완전 결과 미저장을 확인한다.
+- 렌즈 Calibration이 없는 공통 경도 방식의 기존 한계와 근거리 시차 조건은 그대로 유효하다.
+
+
+===============================================================================
+[2026-09-18 V25 _6 PTZ 이동 중 RTSP 병목 계측 및 SYNC 판정 보완]
+===============================================================================
+1. IR SYNC 완료/실패 의미 분리
+- 목표 위치 허용오차를 약간 벗어난 경우와 IR 렌즈가 전혀 동작하지 않은 경우를 분리했다.
+- Zoom/Focus 명령 후 실제 IR 상태값 변화가 확인되면 장비는 OPERATIONAL로 판정한다.
+- INCOMPLETE는 IR Zoom 또는 Focus 명령 실패, 피드백 부재 및 위치 무변화처럼 실제 동작이
+  확인되지 않을 때만 표시한다. 위치 정밀도는 POSITION_MATCH와 오차 로그로 별도 보존한다.
+
+2. PTZ 이동 상태별 RTSP 성능 계측
+- 각 1초 로그에 SCENARIO(IDLE/PAN_LEFT/PAN_RIGHT/TILT_UP/TILT_DOWN/
+  PAN_TILT_DIAGONAL/ZOOM_IN/ZOOM_OUT/ZOOM_SYNC)를 함께 기록한다.
+- FFmpeg 내부에서 RTSP_BITRATE_MBPS, PACKET_RATE, READ_FRAME_AVG/MAX_MS,
+  DECODE_AVG/MAX_MS, SWS_SCALE_AVG/MAX_MS를 직접 누적한다.
+- WPF 표시 측정은 DISPLAY_FPS, UI_DISPATCH_WAIT_AVG/MAX_MS,
+  FRAME_COPY_AVG/MAX_MS, FRAME_AGE_AVG/MAX_MS, DISPLAY_INTERVAL_MAX_MS를 기록한다.
+- Function 0x01 수신, PTZF 상태 갱신, 속성별 PropertyChanged, 로그 출력,
+  PAN/TILT/ZOOM START/STOP 송신 횟수를 같은 구간에 기록한다.
+
+3. 상태 UI 부하 보완
+- Function 0x01의 값이 이전 값과 동일하면 CURRENT STATUS PropertyChanged를 발생시키지 않는다.
+- 서로 다른 값이 75ms 병합 구간에 들어오면 항목별 Dirty 상태를 보존해 최신 PAN/TILT/
+  ZOOM/FOCUS/POWER만 한 번씩 갱신한다.
+- 키보드 동일 방향 KeyDown 반복 방지와 START 1회/STOP 1회 구조는 기존 구현을 유지한다.
+
+4. 현장 판정 기준
+- BITRATE 및 READ_FRAME_MAX가 함께 증가하면 Camera Encoder/Network/RTSP 입력단을 우선한다.
+- READ/DECODE는 정상인데 DISPLAY_FPS 저하와 UI WAIT 상승이면 Dispatcher/Render를 우선한다.
+- PTZF/PropertyChanged와 UI WAIT가 함께 상승하면 상태 Binding 부하를 우선한다.
+- SWS_SCALE/FRAME_COPY만 상승하면 Pixel 변환 또는 메모리 복사를 우선한다.
+- PAN+ZOOM/TILT+ZOOM 동시 입력은 현재 공통 연속제어 충돌 방지 정책상 직렬 처리되므로,
+  연속 조작 전후 SCENARIO 구간으로 비교한다.
+
+[2026-09-18 _7 통합 제어/화각 동기화 갱신]
+- 기준 카탈로그: EO XV-Z2090HC(6~540 mm, HFOV 65.24~0.82도), IR Infra-LWZ-25-225-AF1(25~225 mm).
+- IR 검출기 가정: 640x512 / 17um, HFOV 24.5~2.7도. 실장비 검출기 사양이 다르면 FieldOfViewSyncService 상수를 변경한다.
+- Zoom Sync는 EO/IR 동일 Position 복사를 폐기하고 IR 목표 HFOV에 대응하는 EO Position을 광학식으로 역산한다.
+- 모터 Position-초점거리 실측 곡선이 없으므로 현재 결과는 SPEC_ESTIMATE이며, 1km 이상 표적 촬영값으로 보정해야 한다.
+- 완료 표시는 계산 HFOV 오차 10% 이내를 MATCH로 표시한다. INCOMPLETE는 IR Zoom 무동작일 때만 표시한다.
+- CONNECT 제어 프로필이 LA AGENT / WEB AGENT 활성 모드의 단일 결정점이다. 상태 버튼은 표시 전용이다.
+- GUI Pan/Tilt 표기는 -180~180 / -90~90으로 통일하고 Web Agent 0~360 변환은 송신 경계에서만 수행한다.
+- Pan/Tilt와 Zoom/Focus 연속 제어 상태를 분리하여 동시 조작 시 서로의 상태/STOP을 덮어쓰지 않는다.
+- Release x64 빌드 검증 완료.
+[2026-09-18 _8 PAN TARGET 음수 입력 수정]
+- WEB AGENT 선택 시 Pan 입력 LostFocus 범위가 0~360으로 남아 음수가 0으로 초기화되던 문제를 수정했다.
+- GUI/ViewModel은 -180~180 signed 값을 유지하고 0~360 좌표 변환은 ControlCommandService 송신 경계에서만 수행한다.
+- PAN GO 후에도 입력칸에 사용자가 입력한 signed 목표값이 유지된다.
+[2026-09-18 _9 Serilog 운용 로그 직관화]
+- 기존 상세 진단 로그는 유지하면서 ERROR를 코드/기능/원인/권장 조치/기술 상세 구조로 통일했다.
+- 오류코드: E-VIDEO-001, E-COMM-001, E-PTZF-001, E-DETECT-001, E-PANO-001, E-DATA-001, E-SYSTEM-001.
+- 날짜별 전체 로그와 별도로 rei-viewer-errors-YYYYMMDD.log 오류 전용 파일을 생성한다.
+- UI/Process/Task 최상위 미처리 예외도 공통 장애 요약 형식으로 기록한다.
+[2026-09-21 _1 WEB AGENT PAN 상태 표시 signed 통일]
+- Web Agent 수신 Pan 0~360 원시값을 우회전 증가 좌표로 변환한 뒤 -180~180으로 한 번 더 정규화한다.
+- 예: Web Agent 수신각 30도 -> GUI 방향 변환 330도 -> 최종 화면 -30도.
+- CURRENT STATUS, 프리셋 Snapshot, 도착 판정, 성능 Snapshot이 동일한 signed 내부값을 사용한다.
+- 통신 로그에는 PAN_WEB_DEG 원값과 PAN_DEG signed 값을 함께 남겨 장애 분석이 가능하다.
+
+[2026-09-21 _2 실측 화각 동기화 및 제어 UI 갱신]
+- 장비 카탈로그 계산식 대신 현장 화면으로 확인한 EO/IR 실측 10단계 Zoom 보정표를 적용했다.
+- 단계별 EO/IR 목표값은 1=410/102, 2=449/205, 3=492/299, 4=531/400,
+  5=596/502, 6=646/597, 7=705/699, 8=764/804, 9=809/905, 10=929/1000이다.
+- 콤보박스에는 LEVEL 1/100~LEVEL 10/1000 명목 단계를 표시하고, 하단에는 선택 단계,
+  실측 목표값, 장비 현재값, APPLY/STOP 및 실행 상태를 표시한다.
+- EO/IR Focus Sync는 현재 운용 대상에서 제외하여 UI와 명령 초기화를 주석 처리했으며,
+  관련 서비스와 메서드는 향후 복구할 수 있도록 소스에 보존했다.
+- LA AGENT의 PAN ZERO/TILT ZERO 직접 제어는 기존 MCB 순서와 직렬화 로직을 유지한다.
+  WEB AGENT 모드에는 향후 외부 명령 연결을 위한 버튼을 표시하되 명령값 확정 전까지 비활성화한다.
+- REI x64 Debug/Release 빌드 검증을 완료했다.

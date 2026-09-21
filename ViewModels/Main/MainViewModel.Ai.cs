@@ -1383,11 +1383,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             targetBoxes.Clear();
             int displayOrder = 1;
+            int frameWidth = Math.Max(1, rtspIndex == 0 ? EoVideoWidth : IrVideoWidth);
+            int frameHeight = Math.Max(1, rtspIndex == 0 ? EoVideoHeight : IrVideoHeight);
             foreach (AiDetectionBox box in merged.Values.OrderBy(item => item.DetectionEventId))
             {
                 box.DisplayOrder = displayOrder++;
+                PrepareAiOverlayLayout(box, frameWidth, frameHeight);
                 targetBoxes.Add(box);
             }
+
+            // 2026-09-17: IR/EO 하이브리드 탐지에서 AI와 로컬 FIRE/SMOKE가
+            // 같은 객체를 표시하면 AI BBox를 우선하고 로컬 중복 표시를 제거한다.
+            SuppressLocalBoxesOverlappingAi(
+                rtspIndex == 0 ? EoFireSmokeDetectionBoxes : IrFireSmokeDetectionBoxes,
+                targetBoxes);
 
 #if DEBUG
             int channelEventCount = _activeAiEvents.Count(item => item.Value.RtspIndex == rtspIndex);
@@ -1399,6 +1408,40 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 #endif
 
+        }
+
+        private static void PrepareAiOverlayLayout(
+            AiDetectionBox box,
+            int frameWidth,
+            int frameHeight)
+        {
+            const int strokeInset = 2;
+            const int labelHeight = 24;
+            int left = Math.Max(strokeInset, Math.Min(frameWidth - strokeInset - 1, box.Left));
+            int top = Math.Max(strokeInset, Math.Min(frameHeight - strokeInset - 1, box.Top));
+            int right = Math.Max(left + 1, Math.Min(frameWidth - strokeInset, box.Right));
+            int bottom = Math.Max(top + 1, Math.Min(frameHeight - strokeInset, box.Bottom));
+            int labelWidth = Math.Max(
+                40,
+                Math.Min((int)Math.Ceiling(box.DisplayText.Length * 9.5 + 12.0), frameWidth - 4));
+            int labelLeft = Math.Max(2, Math.Min(frameWidth - labelWidth - 2, left));
+            int labelTop = top - labelHeight >= 2
+                ? top - labelHeight
+                : Math.Max(2, Math.Min(frameHeight - labelHeight - 2, top + 2));
+            int overlayLeft = Math.Min(left, labelLeft);
+            int overlayTop = Math.Min(top, labelTop);
+
+            box.OverlayLeft = overlayLeft;
+            box.OverlayTop = overlayTop;
+            box.OverlayWidth = Math.Max(1, Math.Max(right, labelLeft + labelWidth) - overlayLeft);
+            box.OverlayHeight = Math.Max(1, Math.Max(bottom, labelTop + labelHeight) - overlayTop);
+            box.BoxOffsetX = left - overlayLeft;
+            box.BoxOffsetY = top - overlayTop;
+            box.RenderWidth = right - left;
+            box.RenderHeight = bottom - top;
+            box.LabelOffsetX = labelLeft - overlayLeft;
+            box.LabelOffsetY = labelTop - overlayTop;
+            box.LabelWidth = labelWidth;
         }
 
         private void SetAiDisplayHoldState(int rtspIndex, bool active)

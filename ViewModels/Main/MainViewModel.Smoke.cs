@@ -31,7 +31,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private DateTime _latestEoAiVehicleCandidateTime = DateTime.MinValue;
         private DateTime _latestIrAiVehicleCandidateTime = DateTime.MinValue;
         private bool _isSmokeDetectionEnabled;
-        private int _smokeDetectionSourceIndex;
+        // 2026-09-18: 운용 기본값은 EO ONLY(1)로 고정한다.
+        private int _smokeDetectionSourceIndex = 1;
         // 2026-09-02 V17: 원거리 탐지와 근거리 건물·산·수목 오탐의
         // 균형을 위해 SMOKE 콤보박스와 실제 내부 임계값은 BALANCED를 사용한다.
         private int _smokeSensitivityIndex = 1;

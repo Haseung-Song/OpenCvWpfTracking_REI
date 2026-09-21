@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using OpenCvWpfTracking.ViewModels.Main;
 
 namespace OpenCvWpfTracking
 {
@@ -16,7 +17,7 @@ namespace OpenCvWpfTracking
     /// 1. Pan Absolute         : -180.00 ~ 180.00
     /// 2. Tilt Absolute        : -90.00 ~ 90.00
     /// 3. Zoom / Focus Position: 0 ~ 1000
-    /// 4. EO Zoom Ratio        : 1.0 ~ 50.0 / IR proportional 1.0 ~ 5.0
+    /// 4. EO Zoom Ratio        : 1.0 ~ 90.0 / IR proportional 1.0 ~ 9.0
     ///
     /// 장비 제어 계산과 Packet 송신은 MainViewModel에서 수행하고,
     /// 이 파일에서는 화면 입력값의 형식과 범위만 관리한다.
@@ -55,17 +56,17 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// EO 기준 광학 Zoom 배율 입력 범위
         ///
-        /// EO XV-Z2050HC:
-        /// 1.0 ~ 50.0배
+        /// EO XV-Z2090HC:
+        /// 1.0 ~ 90.0배
         ///
-        /// IR Infra-LWZ-30-150-AF:
-        /// 같은 Position 진행률을 사용하여 1.0 ~ 5.0배로 적용한다.
+        /// IR Infra-LWZ-25-225-AF1:
+        /// 같은 Position 진행률을 사용하여 1.0 ~ 9.0배로 적용한다.
         /// </summary>
         private const double MoveControlZoomRatioMinimumInput =
             1.0;
 
         private const double MoveControlZoomRatioMaximumInput =
-            50.0;
+            90.0;
 
         #endregion
 
@@ -175,17 +176,17 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// Zoom Ratio 입력 제한
         ///
-        /// EO 광학배율 1.0 ~ 50.0 기준이며,
+        /// EO 광학배율 1.0 ~ 90.0 기준이며,
         /// UI에서는 소수점 첫째 자리까지 입력할 수 있다.
         ///
         /// IR은 입력한 EO 배율과 같은 숫자를 사용하지 않고,
-        /// EO에서 계산된 0 ~ 1000 진행률에 따라 1.0 ~ 5.0배로 움직인다.
+        /// EO에서 계산된 0 ~ 1000 진행률에 따라 1.0 ~ 9.0배로 움직인다.
         ///
         /// 예:
         /// 1
         /// 1.0
         /// 25.5
-        /// 50.0
+        /// 90.0
         /// </summary>
         private void ZoomRatio_PreviewTextInput(
             object sender,
@@ -224,6 +225,8 @@ namespace OpenCvWpfTracking
             object sender,
             System.Windows.RoutedEventArgs e)
         {
+            // 2026-09-18: GUI 입력은 Agent 종류와 무관하게 항상 signed 좌표를 유지한다.
+            // Web Agent 0~360 변환은 ControlCommandService 송신 경계에서만 수행한다.
             ClampDecimalTextBoxValue(
                 sender,
                 MoveControlPanMinimumInput,
@@ -271,8 +274,7 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// Zoom Ratio 입력 완료 처리
         ///
-        /// EO XV-Z2050HC와 IR 임시 운용 기준을 동일하게 적용하여
-        /// 1.0 ~ 50.0배로 제한한다.
+        /// EO XV-Z2090HC 장비 스펙에 따라 1.0 ~ 90.0배로 제한한다.
         /// </summary>
         private void ZoomRatio_LostFocus(
             object sender,

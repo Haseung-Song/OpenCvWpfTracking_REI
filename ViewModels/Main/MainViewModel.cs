@@ -3,6 +3,7 @@ using OpenCvWpfTracking.Models.Main;
 using OpenCvWpfTracking.Services.Communication;
 using OpenCvWpfTracking.Services.Communication.AI;
 using OpenCvWpfTracking.Services.Communication.WebAgent;
+using OpenCvWpfTracking.Services.Control;
 using OpenCvWpfTracking.Services.Video;
 using System;
 using System.Collections.ObjectModel;
@@ -351,6 +352,43 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private long _irLensStatusVersion;
 
+        /// <summary>
+        /// 2026-09-17: 명령값이 아닌 TARGET=0x00/0x01 실제 Lens Feedback의
+        /// 신규 수신 여부를 SYNC 완료 판정에 사용한다.
+        /// </summary>
+        private long _eoLensStatusVersion;
+
+        private readonly SemaphoreSlim _lensSyncOperationLock =
+            new SemaphoreSlim(1, 1);
+
+        private const int LensSyncFeedbackTimeoutMs = 1200;
+        private const int LensSyncTargetTolerance = 12;
+        // 2026-09-18: IR은 약 500ms 간격의 상태 피드백과 정지 후 관성 이동이 있으므로
+        // EO 허용오차와 분리된 일반 레벨 허용오차/선행 정지값을 사용한다.
+        private const int IrZoomTargetTolerance = 25;
+        private const int IrZoomMinimumStopLead = 150;
+        private const int IrZoomMaximumStopLead = 360;
+        private const int IrZoomShortPulseThreshold = 180;
+        private const int IrZoomShortPulseMinimumMs = 100;
+        private const int IrZoomShortPulseMaximumMs = 650;
+        private const double IrZoomShortPulseScale = 0.58;
+        private double _irZoomObservedStopLag = IrZoomMinimumStopLead;
+        // 2026-09-21: 사용자가 APPLY를 반복하지 않도록 한 번의 작업 안에서
+        // 정착값 기반 미세 보정을 수행한다. 방향 반전은 최대 2회로 제한한다.
+        private const int IrZoomSyncMaxMoveAttempts = 4;
+        private const int IrZoomMaximumDirectionReversals = 2;
+        private const int IrZoomSyncTimeoutMs = 15000;
+
+        // 2026-09-18: MOE 실장비 11:38:58~11:39:08 로그에서 확인된
+        // Environment IR 물리 끝점(61/934)을 모델 기본값으로 사용한다.
+        // 이후 Level 0/10 정착 피드백으로 같은 실행 세션에서 재학습한다.
+        private int _environmentIrZoomPhysicalWideRaw = 61;
+        private int _environmentIrZoomPhysicalTeleRaw = 934;
+        private const int EnvironmentIrZoomEndpointLearningLimit = 70;
+        // IR 상태는 약 500ms 주기이므로 Focus용 700ms 정착 제한을 재사용하지 않는다.
+        private const int IrZoomSettleTimeoutMs = 2600;
+        private const int IrZoomStableSampleCount = 3;
+
         // 환경부 Web Agent가 Function 0x07 IR 렌즈 상태를 보내지 않을 때
         // MOE와 동일한 시간/명령값 기반 보완을 사용한다.
         private const int EnvironmentIrFocusFullTravelMs = 1600;
@@ -392,6 +430,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 어떤 [연속 제어]가 동작 중인지
         /// </summary>
         private ContinuousMoveType _currentMoveType = ContinuousMoveType.None;
+        // 2026-09-18: Pan/Tilt 축은 Lens(Zoom/Focus)와 독립 동작한다.
+        private bool _isPanTiltMoveActive;
+        private readonly FieldOfViewSyncService _fieldOfViewSyncService =
+            new FieldOfViewSyncService();
+
+        // 2026-09-18: RTSP 성능 로그와 실제 사용자 제어 상태를 같은 시간축으로 비교한다.
+        private string _ptzPerformanceScenario = "IDLE";
+        private long _function01ReceiveCount;
+        private long _ptzfStatusUpdateCount;
+        private long _propertyChangedCount;
+        private long _panPropertyChangedCount;
+        private long _tiltPropertyChangedCount;
+        private long _zoomPropertyChangedCount;
+        private long _focusPropertyChangedCount;
+        private long _panStartTxCount;
+        private long _panStopTxCount;
+        private long _tiltStartTxCount;
+        private long _tiltStopTxCount;
+        private long _zoomStartTxCount;
+        private long _zoomStopTxCount;
 
         /// <summary>
         /// 현재 EO 연속 제어를 시작한 CTEC CGI 직접 제어 프리셋
@@ -578,7 +636,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 상태 수신 지연과 정지 지연을 고려해 최종 ±12 이내를 정상으로 판단한다.
         /// </summary>
         private const int IrFocusSyncTolerance =
-            12;
+            8;
 
         /// <summary>
         /// [IR Focus Sync] 이동 상태 확인 주기
@@ -608,25 +666,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [IR Focus Sync] 1차 이동 시 기본 선행 정지 거리
         /// </summary>
         private const int IrFocusSyncInitialStopLead =
-            38;
+            16;
 
         /// <summary>
         /// [IR Focus Sync] 보정 이동 시 최소 선행 정지 거리
         /// </summary>
         private const int IrFocusSyncCorrectionStopLead =
-            10;
+            5;
 
         /// <summary>
         /// [IR Focus Sync] 최대 보정 횟수
         /// </summary>
         private const int IrFocusSyncMaxMoveAttempts =
-            3;
+            5;
 
         /// <summary>
         /// [IR Focus Sync] 최대 이동 대기시간
         /// </summary>
+        // 2026-09-17 실장비 로그: IR Focus 전체 스트로크는 약 35~40초가 걸린다.
+        // 기존 12초 제한 때문에 LEVEL 0을 세 번 눌러야 했으므로 한 번의 실행에서
+        // 끝점까지 도달할 수 있게 충분한 상한을 둔다.
         private const int IrFocusSyncTimeoutMs =
-            12000;
+            90000;
+
+        // 2026-09-17: EO Focus 요청값이 한 번 수신된 뒤 실장비 보정값으로
+        // 복귀하는 경우를 실제 안정 피드백과 재명령으로 확인한다.
+        private const int EnvironmentEoFocusTolerance = 18;
+        private const int EnvironmentEoFocusWaitMs = 4000;
+        private const int EnvironmentEoFocusMaxAttempts = 3;
 
         /// <summary>
         /// CTEC Port 9000 응답으로 수신한 EO Optical Zoom Position
@@ -742,8 +809,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [PAN / TILT] 속도제어 현재 속도 [Level]
         ///
-        /// UI 속도 Level [0 ~ 50]을 사용한다.
-        /// 실제 Pelco-D 송신 시 [1 ~ 63]으로 환산하며 UI 0은 STOP으로 처리한다.
+        /// UI/Web Agent 속도 Level [0 ~ 60]을 사용하며 UI 0은 STOP으로 처리한다.
         /// 현재 기본값은 [30]으로 설정한다.
         ///
         /// 이후 [Slider] 또는 [ComboBox] 등 [UI] 조작으로 값이 변경될 수 있으며,
@@ -844,22 +910,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             1.0;
 
         /// <summary>
-        /// 옥상 EO 카메라 XV-Z2050HC 최대 광학 배율
+        /// EO 카메라 XV-Z2090HC 최대 광학 배율
         ///
-        /// 6 ~ 300mm:
-        /// 광학 50배
+        /// 6 ~ 540mm:
+        /// 광학 90배
         /// </summary>
         private const double MoveControlEoMaximumZoomRatio =
-            50.0;
+            90.0;
 
         /// <summary>
-        /// IR 카메라 Infra-LWZ-30-150-AF 최대 광학 배율
+        /// IR 카메라 Infra-LWZ-25-225-AF1 최대 광학 배율
         ///
-        /// 30 ~ 150mm:
-        /// 광학 5배
+        /// 25 ~ 225mm:
+        /// 광학 9배
         /// </summary>
         private const double MoveControlIrMaximumZoomRatio =
-            5.0;
+            9.0;
 
         /// <summary>
         /// LA / Pelco-D 기준 Pan 입력 허용 범위
@@ -881,6 +947,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private const double MoveControlTiltMaximum =
             90.0;
+
+        /// <summary>
+        /// 2026-09-15: ROOFTOP은 기존 LA 범위, ENVIRONMENT는 Web Agent 0 ~ 360 범위.
+        /// </summary>
+        private double CurrentMoveControlPanMinimum => MoveControlPanMinimum;
+
+        private double CurrentMoveControlPanMaximum => MoveControlPanMaximum;
+
+        private double CurrentMoveControlTiltMinimum =>
+            MoveControlTiltMinimum;
+
+        private double CurrentMoveControlTiltMaximum =>
+            MoveControlTiltMaximum;
 
         /// <summary>
         /// 현재 Pan 선회 모드
@@ -1478,14 +1557,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// ...
             /// LEVEL 10 = 1000
             ///
-            /// Enumerable.Range(0, 11):
-            /// 0부터 10까지 총 11개의 항목을 생성한다.
+            /// Enumerable.Range(1, 10):
+            /// LEVEL 1부터 LEVEL 10까지 총 10개의 항목을 생성한다.
             /// </summary>
             ZoomSyncLevelOptions =
                 new ObservableCollection<ZoomSyncLevelOption>(
                     Enumerable.Range(
-                            0,
-                            11)
+                            1,
+                            10)
                         .Select(level =>
                             new ZoomSyncLevelOption(
                                 level,
@@ -1518,6 +1597,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             StopZoomSyncCommand =
                 new AsyncRelayCommand(StopZoomSyncAsync);
 
+            // 2026-09-21: Focus Sync는 현재 운용 UI에서 제외한다.
+            // 아래 초기화 코드는 향후 요구가 생기면 #if를 제거해 즉시 복구한다.
+#if false
             /// <summary>
             /// [EO / IR Focus Synchronization]
             ///
@@ -1554,6 +1636,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             StopFocusSyncCommand =
                 new AsyncRelayCommand(
                     StopFocusSyncAsync);
+#endif
 
             #endregion
 
@@ -1965,7 +2048,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Console.WriteLine("[CONTROL] STOP MOVE");
                 ConsoleLogHelper.PrintLine();
 
-                StopContinuousMove();
+                StopAllPtzfMove();
             });
 
             #endregion
@@ -2227,6 +2310,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         protected virtual void OnPropertyChanged(
             [CallerMemberName] string propertyName = null)
         {
+            Interlocked.Increment(ref _propertyChangedCount);
+            switch (propertyName)
+            {
+                case nameof(CurrentPanText):
+                    Interlocked.Increment(ref _panPropertyChangedCount);
+                    break;
+                case nameof(CurrentTiltText):
+                    Interlocked.Increment(ref _tiltPropertyChangedCount);
+                    break;
+                case nameof(CurrentEoZoomText):
+                case nameof(CurrentIrZoomText):
+                    Interlocked.Increment(ref _zoomPropertyChangedCount);
+                    break;
+                case nameof(CurrentEoFocusText):
+                case nameof(CurrentIrFocusText):
+                    Interlocked.Increment(ref _focusPropertyChangedCount);
+                    break;
+            }
             PropertyChanged?.Invoke(
                 this,
                 new PropertyChangedEventArgs(propertyName));

@@ -167,6 +167,17 @@ namespace OpenCvWpfTracking
              */
             AppLogger.Initialize();
 
+            // 2026-09-18: 호출부에서 놓친 최상위 예외도 운용자용 오류 요약에 남긴다.
+            DispatcherUnhandledException += (sender, args) =>
+                ConsoleLogHelper.Error("APPLICATION UI", "처리되지 않은 UI 오류", args.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+                ConsoleLogHelper.Error("APPLICATION PROCESS", "처리되지 않은 프로세스 오류", args.ExceptionObject as Exception);
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (sender, args) =>
+            {
+                ConsoleLogHelper.Error("APPLICATION TASK", "확인되지 않은 비동기 작업 오류", args.Exception);
+                args.SetObserved();
+            };
+
             InitializeFFmpeg();
 
 #if DEBUG

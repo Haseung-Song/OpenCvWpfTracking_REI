@@ -174,6 +174,14 @@ namespace FireCandidateValidator
                     rect.Width <= 36 &&
                     rect.Height <= 36 &&
                     rectangleArea <= 1296;
+
+                // 2026-09-15: BLACK 팔레트 진단 영상에서 좌우/하단 경계에 붙은
+                // 건물 벽과 고온 패널이 큰 화재 후보로 반복 검출되는 현상을 억제한다.
+                // 1 km 시험의 10 px 이상 소형 화재 후보는 이 조건에서 제외한다.
+                if (IsLargeFrameEdgeArtifact(rect, source.Width, source.Height))
+                {
+                    continue;
+                }
                 // 2026-08-24: 마스크에 충분히 크게 형성된 세로형·불규칙 화염은
                 // 압축 영상에서 프레임 차가 작아도 실제 화염 후보로 보존한다.
                 // 작은 점광원은 이 경로를 통과하지 않으므로 기존 시간축 검사를 유지한다.
@@ -258,6 +266,7 @@ namespace FireCandidateValidator
                 // 작은 후보만 시간축 검사를 거쳐 고정 전등 오탐을 억제한다.
                 verticalFlameCandidates = verticalFlameCandidates
                     .Where(rect =>
+                        !IsLargeFrameEdgeArtifact(rect, source.Width, source.Height) &&
                         (IsStrongLargeFlameRect(rect, cleanedMask)
                             ? HasStrongLargeTemporalFlameEvidence(
                                 rect,
@@ -378,8 +387,13 @@ namespace FireCandidateValidator
                 double hotMotionRatio = Cv2.CountNonZero(hotMotion) / candidatePixels;
                 double shapeChangeRatio = Cv2.CountNonZero(changeRoi) / candidatePixels;
 
-                return motionRatio >= 0.004 &&
-                       (hotMotionRatio >= 0.006 || shapeChangeRatio >= 0.008);
+                bool isSmallTarget =
+                    rect.Width <= 36 &&
+                    rect.Height <= 36;
+
+                return motionRatio >= (isSmallTarget ? 0.004 : 0.010) &&
+                       (hotMotionRatio >= (isSmallTarget ? 0.006 : 0.018) ||
+                        shapeChangeRatio >= (isSmallTarget ? 0.008 : 0.025));
             }
 
         }
@@ -411,11 +425,41 @@ namespace FireCandidateValidator
                 double hotMotionRatio = Cv2.CountNonZero(hotMotion) / candidatePixels;
                 double shapeChangeRatio = Cv2.CountNonZero(changeRoi) / candidatePixels;
 
-                return motionRatio >= 0.004 ||
-                       hotMotionRatio >= 0.008 ||
-                       shapeChangeRatio >= 0.012;
+                return motionRatio >= 0.006 &&
+                       (hotMotionRatio >= 0.018 ||
+                        shapeChangeRatio >= 0.025);
             }
 
+        }
+
+        /// <summary>
+        /// 프레임 경계에 붙은 중·대형 정적 열 구조물을 판별한다.
+        /// 작은 원거리 시험 화재는 면적과 크기 조건으로 보존한다.
+        /// </summary>
+        private static bool IsLargeFrameEdgeArtifact(
+            Rect rect,
+            int frameWidth,
+            int frameHeight)
+        {
+            if (rect.Width <= 0 || rect.Height <= 0 ||
+                frameWidth <= 0 || frameHeight <= 0)
+            {
+                return false;
+            }
+
+            bool touchesFrameEdge =
+                rect.Left <= 2 ||
+                rect.Top <= 2 ||
+                rect.Right >= frameWidth - 2 ||
+                rect.Bottom >= frameHeight - 2;
+
+            double areaRatio =
+                rect.Width * rect.Height /
+                Math.Max(1.0, frameWidth * frameHeight);
+
+            return touchesFrameEdge &&
+                   areaRatio >= 0.0015 &&
+                   (rect.Width > 36 || rect.Height > 36);
         }
 
         /// <summary>

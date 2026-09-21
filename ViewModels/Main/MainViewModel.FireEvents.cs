@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Models.AI;
 using OpenCvWpfTracking.Services.Video;
 using System;
 using System.Collections.Generic;
@@ -401,6 +402,161 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeEventAlertFeatures();
         }
 
+        /// <summary>
+        /// 2026-09-17: 로컬 FIRE/SMOKE 분석 결과를 영상 오버레이 컬렉션에 반영한다.
+        /// 이벤트 목록만 갱신되고 영상 BBox가 누락되던 경로를 복구하며,
+        /// AI Agent BBox 컬렉션은 변경하지 않는다.
+        /// </summary>
+        private void UpdateFireSmokeDetectionOverlay(
+            string camera,
+            ThermalFireDetectionResult thermalResult,
+            SmokeDetectionResult smokeResult)
+        {
+            ObservableCollection<VisionDetectionBox> target =
+                string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
+                    ? IrFireSmokeDetectionBoxes
+                    : EoFireSmokeDetectionBoxes;
+
+            int frameWidth = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
+                ? Math.Max(1, IrVideoWidth)
+                : Math.Max(1, EoVideoWidth);
+            int frameHeight = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
+                ? Math.Max(1, IrVideoHeight)
+                : Math.Max(1, EoVideoHeight);
+
+            target.Clear();
+            int displayOrder = 1;
+
+            if (string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase))
+            {
+                AddVisionOverlayBoxes(
+                    target,
+                    thermalResult.CandidateRects,
+                    thermalResult.CandidateScores,
+                    "FIRE",
+                    frameWidth,
+                    frameHeight,
+                    ref displayOrder);
+            }
+
+            AddVisionOverlayBoxes(
+                target,
+                smokeResult.CandidateRects,
+                smokeResult.CandidateScores,
+                "SMOKE",
+                frameWidth,
+                frameHeight,
+                ref displayOrder);
+
+            // 2026-09-17: AI Agent와 로컬 분석이 동일 객체를 검출한 경우
+            // 화면에는 AI BBox를 우선 표시하여 라벨/박스 중복을 방지한다.
+            SuppressLocalBoxesOverlappingAi(
+                target,
+                string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
+                    ? IrDetectionBoxes
+                    : EoDetectionBoxes);
+
+            bool isInfrared = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase);
+            OnPropertyChanged(isInfrared
+                ? nameof(IsIrFireWarningVisible)
+                : nameof(IsEoFireWarningVisible));
+            OnPropertyChanged(isInfrared
+                ? nameof(IsIrSmokeWarningVisible)
+                : nameof(IsEoSmokeWarningVisible));
+        }
+
+        private static void SuppressLocalBoxesOverlappingAi(
+            ObservableCollection<VisionDetectionBox> localBoxes,
+            ObservableCollection<AiDetectionBox> aiBoxes)
+        {
+            if (aiBoxes == null || aiBoxes.Count == 0) return;
+            for (int index = localBoxes.Count - 1; index >= 0; index--)
+            {
+                VisionDetectionBox local = localBoxes[index];
+                double localArea = Math.Max(1, local.Width * local.Height);
+                foreach (AiDetectionBox ai in aiBoxes)
+                {
+                    int width = Math.Max(0, Math.Min(local.Right, ai.Right) - Math.Max(local.Left, ai.Left));
+                    int height = Math.Max(0, Math.Min(local.Bottom, ai.Bottom) - Math.Max(local.Top, ai.Top));
+                    if ((width * height) / localArea >= 0.35)
+                    {
+                        localBoxes.RemoveAt(index);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static void AddVisionOverlayBoxes(
+            ObservableCollection<VisionDetectionBox> target,
+            IList<CvRect> rectangles,
+            IList<double> scores,
+            string detectionType,
+            int frameWidth,
+            int frameHeight,
+            ref int displayOrder)
+        {
+            if (rectangles == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < rectangles.Count; index++)
+            {
+                CvRect rectangle = rectangles[index];
+                // 2026-09-17: Stroke 중심선이 영상 경계 밖으로 나가 잘리지 않도록
+                // 2px 안전 여백 안으로 좌표를 제한한다. 검출 좌표 자체는 유지한다.
+                int insetX = frameWidth > 4 ? 2 : 0;
+                int insetY = frameHeight > 4 ? 2 : 0;
+                int left = Math.Max(insetX, Math.Min(frameWidth - insetX - 1, rectangle.X));
+                int top = Math.Max(insetY, Math.Min(frameHeight - insetY - 1, rectangle.Y));
+                int right = Math.Max(left + 1, Math.Min(frameWidth - insetX, rectangle.Right));
+                int bottom = Math.Max(top + 1, Math.Min(frameHeight - insetY, rectangle.Bottom));
+                int currentOrder = displayOrder++;
+                double confidence = scores != null && index < scores.Count ? scores[index] : 0.0;
+                string displayText = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0} #{1} | {2:F1}%",
+                    detectionType,
+                    currentOrder,
+                    confidence);
+                int labelWidth = Math.Max(
+                    40,
+                    Math.Min((int)Math.Ceiling(displayText.Length * 9.5 + 12.0), frameWidth - 4));
+                const int labelHeight = 24;
+                int labelLeft = Math.Max(2, Math.Min(frameWidth - labelWidth - 2, left));
+                int labelTop = top - labelHeight >= 2
+                    ? top - labelHeight
+                    : Math.Max(2, Math.Min(frameHeight - labelHeight - 2, top + 2));
+                int overlayLeft = Math.Min(left, labelLeft);
+                int overlayTop = Math.Min(top, labelTop);
+                int overlayRight = Math.Max(right, labelLeft + labelWidth);
+                int overlayBottom = Math.Max(bottom, labelTop + labelHeight);
+
+                target.Add(new VisionDetectionBox
+                {
+                    DisplayOrder = currentOrder,
+                    DetectionType = detectionType,
+                    ConfidencePercent = confidence,
+                    Left = left,
+                    Top = top,
+                    Right = right,
+                    Bottom = bottom,
+                    // 라벨 예상 폭보다 우측 여유가 작으면 BBox 우측에 맞춰 왼쪽으로 펼친다.
+                    PlaceLabelOnRight = right > frameWidth - 190,
+                    LabelWidth = labelWidth,
+                    OverlayLeft = overlayLeft,
+                    OverlayTop = overlayTop,
+                    OverlayWidth = Math.Max(1, overlayRight - overlayLeft),
+                    OverlayHeight = Math.Max(1, overlayBottom - overlayTop),
+                    BoxOffsetX = left - overlayLeft,
+                    BoxOffsetY = top - overlayTop,
+                    LabelOffsetX = labelLeft - overlayLeft,
+                    LabelOffsetY = labelTop - overlayTop
+                });
+            }
+        }
+
         // 2026-08-31: FIRE/SMOKE는 채널 상태 한 행이 아니라 화면에 표시된 BBox별로 기록한다.
         // 위치가 이어지는 동일 BBox는 기존 행을 유지하고 새 위치의 후보만 새 행을 만든다.
         private void UpdateVisionBBoxEvents(
@@ -704,6 +860,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _isFireCsvHistoryLoaded = false;
             _activeTestFireEvents.Clear();
             _activeVisionBBoxEvents.Clear();
+            EoFireSmokeDetectionBoxes.Clear();
+            IrFireSmokeDetectionBoxes.Clear();
             RefreshActiveFireCount();
             _lastFireDetectedTime = null;
             NotifyFireEventSummaryChanged();

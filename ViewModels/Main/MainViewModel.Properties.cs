@@ -357,6 +357,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _selectedEquipmentStatusMode = value;
 
+                if (_controlCommandService != null)
+                {
+                    bool useWebAgentCoordinates =
+                        value == EquipmentStatusMode.Environment;
+
+                    _controlCommandService.UseUnsignedWebAgentPanCoordinates =
+                        useWebAgentCoordinates;
+                    _controlCommandService.UseUnsignedWebAgentTiltCoordinates =
+                        useWebAgentCoordinates;
+                }
+
+                ConvertPanTiltValuesForSelectedCoordinateMode();
+
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsRooftopStatusSelected));
                 OnPropertyChanged(nameof(IsEnvironmentStatusSelected));
@@ -364,6 +377,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsEnvironmentThermalPaletteVisible));
                 OnPropertyChanged(nameof(CurrentStatusEquipmentText));
                 OnPropertyChanged(nameof(IsHomeZeroVisible));
+                OnPropertyChanged(nameof(IsPanTiltZeroVisible));
+                OnPropertyChanged(nameof(IsPanTiltZeroCommandEnabled));
+                OnPropertyChanged(nameof(HomeControlHeaderText));
                 OnPropertyChanged(nameof(CurrentIrZoomText));
                 OnPropertyChanged(nameof(CurrentIrFocusText));
                 OnPropertyChanged(nameof(RooftopIrZoomStatusText));
@@ -372,6 +388,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(EnvironmentIrFocusStatusText));
                 OnPropertyChanged(nameof(CurrentLaPresetSnapshotText));
                 OnPropertyChanged(nameof(CurrentPresetSnapshotText));
+                OnPropertyChanged(nameof(PanTiltCoordinateRangeText));
+                OnPropertyChanged(nameof(PanAbsoluteRangeLabel));
+                OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
 
             }
 
@@ -383,23 +402,69 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool IsEnvironmentStatusSelected =>
             SelectedEquipmentStatusMode == EquipmentStatusMode.Environment;
 
+        public string PanTiltCoordinateRangeText =>
+            "PAN : -180° ~ 180°   /   TILT : -90° ~ 90°";
+
+        public string PanAbsoluteRangeLabel =>
+            "Pan Target  (-180° ~ 180°)";
+
+        public string TiltAbsoluteRangeLabel =>
+            "Tilt Target  (-90° ~ 90°)";
+
+        /// <summary>
+        /// ROOFTOP / ENVIRONMENT 전환 직후에도 현재값과 입력값이 새 좌표계로 즉시 표시되게 한다.
+        /// 실제 장비 상태는 다음 수신 패킷에서 다시 갱신된다.
+        /// </summary>
+        private void ConvertPanTiltValuesForSelectedCoordinateMode()
+        {
+            _currentPan = NormalizeToSignedAngle(_currentPan);
+            _currentTilt = Math.Max(-90.0, Math.Min(90.0, NormalizeToSignedAngle(_currentTilt)));
+            PanAbsoluteValue = PanAbsoluteValue.HasValue
+                ? NormalizeToSignedAngle(PanAbsoluteValue.Value) : (double?)null;
+            TiltAbsoluteValue = TiltAbsoluteValue.HasValue
+                ? Math.Max(-90.0, Math.Min(90.0, NormalizeToSignedAngle(TiltAbsoluteValue.Value))) : (double?)null;
+
+            OnPropertyChanged(nameof(CurrentPanText));
+            OnPropertyChanged(nameof(CurrentTiltText));
+        }
+
+        private static double NormalizeToUnsignedAngle(double angle)
+        {
+            double normalized = angle % 360.0;
+            return normalized < 0.0 ? normalized + 360.0 : normalized;
+        }
+
+        private static double NormalizeToSignedAngle(double angle)
+        {
+            double normalized = NormalizeToUnsignedAngle(angle);
+            return normalized > 180.0 ? normalized - 360.0 : normalized;
+        }
+
         public bool IsRooftopThermalPaletteVisible => IsRooftopStatusSelected;
 
         public bool IsEnvironmentThermalPaletteVisible => IsEnvironmentStatusSelected;
 
         public string CurrentStatusEquipmentText =>
             IsRooftopStatusSelected
-                ? "ROOFTOP EQUIPMENT / LA AGENT"
-                : "ENVIRONMENT EQUIPMENT / WEB AGENT";
+                ? "LA AGENT ACTIVE"
+                : "WEB AGENT ACTIVE";
 
         /// <summary>
         /// HOME / ZERO UI 표시 여부.
         ///
-        /// HOME / ZERO는 MCB/LA 전용 기능이므로
-        /// ROOFTOP / LA AGENT 선택 상태에서만 표시한다.
+        /// 2026-09-16: HOME POSITION은 ROOFTOP과 ENVIRONMENT가 공통 사용한다.
+        /// PAN ZERO/TILT ZERO만 기존 MCB/LA 전용으로 유지한다.
         /// </summary>
-        public bool IsHomeZeroVisible =>
-            IsRooftopStatusSelected;
+        public bool IsHomeZeroVisible => true;
+
+        // 2026-09-21: WebAgent 구현 요청용으로 두 버튼의 자리는 공통 표시한다.
+        // 실제 명령은 LA Agent에서만 활성화하고 WebAgent 모드에서는 비활성화한다.
+        public bool IsPanTiltZeroVisible => true;
+
+        public bool IsPanTiltZeroCommandEnabled => IsRooftopStatusSelected;
+
+        public string HomeControlHeaderText =>
+            "HOME / ZERO";
 
         /// <summary>
         /// HOME / ZERO 잠금 화면의 작업 제목.
@@ -643,16 +708,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _selectedZoomSyncLevel = value;
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(SelectedZoomSyncPositionText));
+                OnPropertyChanged(nameof(SelectedZoomSyncLevelText));
             }
 
         }
 
-        public string SelectedZoomSyncPositionText =>
+        public string SelectedZoomSyncLevelText =>
             SelectedZoomSyncLevel == null
-                ? "0 / 1000"
-                : $"{SelectedZoomSyncLevel.Position} / 1000";
+                ? "SELECTED LEVEL : --"
+                : $"SELECTED LEVEL : {SelectedZoomSyncLevel.DisplayText}";
 
         public string ZoomSyncStatusText
         {
@@ -943,7 +1007,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이동 제어 EO 기준 Zoom Ratio
         ///
         /// 입력 범위:
-        /// EO 1.0 ~ 50.0배
+        /// EO 1.0 ~ 90.0배
         ///
         /// 입력한 EO 배율을 0 ~ 1000 진행률로 변환하고,
         /// 같은 진행률을 IR에 적용한다.
@@ -2316,14 +2380,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [PAN / TILT] 속도제어 현재 속도 [Level]
         ///
         /// [XAML] [UI]와 바인딩하여 현재 속도값을 표시하거나 변경할 때 사용한다.
-        /// 2026-08-14: UI 운용 범위는 [5 ~ 50], 5단위이며 Pelco-D 허용 범위 안에서 사용한다.
+        /// 2026-09-17: Web Agent 기준 UI 운용 범위는 [0 ~ 60], 5단위이며 0은 STOP이다.
         /// </summary>
         public byte PanTiltSpeedLevel
         {
             get => _panTiltSpeedLevel;
             set
             {
-                byte normalizedValue = (byte)Math.Max(5, Math.Min(50, ((value + 2) / 5) * 5));
+                byte normalizedValue = (byte)Math.Max(0, Math.Min(60, ((value + 2) / 5) * 5));
 
                 if (_panTiltSpeedLevel !=
                     normalizedValue)
@@ -2639,7 +2703,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 Pan 위치 표시 문자열
         /// </summary>
         public string CurrentPanText =>
-            $"{_currentPan:F2}°";
+            $"{NormalizeToSignedAngle(_currentPan):F2}°";
 
         /// <summary>
         /// 현재 Tilt 위치 표시 문자열
@@ -2821,8 +2885,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 통신 설정 탭의 [EO RTSP] 카메라 선택 목록
         ///
         /// Control Agent 프로필과 같은 순서로
-        /// 옥상 GOP(LA) / 옥상 MR300(O-Droid) / 환경부 PTZ(Web Agent)의
-        /// 3개 장비 주소를 UI에서 선택하도록 제공한다.
+        /// 옥상 GOP(LA) / 옥상 MR300(O-Droid) / 4층 LR1000(O-Droid) /
+        /// 환경부 PTZ(Web Agent)의 장비 주소를 UI에서 선택하도록 제공한다.
         /// </summary>
         public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; }
             = new ObservableCollection<RtspSourceOption>
@@ -2840,6 +2904,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 new RtspSourceOption(
                     RooftopMr300EoDisplayName,
                     RooftopMr300EoRtspAddress),
+
+                // 2026-09-16: 기동형 LR1000 장비 리스트 ver3의 주간 RTSP.
+                new RtspSourceOption(
+                    Lr1000EoDisplayName,
+                    Lr1000EoRtspAddress),
 
                 new RtspSourceOption(
                     "환경부(MOE) PTZ 주간(EO)",
@@ -2869,6 +2938,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     RooftopMr300IrDisplayName,
                     RooftopMr300IrRtspAddress),
 
+                // 2026-09-16: 기동형 LR1000 장비 리스트 ver3의 열상 RTSP.
+                new RtspSourceOption(
+                    Lr1000IrDisplayName,
+                    Lr1000IrRtspAddress),
+
                 new RtspSourceOption(
                     "환경부(MOE) PTZ 열상(IR)",
                     MoeIrRtspAddress),
@@ -2890,6 +2964,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public ObservableCollection<AiDetectionBox> IrDetectionBoxes { get; }
             = new ObservableCollection<AiDetectionBox>();
+
+        /// <summary>
+        /// 2026-09-17: AI Agent와 독립적으로 표시하는 EO 로컬 FIRE/SMOKE BBox.
+        /// </summary>
+        public ObservableCollection<VisionDetectionBox> EoFireSmokeDetectionBoxes { get; }
+            = new ObservableCollection<VisionDetectionBox>();
+
+        /// <summary>
+        /// 2026-09-17: AI Agent와 독립적으로 표시하는 IR 로컬 FIRE/SMOKE BBox.
+        /// </summary>
+        public ObservableCollection<VisionDetectionBox> IrFireSmokeDetectionBoxes { get; }
+            = new ObservableCollection<VisionDetectionBox>();
+
+        public bool IsEoFireWarningVisible =>
+            EoFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase));
+
+        public bool IsIrFireWarningVisible =>
+            IrFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase));
+
+        public bool IsEoSmokeWarningVisible =>
+            EoFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase));
+
+        public bool IsIrSmokeWarningVisible =>
+            IrFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase));
 
         /// <summary>
         /// [AI Detector Agent]에서 조회한 [RTSP] 목록

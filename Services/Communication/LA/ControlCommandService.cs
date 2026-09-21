@@ -41,6 +41,16 @@ namespace OpenCvWpfTracking.Services.Communication
         private bool _isIrPaletteSynchronized;
 
         /// <summary>
+        /// 2026-09-15: Web Agent만 사용하는 0 ~ 360도 unsigned Pan 좌표 모드.
+        /// </summary>
+        public bool UseUnsignedWebAgentPanCoordinates { get; set; }
+
+        /// <summary>
+        /// 2026-09-15: Web Agent의 Tilt도 합의된 0 ~ 360도 unsigned 좌표를 사용한다.
+        /// </summary>
+        public bool UseUnsignedWebAgentTiltCoordinates { get; set; }
+
+        /// <summary>
         /// ControlCommandService 동작 수행 함수.
         /// </summary>
         public ControlCommandService(TcpClientService tcpClientService)
@@ -67,6 +77,17 @@ namespace OpenCvWpfTracking.Services.Communication
 
             return _tcpClientService.Send(packet);
         }
+
+        // 2026-09-15: WebAgent GUI-SBC additional protocol v1.8 requests.
+        public bool RequestWebAgentIdentity() => SendCommand(0x00, 0xE1, 0x00, 0x00);
+        public bool RequestLensCapability(byte target) => SendCommand(0x00, 0xE3, target, 0x00);
+        public bool RequestLensTelemetry(byte target) => SendCommand(0x00, 0xE3, target, 0x01);
+        public bool RequestLensCapabilityAndTelemetry(byte target) => SendCommand(0x00, 0xE3, target, 0x02);
+        public bool RequestImuTelemetry() => SendCommand(0x00, 0xE5, 0x00, 0x00);
+        public bool RequestCameraFeatureCapability(byte target) => SendCommand(0x00, 0xE7, target, 0xFF);
+        public bool RequestCameraFeatureState(byte target, byte featureId) => SendCommand(0x00, 0xE7, target, featureId);
+        public bool SetCameraFeature(byte featureId, byte target, byte value) => SendCommand(featureId, 0xE9, target, value);
+        public bool MoveHomePosition(byte axis) => SendCommand(0x00, 0xB1, axis, 0x00);
 
         /// <summary>
         /// [CheckSum] 계산 함수
@@ -166,6 +187,11 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SetLaPresetPan(
             double pan)
         {
+            if (UseUnsignedWebAgentPanCoordinates)
+            {
+                return SendUnsignedWebAgentPanDegreeCommand(0x91, pan);
+            }
+
             return SendSignedDegreeCommand(
                 0x91,
                 pan);
@@ -180,6 +206,11 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SetLaPresetTilt(
             double tilt)
         {
+            if (UseUnsignedWebAgentTiltCoordinates)
+            {
+                return SendUnsignedPanDegreeCommand(0x93, tilt);
+            }
+
             return SendSignedDegreeCommand(
                 0x93,
                 tilt);
@@ -605,6 +636,11 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public bool PanGoPosition(double pan)
         {
+            if (UseUnsignedWebAgentPanCoordinates)
+            {
+                return SendUnsignedWebAgentPanDegreeCommand(0x45, pan);
+            }
+
             while (pan > 180.0)
                 pan -= 360.0;
 
@@ -624,6 +660,42 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x45,
                 data1,
                 data2);
+        }
+
+        /// <summary>
+        /// GUI의 -180 ~ 180도 Pan을 Web Agent의 0 ~ 360도, 0.01도 단위로 변환한다.
+        /// </summary>
+        private bool SendUnsignedPanDegreeCommand(byte command2, double pan)
+        {
+            double normalizedPan = pan % 360.0;
+
+            if (normalizedPan < 0.0)
+            {
+                normalizedPan += 360.0;
+            }
+
+            ushort value = (ushort)Math.Round(
+                normalizedPan * 100.0,
+                MidpointRounding.AwayFromZero);
+
+            if (value >= 36000)
+            {
+                value = 0;
+            }
+
+            return SendCommand(
+                0x00,
+                command2,
+                (byte)((value >> 8) & 0xFF),
+                (byte)(value & 0xFF));
+        }
+
+        /// <summary>
+        /// 2026-09-16: GUI 우회전 증가 Pan을 Web Agent 우회전 감소 좌표로 변환한다.
+        /// </summary>
+        private bool SendUnsignedWebAgentPanDegreeCommand(byte command2, double guiPan)
+        {
+            return SendUnsignedPanDegreeCommand(command2, 360.0 - guiPan);
         }
 
         /// <summary>
@@ -683,6 +755,11 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public bool TiltGoPosition(double tilt)
         {
+            if (UseUnsignedWebAgentTiltCoordinates)
+            {
+                return SendUnsignedPanDegreeCommand(0x47, tilt);
+            }
+
             while (tilt > 180.0)
                 tilt -= 360.0;
 
@@ -994,6 +1071,21 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
+        /// 2026-09-17: Web Agent EO Zoom 연속제어 전용 정지.
+        /// v1.8 추가 프로토콜의 축별 STOP을 사용하여 EO Zoom 정지가
+        /// 이후 PAN/TILT 제어 상태까지 초기화하지 않도록 한다.
+        /// Packet: FF 01 00 51 01 00 53
+        /// </summary>
+        public bool StopEoZoom()
+        {
+            return SendCommand(
+                0x00,
+                0x51,
+                0x01,
+                0x00);
+        }
+
+        /// <summary>
         /// [EO] PTZ(회전형) 카메라 [Focus] 위치 제어 명령
         /// 범위: [0 ~ 1000]
         /// </summary>
@@ -1075,6 +1167,21 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x00,
                 0x80,
                 0x00,
+                0x00);
+        }
+
+        /// <summary>
+        /// 2026-09-17: Web Agent EO Focus 연속제어 전용 정지.
+        /// v1.8 추가 프로토콜의 축별 STOP을 사용하여 EO Focus 정지가
+        /// 이후 PAN/TILT 제어 상태까지 초기화하지 않도록 한다.
+        /// Packet: FF 01 00 51 02 00 54
+        /// </summary>
+        public bool StopEoFocus()
+        {
+            return SendCommand(
+                0x00,
+                0x51,
+                0x02,
                 0x00);
         }
 

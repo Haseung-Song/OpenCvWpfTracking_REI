@@ -17,7 +17,9 @@ namespace OpenCvWpfTracking.Services.Video
     /// </summary>
     internal sealed class ThermalFireDetectionService
     {
-        private const int ConfirmFrameCount = 4;
+        // 2026-09-17 V25: 순간 IR 노이즈가 4프레임만으로 BBox가 되는 것을 막고,
+        // 연기 검출처럼 동일 위치 Track의 시간 누적 증거를 확인한다(30fps 기준 약 0.4초).
+        private const int ConfirmFrameCount = 12;
         private const int ClearFrameCount = 45;
         private const int CandidateHoldFrameCount = 45;
 
@@ -940,7 +942,10 @@ namespace OpenCvWpfTracking.Services.Video
             double shapeChange = Math.Abs(currentAspect - initialAspect) /
                 Math.Max(0.25, initialAspect);
 
-            double score = 50.0 +
+            // 2026-09-17 V25: 단일 IR 명암 후보가 처음부터 50점 이상이 되지 않도록
+            // 35점에서 시작하고 지속·상향·확산·이동·형상 증거를 합산한다.
+            // 검출 판정과 표시 점수를 분리해 순간 열반사 오탐의 V.SCORE를 낮춘다.
+            double score = 35.0 +
                 Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) +
                 Math.Min(4.0, verticality * 7.0) +
                 Math.Min(3.0, aspectBalance * 3.0) +

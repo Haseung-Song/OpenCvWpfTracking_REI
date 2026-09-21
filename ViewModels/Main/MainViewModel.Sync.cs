@@ -1,5 +1,6 @@
 using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.Main;
+using OpenCvWpfTracking.Services.Control;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -78,115 +79,107 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            if (!await _lensSyncOperationLock.WaitAsync(0))
+            {
+                ZoomSyncStatusText = "BUSY / OTHER LENS SYNC RUNNING";
+                return;
+            }
+
             await StopZoomSyncAsync();
 
-            short standardPosition =
-                selectedLevel.Position;
+            // 2026-09-18: 같은 0~1000 값을 두 카메라에 복사하지 않는다.
+            // IR(25~225 mm, 640x512/17um)의 선택 단계에서 목표 HFOV를 구하고,
+            // XV-Z2090HC(6~540 mm)가 같은 HFOV가 되는 별도 위치를 계산한다.
+            ZoomFovTarget fovTarget = _fieldOfViewSyncService.CreateTarget(selectedLevel.Level);
+            short eoStandardPosition = fovTarget.EoPosition;
+            short irStandardPosition = fovTarget.IrPosition;
+            int irRawTarget = ConvertIrZoomStandardToStatusPosition(irStandardPosition);
+            CancellationTokenSource zoomSyncCts = new CancellationTokenSource();
+            _rooftopZoomSyncCts = zoomSyncCts;
+            ZoomSyncStatusText = $"APPLYING LEVEL {selectedLevel.Level}";
+            _ptzPerformanceScenario = "ZOOM_SYNC";
 
-            ZoomSyncStatusText =
-                $"APPLYING LEVEL {selectedLevel.Level}";
-
-            if (SelectedEquipmentStatusMode ==
-                EquipmentStatusMode.Environment)
-            {
-                bool environmentEoResult =
-                    _webAgentZoomControlService
-                        .SetEoZoomPosition(
-                            standardPosition);
-
-                bool environmentIrResult =
-                    _webAgentZoomControlService
-                        .SetIrZoomPosition(
-                            standardPosition);
-
-                if (environmentIrResult)
-                {
-                    ApplyEnvironmentIrCommandedPosition(
-                        standardPosition,
-                        null,
-                        "ENVIRONMENT ZOOM SYNC");
-                }
-
-                environmentEoResult = environmentEoResult &&
-                    (_eoDecoder.IsOpened || _isEoFrameDisplayed);
-                environmentIrResult = environmentIrResult &&
-                    (_irDecoder.IsOpened || _isIrFrameDisplayed);
-
-                ZoomSyncStatusText =
-                    environmentEoResult && environmentIrResult
-                        ? $"COMPLETED / LEVEL {selectedLevel.Level}"
-                        : $"INCOMPLETE / EO={environmentEoResult} / IR={environmentIrResult}";
-
-                return;
-            }
-
-            bool irResult =
-                _webAgentZoomControlService
-                    .SetIrZoomPosition(
-                        standardPosition);
-
-            irResult = irResult &&
-                (_irDecoder.IsOpened || _isIrFrameDisplayed);
-
-            RtspSourceOption ctecSource =
-                _connectedEoCtecSource;
-
-            if (ctecSource == null)
-            {
-                ZoomSyncStatusText =
-                    $"INCOMPLETE / EO=False / IR={irResult}";
-
-                return;
-            }
-
-            int eoRawTarget =
-                ConvertStandardZoomToCtecRaw(
-                    standardPosition);
-
-            CancellationTokenSource zoomSyncCts =
-                new CancellationTokenSource();
-
-            _rooftopZoomSyncCts =
-                zoomSyncCts;
-
-            bool eoResult;
+            bool eoResult = false;
+            bool irResult = false;
 
             try
             {
-                eoResult =
-                    await MoveRooftopEoZoomToRawPositionAsync(
-                        ctecSource,
-                        eoRawTarget,
-                        zoomSyncCts.Token);
+                long eoStartSequence = Interlocked.Read(ref _eoLensStatusVersion);
+
+                Task<bool> irMoveTask = Interlocked.Read(ref _irLensStatusVersion) > 0
+                    ? MoveIrZoomToPositionAsync(irRawTarget, zoomSyncCts.Token, irStandardPosition)
+                    : Task.FromResult(false);
+
+                if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
+                {
+                    bool eoCommanded = _webAgentZoomControlService.SetEoZoomPosition(eoStandardPosition);
+                    Task<bool> eoMoveTask = eoCommanded
+                        ? WaitForEnvironmentEoLensTargetAsync(
+                            eoStandardPosition,
+                            true,
+                            eoStartSequence,
+                            zoomSyncCts.Token)
+                        : Task.FromResult(false);
+
+                    bool[] results = await Task.WhenAll(eoMoveTask, irMoveTask);
+                    eoResult = results[0];
+                    irResult = results[1];
+                }
+                else
+                {
+                    RtspSourceOption ctecSource = _connectedEoCtecSource;
+                    Task<bool> eoMoveTask = ctecSource == null
+                        ? Task.FromResult(false)
+                        : MoveRooftopEoZoomToRawPositionAsync(
+                            ctecSource,
+                            ConvertStandardZoomToCtecRaw(eoStandardPosition),
+                            zoomSyncCts.Token);
+
+                    bool[] results = await Task.WhenAll(eoMoveTask, irMoveTask);
+                    eoResult = results[0];
+                    irResult = results[1];
+                }
+
+                ConsoleLogHelper.State(
+                    "ZOOM SYNC",
+                    $"MODEL=MEASURED_10_LEVEL_260921 / LEVEL={selectedLevel.Level} / " +
+                    $"EO_COMMANDED={eoStandardPosition} / IR_COMMANDED={irStandardPosition} / " +
+                    $"IR_COMMAND_RAW_TARGET={irRawTarget} / EO_ACTUAL={_currentEoZoom} / " +
+                    $"IR_SETTLED_RAW={_currentIrZoom} / IR_STANDARD_FINAL={NormalizeIrZoomStatusPosition(_currentIrZoom)} / " +
+                    $"PHYSICAL_MIN={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_MAX={_environmentIrZoomPhysicalTeleRaw} / " +
+                    $"EO_POSITION_ERROR={Math.Abs(_currentEoZoom - eoStandardPosition)} / " +
+                    $"IR_POSITION_ERROR={Math.Abs(NormalizeIrZoomStatusPosition(_currentIrZoom) - irStandardPosition)} / " +
+                    $"EO_DONE={eoResult} / IR_DONE={irResult} / FINAL_RESULT={(eoResult && irResult ? "COMPLETED" : "INCOMPLETE")}");
+
+                // 2026-09-18: 장비 기구 오차로 목표 허용범위를 조금 벗어난 경우를
+                // 고장처럼 표시하지 않는다. INCOMPLETE는 IR 명령/피드백이 있어도
+                // 실제 Zoom 위치가 전혀 움직이지 않은 경우에만 표시한다.
+                ZoomSyncStatusText = !irResult
+                    ? "INCOMPLETE / IR ZOOM NO MOVEMENT"
+                    : $"COMPLETED / LEVEL {selectedLevel.Level}";
+            }
+            catch (OperationCanceledException)
+            {
+                ZoomSyncStatusText = "STOPPED";
+            }
+            catch (Exception ex)
+            {
+                ZoomSyncStatusText = "ERROR / " + ex.Message;
+                ConsoleLogHelper.Error("ZOOM SYNC", ex.ToString());
             }
             finally
             {
-                /// <summary>
-                /// 현재 Apply 작업이 여전히 등록된 작업인 경우에만 해제한다.
-                ///
-                /// 사용자가 새 Level을 적용하거나 STOP을 누른 경우에는
-                /// StopZoomSyncAsync가 기존 Token을 먼저 취소 / 해제하므로
-                /// 새 작업의 Token을 잘못 지우지 않도록 참조를 비교한다.
-                /// </summary>
-                if (ReferenceEquals(
-                        _rooftopZoomSyncCts,
-                        zoomSyncCts))
+                if (ReferenceEquals(_rooftopZoomSyncCts, zoomSyncCts))
                 {
-                    _rooftopZoomSyncCts =
-                        null;
-
-                    zoomSyncCts.Dispose();
+                    _rooftopZoomSyncCts = null;
                 }
 
+                zoomSyncCts.Dispose();
+
+                _ptzPerformanceScenario = "IDLE";
+
+                _lensSyncOperationLock.Release();
             }
-
-            eoResult = eoResult &&
-                (_eoDecoder.IsOpened || _isEoFrameDisplayed);
-
-            ZoomSyncStatusText =
-                eoResult && irResult
-                    ? $"COMPLETED / LEVEL {selectedLevel.Level}"
-                    : $"INCOMPLETE / EO={eoResult} / IR={irResult}";
         }
 
         /// <summary>
@@ -343,8 +336,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (cts != null)
             {
                 cts.Cancel();
-                cts.Dispose();
             }
+
+            // 2026-09-17: IR 렌즈 전용 Stop만 사용한다.
+            // PTZF 전체정지(FF 01 00 00 00 00 01)는 Pan/Tilt까지 중지시키므로
+            // Zoom Sync 중지 경로에서는 절대 송신하지 않는다.
+            _controlCommandService.StopIrZoom();
 
             RtspSourceOption ctecSource =
                 _connectedEoCtecSource;
@@ -361,6 +358,385 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ZoomSyncStatusText =
                 "STOPPED";
+        }
+
+        private int ConvertIrZoomStandardToStatusPosition(int standardPosition)
+        {
+            int safe = Math.Max(0, Math.Min(1000, standardPosition));
+            if (SelectedEquipmentStatusMode == EquipmentStatusMode.Rooftop)
+            {
+                return 1000 - safe;
+            }
+
+            int span = Math.Max(1, _environmentIrZoomPhysicalTeleRaw - _environmentIrZoomPhysicalWideRaw);
+            return _environmentIrZoomPhysicalWideRaw +
+                (int)Math.Round(safe * span / 1000.0);
+        }
+
+        private int NormalizeIrZoomStatusPosition(int rawPosition)
+        {
+            int safeRaw = Math.Max(0, Math.Min(1000, rawPosition));
+            if (SelectedEquipmentStatusMode == EquipmentStatusMode.Rooftop)
+            {
+                return 1000 - safeRaw;
+            }
+
+            int span = Math.Max(1, _environmentIrZoomPhysicalTeleRaw - _environmentIrZoomPhysicalWideRaw);
+            return Math.Max(0, Math.Min(1000,
+                (int)Math.Round((safeRaw - _environmentIrZoomPhysicalWideRaw) * 1000.0 / span)));
+        }
+
+        private void UpdateEnvironmentIrZoomEndpointCalibration(int standardTarget, int settledRaw)
+        {
+            if (SelectedEquipmentStatusMode != EquipmentStatusMode.Environment) return;
+            if (standardTarget <= 0 && settledRaw >= 0 && settledRaw <= EnvironmentIrZoomEndpointLearningLimit)
+            {
+                _environmentIrZoomPhysicalWideRaw = settledRaw;
+            }
+            else if (standardTarget >= 1000 && settledRaw >= 930 && settledRaw <= 1000)
+            {
+                _environmentIrZoomPhysicalTeleRaw = settledRaw;
+            }
+            else
+            {
+                return;
+            }
+
+            ConsoleLogHelper.State("IR ZOOM CALIBRATION",
+                $"STANDARD_TARGET={standardTarget} / SETTLED_RAW={settledRaw} / " +
+                $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " +
+                $"STANDARD_FINAL={NormalizeIrZoomStatusPosition(settledRaw)}");
+        }
+
+        /// <summary>
+        /// 2026-09-17: 실장비에서 동작하지 않은 0x29 Absolute 대신 기존 수동
+        /// 0x31 Tele/Wide/Stop 경로와 TARGET=0x01 실제 피드백으로 폐루프 제어한다.
+        /// </summary>
+        private async Task<bool> MoveIrZoomToPositionAsync(
+            int targetPosition,
+            CancellationToken cancellationToken,
+            int standardTarget = -1)
+        {
+            int target = Math.Max(0, Math.Min(1000, targetPosition));
+            Stopwatch total = Stopwatch.StartNew();
+            int operationStart = _currentIrZoom;
+            int retryCount = 0;
+            int settled = operationStart;
+            bool operationMovementObserved = false;
+            int previousDirection = 0;
+            int directionReversalCount = 0;
+            string lastDirection = "NONE";
+
+            if (IsIrZoomTargetReached(target, operationStart, standardTarget))
+            {
+                return true;
+            }
+
+            // 2026-09-21: 각 Pulse가 완전히 정착한 뒤 새 오차를 계산한다.
+            // 장비 관성으로 목표를 통과해도 사용자가 다시 APPLY할 필요가 없도록
+            // 같은 작업 안에서 최대 2회의 제한된 방향 반전을 허용한다.
+            for (int attempt = 1; attempt <= IrZoomSyncMaxMoveAttempts; attempt++)
+            {
+                int start = _currentIrZoom;
+                if (IsIrZoomTargetReached(target, start, standardTarget)) return true;
+
+                int currentDirection = target > start ? 1 : -1;
+                if (previousDirection != 0 && currentDirection != previousDirection)
+                {
+                    directionReversalCount++;
+                    if (directionReversalCount > IrZoomMaximumDirectionReversals)
+                    {
+                        ConsoleLogHelper.Warning(
+                            "IR ZOOM SYNC",
+                            $"RESULT=REVERSAL_LIMIT / TARGET={target} / CURRENT_POSITION={start} / " +
+                            $"REVERSAL_COUNT={directionReversalCount}");
+                        settled = start;
+                        break;
+                    }
+                }
+
+                previousDirection = currentDirection;
+                bool zoomIn = currentDirection > 0;
+                string direction = zoomIn ? "ZoomIn" : "ZoomOut";
+                lastDirection = direction;
+
+                long startSequence = Interlocked.Read(ref _irLensStatusVersion);
+                bool started = zoomIn
+                    ? _controlCommandService.StartIrZoomTele()
+                    : _controlCommandService.StartIrZoomWide();
+                if (!started) return false;
+
+                int previous = start;
+                bool movementObserved = false;
+                bool stopped = false;
+                int unchangedFeedbackCount = 0;
+                long lastFeedbackMs = total.ElapsedMilliseconds;
+                int stopLead = IrZoomMinimumStopLead;
+
+                // 2026-09-18: LEVEL 5~10 시험에서 목표와 50~170 step만 남은 상태로
+                // 연속 구동을 시작하면 첫 500ms 피드백 전에 목표를 지나 100~300 step
+                // 과주행했다. 짧은 거리는 상태 수신을 기다리는 연속 구동 대신 동일
+                // 방향의 짧은 Pulse만 허용하고 정착값을 다시 판정한다.
+                int startRemaining = zoomIn ? target - start : start - target;
+                if (startRemaining <= IrZoomShortPulseThreshold)
+                {
+                    int physicalSpan = SelectedEquipmentStatusMode == EquipmentStatusMode.Environment
+                        ? Math.Max(1, _environmentIrZoomPhysicalTeleRaw - _environmentIrZoomPhysicalWideRaw)
+                        : 1000;
+                    int pulseMilliseconds = Math.Max(
+                        IrZoomShortPulseMinimumMs,
+                        Math.Min(
+                            IrZoomShortPulseMaximumMs,
+                            (int)Math.Round(
+                                startRemaining *
+                                EnvironmentIrZoomFullTravelMs /
+                                (double)physicalSpan *
+                                IrZoomShortPulseScale)));
+                    try
+                    {
+                        await Task.Delay(pulseMilliseconds, cancellationToken);
+                    }
+                    finally
+                    {
+                        stopped = _controlCommandService.StopIrZoom();
+                    }
+
+                    int pulseStopPosition = _currentIrZoom;
+                    settled = await WaitForIrLensSettledPositionAsync(true, cancellationToken);
+                    bool pulseMovementObserved = Math.Abs(settled - start) > 1;
+                    operationMovementObserved |= pulseMovementObserved;
+                    if (standardTarget >= 0) UpdateEnvironmentIrZoomEndpointCalibration(standardTarget, settled);
+                    bool pulseReached = IsIrZoomTargetReached(target, settled, standardTarget);
+                    ConsoleLogHelper.State(
+                        "IR ZOOM SYNC",
+                        $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / CURRENT_POSITION={start} / " +
+                        $"DIRECTION={direction} / CONTROL_MODE=SHORT_PULSE / PULSE_MS={pulseMilliseconds} / " +
+                        $"STOP_POSITION={pulseStopPosition} / SETTLED_RAW={settled} / " +
+                        $"STANDARD_FINAL={NormalizeIrZoomStatusPosition(settled)} / " +
+                        $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " +
+                        $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomStatusPosition(settled) - standardTarget) : Math.Abs(settled - target))} / " +
+                        $"MOVEMENT_OBSERVED={pulseMovementObserved} / REVERSAL_COUNT={directionReversalCount} / RETRY_COUNT={retryCount} / " +
+                        $"RESULT={(pulseReached ? "COMPLETED" : "RETRY")}");
+
+                    if (pulseReached) return true;
+                    retryCount++;
+                    await Task.Delay(250, cancellationToken);
+                    continue;
+                }
+
+                try
+                {
+                    while (total.ElapsedMilliseconds < IrZoomSyncTimeoutMs)
+                    {
+                        bool feedback = await WaitForIrLensFeedbackAsync(startSequence, cancellationToken);
+                        if (!feedback)
+                        {
+                            ConsoleLogHelper.Warning(
+                                "IR ZOOM SYNC",
+                                $"RESULT=FEEDBACK_TIMEOUT / TARGET={target} / START_POSITION={operationStart} / " +
+                                $"CURRENT_POSITION={_currentIrZoom} / DIRECTION={direction} / RETRY_COUNT={retryCount}");
+                            break;
+                        }
+
+                        long sequence = Interlocked.Read(ref _irLensStatusVersion);
+                        int current = _currentIrZoom;
+                        int delta = current - previous;
+                        long nowMs = total.ElapsedMilliseconds;
+                        long feedbackIntervalMs = Math.Max(1, nowMs - lastFeedbackMs);
+                        lastFeedbackMs = nowMs;
+                        startSequence = sequence;
+
+                        if (delta != 0)
+                        {
+                            movementObserved = true;
+                            operationMovementObserved = true;
+                            unchangedFeedbackCount = 0;
+                        }
+                        else unchangedFeedbackCount++;
+
+                        // 2026-09-18: 실장비 로그에서 STOP_POSITION=206 이후
+                        // SETTLED_POSITION=397까지 약 190 step 이동했다. 직전 delta만
+                        // 사용하던 120 cap은 LEVEL 2를 크게 통과하므로, 관측된 정지
+                        // 지연과 상태 step을 함께 사용해 더 일찍 STOP한다.
+                        int observedStopLag =
+                            (int)Math.Round(_irZoomObservedStopLag);
+                        stopLead = movementObserved
+                            ? Math.Max(
+                                IrZoomMinimumStopLead,
+                                Math.Min(
+                                    IrZoomMaximumStopLead,
+                                    Math.Max(
+                                        observedStopLag + 25,
+                                        Math.Abs(delta) * 2 + 30)))
+                            : IrZoomMinimumStopLead;
+                        int remaining = zoomIn ? target - current : current - target;
+
+                        ConsoleLogHelper.State(
+                            "IR ZOOM SYNC",
+                            $"TARGET={target} / START_POSITION={operationStart} / CURRENT_POSITION={current} / " +
+                            $"DIRECTION={direction} / STATUS_STEP={delta} / FEEDBACK_INTERVAL_MS={feedbackIntervalMs} / " +
+                            $"PREDICTED_STOP_LEAD={stopLead} / RETRY_COUNT={retryCount}");
+
+                        if (movementObserved && remaining <= stopLead)
+                        {
+                            stopped = _controlCommandService.StopIrZoom();
+                            break;
+                        }
+
+                        if (unchangedFeedbackCount >= 4)
+                        {
+                            ConsoleLogHelper.Warning(
+                                "IR ZOOM SYNC",
+                                $"RESULT=NO_POSITION_CHANGE / TARGET={target} / CURRENT_POSITION={current} / " +
+                                $"DIRECTION={direction} / RETRY_COUNT={retryCount}");
+                            break;
+                        }
+
+                        previous = current;
+                    }
+                }
+                finally
+                {
+                    if (!stopped)
+                    {
+                        _controlCommandService.StopIrZoom();
+                    }
+                }
+
+                int stopPosition = _currentIrZoom;
+                settled = await WaitForIrLensSettledPositionAsync(true, cancellationToken);
+                int stopTravel = zoomIn
+                    ? settled - stopPosition
+                    : stopPosition - settled;
+                if (stopTravel >= 0 && stopTravel <= 500)
+                {
+                    _irZoomObservedStopLag =
+                        _irZoomObservedStopLag * 0.65 +
+                        stopTravel * 0.35;
+                }
+                if (standardTarget >= 0) UpdateEnvironmentIrZoomEndpointCalibration(standardTarget, settled);
+                bool reached = IsIrZoomTargetReached(target, settled, standardTarget);
+                int finalError = Math.Abs(settled - target);
+
+                ConsoleLogHelper.State(
+                    "IR ZOOM SYNC",
+                    $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / DIRECTION={direction} / " +
+                    $"PREDICTED_STOP_LEAD={stopLead} / STOP_POSITION={stopPosition} / " +
+                    $"SETTLED_RAW={settled} / STANDARD_FINAL={NormalizeIrZoomStatusPosition(settled)} / STOP_TRAVEL={stopTravel} / " +
+                    $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " +
+                    $"OBSERVED_STOP_LAG={_irZoomObservedStopLag:F1} / RAW_ERROR={finalError} / " +
+                    $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomStatusPosition(settled) - standardTarget) : finalError)} / RETRY_COUNT={retryCount} / " +
+                    $"RESULT={(reached ? "COMPLETED" : "RETRY")}");
+
+                if (reached) return true;
+
+                if (!movementObserved)
+                {
+                    ConsoleLogHelper.Warning(
+                        "IR ZOOM SYNC",
+                        $"FEEDBACK RECEIVED BUT POSITION UNCHANGED / ATTEMPT={attempt} / POSITION={settled}");
+                }
+
+                retryCount++;
+                await Task.Delay(250, cancellationToken);
+            }
+
+            bool positionMatched = IsIrZoomTargetReached(target, settled, standardTarget);
+            bool finalResult = positionMatched || operationMovementObserved;
+            ConsoleLogHelper.State(
+                "IR ZOOM SYNC",
+                $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / SETTLED_RAW={settled} / " +
+                $"STANDARD_FINAL={NormalizeIrZoomStatusPosition(settled)} / " +
+                $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " +
+                $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomStatusPosition(settled) - standardTarget) : Math.Abs(settled - target))} / DIRECTION={lastDirection} / " +
+                $"REVERSAL_COUNT={directionReversalCount} / RETRY_COUNT={retryCount} / POSITION_MATCH={positionMatched} / MOVEMENT_OBSERVED={operationMovementObserved} / " +
+                $"RESULT={(finalResult ? "OPERATIONAL" : "NO_MOVEMENT")}");
+            return finalResult;
+        }
+
+        /// <summary>
+        /// 2026-09-18: 화면/명령의 표준 좌표가 제공되면 장비 Raw 물리 끝점을
+        /// 공통 정규화한 값으로 판정한다. Raw 좌표 전용 호출만 기존 허용 오차를 유지한다.
+        /// </summary>
+        private bool IsIrZoomTargetReached(int target, int actual, int standardTarget = -1)
+        {
+            if (standardTarget >= 0)
+            {
+                return Math.Abs(NormalizeIrZoomStatusPosition(actual) - standardTarget) <= IrZoomTargetTolerance;
+            }
+            return Math.Abs(actual - target) <= IrZoomTargetTolerance;
+        }
+
+        private async Task<bool> WaitForIrLensFeedbackAsync(
+            long afterSequence,
+            CancellationToken cancellationToken)
+        {
+            Stopwatch timeout = Stopwatch.StartNew();
+            while (timeout.ElapsedMilliseconds < LensSyncFeedbackTimeoutMs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (Interlocked.Read(ref _irLensStatusVersion) > afterSequence)
+                {
+                    return true;
+                }
+                await Task.Delay(20, cancellationToken);
+            }
+            return false;
+        }
+
+        private async Task<int> WaitForIrLensSettledPositionAsync(
+            bool zoom,
+            CancellationToken cancellationToken)
+        {
+            long sequence = Interlocked.Read(ref _irLensStatusVersion);
+            int previous = zoom ? _currentIrZoom : _currentIrFocus;
+            int stable = 0;
+            Stopwatch timeout = Stopwatch.StartNew();
+            int settleTimeoutMs = zoom
+                ? IrZoomSettleTimeoutMs
+                : IrFocusSyncSettleTimeoutMs;
+            int requiredStableSamples = zoom
+                ? IrZoomStableSampleCount
+                : IrFocusSyncStableSampleCount;
+            while (timeout.ElapsedMilliseconds < settleTimeoutMs)
+            {
+                if (!await WaitForIrLensFeedbackAsync(sequence, cancellationToken))
+                {
+                    break;
+                }
+                sequence = Interlocked.Read(ref _irLensStatusVersion);
+                int current = zoom ? _currentIrZoom : _currentIrFocus;
+                stable = Math.Abs(current - previous) <= 1 ? stable + 1 : 0;
+                previous = current;
+                if (stable >= requiredStableSamples) break;
+            }
+            return zoom ? _currentIrZoom : _currentIrFocus;
+        }
+
+        private async Task<bool> WaitForEnvironmentEoLensTargetAsync(
+            int target,
+            bool zoom,
+            long afterSequence,
+            CancellationToken cancellationToken)
+        {
+            Stopwatch timeout = Stopwatch.StartNew();
+            int stable = 0;
+            while (timeout.ElapsedMilliseconds < RooftopZoomSyncTimeoutMs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                long currentSequence = Interlocked.Read(ref _eoLensStatusVersion);
+                if (currentSequence > afterSequence)
+                {
+                    afterSequence = currentSequence;
+                    int actual = zoom ? _currentEoZoom : _currentEoFocus;
+                    stable = Math.Abs(actual - target) <= LensSyncTargetTolerance
+                        ? stable + 1
+                        : 0;
+                    if (stable >= 2) return true;
+                }
+                await Task.Delay(25, cancellationToken);
+            }
+            return false;
         }
 
         /// <summary>
@@ -453,6 +829,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            if (!await _lensSyncOperationLock.WaitAsync(0))
+            {
+                FocusSyncStatusText = "BUSY / OTHER LENS SYNC RUNNING";
+                return;
+            }
+
             /// <summary>
             /// 이전 Focus Sync 확인 작업만 취소한다.
             ///
@@ -478,6 +860,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             FocusSyncStatusText =
                 $"APPLYING LEVEL {selectedLevel.Level}";
+            _ptzPerformanceScenario = "FOCUS_SYNC";
 
             // APPLYING 문구를 먼저 화면에 반영한 뒤 Zoom Sync와 동일하게
             // 장비별 명령 결과와 영상 연결 상태를 합쳐 최종 결과를 표시한다.
@@ -499,6 +882,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool irResult =
                 false;
+
+            long eoStartSequence =
+                Interlocked.Read(ref _eoLensStatusVersion);
+
+            bool wasCanceled = false;
 
             try
             {
@@ -534,12 +922,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                     else
                     {
-                        irResult = Interlocked.Read(ref _irLensStatusVersion) > 0
-                            ? await MoveIrFocusToPositionAsync(
+                        irResult = Interlocked.Read(ref _irLensStatusVersion) > 0 &&
+                            await MoveIrFocusToPositionAsync(
                                 irRawTargetPosition,
-                                focusSyncCts.Token)
-                            : await MoveEnvironmentIrFocusWithoutFeedbackAsync(
-                                standardPosition,
                                 focusSyncCts.Token);
                     }
 
@@ -587,6 +972,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 }
 
+                if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment && eoResult)
+                {
+                    eoResult = await WaitForEnvironmentEoLensTargetAsync(
+                        standardPosition,
+                        false,
+                        eoStartSequence,
+                        focusSyncCts.Token);
+                }
+
+            }
+            catch (OperationCanceledException)
+            {
+                wasCanceled = true;
+                FocusSyncStatusText = "STOPPED";
+                ConsoleLogHelper.State("FOCUS SYNC", "Canceled safely by STOP command");
+            }
+            catch (Exception exception)
+            {
+                FocusSyncStatusText = "ERROR / " + exception.Message;
+                ConsoleLogHelper.Error("FOCUS SYNC", exception.ToString());
             }
             finally
             {
@@ -597,8 +1002,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _rooftopFocusSyncCts =
                         null;
 
-                    focusSyncCts.Dispose();
                 }
+
+                // 실행 중인 await가 모두 종료된 뒤 실행 작업이 토큰을 해제한다.
+                focusSyncCts.Dispose();
+
+                _ptzPerformanceScenario = "IDLE";
+
+                _lensSyncOperationLock.Release();
 
             }
 
@@ -608,10 +1019,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             irResult = irResult &&
                 (_irDecoder.IsOpened || _isIrFrameDisplayed);
 
-            FocusSyncStatusText =
-                eoResult && irResult
-                    ? $"COMPLETED / LEVEL {selectedLevel.Level}"
-                    : $"INCOMPLETE / EO={eoResult} / IR={irResult}";
+            if (!wasCanceled && !FocusSyncStatusText.StartsWith("ERROR", StringComparison.Ordinal))
+            {
+                FocusSyncStatusText = !irResult
+                    ? "INCOMPLETE / IR FOCUS NO MOVEMENT"
+                    : eoResult
+                        ? $"COMPLETED / LEVEL {selectedLevel.Level}"
+                        : $"COMPLETED / LEVEL {selectedLevel.Level} / EO VERIFY WARNING";
+            }
         }
 
         /// <summary>
@@ -714,6 +1129,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int lastFinalPosition =
                 _currentIrFocus;
 
+            bool operationMovementObserved = false;
+
             for (int attempt = 1;
                  attempt <= IrFocusSyncMaxMoveAttempts;
                  attempt++)
@@ -744,13 +1161,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return true;
                 }
 
+                // 2026-09-17 실장비 로그: FAR 명령은 Raw Focus를 증가시킨다.
+                // 따라서 낮은 Raw 목표는 NEAR, 높은 Raw 목표는 FAR로 이동한다.
                 bool moveNear =
-                    SelectedEquipmentStatusMode ==
-                        EquipmentStatusMode.Rooftop
-                            ? safeTargetPosition <
-                              startPosition
-                            : safeTargetPosition >
-                              startPosition;
+                    safeTargetPosition < startPosition;
+
+                long feedbackSequence =
+                    Interlocked.Read(ref _irLensStatusVersion);
 
                 bool commandResult =
                     moveNear
@@ -778,6 +1195,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 bool stopRequested =
                     false;
 
+                bool movementObserved =
+                    false;
+
+                int unchangedFeedbackCount = 0;
+
                 ConsoleLogHelper.PrintLine();
 
                 Console.WriteLine(
@@ -798,6 +1220,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         cancellationToken
                             .ThrowIfCancellationRequested();
 
+                        if (!await WaitForIrLensFeedbackAsync(
+                                feedbackSequence,
+                                cancellationToken))
+                        {
+                            ConsoleLogHelper.Warning(
+                                "IR FOCUS SYNC",
+                                $"FEEDBACK TIMEOUT / ATTEMPT={attempt} / CURRENT={_currentIrFocus} / TARGET={safeTargetPosition}");
+                            break;
+                        }
+
+                        feedbackSequence =
+                            Interlocked.Read(ref _irLensStatusVersion);
+
                         int currentPosition =
                             _currentIrFocus;
 
@@ -813,13 +1248,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 movementStep;
                         }
 
+                        if (movementStep > 0)
+                        {
+                            movementObserved = true;
+                            operationMovementObserved = true;
+                            unchangedFeedbackCount = 0;
+                        }
+                        else
+                        {
+                            unchangedFeedbackCount++;
+                        }
+
+                        if (unchangedFeedbackCount >= 6)
+                        {
+                            ConsoleLogHelper.Warning(
+                                "IR FOCUS SYNC",
+                                $"Position stalled; retry / ATTEMPT={attempt} / POSITION={currentPosition} / TARGET={safeTargetPosition}");
+                            break;
+                        }
+
                         int dynamicStopLead =
                             Math.Max(
                                 stopLead,
                                 Math.Min(
-                                    55,
+                                    24,
                                     largestObservedStep +
-                                    8));
+                                    4));
 
                         int remainingDistance =
                             moveNear
@@ -839,8 +1293,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 : currentPosition >=
                                   safeTargetPosition;
 
-                        if (reachedStopZone ||
+                        // START 직후 이전 상태가 반복된 STEP=0은 정지 근거가 아니다.
+                        if (movementObserved &&
+                            (reachedStopZone ||
                             passedTarget)
+                           )
                         {
                             stopRequested =
                                 _controlCommandService
@@ -888,7 +1345,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 int settledPosition =
-                    await WaitForIrFocusSettledPositionAsync(
+                    await WaitForIrLensSettledPositionAsync(
+                        false,
                         cancellationToken);
 
                 lastFinalPosition =
@@ -936,7 +1394,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            return false;
+            return operationMovementObserved;
         }
 
         /// <summary>
@@ -1142,7 +1600,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (cts != null)
             {
                 cts.Cancel();
-                cts.Dispose();
             }
 
             /// <summary>

@@ -29,8 +29,13 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [TORUSS] 응답 [Packet] 크기
         /// </summary>
-        private const int PacketSize =
+        private const int LegacyPacketSize =
             12;
+
+        private const byte VariableFunctionMinimum = 0x23;
+        private const byte VariableFunctionMaximum = 0x2A;
+        private const int VariableHeaderSize = 4;
+        private const int MaximumPayloadLength = 4096;
 
         #endregion
 
@@ -108,8 +113,33 @@ namespace OpenCvWpfTracking.Services.Communication
                     /// Header부터 12byte가 아직 모이지 않은 경우
                     /// 다음 TCP 수신까지 Buffer를 유지한다.
                     /// </summary>
-                    if (_receiveBuffer.Count <
-                        PacketSize)
+                    if (_receiveBuffer.Count < 2)
+                    {
+                        break;
+                    }
+
+                    int packetSize = LegacyPacketSize;
+                    byte function = _receiveBuffer[1];
+                    if (function >= VariableFunctionMinimum &&
+                        function <= VariableFunctionMaximum)
+                    {
+                        if (_receiveBuffer.Count < VariableHeaderSize)
+                        {
+                            break;
+                        }
+
+                        int payloadLength = _receiveBuffer[2] |
+                                            _receiveBuffer[3] << 8;
+                        if (payloadLength > MaximumPayloadLength)
+                        {
+                            _receiveBuffer.RemoveAt(0);
+                            continue;
+                        }
+
+                        packetSize = VariableHeaderSize + payloadLength + 1;
+                    }
+
+                    if (_receiveBuffer.Count < packetSize)
                     {
                         break;
                     }
@@ -118,7 +148,7 @@ namespace OpenCvWpfTracking.Services.Communication
                         _receiveBuffer
                             .GetRange(
                                 0,
-                                PacketSize)
+                                packetSize)
                             .ToArray();
 
                     bool isValid =
@@ -139,7 +169,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
                         _receiveBuffer.RemoveRange(
                             0,
-                            PacketSize);
+                            packetSize);
 
                         continue;
                     }
@@ -215,7 +245,7 @@ namespace OpenCvWpfTracking.Services.Communication
             byte[] packet)
         {
             if (packet == null ||
-                packet.Length != PacketSize)
+                packet.Length < 3)
             {
                 return false;
             }
@@ -230,7 +260,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 0;
 
             for (int index = 1;
-                 index <= 10;
+                 index < packet.Length - 1;
                  index++)
             {
                 unchecked
@@ -242,7 +272,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             return sum ==
-                   packet[11];
+                   packet[packet.Length - 1];
         }
         #endregion
     }

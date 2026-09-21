@@ -42,6 +42,8 @@ namespace OpenCvWpfTracking.Services.Communication
         private TcpClient _tcpClient;
         private NetworkStream _networkStream;
         private CancellationTokenSource _cts;
+        private Task _receiveLoopTask = Task.CompletedTask;
+        private long _sessionGeneration;
 
         /// <summary>
         /// [TCP] 연결 / 송신 / 해제 동기화 객체
@@ -160,9 +162,13 @@ namespace OpenCvWpfTracking.Services.Communication
 
                 await connectTask;
 
+                long sessionGeneration;
+                CancellationToken receiveToken;
                 lock (_socketLock)
                 {
                     CleanupSocketInternal();
+
+                    sessionGeneration = ++_sessionGeneration;
 
                     _tcpClient =
                         newClient;
@@ -173,13 +179,14 @@ namespace OpenCvWpfTracking.Services.Communication
                     _cts =
                         new CancellationTokenSource();
 
+                    receiveToken = _cts.Token;
+
                     _isManualDisconnect =
                         false;
                 }
 
-                _ = Task.Run(() =>
-                    ReceiveLoopAsync(
-                        _cts.Token));
+                _receiveLoopTask = Task.Run(() =>
+                    ReceiveLoopAsync(receiveToken, sessionGeneration));
 
                 ConsoleLogHelper.StateSection(
                     "TCP",
@@ -282,7 +289,8 @@ namespace OpenCvWpfTracking.Services.Communication
         /// ReceiveLoopAsync 수신 함수.
         /// </summary>
         private async Task ReceiveLoopAsync(
-            CancellationToken token)
+            CancellationToken token,
+            long sessionGeneration)
         {
             byte[] buffer =
                 new byte[2048];
@@ -358,16 +366,18 @@ namespace OpenCvWpfTracking.Services.Communication
             finally
             {
                 bool isManualDisconnect;
+                bool isCurrentSession;
 
                 lock (_socketLock)
                 {
-                    isManualDisconnect =
-                        _isManualDisconnect;
-
-                    CleanupSocketInternal();
+                    // 2026-09-17: 이전 ReceiveLoop의 finally가 새 연결의
+                    // NetworkStream을 닫는 재연결 Race를 차단한다.
+                    isCurrentSession = sessionGeneration == _sessionGeneration;
+                    isManualDisconnect = _isManualDisconnect;
+                    if (isCurrentSession) CleanupSocketInternal();
                 }
 
-                if (shouldNotifyConnectionClosed &&
+                if (isCurrentSession && shouldNotifyConnectionClosed &&
                     !isManualDisconnect)
                 {
                     ConnectionClosed?.Invoke();
@@ -487,12 +497,30 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public void Disconnect()
         {
+            DisconnectAsync().GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// 2026-09-17: Stream/Socket 종료 후 기존 RX Worker가 실제로 빠져나온
+        /// 것을 확인한다. Timeout은 UI 무한 대기를 방지하는 보호 장치다.
+        /// </summary>
+        public async Task DisconnectAsync()
+        {
+            Task receiveLoop;
             lock (_socketLock)
             {
                 _isManualDisconnect =
                     true;
 
+                ++_sessionGeneration;
+                receiveLoop = _receiveLoopTask;
+
                 CleanupSocketInternal();
+            }
+
+            if (receiveLoop != null && !receiveLoop.IsCompleted)
+            {
+                await Task.WhenAny(receiveLoop, Task.Delay(1500)).ConfigureAwait(false);
             }
 
             Console.WriteLine(

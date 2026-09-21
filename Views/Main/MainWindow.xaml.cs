@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Interop;
 using Serilog;
 
 namespace OpenCvWpfTracking
@@ -26,6 +28,47 @@ namespace OpenCvWpfTracking
     public partial class MainWindow : Window
     {
         #region [Fields]
+
+        // 2026-09-16: MainWindow 전체화면은 작업영역(rcWork)이 아니라
+        // 현재 창이 위치한 모니터 전체 영역(rcMonitor)을 사용한다.
+        private const uint MonitorDefaultToNearest = 0x00000002;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeRect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct NativeMonitorInfo
+        {
+            public int Size;
+            public NativeRect Monitor;
+            public NativeRect Work;
+            public uint Flags;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(
+            IntPtr windowHandle,
+            uint flags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool GetMonitorInfo(
+            IntPtr monitorHandle,
+            ref NativeMonitorInfo monitorInfo);
+
+        private bool _isMainWindowFullScreen;
+        private Rect _mainWindowRestoreBounds;
+        private WindowState _mainWindowRestoreState;
+        private WindowStyle _mainWindowRestoreStyle;
+        private ResizeMode _mainWindowRestoreResizeMode;
+        private bool _mainWindowRestoreTopmost;
+        private double _mainWindowRestoreMaxWidth;
+        private double _mainWindowRestoreMaxHeight;
 
         /// <summary>
         /// [Main] 화면 -> [ViewModel]
@@ -320,6 +363,11 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            if (TryHandleFovValidationClick(false, e))
+            {
+                return;
+            }
+
             if (e.ClickCount != 2)
             {
                 return;
@@ -339,6 +387,11 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            if (TryHandleFovValidationClick(true, e))
+            {
+                return;
+            }
+
             if (e.ClickCount != 2)
             {
                 return;
@@ -682,6 +735,7 @@ namespace OpenCvWpfTracking
         private void UpdateWindowChromeState()
         {
             bool isMaximized =
+                _isMainWindowFullScreen ||
                 WindowState == WindowState.Maximized;
 
             MaximizeWindowGlyph.Visibility =
@@ -812,10 +866,134 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void ToggleWindowState()
         {
-            WindowState =
-                WindowState == WindowState.Maximized
-                    ? WindowState.Normal
-                    : WindowState.Maximized;
+            if (_isMainWindowFullScreen)
+            {
+                ExitMainWindowFullScreen();
+                return;
+            }
+
+            EnterMainWindowFullScreen();
+        }
+
+        /// <summary>
+        /// 2026-09-16: 현재 모니터의 물리 rcMonitor를 WPF DIP로 변환해
+        /// 작업표시줄까지 덮는 MainWindow 전체화면으로 전환한다.
+        /// </summary>
+        private void EnterMainWindowFullScreen()
+        {
+            try
+            {
+                WindowInteropHelper helper =
+                    new WindowInteropHelper(this);
+
+                IntPtr monitorHandle =
+                    MonitorFromWindow(
+                        helper.Handle,
+                        MonitorDefaultToNearest);
+
+                NativeMonitorInfo monitorInfo =
+                    new NativeMonitorInfo
+                    {
+                        Size = Marshal.SizeOf(typeof(NativeMonitorInfo))
+                    };
+
+                if (monitorHandle == IntPtr.Zero ||
+                    !GetMonitorInfo(monitorHandle, ref monitorInfo))
+                {
+                    throw new InvalidOperationException(
+                        "현재 모니터의 전체 영역을 조회할 수 없습니다.");
+                }
+
+                _mainWindowRestoreBounds =
+                    WindowState == WindowState.Normal
+                        ? new Rect(Left, Top, Width, Height)
+                        : RestoreBounds;
+                _mainWindowRestoreState = WindowState;
+                _mainWindowRestoreStyle = WindowStyle;
+                _mainWindowRestoreResizeMode = ResizeMode;
+                _mainWindowRestoreTopmost = Topmost;
+                _mainWindowRestoreMaxWidth = MaxWidth;
+                _mainWindowRestoreMaxHeight = MaxHeight;
+
+                PresentationSource presentationSource =
+                    PresentationSource.FromVisual(this);
+                Matrix fromDevice = presentationSource?.CompositionTarget != null
+                    ? presentationSource.CompositionTarget.TransformFromDevice
+                    : Matrix.Identity;
+
+                Point topLeft = fromDevice.Transform(
+                    new Point(monitorInfo.Monitor.Left, monitorInfo.Monitor.Top));
+                Point bottomRight = fromDevice.Transform(
+                    new Point(monitorInfo.Monitor.Right, monitorInfo.Monitor.Bottom));
+
+                _isMainWindowFullScreen = true;
+                WindowState = WindowState.Normal;
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                MaxWidth = double.PositiveInfinity;
+                MaxHeight = double.PositiveInfinity;
+                Left = topLeft.X;
+                Top = topLeft.Y;
+                Width = Math.Max(1.0, bottomRight.X - topLeft.X);
+                Height = Math.Max(1.0, bottomRight.Y - topLeft.Y);
+                Topmost = true;
+
+                UpdateWindowChromeState();
+                ConsoleLogHelper.Info(
+                    "MAIN WINDOW",
+                    $"Full screen entered / LEFT={Left:F1} / TOP={Top:F1} / WIDTH={Width:F1} / HEIGHT={Height:F1}");
+            }
+            catch (Exception ex)
+            {
+                _isMainWindowFullScreen = false;
+                ConsoleLogHelper.Error(
+                    "MAIN WINDOW",
+                    "Full screen enter failed",
+                    ex);
+            }
+        }
+
+        /// <summary>
+        /// 2026-09-16: 전체화면 진입 전 위치·크기·Chrome 제한을 복원한다.
+        /// </summary>
+        private void ExitMainWindowFullScreen()
+        {
+            if (!_isMainWindowFullScreen)
+            {
+                return;
+            }
+
+            try
+            {
+                _isMainWindowFullScreen = false;
+                Topmost = _mainWindowRestoreTopmost;
+                WindowStyle = _mainWindowRestoreStyle;
+                ResizeMode = _mainWindowRestoreResizeMode;
+                MaxWidth = _mainWindowRestoreMaxWidth;
+                MaxHeight = _mainWindowRestoreMaxHeight;
+                WindowState = WindowState.Normal;
+                Left = _mainWindowRestoreBounds.Left;
+                Top = _mainWindowRestoreBounds.Top;
+                Width = _mainWindowRestoreBounds.Width;
+                Height = _mainWindowRestoreBounds.Height;
+
+                if (_mainWindowRestoreState == WindowState.Maximized)
+                {
+                    WindowState = WindowState.Maximized;
+                }
+
+                UpdateWindowChromeState();
+                ConsoleLogHelper.Info(
+                    "MAIN WINDOW",
+                    "Full screen exited / previous bounds restored");
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Error(
+                    "MAIN WINDOW",
+                    "Full screen restore failed",
+                    ex);
+            }
         }
 
         #endregion
@@ -832,10 +1010,33 @@ namespace OpenCvWpfTracking
             object sender,
             RoutedEventArgs e)
         {
+            FitWindowToWorkingArea();
             UpdateWindowChromeState();
 
             Keyboard.Focus(
                 this);
+        }
+
+        /// <summary>
+        /// 2026-09-16: 1920 x 1080 고정 설계 창을 실제 작업영역에 맞춰
+        /// 하단이 화면 밖으로 잘리지 않도록 크기와 위치를 보정한다.
+        /// </summary>
+        private void FitWindowToWorkingArea()
+        {
+            Rect workArea = SystemParameters.WorkArea;
+
+            MaxWidth = Math.Max(MinWidth, workArea.Width);
+            MaxHeight = Math.Max(MinHeight, workArea.Height);
+
+            if (WindowState != WindowState.Normal)
+            {
+                return;
+            }
+
+            Width = Math.Min(Width, workArea.Width);
+            Height = Math.Min(Height, workArea.Height);
+            Left = workArea.Left + Math.Max(0, (workArea.Width - Width) / 2);
+            Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
         }
 
         /// <summary>
@@ -1486,6 +1687,14 @@ namespace OpenCvWpfTracking
             object sender,
             KeyEventArgs e)
         {
+            // 2026-09-16: ESC는 장비 제어 Lock보다 우선하여 메인 전체화면을 복원한다.
+            if (e.Key == Key.Escape && _isMainWindowFullScreen)
+            {
+                ExitMainWindowFullScreen();
+                e.Handled = true;
+                return;
+            }
+
             // 2026-08-28: 이벤트 PREVIOUS/NEXT 버튼이 키보드 초점을 가진 경우
             // 좌·우 키를 PTZ 명령으로 소비하지 않고 하위 이벤트 목록에 전달한다.
             if (IsEventPageNavigationKey(e.Key))
@@ -1710,8 +1919,9 @@ namespace OpenCvWpfTracking
             {
                 case Key.W: vm?.StartIrZoomInMove(); break;
                 case Key.S: vm?.StartIrZoomOutMove(); break;
-                case Key.A: vm?.StartIrFocusNearMove(); break;
-                case Key.D: vm?.StartIrFocusFarMove(); break;
+                // 2026-09-17: 실장비 상태값 기준 A=FOCUS+(Far/증가), D=FOCUS-(Near/감소)
+                case Key.A: vm?.StartIrFocusFarMove(); break;
+                case Key.D: vm?.StartIrFocusNearMove(); break;
             }
 
         }
@@ -2057,7 +2267,8 @@ namespace OpenCvWpfTracking
             object sender,
             MouseEventArgs e)
         {
-            vm?.StopContinuousMove();
+            if (IsPanTiltMoveSender(sender)) vm?.StopPanTiltContinuousMove();
+            else vm?.StopContinuousMove();
         }
 
         /// <summary>
@@ -2076,7 +2287,15 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            vm?.StopContinuousMove();
+            if (IsPanTiltMoveSender(sender)) vm?.StopPanTiltContinuousMove();
+            else vm?.StopContinuousMove();
+        }
+
+        private static bool IsPanTiltMoveSender(object sender)
+        {
+            string name = (sender as FrameworkElement)?.Name ?? string.Empty;
+            return name.IndexOf("Pan", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   name.IndexOf("Tilt", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         /// <summary>

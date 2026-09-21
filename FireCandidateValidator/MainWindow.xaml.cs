@@ -597,6 +597,14 @@ namespace FireCandidateValidator
                                 : new Scalar(255, 255, 0),
                             displayScale,
                             occupiedLabelRects);
+                        // 2026-09-21: 본 프로그램과 동일하게 테스트 영상 상단 중앙에
+                        // FIRE/SMOKE 실시간 경고 배너를 표시한다.
+                        DrawAlarmBanner(
+                            rendered,
+                            fireCandidates.Count > 0,
+                            smokeCandidates.Count > 0,
+                            isInfrared,
+                            displayScale);
 
                         ReplaceRendered(rendered);
                     }
@@ -653,6 +661,78 @@ namespace FireCandidateValidator
                 StatusText.Foreground = Brushes.OrangeRed;
             }
 
+        }
+
+        /// <summary>
+        /// 2026-09-21: 검출 박스와 별도로 영상 상단 중앙에 FIRE/SMOKE 경고를 표시한다.
+        /// 저장 이미지와 저장 영상에도 동일한 배너가 포함된다.
+        /// </summary>
+        private static void DrawAlarmBanner(
+            Mat rendered,
+            bool fireDetected,
+            bool smokeDetected,
+            bool isInfrared,
+            double displayScale)
+        {
+            if (rendered == null || rendered.Empty() ||
+                (!fireDetected && !smokeDetected))
+            {
+                return;
+            }
+
+            string channel = isInfrared ? "IR" : "EO";
+            List<string> messages = new List<string>();
+            if (fireDetected)
+            {
+                messages.Add("FIRE DETECTED / " + channel);
+            }
+            if (smokeDetected)
+            {
+                messages.Add("SMOKE DETECTED / " + channel);
+            }
+
+            double fontScale = Math.Max(0.8, 0.9 * displayScale);
+            int thickness = Math.Max(2, (int)Math.Round(2.0 * displayScale));
+            int paddingX = Math.Max(12, (int)Math.Round(18.0 * displayScale));
+            int paddingY = Math.Max(8, (int)Math.Round(10.0 * displayScale));
+            int gap = Math.Max(4, (int)Math.Round(5.0 * displayScale));
+            int y = Math.Max(0, (int)Math.Round(12.0 * displayScale));
+
+            foreach (string message in messages)
+            {
+                int baseline;
+                CvSize textSize = Cv2.GetTextSize(
+                    message,
+                    HersheyFonts.HersheySimplex,
+                    fontScale,
+                    thickness,
+                    out baseline);
+                int width = Math.Min(rendered.Width, textSize.Width + paddingX * 2);
+                int height = Math.Min(
+                    rendered.Height - y,
+                    textSize.Height + baseline + paddingY * 2);
+                if (width <= 0 || height <= 0)
+                {
+                    return;
+                }
+
+                int x = Math.Max(0, (rendered.Width - width) / 2);
+                Scalar background = message.StartsWith("FIRE", StringComparison.Ordinal)
+                    ? new Scalar(0, 0, 210)
+                    : new Scalar(0, 150, 220);
+                Cv2.Rectangle(rendered, new CvRect(x, y, width, height), background, -1);
+                Cv2.PutText(
+                    rendered,
+                    message,
+                    new CvPoint(x + Math.Max(4, (width - textSize.Width) / 2),
+                                y + paddingY + textSize.Height),
+                    HersheyFonts.HersheySimplex,
+                    fontScale,
+                    Scalar.White,
+                    thickness,
+                    LineTypes.AntiAlias);
+                y += height + gap;
+            }
         }
 
         /// <summary>

@@ -34,6 +34,13 @@ namespace OpenCvWpfTracking.Models.Main
         Environment
     }
 
+    /// <summary>CONNECT 창에서 선택되는 실제 제어 Agent. UI 모드의 단일 결정 기준이다.</summary>
+    public enum ControlAgentType
+    {
+        LaAgent,
+        WebAgent
+    }
+
     /// <summary>
     /// [Pan Absolute] 이동 시 사용할 선회 방향 계산 모드
     ///

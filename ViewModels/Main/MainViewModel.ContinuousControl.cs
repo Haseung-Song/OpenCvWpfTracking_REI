@@ -45,13 +45,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * Keyboard Pan / Tilt 입력이 들어오면
              * 공통 Stop 명령과 충돌할 수 있으므로 무시한다.
              */
-            if (_currentMoveType !=
-                    ContinuousMoveType.None &&
-                _currentMoveType !=
-                    ContinuousMoveType.PanTilt)
-            {
-                return;
-            }
+            // 2026-09-18: Lens 동작과 Pan/Tilt는 독립 축으로 동시에 허용한다.
 
             SetKeyboardPanTiltPressedState(
                 key,
@@ -126,6 +120,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _currentKeyboardPanTiltDirection !=
                 KeyboardPanTiltDirection.None;
 
+            KeyboardPanTiltDirection stopDirection =
+                _activePanTiltMoveDirection;
+
             ClearKeyboardPanTiltPressedState();
 
             _currentKeyboardPanTiltDirection =
@@ -143,8 +140,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (_currentMoveType !=
-                ContinuousMoveType.PanTilt)
+            if (!_isPanTiltMoveActive)
             {
                 return;
             }
@@ -155,11 +151,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService
-                .StopMove();
+            StopPanTiltMoveByDirection(
+                stopDirection);
 
-            _currentMoveType =
-                ContinuousMoveType.None;
+            _isPanTiltMoveActive = false;
+
+            _activePanTiltMoveDirection =
+                KeyboardPanTiltDirection.None;
+
+            _ptzPerformanceScenario = "IDLE";
         }
 
         /// <summary>
@@ -395,8 +395,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void StopKeyboardPanTiltMove()
         {
-            if (_currentMoveType !=
-                ContinuousMoveType.PanTilt)
+            if (!_isPanTiltMoveActive)
             {
                 return;
             }
@@ -407,11 +406,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            _controlCommandService
-                .StopMove();
+            StopPanTiltMoveByDirection(
+                _activePanTiltMoveDirection);
 
-            _currentMoveType =
-                ContinuousMoveType.None;
+            _isPanTiltMoveActive = false;
+
+            _activePanTiltMoveDirection =
+                KeyboardPanTiltDirection.None;
+
+            _ptzPerformanceScenario = "IDLE";
         }
 
         #endregion
@@ -419,8 +422,80 @@ namespace OpenCvWpfTracking.ViewModels.Main
         #region [EO/IR] [Pan / Tilt Continuous Move]
 
         /// <summary>
-        /// UI 속도 Level [1 ~ 50]을 Pelco-D 속도 Level [1 ~ 63]으로 환산한다.
-        ///
+        /// 2026-09-15: Web Agent Pan/Tilt 연속 이동 해제 시 마지막 이동 축에 맞는
+        /// TORUSS 위치 정지 명령을 송신한다. 대각선은 두 축을 각각 정지하며,
+        /// 방향 상태가 없을 때만 안전을 위해 기존 전체 정지 명령을 사용한다.
+        /// </summary>
+        private bool StopPanTiltMoveByDirection(
+            KeyboardPanTiltDirection direction)
+        {
+            switch (direction)
+            {
+                case KeyboardPanTiltDirection.PanLeft:
+                case KeyboardPanTiltDirection.PanRight: Interlocked.Increment(ref _panStopTxCount); break;
+                case KeyboardPanTiltDirection.TiltUp:
+                case KeyboardPanTiltDirection.TiltDown: Interlocked.Increment(ref _tiltStopTxCount); break;
+                default: Interlocked.Increment(ref _panStopTxCount); Interlocked.Increment(ref _tiltStopTxCount); break;
+            }
+            // 옥상 LA 프로필은 기존 Pelco-D 전체 STOP을 유지한다.
+            // 축별 0x4F 정지는 0~360 좌표계를 사용하는 Web Agent에만 적용한다.
+            if (!_controlCommandService.UseUnsignedWebAgentPanCoordinates &&
+                !_controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            {
+                bool laResult = _controlCommandService
+                    .StopMove();
+
+                ConsoleLogHelper.State(
+                    "PAN / TILT STOP",
+                    $"DIRECTION={direction} / TYPE=LA_GLOBAL / RESULT={laResult}");
+
+                return laResult;
+            }
+
+            bool result;
+            string stopType;
+
+            switch (direction)
+            {
+                case KeyboardPanTiltDirection.PanLeft:
+                case KeyboardPanTiltDirection.PanRight:
+                    stopType = "PAN";
+                    result = _controlCommandService
+                        .StopPanPositionMove();
+                    break;
+
+                case KeyboardPanTiltDirection.TiltUp:
+                case KeyboardPanTiltDirection.TiltDown:
+                    stopType = "TILT";
+                    result = _controlCommandService
+                        .StopTiltPositionMove();
+                    break;
+
+                case KeyboardPanTiltDirection.PanLeftTiltUp:
+                case KeyboardPanTiltDirection.PanRightTiltUp:
+                case KeyboardPanTiltDirection.PanLeftTiltDown:
+                case KeyboardPanTiltDirection.PanRightTiltDown:
+                    stopType = "PAN+TILT";
+                    result = _controlCommandService
+                        .StopPanTiltPositionMove();
+                    break;
+
+                default:
+                    stopType = "GLOBAL_FALLBACK";
+                    result = _controlCommandService
+                        .StopMove();
+                    break;
+            }
+
+            ConsoleLogHelper.State(
+                "PAN / TILT STOP",
+                $"DIRECTION={direction} / TYPE={stopType} / RESULT={result}");
+
+            return result;
+        }
+
+        /// <summary>
+        /// 2026-09-17: Web Agent 합의 규격인 UI 속도 [0 ~ 60]을 그대로 사용한다.
         /// UI 0은 이동 속도로 사용하지 않으며 정지 요청으로 처리한다.
         /// </summary>
         private byte ConvertPanTiltSpeedLevel(
@@ -431,31 +506,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return 0;
             }
 
-            const int uiMaximum = 50;
-            const int protocolMinimum = 1;
-            const int protocolMaximum = 63;
-
-            int normalizedUiSpeed =
-                Math.Min(
-                    uiMaximum,
-                    uiSpeed);
-
-            double normalized =
-                (normalizedUiSpeed - 1.0) /
-                (uiMaximum - 1.0);
-
-            int converted =
-                protocolMinimum +
-                (int)Math.Round(
-                    normalized *
-                    (protocolMaximum -
-                     protocolMinimum));
-
-            return (byte)Math.Max(
-                protocolMinimum,
-                Math.Min(
-                    protocolMaximum,
-                    converted));
+            return (byte)Math.Min(60, uiSpeed);
         }
 
         /// <summary>
@@ -475,7 +526,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             double opticalZoomRatio =
                 1.0 +
-                standardZoom / 1000.0 * 49.0;
+                standardZoom / 1000.0 * 89.0;
 
             speedScale =
                 Math.Max(
@@ -510,29 +561,36 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (baseProtocolSpeed > 0)
             {
-                protocolSpeed =
-                    ApplyZoomAdaptivePanTiltSpeed(
-                        baseProtocolSpeed,
-                        out ushort standardZoom,
-                        out double speedScale);
+                ushort standardZoom = GetCurrentPresetStandardZoom();
+                double speedScale = 1.0;
+
+                // 2026-09-17: Web Agent에는 UI 0~60 값을 변환 없이 직접 송신한다.
+                if (!_controlCommandService.UseUnsignedWebAgentPanCoordinates)
+                {
+                    protocolSpeed =
+                        ApplyZoomAdaptivePanTiltSpeed(
+                            baseProtocolSpeed,
+                            out standardZoom,
+                            out speedScale);
+                }
 
                 ClearActivePanTiltAbsoluteMove();
 
                 ConsoleLogHelper.State(
                     "PAN / TILT SPEED",
-                    $"Zoom-adaptive jog speed / UI_SPEED={PanTiltSpeedLevel} / " +
+                    $"Jog speed / UI_SPEED={PanTiltSpeedLevel} / " +
                     $"BASE_PROTOCOL_SPEED={baseProtocolSpeed} / EO_ZOOM={standardZoom}/1000 / " +
-                    $"SCALE={speedScale:F3} / EFFECTIVE_PROTOCOL_SPEED={protocolSpeed}");
+                    $"SCALE={speedScale:F3} / EFFECTIVE_PROTOCOL_SPEED={protocolSpeed} / " +
+                    $"MODE={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_LINEAR" : "LA_ZOOM_ADAPTIVE")}");
 
                 return true;
             }
 
             bool stopResult =
-                _controlCommandService
-                    .StopMove();
+                StopPanTiltMoveByDirection(
+                    _activePanTiltMoveDirection);
 
-            _currentMoveType =
-                ContinuousMoveType.None;
+            _isPanTiltMoveActive = false;
 
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection.None;
@@ -559,7 +617,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType = ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection.PanLeft;
 
@@ -569,6 +627,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"UI SPEED : {PanTiltSpeedLevel} / " +
                 $"PROTOCOL SPEED : {protocolSpeed}");
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartPanLeft(
@@ -589,7 +649,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType = ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection.PanRight;
 
@@ -599,6 +659,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"UI SPEED : {PanTiltSpeedLevel} / " +
                 $"PROTOCOL SPEED : {protocolSpeed}");
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartPanRight(
@@ -619,7 +681,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType = ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection.TiltUp;
 
@@ -629,6 +691,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"UI SPEED : {PanTiltSpeedLevel} / " +
                 $"PROTOCOL SPEED : {protocolSpeed}");
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartTiltUp(
@@ -649,7 +713,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType = ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection.TiltDown;
 
@@ -659,6 +723,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"UI SPEED : {PanTiltSpeedLevel} / " +
                 $"PROTOCOL SPEED : {protocolSpeed}");
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartTiltDown(
@@ -676,8 +742,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType =
-                ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
 
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection
@@ -690,6 +755,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"PROTOCOL SPEED : {protocolSpeed}");
 
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartPanLeftTiltUp(
@@ -708,8 +775,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType =
-                ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
 
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection
@@ -722,6 +788,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"PROTOCOL SPEED : {protocolSpeed}");
 
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartPanRightTiltUp(
@@ -740,8 +808,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType =
-                ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
 
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection
@@ -754,6 +821,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"PROTOCOL SPEED : {protocolSpeed}");
 
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartPanLeftTiltDown(
@@ -772,8 +841,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _currentMoveType =
-                ContinuousMoveType.PanTilt;
+            _isPanTiltMoveActive = true;
 
             _activePanTiltMoveDirection =
                 KeyboardPanTiltDirection
@@ -786,6 +854,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"PROTOCOL SPEED : {protocolSpeed}");
 
             ConsoleLogHelper.PrintLine();
+
+            MarkPanTiltMoveCommandIssued();
 
             _controlCommandService
                 .StartPanRightTiltDown(
@@ -819,8 +889,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ReapplyActivePanTiltAbsoluteTarget(
                 positionSpeed);
 
-            if (_currentMoveType !=
-                    ContinuousMoveType.PanTilt ||
+            if (!_isPanTiltMoveActive ||
                 _activePanTiltMoveDirection ==
                     KeyboardPanTiltDirection.None)
             {
@@ -921,6 +990,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void StartEoZoomInMove()
         {
+            _ptzPerformanceScenario = "ZOOM_IN";
+            Interlocked.Increment(ref _zoomStartTxCount);
             /*
              * Zoom 동작 시 카메라가 Focus를 자동 변경할 수 있으므로
              * 다음 Focus 입력은 새 상태값에서 다시 시작하도록 초기화한다.
@@ -1011,6 +1082,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void StartEoZoomOutMove()
         {
+            _ptzPerformanceScenario = "ZOOM_OUT";
+            Interlocked.Increment(ref _zoomStartTxCount);
             /*
              * Zoom 동작 시 카메라가 Focus를 자동 변경할 수 있으므로
              * 다음 Focus 입력은 새 상태값에서 다시 시작하도록 초기화한다.
@@ -1632,6 +1705,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StartIrZoomInMove()
         {
+            _ptzPerformanceScenario = "ZOOM_IN";
+            Interlocked.Increment(ref _zoomStartTxCount);
             _currentMoveType = ContinuousMoveType.IrZoom;
 
             Console.WriteLine();
@@ -1650,6 +1725,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StartIrZoomOutMove()
         {
+            _ptzPerformanceScenario = "ZOOM_OUT";
+            Interlocked.Increment(ref _zoomStartTxCount);
             _currentMoveType = ContinuousMoveType.IrZoom;
 
             Console.WriteLine();
@@ -1670,6 +1747,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StopIrZoomMove()
         {
+            _ptzPerformanceScenario = "IDLE";
+            Interlocked.Increment(ref _zoomStopTxCount);
             Console.WriteLine();
             Console.WriteLine("[CONTROL] IR ZOOM STOP");
             ConsoleLogHelper.PrintLine();
@@ -2130,6 +2209,91 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [Common Stop Continuous Move]
 
+        public void StopPanTiltContinuousMove()
+        {
+            if (!_isPanTiltMoveActive) return;
+            StopPanTiltMoveByDirection(_activePanTiltMoveDirection);
+            _isPanTiltMoveActive = false;
+            _activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
+            if (_currentMoveType == ContinuousMoveType.None) _ptzPerformanceScenario = "IDLE";
+        }
+
+        /// <summary>
+        /// 2026-09-15: 화면 중앙 STOP 버튼 전용 PTZF 전체 정지.
+        /// 현재 GUI 이동 상태와 관계없이 Pelco-D 전체 STOP
+        /// FF 01 00 00 00 00 01을 반드시 1회 송신한다.
+        /// 옥상 CTEC EO 렌즈가 직접 제어 중이면 해당 렌즈도 함께 정지한다.
+        /// </summary>
+        public async void StopAllPtzfMove()
+        {
+            ContinuousMoveType moveType =
+                _currentMoveType;
+
+            if (moveType == ContinuousMoveType.EoZoom || moveType == ContinuousMoveType.IrZoom)
+            {
+                Interlocked.Increment(ref _zoomStopTxCount);
+            }
+
+            RtspSourceOption activeEoCtecSource =
+                _activeEoCtecSource;
+
+            CancelMoveControlPanOperation();
+            StopCtecEoPositionPolling();
+
+            Interlocked.Increment(
+                ref _ctecEoPositionOperationGeneration);
+
+            ClearKeyboardPanTiltPressedState();
+
+            _currentKeyboardPanTiltDirection =
+                KeyboardPanTiltDirection.None;
+
+            _currentMoveType =
+                ContinuousMoveType.None;
+
+            _isPanTiltMoveActive = false;
+
+            _activePanTiltMoveDirection =
+                KeyboardPanTiltDirection.None;
+
+            _activeEoCtecSource =
+                null;
+
+            ClearActivePanTiltAbsoluteMove();
+
+            bool tcpStopResult =
+                _controlCommandService.StopMove();
+
+            bool ctecStopResult = true;
+
+            if (activeEoCtecSource != null)
+            {
+                if (moveType == ContinuousMoveType.EoZoom)
+                {
+                    ctecStopResult =
+                        await _ctecCameraCommandService.StopZoomAsync(
+                            activeEoCtecSource.ControlIp,
+                            activeEoCtecSource.ControlUserName,
+                            activeEoCtecSource.ControlPassword,
+                            activeEoCtecSource.UseHttps);
+                }
+                else if (moveType == ContinuousMoveType.EoFocus)
+                {
+                    ctecStopResult =
+                        await _ctecCameraCommandService.StopFocusAsync(
+                            activeEoCtecSource.ControlIp,
+                            activeEoCtecSource.ControlUserName,
+                            activeEoCtecSource.ControlPassword,
+                            activeEoCtecSource.UseHttps);
+                }
+            }
+
+            ConsoleLogHelper.Command(
+                "PTZF GLOBAL STOP",
+                $"PACKET=FF 01 00 00 00 00 01 / TCP={tcpStopResult} / " +
+                $"PREVIOUS_MOVE={moveType} / CTEC={ctecStopResult}");
+        }
+
         /// <summary>
         /// 연속 이동 정지
         ///
@@ -2148,6 +2312,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            _ptzPerformanceScenario = "IDLE";
+
             /*
              * 이동 제어 VIA 0 Pan 작업이 실행 중이면
              * Stop 버튼에서도 동일하게 취소되도록 먼저 종료한다.
@@ -2156,6 +2322,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ContinuousMoveType moveType =
                 _currentMoveType;
+
+            KeyboardPanTiltDirection panTiltDirection =
+                _activePanTiltMoveDirection;
 
             if (moveType ==
                 ContinuousMoveType.None)
@@ -2200,8 +2369,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 case ContinuousMoveType.PanTilt:
 
-                    _controlCommandService
-                        .StopMove();
+                    StopPanTiltMoveByDirection(
+                        panTiltDirection);
 
                     break;
 
@@ -2233,9 +2402,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         }
                         else
                         {
+                            // 2026-09-17: 실장비 로그에서 v1.8 EO Zoom 전용 STOP
+                            // (00/51/01/00) 송신 후에도 Zoom 값이 계속 변하는 것을 확인했다.
+                            // 장비 안전을 위해 Web Agent 구현이 확인될 때까지 검증된 전체 STOP을 사용한다.
                             bool stopResult =
-                                _controlCommandService
-                                .StopMove();
+                                _controlCommandService.StopMove();
+
+                            ConsoleLogHelper.Command(
+                                "EO ZOOM STOP",
+                                $"TYPE=GLOBAL_COMPAT / PACKET=FF 01 00 00 00 00 01 / " +
+                                $"REASON=WEB_AGENT_00_51_01_00_NOT_APPLIED / RESULT={stopResult}");
 
                             if (stopResult)
                             {
@@ -2282,9 +2458,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         }
                         else
                         {
+                            // 2026-09-17: EO Zoom 전용 STOP 미적용 실장비와 동일 계열인
+                            // EO Focus도 검증 전까지 전체 STOP을 사용하여 연속 구동을 방지한다.
                             stopResult =
-                                _controlCommandService
-                                    .StopMove();
+                                _controlCommandService.StopMove();
+
+                            ConsoleLogHelper.Command(
+                                "EO FOCUS STOP",
+                                $"TYPE=GLOBAL_COMPAT / PACKET=FF 01 00 00 00 00 01 / " +
+                                $"REASON=WEB_AGENT_LENS_STOP_UNVERIFIED / RESULT={stopResult}");
                         }
 
                         Console.WriteLine(

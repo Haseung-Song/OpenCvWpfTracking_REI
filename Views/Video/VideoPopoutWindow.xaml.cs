@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 
 namespace OpenCvWpfTracking
 {
@@ -121,10 +122,98 @@ namespace OpenCvWpfTracking
             object sender,
             RoutedEventArgs e)
         {
+            // 2026-09-16: EO/IR 분리 영상은 작업영역이 아닌 모니터 전체를
+            // 사용하는 Borderless Full Screen으로 표시한다.
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+            Topmost = true;
+
             ApplyViewportAspectRatio();
 
             Keyboard.Focus(
                 this);
+        }
+
+        /// <summary>
+        /// 2026-09-17: 분리 영상 화면 드래그/더블클릭 처리.
+        /// 전체화면에서 드래그를 시작하면 창 모드로 복원한 뒤 DragMove를 호출하여
+        /// 멀티모니터 사이에서도 일반 창처럼 이동할 수 있게 한다.
+        /// </summary>
+        private void Window_MouseLeftButtonDown(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            // 좌상단 단축키 안내 UI 조작은 창 이동으로 소비하지 않는다.
+            if (CameraInfoToggleButton.IsMouseOver ||
+                CameraInfoBorder.IsMouseOver)
+            {
+                return;
+            }
+
+            e.Handled = true;
+
+            if (e.ClickCount == 2)
+            {
+                TogglePopoutFullScreen();
+                return;
+            }
+
+            if (e.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            if (WindowState == WindowState.Maximized)
+            {
+                Point localPoint = e.GetPosition(this);
+                double horizontalRatio = ActualWidth > 0.0
+                    ? Math.Max(0.0, Math.Min(1.0, localPoint.X / ActualWidth))
+                    : 0.5;
+                Point screenPoint = PointToScreen(localPoint);
+                PresentationSource source = PresentationSource.FromVisual(this);
+
+                if (source?.CompositionTarget != null)
+                {
+                    screenPoint = source.CompositionTarget.TransformFromDevice.Transform(screenPoint);
+                }
+
+                WindowState = WindowState.Normal;
+                ResizeMode = ResizeMode.CanResize;
+                Topmost = false;
+                Width = Math.Max(MinWidth, Math.Min(1280.0, SystemParameters.WorkArea.Width * 0.8));
+                Height = Math.Max(MinHeight, Math.Min(720.0, SystemParameters.WorkArea.Height * 0.8));
+                Left = screenPoint.X - (Width * horizontalRatio);
+                Top = screenPoint.Y - 8.0;
+            }
+
+            try
+            {
+                DragMove();
+            }
+            catch (InvalidOperationException)
+            {
+                // 더블클릭 판정 전환 시 Mouse 상태가 먼저 해제될 수 있다.
+            }
+        }
+
+        /// <summary>
+        /// 분리 영상창을 현재 모니터의 전체화면과 이동 가능한 창 모드로 전환한다.
+        /// </summary>
+        private void TogglePopoutFullScreen()
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+                ResizeMode = ResizeMode.CanResize;
+                Topmost = false;
+                return;
+            }
+
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+            Topmost = true;
         }
 
         /// <summary>
@@ -265,6 +354,13 @@ namespace OpenCvWpfTracking
             object sender,
             KeyEventArgs e)
         {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                Close();
+                return;
+            }
+
             if (_viewModel.IsControlInputLocked)
             {
                 e.Handled =
@@ -535,6 +631,7 @@ namespace OpenCvWpfTracking
             string imagePropertyName;
             string statusPropertyName;
             string detectionBoxesPropertyName;
+            string fireSmokeBoxesPropertyName;
             string videoWidthPropertyName;
             string videoHeightPropertyName;
             string cameraTitle;
@@ -558,6 +655,9 @@ namespace OpenCvWpfTracking
 
                 detectionBoxesPropertyName =
                     "EoDetectionBoxes";
+
+                fireSmokeBoxesPropertyName =
+                    "EoFireSmokeDetectionBoxes";
 
                 videoWidthPropertyName =
                     "EoVideoWidth";
@@ -601,6 +701,9 @@ namespace OpenCvWpfTracking
                 detectionBoxesPropertyName =
                     "IrDetectionBoxes";
 
+                fireSmokeBoxesPropertyName =
+                    "IrFireSmokeDetectionBoxes";
+
                 videoWidthPropertyName =
                     "IrVideoWidth";
 
@@ -612,9 +715,9 @@ namespace OpenCvWpfTracking
 
                 statusColor =
                     Color.FromRgb(
-                        0xFF,
-                        0xB3,
-                        0x47);
+                        0xC6,
+                        0xE7,
+                        0x7B);
 
                 //
                 // IR 영상은 EO보다 좁은 센서 종횡비를 사용한다.
@@ -637,6 +740,7 @@ namespace OpenCvWpfTracking
 
             ConfigureDetectionOverlayBinding(
                 detectionBoxesPropertyName,
+                fireSmokeBoxesPropertyName,
                 videoWidthPropertyName,
                 videoHeightPropertyName);
 
@@ -651,6 +755,18 @@ namespace OpenCvWpfTracking
             CameraStatusText.Foreground =
                 new SolidColorBrush(
                     statusColor);
+            // 2026-09-17: 저해상도 IR/BW 팔레트에서 상태 문구가 영상에 묻히지 않도록
+            // IR은 작게 표시하고 두 채널 모두 검정 외곽 그림자로 명암 대비를 확보한다.
+            CameraStatusText.FontSize =
+                _cameraType == VideoPopoutCameraType.Ir ? 14.0 : 16.0;
+            CameraStatusText.Effect =
+                new DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    BlurRadius = 1.0,
+                    ShadowDepth = 1.0,
+                    Opacity = 1.0
+                };
 
             CameraTitleText.Text =
                 cameraTitle;
@@ -666,6 +782,17 @@ namespace OpenCvWpfTracking
             CameraInfoToggleButton.BorderBrush =
                 new SolidColorBrush(
                     statusColor);
+
+            // 2026-09-21: 분리 영상창도 현재 선택된 EO/IR 채널의
+            // FIRE/SMOKE 경고만 메인 화면과 동일하게 표시한다.
+            EoAlarmPanel.Visibility =
+                _cameraType == VideoPopoutCameraType.Eo
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            IrAlarmPanel.Visibility =
+                _cameraType == VideoPopoutCameraType.Ir
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
 
             if (IsLoaded)
             {
@@ -729,6 +856,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void ConfigureDetectionOverlayBinding(
             string detectionBoxesPropertyName,
+            string fireSmokeBoxesPropertyName,
             string videoWidthPropertyName,
             string videoHeightPropertyName)
         {
@@ -742,6 +870,15 @@ namespace OpenCvWpfTracking
                     FrameworkElement.WidthProperty);
                 BindingOperations.ClearBinding(
                     PopoutDetectionItems,
+                    FrameworkElement.HeightProperty);
+                BindingOperations.ClearBinding(
+                    PopoutFireSmokeDetectionItems,
+                    ItemsControl.ItemsSourceProperty);
+                BindingOperations.ClearBinding(
+                    PopoutFireSmokeDetectionItems,
+                    FrameworkElement.WidthProperty);
+                BindingOperations.ClearBinding(
+                    PopoutFireSmokeDetectionItems,
                     FrameworkElement.HeightProperty);
 
                 BindingOperations.SetBinding(
@@ -768,14 +905,39 @@ namespace OpenCvWpfTracking
                         Source = _viewModel,
                         Mode = BindingMode.OneWay
                     });
+                BindingOperations.SetBinding(
+                    PopoutFireSmokeDetectionItems,
+                    ItemsControl.ItemsSourceProperty,
+                    new Binding(fireSmokeBoxesPropertyName)
+                    {
+                        Source = _viewModel,
+                        Mode = BindingMode.OneWay
+                    });
+                BindingOperations.SetBinding(
+                    PopoutFireSmokeDetectionItems,
+                    FrameworkElement.WidthProperty,
+                    new Binding(videoWidthPropertyName)
+                    {
+                        Source = _viewModel,
+                        Mode = BindingMode.OneWay
+                    });
+                BindingOperations.SetBinding(
+                    PopoutFireSmokeDetectionItems,
+                    FrameworkElement.HeightProperty,
+                    new Binding(videoHeightPropertyName)
+                    {
+                        Source = _viewModel,
+                        Mode = BindingMode.OneWay
+                    });
 
                 ConsoleLogHelper.State(
                     "VIDEO POPOUT / AI OVERLAY",
-                    "Detection overlay linked / CAMERA=" + GetCameraName());
+                    "AI + FIRE/SMOKE overlays linked / CAMERA=" + GetCameraName());
             }
             catch (Exception exception)
             {
                 PopoutDetectionItems.ItemsSource = null;
+                PopoutFireSmokeDetectionItems.ItemsSource = null;
                 ConsoleLogHelper.Error(
                     "VIDEO POPOUT / AI OVERLAY",
                     "Detection overlay binding failed / CAMERA=" + GetCameraName(),
@@ -896,14 +1058,14 @@ namespace OpenCvWpfTracking
                 case Key.A:
 
                     _viewModel
-                        .StartIrFocusNearMove();
+                        .StartIrFocusFarMove();
 
                     break;
 
                 case Key.D:
 
                     _viewModel
-                        .StartIrFocusFarMove();
+                        .StartIrFocusNearMove();
 
                     break;
             }

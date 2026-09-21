@@ -17,6 +17,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
+        private const int StatusUiCoalesceMilliseconds = 75;
+        private int _eoStatusNotificationPending;
+        private int _eoPanNotificationDirty;
+        private int _eoTiltNotificationDirty;
+        private int _eoZoomNotificationDirty;
+        private int _eoFocusNotificationDirty;
+        private int _eoPowerNotificationDirty;
+        private int _irStatusNotificationPending;
+        // 2026-09-16: EO/IR 주소 검증과 연결을 채널별로 독립 처리한다.
+        private bool _isEoRtspAddressValid;
+        private bool _isIrRtspAddressValid;
+
         #region [LA Communication]
 
         #region [LA Connect]
@@ -256,11 +268,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             irRtspAddress =
                 IrSourceAddress?.Trim();
 
-            if (!IsValidRtspAddress(
-                    eoRtspAddress))
+            _isEoRtspAddressValid =
+                IsValidRtspAddress(eoRtspAddress);
+
+            _isIrRtspAddressValid =
+                IsValidRtspAddress(irRtspAddress);
+
+            if (!_isEoRtspAddressValid)
             {
                 EoStatusText =
-                    "[EO] Invalid RTSP Address";
+                    string.IsNullOrWhiteSpace(eoRtspAddress)
+                        ? "[EO] Not Configured"
+                        : "[EO] Invalid RTSP Address";
 
                 Console.WriteLine();
                 Console.WriteLine(
@@ -273,14 +292,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 ConsoleLogHelper.PrintLine();
 
-                return false;
             }
 
-            if (!IsValidRtspAddress(
-                    irRtspAddress))
+            if (!_isIrRtspAddressValid)
             {
                 IrStatusText =
-                    "[IR] Invalid RTSP Address";
+                    string.IsNullOrWhiteSpace(irRtspAddress)
+                        ? "[IR] Not Configured"
+                        : "[IR] Invalid RTSP Address";
 
                 Console.WriteLine();
                 Console.WriteLine(
@@ -293,12 +312,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 ConsoleLogHelper.PrintLine();
 
-                return false;
             }
 
-            if (string.Equals(eoRtspAddress, irRtspAddress,
+            if (_isEoRtspAddressValid &&
+                _isIrRtspAddressValid &&
+                string.Equals(eoRtspAddress, irRtspAddress,
                     StringComparison.OrdinalIgnoreCase))
             {
+                _isEoRtspAddressValid = false;
+                _isIrRtspAddressValid = false;
                 EoStatusText = "[EO] RTSP Config Error";
                 IrStatusText = "[IR] RTSP Config Error";
                 ConsoleLogHelper.Warning(
@@ -307,7 +329,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            return true;
+            return _isEoRtspAddressValid ||
+                   _isIrRtspAddressValid;
         }
 
         /// <summary>
@@ -342,9 +365,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                        "rtsps",
                        StringComparison.OrdinalIgnoreCase);
 
+            // RTSP는 표준 포트 554를 생략할 수 있다. .NET Uri는 RTSP의
+            // 기본 포트를 내장하지 않아 생략 시 Port=-1을 반환하므로 허용한다.
+            bool validPort =
+                uri.Port == -1 ||
+                (uri.Port > 0 && uri.Port <= 65535);
+
             return supportedScheme &&
                    !string.IsNullOrWhiteSpace(uri.Host) &&
-                   uri.Port > 0 && uri.Port <= 65535;
+                   validPort;
         }
 
         /// <summary>
@@ -704,6 +733,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ConsoleLogHelper.PrintLine();
                     break;
 
+                case 0x23:
+                case 0x24:
+                case 0x25:
+                case 0x26:
+                case 0x27:
+                case 0x28:
+                case 0x29:
+                case 0x2A:
+                    ParseWebAgentV18Packet(packet);
+                    break;
+
                 default:
                     /// <summary>
                     /// 정의되지 않은 [Function] 번호
@@ -811,15 +851,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            short panRaw =
-                BitConverter.ToInt16(
+            Interlocked.Increment(ref _function01ReceiveCount);
+            Interlocked.Increment(ref _ptzfStatusUpdateCount);
+
+            ushort panUnsignedRaw =
+                BitConverter.ToUInt16(
                     packet,
                     2);
 
-            short tiltRaw =
-                BitConverter.ToInt16(
+            short panSignedRaw =
+                unchecked((short)panUnsignedRaw);
+
+            ushort tiltUnsignedRaw =
+                BitConverter.ToUInt16(
                     packet,
                     4);
+
+            short tiltSignedRaw =
+                unchecked((short)tiltUnsignedRaw);
 
             short zoomRaw =
                 BitConverter.ToInt16(
@@ -834,6 +883,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             byte powerStatus =
                 packet[10];
 
+            // 2026-09-15: Web Agent 환경에서는 Function 0x01의 PT/EO Lens 값을
+            // 실제 장비 상태의 기준으로 사용하고, 신규 0x28과의 충돌을 차단한다.
+            MarkLegacyWebAgentStatusReceived(
+                panUnsignedRaw,
+                tiltUnsignedRaw);
+
             /*
             * Focus 변화 비교용 이전값 저장
             *
@@ -842,12 +897,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             */
             short previousFocus =
                 _currentEoFocus;
+            double previousPan = _currentPan;
+            double previousTilt = _currentTilt;
+            short previousZoom = _currentEoZoom;
+            byte previousPower = _currentPowerStatus;
 
             double panDegree =
-                panRaw / 100.0;
+                _controlCommandService.UseUnsignedWebAgentPanCoordinates
+                    ? ConvertWebAgentPanToGuiAngle(panUnsignedRaw / 100.0)
+                    : panSignedRaw / 100.0;
 
             double tiltDegree =
-                tiltRaw / 100.0;
+                _controlCommandService.UseUnsignedWebAgentTiltCoordinates
+                    ? NormalizeUnsignedWebAgentTilt(
+                        tiltUnsignedRaw / 100.0,
+                        _currentTilt)
+                    : tiltSignedRaw / 100.0;
 
             /// <summary>
             /// -180도와 +180도는 동일한 물리 위치다.
@@ -901,8 +966,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (activeTiltTarget.HasValue &&
                 Math.Abs(
-                    _currentTilt -
-                    activeTiltTarget.Value) <= 0.03)
+                    GetTiltDifference(
+                        _currentTilt,
+                        activeTiltTarget.Value)) <= 0.03)
             {
                 _activeTiltAbsoluteTarget =
                     null;
@@ -916,6 +982,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _currentEoFocus =
                 focusRaw;
+
+            Interlocked.Increment(
+                ref _eoLensStatusVersion);
 
             _currentPowerStatus =
                 powerStatus;
@@ -966,7 +1035,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * UI Binding 갱신
              * 반드시 printLog 검사 전에 호출
              */
-            NotifyEoCurrentStatusChanged();
+            NotifyEoCurrentStatusChanged(
+                Math.Abs(previousPan - _currentPan) > 0.0001,
+                Math.Abs(previousTilt - _currentTilt) > 0.0001,
+                previousZoom != _currentEoZoom,
+                previousFocus != _currentEoFocus,
+                previousPower != _currentPowerStatus);
 
             /*
              * 아래부터 Console 로그만 1초 간격으로 제한
@@ -975,6 +1049,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 return;
             }
+
+            ConsoleLogHelper.State(
+                "WEB AGENT PAN/TILT POSITION",
+                $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " +
+                $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " +
+                $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " +
+                $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " +
+                $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " +
+                $"MODE={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}");
 
             //Console.WriteLine(
             //    $"[LA PT RAW] " +
@@ -1003,8 +1086,74 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// LA TCP 수신 이벤트는 Receive Thread에서 호출되므로
         /// WPF Dispatcher를 통해 UI Binding 갱신을 수행한다.
         /// </summary>
-        private void NotifyEoCurrentStatusChanged()
+        /// <summary>
+        /// 2026-09-15: Web Agent의 0 ~ 360도 상태를 GUI 공통 -180 ~ 180도로 정규화한다.
+        /// </summary>
+        private static double NormalizeUnsignedWebAgentAngle(double angle)
         {
+            double normalizedAngle = angle % 360.0;
+
+            if (normalizedAngle < 0.0)
+            {
+                normalizedAngle += 360.0;
+            }
+
+            return normalizedAngle;
+        }
+
+        /// <summary>
+        /// 2026-09-16: Web Agent 원시 Pan은 우회전 시 감소하므로
+        /// GUI/파노라마/프리셋의 우회전 증가 좌표계로 변환한다.
+        /// </summary>
+        private static double ConvertWebAgentPanToGuiAngle(double webAgentAngle)
+        {
+            double guiAngle = NormalizeUnsignedWebAgentAngle(360.0 - webAgentAngle);
+            // 2026-09-21: Web Agent 수신값은 0~360이지만 모든 GUI/프리셋/판정은
+            // 공통 signed 좌표(-180~180)만 사용한다. 330도는 -30도로 표시한다.
+            return guiAngle > 180.0 ? guiAngle - 360.0 : guiAngle;
+        }
+
+        /// <summary>
+        /// 2026-09-15: Web Agent Tilt 상태는 전송 구간에서 0 ~ 360도를 사용하지만,
+        /// GUI와 파노라마/프리셋 계산에서는 위쪽 양수, 아래쪽 음수(-90 ~ 90)를 사용한다.
+        /// 물리 가동범위 밖의 값은 마지막 정상값을 유지하여 잘못된 상태가 제어 계산에 섞이지 않게 한다.
+        /// </summary>
+        private static double NormalizeUnsignedWebAgentTilt(
+            double angle,
+            double fallbackTilt)
+        {
+            double normalizedAngle = NormalizeUnsignedWebAgentAngle(angle);
+            double signedTilt = normalizedAngle > 180.0
+                ? normalizedAngle - 360.0
+                : normalizedAngle;
+
+            if (signedTilt < -90.0 || signedTilt > 90.0)
+            {
+                ConsoleLogHelper.Warning(
+                    "WEB AGENT TILT",
+                    $"Out-of-range status ignored / RAW={normalizedAngle:F2} / " +
+                    $"SIGNED={signedTilt:F2} / KEEP={fallbackTilt:F2}");
+
+                return fallbackTilt;
+            }
+
+            return signedTilt;
+        }
+
+        private void NotifyEoCurrentStatusChanged(
+            bool panChanged = true,
+            bool tiltChanged = true,
+            bool zoomChanged = true,
+            bool focusChanged = true,
+            bool powerChanged = true)
+        {
+            if (panChanged) Interlocked.Exchange(ref _eoPanNotificationDirty, 1);
+            if (tiltChanged) Interlocked.Exchange(ref _eoTiltNotificationDirty, 1);
+            if (zoomChanged) Interlocked.Exchange(ref _eoZoomNotificationDirty, 1);
+            if (focusChanged) Interlocked.Exchange(ref _eoFocusNotificationDirty, 1);
+            if (powerChanged) Interlocked.Exchange(ref _eoPowerNotificationDirty, 1);
+            if (!panChanged && !tiltChanged && !zoomChanged && !focusChanged && !powerChanged) return;
+
             Dispatcher dispatcher =
                 System.Windows.Application
                     .Current?
@@ -1017,58 +1166,61 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             void Notify()
             {
-                OnPropertyChanged(
-                    nameof(CurrentPanText));
-
-                OnPropertyChanged(
-                    nameof(CurrentTiltText));
-
-                OnPropertyChanged(
-                    nameof(CurrentEoZoomText));
-
-                OnPropertyChanged(
-                    nameof(CurrentEoFocusText));
-
-                OnPropertyChanged(
-                    nameof(RooftopEoZoomStatusText));
-
-                OnPropertyChanged(
-                    nameof(RooftopEoFocusStatusText));
-
-                OnPropertyChanged(
-                    nameof(EnvironmentEoZoomStatusText));
-
-                OnPropertyChanged(
-                    nameof(EnvironmentEoFocusStatusText));
-
-                OnPropertyChanged(
-                    nameof(CurrentPresetSnapshotText));
-
-                OnPropertyChanged(
-                    nameof(CurrentLaPresetSnapshotText));
-
-                OnPropertyChanged(
-                    nameof(CurrentPowerText));
+                bool notifyPan = Interlocked.Exchange(ref _eoPanNotificationDirty, 0) != 0;
+                bool notifyTilt = Interlocked.Exchange(ref _eoTiltNotificationDirty, 0) != 0;
+                bool notifyZoom = Interlocked.Exchange(ref _eoZoomNotificationDirty, 0) != 0;
+                bool notifyFocus = Interlocked.Exchange(ref _eoFocusNotificationDirty, 0) != 0;
+                bool notifyPower = Interlocked.Exchange(ref _eoPowerNotificationDirty, 0) != 0;
+                if (notifyPan) OnPropertyChanged(nameof(CurrentPanText));
+                if (notifyTilt) OnPropertyChanged(nameof(CurrentTiltText));
+                if (notifyZoom)
+                {
+                    OnPropertyChanged(nameof(CurrentEoZoomText));
+                    OnPropertyChanged(nameof(RooftopEoZoomStatusText));
+                    OnPropertyChanged(nameof(EnvironmentEoZoomStatusText));
+                }
+                if (notifyFocus)
+                {
+                    OnPropertyChanged(nameof(CurrentEoFocusText));
+                    OnPropertyChanged(nameof(RooftopEoFocusStatusText));
+                    OnPropertyChanged(nameof(EnvironmentEoFocusStatusText));
+                }
+                if (notifyPan || notifyTilt || notifyZoom || notifyFocus)
+                {
+                    OnPropertyChanged(nameof(CurrentPresetSnapshotText));
+                    OnPropertyChanged(nameof(CurrentLaPresetSnapshotText));
+                }
+                if (notifyPower) OnPropertyChanged(nameof(CurrentPowerText));
 
                 /*
                 * XAML에서 개별 Run으로 바인딩 중이므로
                 * CONTROL 상태 프로퍼티도 별도로 갱신해야 한다.
                 */
-                OnPropertyChanged(
-                    nameof(CurrentControlPowerText));
+                if (notifyPower) OnPropertyChanged(nameof(CurrentControlPowerText));
             }
 
-            if (dispatcher.CheckAccess())
+            // 2026-09-18: 장비 상태 수신값은 즉시 내부 필드에 반영하되, 다수의
+            // Text Binding 알림은 75ms 단위 최신값으로 합쳐 영상 Render와의 경쟁을 줄인다.
+            if (Interlocked.CompareExchange(ref _eoStatusNotificationPending, 1, 0) != 0) return;
+            _ = Task.Run(async () =>
             {
-                Notify();
-                return;
-            }
-
-            // 2026-08-27: 연속 Zoom / Focus 상태 패킷은 일반 UI 입력보다 먼저
-            // Binding 큐에서 처리하여 다음 버튼 입력까지 표시가 지연되지 않게 한다.
-            dispatcher.BeginInvoke(
-                System.Windows.Threading.DispatcherPriority.DataBind,
-                new Action(Notify));
+                bool queued = false;
+                try
+                {
+                    await Task.Delay(StatusUiCoalesceMilliseconds).ConfigureAwait(false);
+                    if (dispatcher.HasShutdownStarted) return;
+                    _ = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                    {
+                        Interlocked.Exchange(ref _eoStatusNotificationPending, 0);
+                        Notify();
+                    }));
+                    queued = true;
+                }
+                finally
+                {
+                    if (!queued) Interlocked.Exchange(ref _eoStatusNotificationPending, 0);
+                }
+            });
         }
 
         /// <summary>
@@ -1114,15 +1266,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     nameof(CurrentLaPresetSnapshotText));
             }
 
-            if (dispatcher.CheckAccess())
+            if (Interlocked.CompareExchange(ref _irStatusNotificationPending, 1, 0) != 0) return;
+            _ = Task.Run(async () =>
             {
-                Notify();
-                return;
-            }
-
-            dispatcher.BeginInvoke(
-                System.Windows.Threading.DispatcherPriority.DataBind,
-                new Action(Notify));
+                bool queued = false;
+                try
+                {
+                    await Task.Delay(StatusUiCoalesceMilliseconds).ConfigureAwait(false);
+                    if (dispatcher.HasShutdownStarted) return;
+                    _ = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                    {
+                        Interlocked.Exchange(ref _irStatusNotificationPending, 0);
+                        Notify();
+                    }));
+                    queued = true;
+                }
+                finally
+                {
+                    if (!queued) Interlocked.Exchange(ref _irStatusNotificationPending, 0);
+                }
+            });
         }
 
         /// <summary>

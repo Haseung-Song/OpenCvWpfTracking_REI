@@ -44,6 +44,11 @@ namespace OpenCvWpfTracking.Common
         private static bool _isConsoleOutputAvailable =
             true;
 
+        private static long _totalWriteCount;
+
+        public static long TotalWriteCount =>
+            Interlocked.Read(ref _totalWriteCount);
+
         /*
          * TODO(LOGGING-NEXT):
          * Serilog 적용 시 ViewModel 호출부를 직접 수정하지 말고
@@ -229,7 +234,8 @@ namespace OpenCvWpfTracking.Common
             Write(
                 "WARN",
                 category,
-                message);
+                "[운영 경고] " + GetFriendlyFeatureName(category) +
+                " | 내용=" + (message ?? string.Empty));
         }
 
         /// <summary>
@@ -240,15 +246,71 @@ namespace OpenCvWpfTracking.Common
             string message,
             Exception exception = null)
         {
+            string code = GetOperationalErrorCode(category);
+            string feature = GetFriendlyFeatureName(category);
+            string cause = GetFriendlyCause(message, exception);
+            string action = GetRecommendedAction(category);
             string detail =
-                exception == null
-                    ? message
-                    : $"{message} / {exception.GetType().Name}: {exception.Message}";
+                $"[장애 요약] 코드={code} | 기능={feature} | 원인={cause} | 조치={action}" +
+                Environment.NewLine +
+                "    [기술 상세] " + (message ?? string.Empty) +
+                (exception == null ? string.Empty : Environment.NewLine + "    [예외] " + exception);
 
             Write(
                 "ERROR",
                 category,
                 detail);
+        }
+
+        private static string GetOperationalErrorCode(string category)
+        {
+            string value = (category ?? string.Empty).ToUpperInvariant();
+            if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY")) return "E-VIDEO-001";
+            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT")) return "E-COMM-001";
+            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE")) return "E-PTZF-001";
+            if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE")) return "E-DETECT-001";
+            if (value.Contains("PANORAMA")) return "E-PANO-001";
+            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE")) return "E-DATA-001";
+            return "E-SYSTEM-001";
+        }
+
+        private static string GetFriendlyFeatureName(string category)
+        {
+            string value = (category ?? string.Empty).ToUpperInvariant();
+            if (value.Contains("RTSP") || value.Contains("VIDEO")) return "실시간 영상";
+            if (value.Contains("DISPLAY")) return "화면 표시";
+            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT")) return "장비 통신";
+            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE")) return "카메라 PTZF 제어";
+            if (value.Contains("FIRE") || value.Contains("SMOKE") || value.Contains("DETECTION") || value.Contains("AI")) return "화재·연기 감지";
+            if (value.Contains("PANORAMA")) return "파노라마 생성";
+            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE")) return "설정·데이터 저장";
+            return string.IsNullOrWhiteSpace(category) ? "프로그램" : category;
+        }
+
+        private static string GetFriendlyCause(string message, Exception exception)
+        {
+            string value = ((message ?? string.Empty) + " " + (exception?.Message ?? string.Empty)).ToUpperInvariant();
+            if (value.Contains("TIMEOUT")) return "장비 응답 시간이 초과되었습니다";
+            if (value.Contains("DISCONNECT") || value.Contains("CONNECTION")) return "장비 또는 영상 연결이 끊겼습니다";
+            if (value.Contains("CANCEL")) return "작업이 취소되었습니다";
+            if (value.Contains("ACCESS") || value.Contains("UNAUTHORIZED")) return "접근 권한 또는 인증 정보가 올바르지 않습니다";
+            if (value.Contains("FILE") || value.Contains("DIRECTORY") || value.Contains("CSV")) return "파일을 읽거나 저장하지 못했습니다";
+            if (value.Contains("DECODE")) return "영상 디코딩에 실패했습니다";
+            if (value.Contains("RENDER") || value.Contains("DISPLAY")) return "영상 화면 갱신에 실패했습니다";
+            if (value.Contains("COMMAND") || value.Contains("SEND") || value.Contains("PACKET")) return "제어 명령을 전송하거나 처리하지 못했습니다";
+            return exception == null ? "요청한 작업을 완료하지 못했습니다" : exception.GetType().Name + ": " + exception.Message;
+        }
+
+        private static string GetRecommendedAction(string category)
+        {
+            string value = (category ?? string.Empty).ToUpperInvariant();
+            if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY")) return "카메라 전원·RTSP 주소·네트워크 상태를 확인 후 재연결";
+            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT")) return "Agent IP/Port와 장비 전원을 확인 후 CONNECT 재시도";
+            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE")) return "장비 연결과 현재 상태값 수신 여부를 확인 후 STOP→재시도";
+            if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE")) return "AI 연결·입력 영상·모델 설정을 확인";
+            if (value.Contains("PANORAMA")) return "EO 영상 연결과 저장 경로를 확인 후 다시 촬영";
+            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE")) return "파일 경로·권한·남은 디스크 공간을 확인";
+            return "오류 코드와 기술 상세를 담당자에게 전달";
         }
 
         /// <summary>
@@ -657,6 +719,7 @@ namespace OpenCvWpfTracking.Common
 
             try
             {
+                Interlocked.Increment(ref _totalWriteCount);
                 Console.WriteLine(
                     message ??
                     string.Empty);

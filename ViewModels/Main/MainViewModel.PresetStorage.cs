@@ -48,6 +48,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         continue;
                     }
 
+                    if (p[0] == "W")
+                    {
+                        tilt = NormalizeUnsignedWebAgentTilt(tilt, 0.0);
+                    }
+
                     PresetPointOption preset = new PresetPointOption(
                         number, pan, tilt, p[6], p[7], p[8], p[9], p[3], order);
                     if (p[0] == "L")
@@ -199,11 +204,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return result.ToArray();
         }
 
-        private static double PresetDistance(double currentPan, double currentTilt, PresetPointOption preset)
+        private double PresetDistance(double currentPan, double currentTilt, PresetPointOption preset)
         {
             double panDifference = Math.Abs(currentPan - preset.Pan) % 360.0;
             panDifference = Math.Min(panDifference, 360.0 - panDifference);
-            double tiltDifference = currentTilt - preset.Tilt;
+            double tiltDifference = GetTiltDifference(currentTilt, preset.Tilt);
             return Math.Sqrt(panDifference * panDifference + tiltDifference * tiltDifference);
         }
 

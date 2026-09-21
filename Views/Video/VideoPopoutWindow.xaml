@@ -13,6 +13,7 @@
         SizeChanged="Window_SizeChanged"
         Deactivated="Window_Deactivated"
         Closing="Window_Closing"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewKeyUp="Window_PreviewKeyUp">
 
@@ -52,34 +53,129 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemContainerStyle>
                     <Style TargetType="ContentPresenter">
-                        <Setter Property="Canvas.Left" Value="{Binding Left}"/>
-                        <Setter Property="Canvas.Top" Value="{Binding Top}"/>
+                        <Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/>
                     </Style>
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Grid>
+                        <Canvas Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}">
                             <!-- 2026-08-26: 메인 화면과 동일한 형광 라임 AI BBox/순번을 표시한다. -->
-                            <Rectangle Width="{Binding Width}"
-                                       Height="{Binding Height}"
+                            <Rectangle Canvas.Left="{Binding BoxOffsetX}"
+                                       Canvas.Top="{Binding BoxOffsetY}"
+                                       Width="{Binding RenderWidth}"
+                                       Height="{Binding RenderHeight}"
                                        Stroke="#FF39FF14"
                                        StrokeThickness="4"/>
                             <Border Background="#DD102A10"
                                     BorderBrush="#FF39FF14"
                                     BorderThickness="1"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Top">
+                                    Width="{Binding LabelWidth}"
+                                    Canvas.Left="{Binding LabelOffsetX}"
+                                    Canvas.Top="{Binding LabelOffsetY}">
                                 <TextBlock Text="{Binding DisplayText}"
                                            Foreground="#FF39FF14"
                                            FontSize="16"
                                            FontWeight="Bold"
                                            Padding="5,1"/>
                             </Border>
-                        </Grid>
+                        </Canvas>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </Viewbox>
+
+        <!-- 2026-09-17: 메인 화면과 동일한 로컬 FIRE/SMOKE BBox를 분리 화면에도 표시한다. -->
+        <Viewbox Stretch="Uniform"
+                 IsHitTestVisible="False"
+                 Panel.ZIndex="20">
+            <ItemsControl x:Name="PopoutFireSmokeDetectionItems">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                ClipToBounds="True"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/>
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Canvas Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}">
+                            <Rectangle Canvas.Left="{Binding BoxOffsetX}" Canvas.Top="{Binding BoxOffsetY}"
+                                       Width="{Binding Width}" Height="{Binding Height}" StrokeThickness="4">
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Setter Property="Stroke" Value="#FFFF3B30"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DetectionType}" Value="SMOKE">
+                                                <Setter Property="Stroke" Value="#FFFFA000"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                            <Border Background="#DD3A1010" BorderBrush="#FFFF3B30"
+                                    BorderThickness="1" Width="{Binding LabelWidth}"
+                                    Canvas.Left="{Binding LabelOffsetX}"
+                                    Canvas.Top="{Binding LabelOffsetY}">
+                                <TextBlock Text="{Binding DisplayText}" Foreground="White"
+                                           FontSize="16" FontWeight="Bold" Padding="5,1"/>
+                            </Border>
+                        </Canvas>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Viewbox>
+
+        <!-- 2026-09-21: 메인 영상과 동일한 FIRE/SMOKE 실시간 경고를 분리 영상창에도 표시한다. -->
+        <StackPanel x:Name="EoAlarmPanel"
+                    Panel.ZIndex="40"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Margin="0,14,0,0"
+                    IsHitTestVisible="False">
+            <Border Padding="18,7" Background="#E6A61B1B"
+                    BorderBrush="#FFFF6262" BorderThickness="2">
+                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers><DataTrigger Binding="{Binding IsEoFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                </Style></Border.Style>
+                <TextBlock Text="⚠ FIRE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+            </Border>
+            <Border Margin="0,6,0,0" Padding="18,7" Background="#E68A4B00"
+                    BorderBrush="#FFFFB300" BorderThickness="2">
+                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers><DataTrigger Binding="{Binding IsEoSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                </Style></Border.Style>
+                <TextBlock Text="⚠ SMOKE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+            </Border>
+        </StackPanel>
+
+        <StackPanel x:Name="IrAlarmPanel"
+                    Panel.ZIndex="40"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Margin="0,14,0,0"
+                    IsHitTestVisible="False">
+            <Border Padding="18,7" Background="#E6A61B1B"
+                    BorderBrush="#FFFF6262" BorderThickness="2">
+                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers><DataTrigger Binding="{Binding IsIrFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                </Style></Border.Style>
+                <TextBlock Text="⚠ FIRE DETECTED / IR" Foreground="White" FontSize="18" FontWeight="Bold"/>
+            </Border>
+            <Border Margin="0,6,0,0" Padding="18,7" Background="#E68A4B00"
+                    BorderBrush="#FFFFB300" BorderThickness="2">
+                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers><DataTrigger Binding="{Binding IsIrSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                </Style></Border.Style>
+                <TextBlock Text="⚠ SMOKE DETECTED / IR" Foreground="White" FontSize="18" FontWeight="Bold"/>
+            </Border>
+        </StackPanel>
 
         <!-- 중앙 십자선 -->
         <Grid Width="72"

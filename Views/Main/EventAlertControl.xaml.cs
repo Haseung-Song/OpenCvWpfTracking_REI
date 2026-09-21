@@ -125,24 +125,15 @@ namespace OpenCvWpfTracking
             object sender,
             NotifyCollectionChangedEventArgs e)
         {
-            if (e.Action == NotifyCollectionChangedAction.Add &&
-                e.NewItems != null && e.NewItems.Count > 0)
-            {
-                QueueNewEventTabSelection(0);
-            }
-
+            // 2026-09-17: 하이브리드 이벤트마다 탭을 강제로 전환하면 UI가 깜빡이므로
+            // 패널을 여는 시점의 최신 이벤트 선택만 유지한다.
         }
 
         private void FireDetectionEvents_CollectionChanged(
             object sender,
             NotifyCollectionChangedEventArgs e)
         {
-            if (e.Action == NotifyCollectionChangedAction.Add &&
-                e.NewItems != null && e.NewItems.Count > 0)
-            {
-                QueueNewEventTabSelection(1);
-            }
-
+            // 2026-09-17: 빈번한 자동 탭 전환 방지.
         }
 
         private void SubscribedViewModel_PropertyChanged(
@@ -158,21 +149,11 @@ namespace OpenCvWpfTracking
             if (e.PropertyName == nameof(MainViewModel.ActiveAiCount))
             {
                 bool hasActiveAiEvent = viewModel.ActiveAiCount > 0;
-                if (hasActiveAiEvent && !_hadActiveAiEvent)
-                {
-                    QueueNewEventTabSelection(0);
-                }
-
                 _hadActiveAiEvent = hasActiveAiEvent;
             }
             else if (e.PropertyName == nameof(MainViewModel.ActiveFireCount))
             {
                 bool hasActiveFireEvent = viewModel.ActiveFireCount > 0;
-                if (hasActiveFireEvent && !_hadActiveFireEvent)
-                {
-                    QueueNewEventTabSelection(1);
-                }
-
                 _hadActiveFireEvent = hasActiveFireEvent;
             }
 
@@ -415,6 +396,7 @@ namespace OpenCvWpfTracking
             private readonly RepeatButton _nextButton;
             private readonly IList _source;
             private readonly ICollectionView _view;
+            private readonly DispatcherTimer _refreshTimer;
             private readonly List<object> _orderedItems = new List<object>();
             private int _pageIndex;
             private int _pageSize = FixedPageSize;
@@ -438,6 +420,16 @@ namespace OpenCvWpfTracking
                 _nextButton = nextButton ?? throw new ArgumentNullException(nameof(nextButton));
                 _source = grid.ItemsSource as IList;
                 _view = CollectionViewSource.GetDefaultView(grid.ItemsSource);
+                _refreshTimer = new DispatcherTimer(
+                    TimeSpan.FromMilliseconds(80),
+                    DispatcherPriority.Background,
+                    (sender, args) =>
+                    {
+                        _refreshTimer.Stop();
+                        Refresh();
+                    },
+                    _grid.Dispatcher);
+                _refreshTimer.Stop();
 
                 if (_view != null)
                 {
@@ -459,7 +451,7 @@ namespace OpenCvWpfTracking
                 }
 
                 _grid.SizeChanged += OnGridSizeChanged;
-                Refresh();
+                QueueRefresh();
             }
 
             /// <summary>
@@ -638,7 +630,7 @@ namespace OpenCvWpfTracking
             {
                 if (UpdatePageSize())
                 {
-                    Refresh();
+                    QueueRefresh();
                 }
 
             }
@@ -661,16 +653,24 @@ namespace OpenCvWpfTracking
                     }
 
                 }
-                Refresh();
+                QueueRefresh();
             }
 
             private void EventRecord_PropertyChanged(object sender, PropertyChangedEventArgs e)
             {
                 if (e.PropertyName == nameof(FireEventRecord.Status))
                 {
-                    Refresh();
+                    QueueRefresh();
                 }
 
+            }
+
+            private void QueueRefresh()
+            {
+                if (!_refreshTimer.IsEnabled)
+                {
+                    _refreshTimer.Start();
+                }
             }
 
             private void Refresh()

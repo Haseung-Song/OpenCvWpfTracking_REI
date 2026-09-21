@@ -86,21 +86,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "HOME / ZERO",
                 "HOME POSITION requested");
 
-            // HOME / ZERO는 LA AGENT 전용 기능이다.
-            // WEB AGENT 상태에서는 UI를 숨기지만,
-            // Command가 코드에서 직접 호출되는 경우도 방어한다.
-            if (!IsRooftopStatusSelected)
+            // 2026-09-16: ROOFTOP/ENVIRONMENT 모두 기존 절대 위치 HOME 경로를 공유한다.
+            // 연결되지 않은 상태에서는 어떤 장비에도 명령을 송신하지 않는다.
+            if (!_laTcpService.IsConnected)
             {
                 HomeZeroStatusText =
-                    "LA AGENT ONLY";
+                    "CONTROL NOT CONNECTED";
 
                 ConsoleLogHelper.Warning(
                     "HOME / ZERO",
-                    "HOME POSITION skipped / WEB AGENT mode");
+                    "HOME POSITION skipped / control not connected");
 
                 Console.WriteLine();
                 Console.WriteLine(
-                    "[HOME / ZERO] HOME POSITION SKIPPED / WEB AGENT MODE");
+                    "[HOME / ZERO] HOME POSITION SKIPPED / CONTROL NOT CONNECTED");
                 ConsoleLogHelper.PrintLine();
 
                 return;
@@ -167,6 +166,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 bool modeResult =
                     ApplySelectedPanTurnMode();
+
+                // 2026-09-17: Web Agent가 연속 도착한 설정/이동 패킷을 누락하지
+                // 않도록 회전 모드 적용 뒤 절대 위치 명령 사이에 처리 시간을 둔다.
+                await Task.Delay(100);
 
                 bool panResult =
                     modeResult &&
@@ -554,7 +557,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Pan Position Speed : Command2 0x49
         /// Tilt Position Speed: Command2 0x4B
         ///
-        /// UI 1~50 값을 위치 이동 속도 1~50 deg/s로 적용하며,
+        /// UI 1~60 값을 위치 이동 속도 1~60 deg/s로 적용하며,
         /// UI 0은 위치 이동을 시작하지 않고 STOP으로 처리한다.
         /// </summary>
         private bool ApplyPanTiltPositionSpeedFromUi(
@@ -684,22 +687,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// MovePanAbsoluteFromInputAsync 이동 함수.
         /// </summary>
-        private Task MovePanAbsoluteFromInputAsync()
+        private async Task MovePanAbsoluteFromInputAsync()
         {
             if (!PanAbsoluteValue.HasValue)
             {
                 Console.WriteLine(
                     "[MOVE CONTROL] PAN ABSOLUTE FAILED : EMPTY VALUE");
 
-                return Task.CompletedTask;
+                return;
             }
 
             double targetPan =
                 Clamp(
                     RoundAngleToProtocolScale(
                         PanAbsoluteValue.Value),
-                    MoveControlPanMinimum,
-                    MoveControlPanMaximum);
+                    CurrentMoveControlPanMinimum,
+                    CurrentMoveControlPanMaximum);
+
+            // 2026-09-18: GUI/VM은 -180~180 signed 값을 보존한다.
+            // WEB AGENT용 반전 0~360 좌표는 PanGoPosition 송신 경계에서만 변환한다.
+            PanAbsoluteValue = targetPan;
 
             CancelMoveControlPanOperation();
 
@@ -709,8 +716,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (!speedResult)
             {
-                return Task.CompletedTask;
+                return;
             }
+
+            // 2026-09-21: Web Agent는 연속 패킷 처리 중 앞선 설정 명령을
+            // 누락하는 실장비 사례가 있어 MOE 검증값 100ms를 적용한다.
+            // LA Agent는 기존 80ms 동작을 유지한다.
+            await Task.Delay(IsEnvironmentStatusSelected ? 100 : 80);
 
             bool modeResult =
                 ApplySelectedPanTurnMode();
@@ -724,8 +736,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 ConsoleLogHelper.PrintLine();
 
-                return Task.CompletedTask;
+                return;
             }
+
+            await Task.Delay(IsEnvironmentStatusSelected ? 100 : 80);
 
             bool moveResult =
                 _controlCommandService
@@ -757,7 +771,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            return Task.CompletedTask;
+            return;
         }
 
         /// <summary>
@@ -798,7 +812,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// Tilt Absolute 이동 요청
         /// </summary>
-        private void MoveTiltAbsoluteFromInput()
+        private async void MoveTiltAbsoluteFromInput()
         {
             if (!TiltAbsoluteValue.HasValue)
             {
@@ -812,8 +826,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Clamp(
                     RoundAngleToProtocolScale(
                         TiltAbsoluteValue.Value),
-                    MoveControlTiltMinimum,
-                    MoveControlTiltMaximum);
+                    CurrentMoveControlTiltMinimum,
+                    CurrentMoveControlTiltMaximum);
+
+            TiltAbsoluteValue = targetTilt;
 
             bool speedResult =
                 ApplyPanTiltPositionSpeedFromUi(
@@ -822,6 +838,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (!speedResult)
             {
                 return;
+            }
+
+            // 2026-09-21: Web Agent가 Tilt 속도 설정을 처리한 뒤 절대 위치
+            // 명령을 받도록 MOE 실장비 검증 간격을 동일하게 적용한다.
+            if (IsEnvironmentStatusSelected)
+            {
+                await Task.Delay(60);
             }
 
             Console.WriteLine();
@@ -1077,8 +1100,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 panSpeedResult &&
                 tiltSpeedResult;
 
+            // 2026-09-21: Web Agent 프리셋은 속도/회전 모드/Pan/Tilt 패킷을
+            // 60ms 간격으로 직렬화한다. LA Agent 경로에는 지연을 추가하지 않는다.
+            if (IsEnvironmentStatusSelected)
+            {
+                await Task.Delay(60, cancellationToken);
+            }
+
             bool modeResult =
                 ApplySelectedPanTurnMode();
+
+            if (IsEnvironmentStatusSelected)
+            {
+                await Task.Delay(60, cancellationToken);
+            }
 
             bool panResult =
                 modeResult &&
@@ -1086,6 +1121,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _controlCommandService
                     .PanGoPosition(
                         preset.Pan);
+
+            if (IsEnvironmentStatusSelected)
+            {
+                await Task.Delay(60, cancellationToken);
+            }
 
             bool tiltResult =
                 speedResult &&
@@ -1229,8 +1269,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             preset.Pan);
 
                     double correctionTiltDelta =
-                        _currentTilt -
-                        preset.Tilt;
+                        GetTiltDifference(_currentTilt, preset.Tilt);
 
                     bool resendResult =
                         resendCommand != null &&
@@ -1275,8 +1314,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     preset.Pan);
 
             double finalTiltDelta =
-                _currentTilt -
-                preset.Tilt;
+                GetTiltDifference(_currentTilt, preset.Tilt);
 
             ConsoleLogHelper.Warning(
                 category,
@@ -1352,8 +1390,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         preset.Pan);
 
                 double tiltDelta =
-                    currentTilt -
-                    preset.Tilt;
+                    GetTiltDifference(currentTilt, preset.Tilt);
 
                 bool isTargetSample =
                     Math.Abs(
@@ -1378,8 +1415,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     double tiltMovement =
                         Math.Abs(
-                            currentTilt -
-                            previousTilt);
+                            GetTiltDifference(currentTilt, previousTilt));
 
                     bool isMoving =
                         panMovement >
@@ -1453,8 +1489,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             double tiltDistance =
                 Math.Abs(
-                    _currentTilt -
-                    preset.Tilt);
+                    GetTiltDifference(_currentTilt, preset.Tilt));
 
             double maximumDistance =
                 Math.Max(
@@ -1502,6 +1537,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             return difference;
+        }
+
+        /// <summary>
+        /// Web Agent의 0/360도 경계를 고려한 Tilt 차이를 반환한다.
+        /// ROOFTOP LA는 기존 선형 -90 ~ 90도 차이를 유지한다.
+        /// </summary>
+        private double GetTiltDifference(double currentTilt, double targetTilt)
+        {
+            return IsEnvironmentStatusSelected
+                ? GetShortestPanDifference(currentTilt, targetTilt)
+                : currentTilt - targetTilt;
         }
 
         /// <summary>
@@ -1611,9 +1657,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                            _currentPan,
                            preset.Pan)) <=
                        PresetPanTiltTargetTolerance &&
-                   Math.Abs(
-                       _currentTilt -
-                       preset.Tilt) <=
+                Math.Abs(
+                       GetTiltDifference(_currentTilt, preset.Tilt)) <=
                        PresetPanTiltTargetTolerance &&
                    IsPresetEoZoomAtTarget(
                        eoZoom) &&
@@ -1931,11 +1976,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MoveControlPositionMinimum,
                     MoveControlPositionMaximum);
 
-            return SelectedEquipmentStatusMode ==
-                EquipmentStatusMode.Rooftop
-                    ? MoveControlPositionMaximum -
-                      safeRaw
-                    : safeRaw;
+            return NormalizeIrZoomStatusPosition(safeRaw);
         }
 
         /// <summary>
@@ -3109,12 +3150,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// Zoom Ratio 입력값 적용
         ///
-        /// 입력값은 EO 광학 배율 1.0 ~ 50.0배 기준이다.
+        /// 입력값은 EO 광학 배율 1.0 ~ 90.0배 기준이다.
         /// EO 배율을 공통 Position 0 ~ 1000으로 변환한 뒤
         /// EO와 IR에 동일한 진행률을 적용한다.
         ///
         /// EO 1.0배  -> Position 0    -> IR 1.0배
-        /// EO 50.0배 -> Position 1000 -> IR 5.0배
+        /// EO 90.0배 -> Position 1000 -> IR 9.0배
         /// </summary>
         private async Task SetZoomRatioFromInputAsync()
         {
@@ -3174,24 +3215,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (SelectedEquipmentStatusMode ==
                 EquipmentStatusMode.Environment)
             {
-                bool result =
-                    _webAgentZoomControlService
-                        .ApplySynchronizedZoom(
-                            (short)safePosition);
-
-                if (result)
-                {
-                    ApplyEnvironmentIrCommandedPosition(
-                        safePosition,
-                        null,
-                        "ENVIRONMENT MOVE CONTROL ZOOM");
-                }
-
-                Console.WriteLine(
-                    $"[MOVE CONTROL] ENVIRONMENT ZOOM RESULT : {result}");
-
-                ConsoleLogHelper.PrintLine();
-
+                await ApplyEnvironmentProportionalZoomAsync(
+                    safePosition,
+                    requestType);
                 return;
             }
 
@@ -3258,6 +3284,83 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"/ EO={eoResult} / IR={irResult}");
 
             ConsoleLogHelper.PrintLine();
+        }
+
+        /// <summary>
+        /// 2026-09-18: LENS 비례 Zoom도 SYNC와 동일하게 EO Absolute 명령과
+        /// IR Tele/Wide/Stop + Function 0x07 피드백 폐루프를 동시에 사용한다.
+        /// 실장비에서 적용되지 않은 IR 0x29 Absolute 경로는 사용하지 않는다.
+        /// </summary>
+        private async Task ApplyEnvironmentProportionalZoomAsync(
+            int standardPosition,
+            string requestType)
+        {
+            int eoTarget = Clamp(standardPosition, 0, 1000);
+            int irTarget = ConvertIrZoomStandardToStatusPosition(eoTarget);
+            long eoStartSequence = Interlocked.Read(ref _eoLensStatusVersion);
+            long commandStartedTicks = Stopwatch.GetTimestamp();
+            CancellationTokenSource zoomCts = new CancellationTokenSource();
+            _rooftopZoomSyncCts = zoomCts;
+
+            bool eoSendResult = false;
+            bool eoResult = false;
+            bool irResult = false;
+            long commandIntervalMs = 0;
+
+            ConsoleLogHelper.Command(
+                "EO/IR PROPORTIONAL ZOOM",
+                $"COMMAND=EO_IR_PROPORTIONAL_ZOOM / REQUEST={requestType} / " +
+                $"EO_CURRENT={_currentEoZoom} / EO_TARGET={eoTarget} / " +
+                $"IR_CURRENT={_currentIrZoom} / IR_TARGET={irTarget}");
+
+            try
+            {
+                Task<bool> irMoveTask = Interlocked.Read(ref _irLensStatusVersion) > 0
+                    ? MoveIrZoomToPositionAsync(irTarget, zoomCts.Token, eoTarget)
+                    : Task.FromResult(false);
+
+                eoSendResult = _webAgentZoomControlService.SetEoZoomPosition((short)eoTarget);
+                commandIntervalMs = (long)(
+                    (Stopwatch.GetTimestamp() - commandStartedTicks) * 1000.0 /
+                    Stopwatch.Frequency);
+
+                Task<bool> eoMoveTask = eoSendResult
+                    ? WaitForEnvironmentEoLensTargetAsync(
+                        eoTarget,
+                        true,
+                        eoStartSequence,
+                        zoomCts.Token)
+                    : Task.FromResult(false);
+
+                bool[] results = await Task.WhenAll(eoMoveTask, irMoveTask);
+                eoResult = results[0];
+                irResult = results[1];
+            }
+            catch (OperationCanceledException)
+            {
+                ConsoleLogHelper.State(
+                    "EO/IR PROPORTIONAL ZOOM",
+                    $"COMMAND=EO_IR_PROPORTIONAL_ZOOM / FINAL_RESULT=CANCELED / " +
+                    $"EO_FINAL={_currentEoZoom} / IR_FINAL={_currentIrZoom}");
+                return;
+            }
+            finally
+            {
+                if (ReferenceEquals(_rooftopZoomSyncCts, zoomCts))
+                {
+                    _rooftopZoomSyncCts = null;
+                    zoomCts.Dispose();
+                }
+            }
+
+            ConsoleLogHelper.State(
+                "EO/IR PROPORTIONAL ZOOM",
+                $"COMMAND=EO_IR_PROPORTIONAL_ZOOM / EO_TARGET={eoTarget} / " +
+                $"IR_TARGET={irTarget} / EO_SEND_RESULT={eoSendResult} / " +
+                $"IR_SEND_RESULT={irResult} / COMMAND_INTERVAL_MS={commandIntervalMs} / " +
+                $"EO_FINAL={_currentEoZoom} / IR_FINAL={_currentIrZoom} / " +
+                $"EO_RESULT={eoResult} / IR_RESULT={irResult} / RETRY_COUNT=SEE_IR_ZOOM_SYNC / " +
+                $"FINAL_RESULT={(eoResult && irResult ? "COMPLETED" : "INCOMPLETE")}");
         }
 
         /// <summary>
@@ -3432,7 +3535,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// EO 광학 배율 1.0 ~ 50.0을
+        /// EO 광학 배율 1.0 ~ 90.0을
         /// 공통 표준 Position 0 ~ 1000으로 변환한다.
         ///
         /// 이 Position을 EO와 IR에 동일하게 적용하여
@@ -3461,7 +3564,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 표준 Position 0 ~ 1000을
-        /// EO 광학 배율 1.0 ~ 50.0으로 변환한다.
+        /// EO 광학 배율 1.0 ~ 90.0으로 변환한다.
         /// </summary>
         private static double ConvertStandardPositionToEoZoomRatio(
             int standardPosition)
@@ -3484,7 +3587,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 표준 Position 0 ~ 1000을
-        /// IR 광학 배율 1.0 ~ 5.0으로 변환한다.
+        /// IR 광학 배율 1.0 ~ 9.0으로 변환한다.
         ///
         /// 실제 장비 명령은 기존과 동일하게 Position 기준으로 보내며,
         /// 이 값은 UI 및 로그에 표시하는 예상 광학 배율이다.

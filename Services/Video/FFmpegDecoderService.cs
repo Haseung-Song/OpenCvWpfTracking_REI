@@ -2,6 +2,8 @@ using FFmpeg.AutoGen;
 using OpenCvSharp;
 using OpenCvWpfTracking.Common;
 using System;
+using System.Diagnostics;
+using System.Threading;
 
 namespace OpenCvWpfTracking.Services.Video
 {
@@ -21,6 +23,21 @@ namespace OpenCvWpfTracking.Services.Video
     /// </summary>
     public unsafe class FFmpegDecoderService : IDisposable
     {
+        public sealed class DecoderPerformanceSnapshot
+        {
+            public long PacketBytes;
+            public long PacketCount;
+            public long ReadTicks;
+            public long ReadMaxTicks;
+            public long ReadCount;
+            public long DecodeTicks;
+            public long DecodeMaxTicks;
+            public long DecodeCount;
+            public long ScaleTicks;
+            public long ScaleMaxTicks;
+            public long ScaleCount;
+        }
+
         #region [Fields]
 
         /// <summary>
@@ -43,6 +60,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// [RTSP] [Stream]에서 읽어온 압축 데이터 저장용
         /// </summary>
         private AVPacket* _packet;
+        private bool _packetPendingSend;
 
         /// <summary>
         /// [FFmpeg] [Frame]
@@ -78,6 +96,28 @@ namespace OpenCvWpfTracking.Services.Video
         /// </summary>
         private readonly string _streamName;
 
+        // 2026-09-18: PTZ 이동 중 증가하는 압축량과 FFmpeg 단계별 지연을
+        // WPF 표시 지연과 같은 1초 구간에서 비교하기 위한 lock-free 누적값이다.
+        private long _metricPacketBytes;
+        private long _metricPacketCount;
+        private long _metricReadTicks;
+        private long _metricReadMaxTicks;
+        private long _metricReadCount;
+        private long _metricDecodeTicks;
+        private long _metricDecodeMaxTicks;
+        private long _metricDecodeCount;
+        private long _metricScaleTicks;
+        private long _metricScaleMaxTicks;
+        private long _metricScaleCount;
+
+        // 2026-09-16: 기본은 작은 지터 버퍼를 허용하는 SMOOTH 프로파일이다.
+        // 환경변수 TORUSS_RTSP_PROFILE=LOW_LATENCY로 기존 최소 버퍼 모드를 선택할 수 있다.
+        private readonly bool _useSmoothPlayback =
+            !string.Equals(
+                Environment.GetEnvironmentVariable("TORUSS_RTSP_PROFILE"),
+                "LOW_LATENCY",
+                StringComparison.OrdinalIgnoreCase);
+
         #endregion
 
         #region [Properties]
@@ -102,6 +142,35 @@ namespace OpenCvWpfTracking.Services.Video
         public string LastOpenErrorText { get; private set; }
         public bool IsAuthenticationFailure =>
             LastOpenErrorCode == ffmpeg.AVERROR_HTTP_UNAUTHORIZED;
+
+        public DecoderPerformanceSnapshot CaptureAndResetPerformance()
+        {
+            return new DecoderPerformanceSnapshot
+            {
+                PacketBytes = Interlocked.Exchange(ref _metricPacketBytes, 0),
+                PacketCount = Interlocked.Exchange(ref _metricPacketCount, 0),
+                ReadTicks = Interlocked.Exchange(ref _metricReadTicks, 0),
+                ReadMaxTicks = Interlocked.Exchange(ref _metricReadMaxTicks, 0),
+                ReadCount = Interlocked.Exchange(ref _metricReadCount, 0),
+                DecodeTicks = Interlocked.Exchange(ref _metricDecodeTicks, 0),
+                DecodeMaxTicks = Interlocked.Exchange(ref _metricDecodeMaxTicks, 0),
+                DecodeCount = Interlocked.Exchange(ref _metricDecodeCount, 0),
+                ScaleTicks = Interlocked.Exchange(ref _metricScaleTicks, 0),
+                ScaleMaxTicks = Interlocked.Exchange(ref _metricScaleMaxTicks, 0),
+                ScaleCount = Interlocked.Exchange(ref _metricScaleCount, 0)
+            };
+        }
+
+        private static void UpdateMaximum(ref long destination, long value)
+        {
+            long current = Interlocked.Read(ref destination);
+            while (value > current)
+            {
+                long observed = Interlocked.CompareExchange(ref destination, value, current);
+                if (observed == current) break;
+                current = observed;
+            }
+        }
 
         #endregion
 
@@ -155,6 +224,10 @@ namespace OpenCvWpfTracking.Services.Video
             Console.WriteLine(
                 $"[{_streamName}] [FFmpeg RTSP] Source : " +
                 $"{ConsoleLogHelper.MaskRtspPassword(rtspUrl)}");
+
+            Console.WriteLine(
+                $"[{_streamName}] [FFmpeg RTSP] Playback Profile : " +
+                (_useSmoothPlayback ? "SMOOTH" : "LOW_LATENCY"));
 
             ConsoleLogHelper.PrintLine();
 
@@ -363,7 +436,7 @@ namespace OpenCvWpfTracking.Services.Video
             ffmpeg.av_dict_set(
                 &options,
                 "max_delay",
-                "500000",
+                _useSmoothPlayback ? "150000" : "500000",
                 0);
 
             /// <summary>
@@ -399,20 +472,18 @@ namespace OpenCvWpfTracking.Services.Video
             /// Buffer에 Frame이 과도하게 누적되어
             /// 실시간 화면이 늦게 표시되는 현상을 줄인다.
             /// </summary>
-            ffmpeg.av_dict_set(
-                &options,
-                "fflags",
-                "nobuffer",
-                0);
-
-            /// <summary>
-            /// [FFmpeg] 낮은 지연 Decode 모드 적용
-            /// </summary>
-            ffmpeg.av_dict_set(
-                &options,
-                "flags",
-                "low_delay",
-                0);
+            if (_useSmoothPlayback)
+            {
+                // 2026-09-16: 2~4 프레임 수준의 작은 재정렬 여유로 TCP 지터를 흡수한다.
+                // 대기열 누적은 ViewModel의 Latest Frame 정책에서 차단한다.
+                ffmpeg.av_dict_set(&options, "reorder_queue_size", "4", 0);
+                ffmpeg.av_dict_set(&options, "buffer_size", "1048576", 0);
+            }
+            else
+            {
+                ffmpeg.av_dict_set(&options, "fflags", "nobuffer", 0);
+                ffmpeg.av_dict_set(&options, "flags", "low_delay", 0);
+            }
 
             return options;
         }
@@ -552,6 +623,7 @@ namespace OpenCvWpfTracking.Services.Video
         {
             _packet = ffmpeg.av_packet_alloc();
             _frame = ffmpeg.av_frame_alloc();
+            _packetPendingSend = false;
         }
 
         #endregion
@@ -583,51 +655,63 @@ namespace OpenCvWpfTracking.Services.Video
                     return null;
                 }
 
+                // 2026-09-18: receive 가능한 decoded frame을 먼저 drain한 뒤에만
+                // 다음 packet을 읽는다. send_packet(EAGAIN) 시 packet을 버리지 않고
+                // receive 후 같은 packet을 다시 보내 FFmpeg send/receive 계약을 지킨다.
                 while (true)
                 {
-                    int result =
-                        ffmpeg.av_read_frame(
-                            _formatContext,
-                            _packet);
-
-                    if (result < 0)
-                        return null;
-
-                    try
+                    long decodeStarted = Stopwatch.GetTimestamp();
+                    int result = ffmpeg.avcodec_receive_frame(_codecContext, _frame);
+                    long decodeElapsed = Stopwatch.GetTimestamp() - decodeStarted;
+                    Interlocked.Add(ref _metricDecodeTicks, decodeElapsed);
+                    Interlocked.Increment(ref _metricDecodeCount);
+                    UpdateMaximum(ref _metricDecodeMaxTicks, decodeElapsed);
+                    if (result >= 0)
                     {
-                        if (_packet->stream_index != _videoStreamIndex)
-                            continue;
-
-                        result =
-                            ffmpeg.avcodec_send_packet(
-                                _codecContext,
-                                _packet);
-
-                        if (result < 0)
-                            return null;
-
-                        result =
-                            ffmpeg.avcodec_receive_frame(
-                                _codecContext,
-                                _frame);
-
-                        if (result == ffmpeg.AVERROR(ffmpeg.EAGAIN))
-                            continue;
-
-                        if (result < 0)
-                            return null;
-
                         return ConvertFrameToMat(_frame);
                     }
-                    finally
-                    {
-                        if (_packet != null)
-                        {
-                            ffmpeg.av_packet_unref(_packet);
-                        }
 
+                    if (result != ffmpeg.AVERROR(ffmpeg.EAGAIN) &&
+                        result != ffmpeg.AVERROR_EOF)
+                    {
+                        return null;
                     }
 
+                    if (_packetPendingSend)
+                    {
+                        decodeStarted = Stopwatch.GetTimestamp();
+                        result = ffmpeg.avcodec_send_packet(_codecContext, _packet);
+                        decodeElapsed = Stopwatch.GetTimestamp() - decodeStarted;
+                        Interlocked.Add(ref _metricDecodeTicks, decodeElapsed);
+                        Interlocked.Increment(ref _metricDecodeCount);
+                        UpdateMaximum(ref _metricDecodeMaxTicks, decodeElapsed);
+                        if (result == ffmpeg.AVERROR(ffmpeg.EAGAIN))
+                        {
+                            continue;
+                        }
+
+                        ffmpeg.av_packet_unref(_packet);
+                        _packetPendingSend = false;
+                        if (result < 0) return null;
+                        continue;
+                    }
+
+                    long readStarted = Stopwatch.GetTimestamp();
+                    result = ffmpeg.av_read_frame(_formatContext, _packet);
+                    long readElapsed = Stopwatch.GetTimestamp() - readStarted;
+                    Interlocked.Add(ref _metricReadTicks, readElapsed);
+                    Interlocked.Increment(ref _metricReadCount);
+                    UpdateMaximum(ref _metricReadMaxTicks, readElapsed);
+                    if (result < 0) return null;
+                    if (_packet->stream_index != _videoStreamIndex)
+                    {
+                        ffmpeg.av_packet_unref(_packet);
+                        continue;
+                    }
+
+                    _packetPendingSend = true;
+                    Interlocked.Add(ref _metricPacketBytes, Math.Max(0, _packet->size));
+                    Interlocked.Increment(ref _metricPacketCount);
                 }
 
             }
@@ -674,6 +758,7 @@ namespace OpenCvWpfTracking.Services.Video
 
             dstLineSize[0] = (int)mat.Step();
 
+            long scaleStarted = Stopwatch.GetTimestamp();
             ffmpeg.sws_scale(
                 _swsContext,
                 sourceFrame->data,
@@ -682,6 +767,10 @@ namespace OpenCvWpfTracking.Services.Video
                 height,
                 dstData,
                 dstLineSize);
+            long scaleElapsed = Stopwatch.GetTimestamp() - scaleStarted;
+            Interlocked.Add(ref _metricScaleTicks, scaleElapsed);
+            Interlocked.Increment(ref _metricScaleCount);
+            UpdateMaximum(ref _metricScaleMaxTicks, scaleElapsed);
 
             return mat;
         }
@@ -726,6 +815,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// </summary>
         private void FreePacket()
         {
+            _packetPendingSend = false;
             if (_packet == null)
                 return;
 
