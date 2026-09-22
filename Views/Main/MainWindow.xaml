@@ -519,7 +519,10 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="TabControl">
                         <Grid KeyboardNavigation.TabNavigation="Local">
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
                             <UniformGrid Grid.Row="0" Rows="1" Columns="4" IsItemsHost="True" HorizontalAlignment="Stretch"/>
                             <Border Grid.Row="1" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
                                 <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
@@ -812,8 +815,8 @@
                 기본 Window Frame을 사용하지 않는 데모 화면에서
                 창 이동 / 최소화 / 최대화 / 종료 기능을 제공한다.
             -->
-                <!-- 2026-09-18: 제목 표시줄 더블클릭도 버튼과 동일한 전체 화면 경로를 사용한다. -->
-                <Border Grid.Row="0"
+            <!-- 2026-09-18: 제목 표시줄 더블클릭도 버튼과 동일한 전체 화면 경로를 사용한다. -->
+            <Border Grid.Row="0"
                     Background="#46515A"
                     BorderBrush="#71808A"
                     BorderThickness="0,0,0,1"
@@ -1032,8 +1035,17 @@
                                                   Width="{Binding EoVideoWidth}"
                                                   Height="{Binding EoVideoHeight}"
                                                   ItemTemplate="{StaticResource FireSmokeDetectionBoxTemplate}">
-                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemContainerStyle><Style TargetType="ContentPresenter"><Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/><Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/></Style></ItemsControl.ItemContainerStyle>
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/>
+                                                <Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/>
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
                                     </ItemsControl>
                                 </Viewbox>
 
@@ -1041,9 +1053,16 @@
                                 <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
                                         Margin="0,14,0,0" Padding="18,7" Background="#E6A61B1B"
                                         BorderBrush="#FFFF6262" BorderThickness="2" IsHitTestVisible="False">
-                                    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers><DataTrigger Binding="{Binding IsEoFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                                    </Style></Border.Style>
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEoFireWarningVisible}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <TextBlock Text="⚠ FIRE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
                                 </Border>
 
@@ -1051,9 +1070,16 @@
                                 <Border Panel.ZIndex="41" HorizontalAlignment="Right" VerticalAlignment="Top"
                                         Margin="0,14,14,0" Padding="18,7" Background="#E68A4B00"
                                         BorderBrush="#FFFFB300" BorderThickness="2" IsHitTestVisible="False">
-                                    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers><DataTrigger Binding="{Binding IsEoSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                                    </Style></Border.Style>
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEoSmokeWarningVisible}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <TextBlock Text="⚠ SMOKE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
                                 </Border>
 
@@ -1238,26 +1264,49 @@
                                                       Width="{Binding IrVideoWidth}"
                                                       Height="{Binding IrVideoHeight}"
                                                       ItemTemplate="{StaticResource FireSmokeDetectionBoxTemplate}">
-                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemContainerStyle><Style TargetType="ContentPresenter"><Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/><Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/></Style></ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/>
+                                                    <Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/>
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
                                         </ItemsControl>
                                     </Viewbox>
 
                                     <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
                                             Margin="0,10,0,0" Padding="12,5" Background="#E6A61B1B"
                                             BorderBrush="#FFFF6262" BorderThickness="2" IsHitTestVisible="False">
-                                        <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers><DataTrigger Binding="{Binding IsIrFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                                        </Style></Border.Style>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsIrFireWarningVisible}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <TextBlock Text="⚠ FIRE DETECTED / IR" Foreground="White" FontSize="14" FontWeight="Bold"/>
                                     </Border>
 
                                     <Border Panel.ZIndex="41" HorizontalAlignment="Right" VerticalAlignment="Top"
                                             Margin="0,10,10,0" Padding="12,5" Background="#E68A4B00"
                                             BorderBrush="#FFFFB300" BorderThickness="2" IsHitTestVisible="False">
-                                        <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers><DataTrigger Binding="{Binding IsIrSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                                        </Style></Border.Style>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsIrSmokeWarningVisible}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <TextBlock Text="⚠ SMOKE DETECTED / IR" Foreground="White" FontSize="14" FontWeight="Bold"/>
                                     </Border>
 
@@ -3057,7 +3106,9 @@
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
                                                                   Margin="0,4,4,0"
                                                                   Padding="6,8,8,0">
-                                                        <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/></ScrollViewer.Resources>
+                                                        <ScrollViewer.Resources>
+                                                            <Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/>
+                                                        </ScrollViewer.Resources>
                                                         <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="2,0,2,0">
                                                             <!-- [EO / IR] 영상 Overlay 표시 제어 -->
                                                             <Border Margin="0,2,3,0"
@@ -3501,7 +3552,7 @@
                                                             </Border>
 
                                                             <!-- [Zoom] 위치 / 배율 제어 영역 -->
-                                                            <Border Margin="0,0,0,7"
+                                                            <Border Margin="0,0,0,8"
                                                                     Background="#5F666D"
                                                                     BorderBrush="#95A5B0"
                                                                     BorderThickness="1.5"
@@ -3658,7 +3709,9 @@
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
                                                                   Margin="0,4,4,4"
                                                                   Padding="6,8,8,8">
-                                                        <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/></ScrollViewer.Resources>
+                                                        <ScrollViewer.Resources>
+                                                            <Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/>
+                                                        </ScrollViewer.Resources>
                                                         <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="2,0,2,0">
 
                                                             <!-- 프리셋 추가 / 갱신 / 제거 -->
@@ -3770,7 +3823,7 @@
                                                             </Border>
 
                                                             <!-- 현재 프로그램에서 등록한 프리셋 목록 -->
-                                                            <Border Margin="0,8,5,0"
+                                                            <Border Margin="0,10,5,0"
                                                                     Background="#5F666D"
                                                                     BorderBrush="#95A5B0"
                                                                     BorderThickness="1.5"
