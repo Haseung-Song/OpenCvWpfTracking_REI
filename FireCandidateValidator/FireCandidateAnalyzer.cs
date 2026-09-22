@@ -21,6 +21,9 @@ namespace FireCandidateValidator
         // 움직임과 외곽 형상 변화까지 확인한다.
         private Mat _previousGray = new Mat();
         private Mat _previousCandidateMask = new Mat();
+        // 2026-09-22 V25: Viewer와 동일하게 장시간 고정되는 IR 열원만
+        // 후보 생성 이후 Track 단계에서 보조 억제한다.
+        private readonly List<TestFireTrack> _fireTracks = new List<TestFireTrack>();
 
         /// <summary>
         /// Analyze 동작 수행 함수.
@@ -297,6 +300,15 @@ namespace FireCandidateValidator
                 source.Width,
                 source.Height,
                 fireBoxGroupingMode);
+
+            if (requiresTemporalMotion)
+            {
+                candidates = FilterStaticHotspotTracks(
+                    candidates,
+                    source.Width,
+                    source.Height,
+                    Math.Max(1, confirmationFrameCount));
+            }
 
             if (candidates.Count > 0)
             {
@@ -635,6 +647,168 @@ namespace FireCandidateValidator
             _previousCandidateMask.Dispose();
             _previousGray = new Mat();
             _previousCandidateMask = new Mat();
+            _fireTracks.Clear();
+        }
+
+        /// <summary>
+        /// 기존 FIRE 마스크/형상 판정은 변경하지 않고, 녹화 영상의 창틀·블라인드·
+        /// 화분·용기처럼 초기 BBox 정착 후 고정되는 후보만 시간축 후단에서 제외한다.
+        /// </summary>
+        private List<Rect> FilterStaticHotspotTracks(
+            IList<Rect> candidates,
+            int frameWidth,
+            int frameHeight,
+            int confirmationFrameCount)
+        {
+            foreach (TestFireTrack track in _fireTracks)
+            {
+                track.Matched = false;
+            }
+
+            foreach (Rect candidate in candidates ?? new List<Rect>())
+            {
+                TestFireTrack best = null;
+                double bestScore = 0.0;
+                double candidateX = candidate.X + candidate.Width / 2.0;
+                double candidateY = candidate.Y + candidate.Height / 2.0;
+
+                foreach (TestFireTrack track in _fireTracks)
+                {
+                    if (track.Matched)
+                    {
+                        continue;
+                    }
+
+                    double iou = CalculateIntersectionOverUnion(track.Rectangle, candidate);
+                    double trackX = track.Rectangle.X + track.Rectangle.Width / 2.0;
+                    double trackY = track.Rectangle.Y + track.Rectangle.Height / 2.0;
+                    double distance = Math.Sqrt(
+                        Math.Pow(candidateX - trackX, 2) + Math.Pow(candidateY - trackY, 2));
+                    double allowed = Math.Max(
+                        18.0,
+                        Math.Max(track.Rectangle.Width, track.Rectangle.Height) * 0.65);
+                    double score = iou >= 0.08
+                        ? iou
+                        : distance <= allowed ? 0.08 + (1.0 - distance / allowed) * 0.20 : 0.0;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        best = track;
+                    }
+                }
+
+                if (best == null || bestScore < 0.08)
+                {
+                    _fireTracks.Add(new TestFireTrack(candidate));
+                    continue;
+                }
+
+                Rect previous = best.Rectangle;
+                double previousX = previous.X + previous.Width / 2.0;
+                double previousY = previous.Y + previous.Height / 2.0;
+                double movement = Math.Sqrt(
+                    Math.Pow(candidateX - previousX, 2) + Math.Pow(candidateY - previousY, 2));
+                double previousArea = Math.Max(1.0, previous.Width * (double)previous.Height);
+                double currentArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
+                double areaChange = Math.Abs(currentArea - previousArea) / previousArea;
+                double diagonal = Math.Max(
+                    1.0,
+                    Math.Sqrt(previous.Width * (double)previous.Width +
+                              previous.Height * (double)previous.Height));
+                bool dynamic =
+                    movement >= Math.Max(2.5, diagonal * 0.035) ||
+                    areaChange >= 0.12 ||
+                    CalculateIntersectionOverUnion(previous, candidate) < 0.78;
+
+                if (dynamic)
+                {
+                    best.DynamicFrames++;
+                    best.DynamicStreak++;
+                    best.StableFrames = 0;
+                }
+                else
+                {
+                    best.StableFrames++;
+                    best.DynamicStreak = 0;
+                }
+
+                best.Rectangle = candidate;
+                best.SeenFrames++;
+                best.MissingFrames = 0;
+                best.Matched = true;
+
+                bool edge = candidate.X <= 2 || candidate.Y <= 2 ||
+                    candidate.Right >= frameWidth - 2 || candidate.Bottom >= frameHeight - 2;
+                int observations = Math.Max(1, best.SeenFrames - 1);
+                double dynamicRatio = best.DynamicFrames / (double)observations;
+                int observationLimit = edge ? 45 : 150;
+                int stableLimit = edge ? 30 : 90;
+                double maximumDynamicRatio = edge ? 0.10 : 0.06;
+                if (!best.Suppressed &&
+                    ((best.SeenFrames >= observationLimit && dynamicRatio <= maximumDynamicRatio) ||
+                     best.StableFrames >= stableLimit))
+                {
+                    best.Suppressed = true;
+                }
+                else if (best.Suppressed && best.DynamicStreak >= 12)
+                {
+                    best.Suppressed = false;
+                    best.DynamicFrames = 12;
+                    best.SeenFrames = Math.Max(confirmationFrameCount, 24);
+                }
+            }
+
+            for (int index = _fireTracks.Count - 1; index >= 0; index--)
+            {
+                TestFireTrack track = _fireTracks[index];
+                if (!track.Matched)
+                {
+                    track.MissingFrames++;
+                }
+                if (track.MissingFrames > Math.Max(24, confirmationFrameCount * 2))
+                {
+                    _fireTracks.RemoveAt(index);
+                }
+            }
+
+            List<Rect> visible = new List<Rect>();
+            foreach (TestFireTrack track in _fireTracks)
+            {
+                if (track.Matched && !track.Suppressed)
+                {
+                    visible.Add(track.Rectangle);
+                }
+            }
+            return visible;
+        }
+
+        private static double CalculateIntersectionOverUnion(Rect left, Rect right)
+        {
+            Rect intersection = left & right;
+            double intersectionArea = Math.Max(0, intersection.Width) *
+                (double)Math.Max(0, intersection.Height);
+            double unionArea = left.Width * (double)left.Height +
+                right.Width * (double)right.Height - intersectionArea;
+            return unionArea <= 0.0 ? 0.0 : intersectionArea / unionArea;
+        }
+
+        private sealed class TestFireTrack
+        {
+            internal TestFireTrack(Rect rectangle)
+            {
+                Rectangle = rectangle;
+                SeenFrames = 1;
+                Matched = true;
+            }
+
+            internal Rect Rectangle { get; set; }
+            internal int SeenFrames { get; set; }
+            internal int MissingFrames { get; set; }
+            internal int DynamicFrames { get; set; }
+            internal int DynamicStreak { get; set; }
+            internal int StableFrames { get; set; }
+            internal bool Matched { get; set; }
+            internal bool Suppressed { get; set; }
         }
 
         /// <summary>

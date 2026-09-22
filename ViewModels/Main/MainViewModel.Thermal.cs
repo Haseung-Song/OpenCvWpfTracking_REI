@@ -21,8 +21,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isEoFireCandidateDetected;
         private bool _isIrFireCandidateDetected;
         // 2026-08-14: 컬러/흑백 IR 시험 영상 공통 초기값.
-        private double _thermalHotThresholdRatio = 0.72;
+        private double _thermalHotThresholdRatio = 0.76;
         private double _thermalMinimumAreaRatio = 0.0015;
+        // 2026-09-22 V25: 기존 FIRE 알고리즘은 유지하고 두 수동 Slider를
+        // 현장 운용용 프리셋으로 묶는다. 0=SENSITIVE, 1=BALANCED, 2=STRICT.
+        private int _fireSensitivityIndex = 1;
         // 2026-08-14: 1=전체 화염 단일 BBox, 2=분리 화염별 BBox(기본값).
         private int _thermalFireBoxGroupingMode = 2;
         private Brush _thermalFireBoxMode1Background = new SolidColorBrush(Color.FromRgb(62, 81, 94));
@@ -57,6 +60,58 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public int ThermalFireBoxGroupingMode => _thermalFireBoxGroupingMode;
         public Brush ThermalFireBoxMode1Background { get => _thermalFireBoxMode1Background; private set { _thermalFireBoxMode1Background = value; OnPropertyChanged(); } }
         public Brush ThermalFireBoxMode2Background { get => _thermalFireBoxMode2Background; private set { _thermalFireBoxMode2Background = value; OnPropertyChanged(); } }
+
+        /// <summary>
+        /// 로컬 FIRE 영상처리는 장비 구성상 IR 전용이다.
+        /// UI의 SMOKE SOURCE와 같은 위치에 명확히 표시하기 위한 고정값이다.
+        /// </summary>
+        public int FireDetectionSourceIndex
+        {
+            get => 0;
+            set { }
+        }
+
+        public int FireSensitivityIndex
+        {
+            get => _fireSensitivityIndex;
+            set
+            {
+                int normalized = value < 0 ? 0 : value > 2 ? 2 : value;
+                if (_fireSensitivityIndex == normalized)
+                {
+                    return;
+                }
+
+                _fireSensitivityIndex = normalized;
+                OnPropertyChanged();
+
+                if (normalized == 0)
+                {
+                    ThermalHotThresholdRatio = 0.68;
+                    ThermalMinimumAreaRatio = 0.0010;
+                }
+                else if (normalized == 2)
+                {
+                    ThermalHotThresholdRatio = 0.82;
+                    ThermalMinimumAreaRatio = 0.0030;
+                }
+                else
+                {
+                    ThermalHotThresholdRatio = 0.76;
+                    ThermalMinimumAreaRatio = 0.0015;
+                }
+
+                // 프리셋 변경 시 이전 조건에서 누적된 Track을 재사용하지 않는다.
+                _irFireDetectionService.Reset();
+                ConsoleLogHelper.State(
+                    "FIRE DETECTOR",
+                    "Sensitivity changed / PRESET=" +
+                    (normalized == 0 ? "SENSITIVE" : normalized == 2 ? "STRICT" : "BALANCED") +
+                    " / SOURCE=IR ONLY / HOT_THRESHOLD=" +
+                    ThermalHotThresholdRatio.ToString("F2") +
+                    " / MIN_AREA=" + ThermalMinimumAreaRatio.ToString("F4"));
+            }
+        }
 
         public bool IsFireDiagnosticEnabled
         {

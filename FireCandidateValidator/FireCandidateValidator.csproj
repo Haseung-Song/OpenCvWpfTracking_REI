@@ -56,7 +56,9 @@
       <Link>dll\x64\opencv_videoio_ffmpeg470_64.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Resource Include="화재_연기_AI_영상처리_알고리즘 분석_260921.txt" />
+    <Content Include="화재_연기_AI_영상처리_알고리즘 분석_260922.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">

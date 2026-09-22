@@ -1073,8 +1073,8 @@ namespace FireCandidateValidator
             }
 
             int ordinaryContinuityHoldFrames = isInfrared
-                ? Math.Max(30, confirmationFrameCount * 2)
-                : Math.Max(36, confirmationFrameCount * 2);
+                ? Math.Max(24, confirmationFrameCount)
+                : Math.Max(30, confirmationFrameCount);
             int verifiedContinuityHoldFrames = isInfrared
                 ? Math.Max(90, confirmationFrameCount * 4)
                 : Math.Max(150, confirmationFrameCount * 5);
@@ -1159,6 +1159,16 @@ namespace FireCandidateValidator
                         confirmationFrameCount,
                         frameWidth,
                         frameHeight);
+                // 2026-09-22 V25: 진단 영상에서 창틀/벽면 경계가 폭 1~3%,
+                // 높이 30% 이상의 가는 세로 띠로 장시간 추적되었다. 기존 상승·확산
+                // 판정은 유지하고, 실제 플룸으로 성숙하기 전의 극단적 구조 띠만 제외한다.
+                bool narrowVerticalStructure =
+                    !isInfrared &&
+                    !maturePlumeEvidence &&
+                    track.Rectangle.Height >= frameHeight * 0.28 &&
+                    track.Rectangle.Width <= frameWidth * 0.035 &&
+                    track.Rectangle.Width /
+                        (double)Math.Max(1, track.Rectangle.Height) <= 0.16;
                 bool directionAccepted =
                     (baseDirectionAccepted || accumulatedDirectionAccepted || maturePlumeEvidence) &&
                     !heatShimmerOscillation;
@@ -1222,6 +1232,7 @@ namespace FireCandidateValidator
                     !weakBottomBoundary &&
                     !hyperDynamicBackground &&
                     !heatShimmerOscillation &&
+                    !narrowVerticalStructure &&
                     track.StationaryFrames < confirmationFrameCount &&
                     track.StationaryFrames < stationaryLimit &&
                     directionAccepted &&
@@ -1273,8 +1284,10 @@ namespace FireCandidateValidator
                                 ? "BOTTOM_BOUNDARY_LOW_RISE"
                                 : hyperDynamicBackground
                                     ? "DYNAMIC_BACKGROUND"
-                                    : heatShimmerOscillation
+                            : heatShimmerOscillation
                                         ? "HEAT_SHIMMER_OSCILLATION"
+                            : narrowVerticalStructure
+                                ? "NARROW_VERTICAL_STRUCTURE"
                             : validationAccepted
                                 ? "ACCEPTANCE_STABILIZING"
                         : track.StationaryFrames >= Math.Min(confirmationFrameCount, stationaryLimit)
@@ -1348,7 +1361,8 @@ namespace FireCandidateValidator
                     !rigidMovingObject &&
                     !roadTrafficAggregate &&
                     !weakBottomBoundary &&
-                    !hyperDynamicBackground;
+                    !hyperDynamicBackground &&
+                    !narrowVerticalStructure;
                 int trackContinuityLimit = track.IsVerifiedPlume
                     ? verifiedContinuityHoldFrames
                     : ordinaryContinuityHoldFrames;
@@ -1360,7 +1374,8 @@ namespace FireCandidateValidator
                       plumeShapeAccepted &&
                       !rigidMovingObject &&
                       !movingSmokeSource &&
-                      !roadTrafficAggregate)))
+                      !roadTrafficAggregate &&
+                      !narrowVerticalStructure)))
                 {
                     if (track.Matched)
                     {

@@ -34,6 +34,7 @@ namespace OpenCvWpfTracking.Services.Video
             new List<FireCandidateTrack>();
         private DateTime _lastTrackContinuityLogTime = DateTime.MinValue;
         private int _lastReportedTrackCount = -1;
+        private int _lastReportedStaticHotspotCount = -1;
         private bool _wasAiFireSuppressionActive;
         // 2026-08-25: REI/MOE가 동일한 화재 후보 알고리즘과 오류 처리 정책을
         // 사용하도록 공통화하였다. 반복 오류 로그는 5초 간격으로 제한한다.
@@ -446,26 +447,31 @@ namespace OpenCvWpfTracking.Services.Video
                         " / CHANNEL=IR");
                 }
                 int heldFireCandidateCount;
+                int suppressedStaticHotspotCount;
                 IList<Rect> persistentRects = UpdatePersistentCandidateTracks(
                     mergedRects,
                     frame.Width,
                     frame.Height,
-                    out heldFireCandidateCount);
+                    out heldFireCandidateCount,
+                    out suppressedStaticHotspotCount);
 
                 DateTime continuityNow = DateTime.Now;
                 bool fireTrackCountChanged =
-                    persistentRects.Count != _lastReportedTrackCount;
+                    persistentRects.Count != _lastReportedTrackCount ||
+                    suppressedStaticHotspotCount != _lastReportedStaticHotspotCount;
                 if ((fireTrackCountChanged || heldFireCandidateCount > 0) &&
                     (continuityNow - _lastTrackContinuityLogTime).TotalSeconds >=
                         (fireTrackCountChanged ? 0.5 : 2.0))
                 {
                     _lastTrackContinuityLogTime = continuityNow;
                     _lastReportedTrackCount = persistentRects.Count;
+                    _lastReportedStaticHotspotCount = suppressedStaticHotspotCount;
                     ConsoleLogHelper.State(
                         "THERMAL FIRE TRACK",
                         "Independent fire candidates / VISIBLE=" +
                         persistentRects.Count +
-                        " / HELD=" + heldFireCandidateCount);
+                        " / HELD=" + heldFireCandidateCount +
+                        " / STATIC_HOTSPOT_SUPPRESSED=" + suppressedStaticHotspotCount);
                 }
 
                 Rect selectedRect = Rect.Empty;
@@ -503,7 +509,9 @@ namespace OpenCvWpfTracking.Services.Video
                 }
 
                 bool previousState = _isFireCandidateDetected;
-                UpdateConfirmation(selectedRect != Rect.Empty);
+                // 2026-09-22 V25: 기존 contour 판정은 유지하되 Track 단계에서
+                // 장시간 고정 고온물체로 확정된 후보는 최종 FIRE 상태에 반영하지 않는다.
+                UpdateConfirmation(persistentRects.Count > 0);
                 try
                 {
                     WriteDiagnosticFrame(frame, cleanedMask, persistentRects, _isFireCandidateDetected);
@@ -979,7 +987,8 @@ namespace OpenCvWpfTracking.Services.Video
             IList<Rect> candidates,
             int frameWidth,
             int frameHeight,
-            out int heldCandidateCount)
+            out int heldCandidateCount,
+            out int suppressedStaticHotspotCount)
         {
             foreach (FireCandidateTrack track in _candidateTracks)
             {
@@ -1032,6 +1041,35 @@ namespace OpenCvWpfTracking.Services.Video
 
                 const double currentWeight = 0.45;
                 Rect previous = bestTrack.Rectangle;
+                double previousCenterX = previous.X + previous.Width / 2.0;
+                double previousCenterY = previous.Y + previous.Height / 2.0;
+                double centerMovement = Math.Sqrt(
+                    Math.Pow(candidateCenterX - previousCenterX, 2) +
+                    Math.Pow(candidateCenterY - previousCenterY, 2));
+                double previousArea = Math.Max(1.0, previous.Width * (double)previous.Height);
+                double candidateArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
+                double areaChangeRatio = Math.Abs(candidateArea - previousArea) / previousArea;
+                double rectangleDiagonal = Math.Max(
+                    1.0,
+                    Math.Sqrt(previous.Width * (double)previous.Width +
+                              previous.Height * (double)previous.Height));
+                bool hasDynamicShape =
+                    centerMovement >= Math.Max(2.5, rectangleDiagonal * 0.035) ||
+                    areaChangeRatio >= 0.12 ||
+                    IntersectionOverUnion(previous, candidate) < 0.78;
+
+                if (hasDynamicShape)
+                {
+                    bestTrack.DynamicFrames++;
+                    bestTrack.DynamicFrameStreak++;
+                    bestTrack.StableFrames = 0;
+                }
+                else
+                {
+                    bestTrack.StableFrames++;
+                    bestTrack.DynamicFrameStreak = 0;
+                }
+
                 bestTrack.Rectangle = new Rect(
                     Math.Max(0, (int)Math.Round(
                         previous.X * (1.0 - currentWeight) + candidate.X * currentWeight)),
@@ -1050,6 +1088,38 @@ namespace OpenCvWpfTracking.Services.Video
                 bestTrack.SeenFrames++;
                 bestTrack.MissingFrames = 0;
                 bestTrack.Matched = true;
+
+                // 2026-09-22 V25: 진단 영상에서 화면 경계의 용기 반사점과 물체
+                // 모서리가 동일 BBox로 수천 프레임 반복됐다. 기존 화재 후보식은
+                // 그대로 두고 Track이 장시간 거의 변하지 않을 때만 보조 억제한다.
+                bool touchesFrameEdge =
+                    bestTrack.Rectangle.X <= 2 ||
+                    bestTrack.Rectangle.Y <= 2 ||
+                    bestTrack.Rectangle.Right >= frameWidth - 2 ||
+                    bestTrack.Rectangle.Bottom >= frameHeight - 2;
+                int observations = Math.Max(1, bestTrack.SeenFrames - 1);
+                double dynamicRatio = bestTrack.DynamicFrames / (double)observations;
+                int observationLimit = touchesFrameEdge ? 45 : 150;
+                double maximumDynamicRatio = touchesFrameEdge ? 0.10 : 0.06;
+                // 녹화 영상의 블라인드·창틀·화분처럼 초기에 BBox가 몇 차례
+                // 정착한 뒤 고정되는 물체는 누적 변화율만으로 억제가 늦어진다.
+                // 최근 연속 안정 구간도 함께 보되 실제 화염의 계속되는 변형은 보존한다.
+                int consecutiveStableLimit = touchesFrameEdge ? 30 : 90;
+                if (!bestTrack.IsStaticHotspotSuppressed &&
+                    ((bestTrack.SeenFrames >= observationLimit &&
+                      dynamicRatio <= maximumDynamicRatio) ||
+                     bestTrack.StableFrames >= consecutiveStableLimit))
+                {
+                    bestTrack.IsStaticHotspotSuppressed = true;
+                }
+                else if (bestTrack.IsStaticHotspotSuppressed &&
+                         bestTrack.DynamicFrameStreak >= 12)
+                {
+                    // 실제 화염처럼 연속 변형이 다시 나타나면 즉시 재평가한다.
+                    bestTrack.IsStaticHotspotSuppressed = false;
+                    bestTrack.DynamicFrames = 12;
+                    bestTrack.SeenFrames = Math.Max(ConfirmFrameCount, 24);
+                }
             }
 
             for (int index = _candidateTracks.Count - 1; index >= 0; index--)
@@ -1071,12 +1141,19 @@ namespace OpenCvWpfTracking.Services.Video
             }
 
             heldCandidateCount = 0;
+            suppressedStaticHotspotCount = 0;
             List<Rect> visible = new List<Rect>();
             foreach (FireCandidateTrack track in _candidateTracks)
             {
                 if (track.SeenFrames < ConfirmFrameCount ||
                     track.MissingFrames > CandidateHoldFrameCount)
                 {
+                    continue;
+                }
+
+                if (track.IsStaticHotspotSuppressed)
+                {
+                    suppressedStaticHotspotCount++;
                     continue;
                 }
 
@@ -1297,6 +1374,7 @@ namespace OpenCvWpfTracking.Services.Video
             _candidateTracks.Clear();
             _lastTrackContinuityLogTime = DateTime.MinValue;
             _lastReportedTrackCount = -1;
+            _lastReportedStaticHotspotCount = -1;
             _wasAiFireSuppressionActive = false;
             if (_previousGray != null)
             {
@@ -1328,6 +1406,7 @@ namespace OpenCvWpfTracking.Services.Video
             internal DateTime FirstSeenUtc { get; set; }
             internal bool IsScoreFinalized { get; set; }
             internal bool Matched { get; set; }
+
         }
 
         private sealed class FireCandidateTrack
@@ -1346,6 +1425,14 @@ namespace OpenCvWpfTracking.Services.Video
             internal int MissingFrames { get; set; }
 
             internal bool Matched { get; set; }
+
+            internal int DynamicFrames { get; set; }
+
+            internal int DynamicFrameStreak { get; set; }
+
+            internal int StableFrames { get; set; }
+
+            internal bool IsStaticHotspotSuppressed { get; set; }
         }
 
     }

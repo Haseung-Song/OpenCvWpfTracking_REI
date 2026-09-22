@@ -2446,6 +2446,35 @@
                                                                                             Style="{StaticResource AiSettingButtonStyle}"/>
                                                                                 </UniformGrid>
 
+                                                                                <!-- 2026-09-22 V25: 기존 FIRE 검출식은 유지하고 운용 프리셋만 제공한다. -->
+                                                                                <Grid Margin="0,0,0,8">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="8"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <StackPanel Grid.Column="0">
+                                                                                        <TextBlock Text="FIRE SOURCE"
+                                                                                                   Foreground="White"/>
+                                                                                        <ComboBox SelectedIndex="{Binding FireDetectionSourceIndex}"
+                                                                                                  Height="28"
+                                                                                                  IsEnabled="False"
+                                                                                                  ToolTip="현재 로컬 FIRE 영상처리는 IR 전용입니다.">
+                                                                                            <ComboBoxItem Content="IR ONLY"/>
+                                                                                        </ComboBox>
+                                                                                    </StackPanel>
+                                                                                    <StackPanel Grid.Column="2">
+                                                                                        <TextBlock Text="FIRE SENSITIVITY"
+                                                                                                   Foreground="White"/>
+                                                                                        <ComboBox SelectedIndex="{Binding FireSensitivityIndex, Mode=TwoWay}"
+                                                                                                  Height="28">
+                                                                                            <ComboBoxItem Content="SENSITIVE"/>
+                                                                                            <ComboBoxItem Content="BALANCED"/>
+                                                                                            <ComboBoxItem Content="STRICT"/>
+                                                                                        </ComboBox>
+                                                                                    </StackPanel>
+                                                                                </Grid>
+
                                                                                 <TextBlock Text="HOT PIXEL THRESHOLD"
                                                                                            Foreground="White"/>
                                                                                 <Slider Minimum="0.05"
