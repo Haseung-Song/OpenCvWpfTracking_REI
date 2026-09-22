@@ -424,6 +424,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ? Math.Max(1, IrVideoHeight)
                 : Math.Max(1, EoVideoHeight);
 
+            bool isInfrared = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase);
+            bool hasLocalFire =
+                isInfrared &&
+                thermalResult.CandidateRects != null &&
+                thermalResult.CandidateRects.Count > 0;
+            bool hasLocalSmoke =
+                smokeResult.CandidateRects != null &&
+                smokeResult.CandidateRects.Count > 0;
+
+            // 2026-09-22: 중복 제거 전 원본 탐지 상태를 보존한다.
+            // 화면용 BBox가 AI 우선 정책으로 제거되어도 경고는 실제 탐지 상태를 유지한다.
+            SetLocalFireSmokeDetectionState(
+                isInfrared ? 1 : 0,
+                hasLocalFire,
+                hasLocalSmoke);
+
             target.Clear();
             int displayOrder = 1;
 
@@ -456,7 +472,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ? IrDetectionBoxes
                     : EoDetectionBoxes);
 
-            bool isInfrared = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase);
             OnPropertyChanged(isInfrared
                 ? nameof(IsIrFireWarningVisible)
                 : nameof(IsEoFireWarningVisible));
@@ -862,6 +877,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _activeVisionBBoxEvents.Clear();
             EoFireSmokeDetectionBoxes.Clear();
             IrFireSmokeDetectionBoxes.Clear();
+            SetLocalFireSmokeDetectionState(0, false, false);
+            SetLocalFireSmokeDetectionState(1, false, false);
             RefreshActiveFireCount();
             _lastFireDetectedTime = null;
             NotifyFireEventSummaryChanged();

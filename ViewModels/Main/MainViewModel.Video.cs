@@ -241,12 +241,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     EoDetectionBoxes.Clear();
                     EoFireSmokeDetectionBoxes.Clear();
+                    SetLocalFireSmokeDetectionState(0, false, false);
                 }
 
                 if (!isIrStreamActive)
                 {
                     IrDetectionBoxes.Clear();
                     IrFireSmokeDetectionBoxes.Clear();
+                    SetLocalFireSmokeDetectionState(1, false, false);
                 }
 
             });
@@ -698,6 +700,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 IrDetectionBoxes.Clear();
                 EoFireSmokeDetectionBoxes.Clear();
                 IrFireSmokeDetectionBoxes.Clear();
+                SetLocalFireSmokeDetectionState(0, false, false);
+                SetLocalFireSmokeDetectionState(1, false, false);
                 EoStatusText = "Disconnected";
                 IrStatusText = "Disconnected";
             });

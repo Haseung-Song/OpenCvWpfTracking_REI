@@ -1,6 +1,8 @@
+using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.AI;
 using OpenCvWpfTracking.Models.Main;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
@@ -2977,17 +2979,143 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ObservableCollection<VisionDetectionBox> IrFireSmokeDetectionBoxes { get; }
             = new ObservableCollection<VisionDetectionBox>();
 
+        private bool _hasEoLocalFireDetection;
+        private bool _hasIrLocalFireDetection;
+        private bool _hasEoLocalSmokeDetection;
+        private bool _hasIrLocalSmokeDetection;
+        private bool _lastEoFireWarningVisible;
+        private bool _lastIrFireWarningVisible;
+        private bool _lastEoSmokeWarningVisible;
+        private bool _lastIrSmokeWarningVisible;
+
+        /// <summary>
+        /// 2026-09-22: 상단 FIRE/SMOKE 경고는 로컬 영상처리와 AI Agent 중
+        /// 어느 한쪽이라도 해당 클래스를 현재 BBox로 유지하면 표시한다.
+        /// AI의 CAR/DRONE/PERSON 등 다른 클래스는 기존 BBox와 이벤트에는 남지만
+        /// 이 경고 상태에는 영향을 주지 않는다.
+        /// </summary>
         public bool IsEoFireWarningVisible =>
-            EoFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase));
+            _hasEoLocalFireDetection ||
+            HasAiDetection(EoDetectionBoxes, "FIRE", "FLAME");
 
         public bool IsIrFireWarningVisible =>
-            IrFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase));
+            _hasIrLocalFireDetection ||
+            HasAiDetection(IrDetectionBoxes, "FIRE", "FLAME");
 
         public bool IsEoSmokeWarningVisible =>
-            EoFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase));
+            _hasEoLocalSmokeDetection ||
+            HasAiDetection(EoDetectionBoxes, "SMOKE");
 
         public bool IsIrSmokeWarningVisible =>
-            IrFireSmokeDetectionBoxes.Any(box => string.Equals(box.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase));
+            _hasIrLocalSmokeDetection ||
+            HasAiDetection(IrDetectionBoxes, "SMOKE");
+
+        private static bool HasAiDetection(
+            IEnumerable<AiDetectionBox> boxes,
+            params string[] alarmClasses)
+        {
+            if (boxes == null || alarmClasses == null || alarmClasses.Length == 0)
+            {
+                return false;
+            }
+
+            return boxes.Any(box =>
+                box != null &&
+                alarmClasses.Any(alarmClass => string.Equals(
+                    box.ClassName?.Trim(),
+                    alarmClass,
+                    StringComparison.OrdinalIgnoreCase)));
+        }
+
+        /// <summary>
+        /// AI BBox 갱신·Hold 만료·연결 해제 시 계산 속성의 UI 바인딩을 갱신한다.
+        /// Collection은 기존 모든 AI 클래스를 그대로 유지하고 경고 속성만 다시 계산한다.
+        /// </summary>
+        private void NotifyFireSmokeWarningStateChanged(int rtspIndex)
+        {
+            bool isInfrared = rtspIndex == 1;
+            string channel = isInfrared ? "IR" : "EO";
+            bool localFire = isInfrared
+                ? _hasIrLocalFireDetection
+                : _hasEoLocalFireDetection;
+            bool localSmoke = isInfrared
+                ? _hasIrLocalSmokeDetection
+                : _hasEoLocalSmokeDetection;
+            IEnumerable<AiDetectionBox> aiBoxes = isInfrared
+                ? IrDetectionBoxes
+                : EoDetectionBoxes;
+            bool aiFire = HasAiDetection(aiBoxes, "FIRE", "FLAME");
+            bool aiSmoke = HasAiDetection(aiBoxes, "SMOKE");
+            bool fireVisible = localFire || aiFire;
+            bool smokeVisible = localSmoke || aiSmoke;
+
+            if (isInfrared)
+            {
+                LogDetectionWarningTransition(
+                    "FIRE", channel, fireVisible, localFire, aiFire,
+                    ref _lastIrFireWarningVisible);
+                LogDetectionWarningTransition(
+                    "SMOKE", channel, smokeVisible, localSmoke, aiSmoke,
+                    ref _lastIrSmokeWarningVisible);
+            }
+            else
+            {
+                LogDetectionWarningTransition(
+                    "FIRE", channel, fireVisible, localFire, aiFire,
+                    ref _lastEoFireWarningVisible);
+                LogDetectionWarningTransition(
+                    "SMOKE", channel, smokeVisible, localSmoke, aiSmoke,
+                    ref _lastEoSmokeWarningVisible);
+            }
+
+            OnPropertyChanged(isInfrared
+                ? nameof(IsIrFireWarningVisible)
+                : nameof(IsEoFireWarningVisible));
+            OnPropertyChanged(isInfrared
+                ? nameof(IsIrSmokeWarningVisible)
+                : nameof(IsEoSmokeWarningVisible));
+        }
+
+        private static void LogDetectionWarningTransition(
+            string detectionType,
+            string channel,
+            bool current,
+            bool local,
+            bool ai,
+            ref bool previous)
+        {
+            if (current == previous)
+            {
+                return;
+            }
+
+            previous = current;
+            ConsoleLogHelper.State(
+                detectionType + " ALERT",
+                (current ? "Warning displayed" : "Warning cleared") +
+                " / CHANNEL=" + channel +
+                " / LOCAL=" + local +
+                " / AI=" + ai);
+        }
+
+        private void SetLocalFireSmokeDetectionState(
+            int rtspIndex,
+            bool hasFire,
+            bool hasSmoke)
+        {
+            if (rtspIndex == 1)
+            {
+                _hasIrLocalFireDetection = hasFire;
+                _hasIrLocalSmokeDetection = hasSmoke;
+            }
+            else
+            {
+                _hasEoLocalFireDetection = hasFire;
+                _hasEoLocalSmokeDetection = hasSmoke;
+            }
+
+            NotifyFireSmokeWarningStateChanged(rtspIndex);
+        }
 
         /// <summary>
         /// [AI Detector Agent]에서 조회한 [RTSP] 목록

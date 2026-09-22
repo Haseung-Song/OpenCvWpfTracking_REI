@@ -398,6 +398,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         IrDetectionBoxes.Clear();
                     }
 
+                    NotifyFireSmokeWarningStateChanged(result.RtspIndex);
+
                     return;
                 }
 
@@ -1398,6 +1400,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 rtspIndex == 0 ? EoFireSmokeDetectionBoxes : IrFireSmokeDetectionBoxes,
                 targetBoxes);
 
+            // 2026-09-22: AI FIRE/FLAME/SMOKE BBox의 생성·유지·제거 상태를
+            // 메인/분리 영상 상단 경고에 즉시 반영한다.
+            NotifyFireSmokeWarningStateChanged(rtspIndex);
+
 #if DEBUG
             int channelEventCount = _activeAiEvents.Count(item => item.Value.RtspIndex == rtspIndex);
             if (targetBoxes.Count != channelEventCount)
@@ -1489,6 +1495,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 EoDetectionBoxes.Clear();
                 IrDetectionBoxes.Clear();
+                NotifyFireSmokeWarningStateChanged(0);
+                NotifyFireSmokeWarningStateChanged(1);
                 _lastEoAiDisplayDetectionTime = DateTime.MinValue;
                 _lastIrAiDisplayDetectionTime = DateTime.MinValue;
                 _isEoAiDisplayHoldActive = false;
