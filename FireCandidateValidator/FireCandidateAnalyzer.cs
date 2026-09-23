@@ -14,6 +14,7 @@ namespace FireCandidateValidator
     internal sealed class FireCandidateAnalyzer
     {
         private int _continuousCandidateFrames;
+
         // 2026-08-25: REI/MOE 검증 프로그램도 동일한 화재 후보 알고리즘과
         // 오류 처리 정책을 사용하며, 반복 오류 출력은 5초 간격으로 제한한다.
         private DateTime _lastAnalyzeErrorLogTime = DateTime.MinValue;

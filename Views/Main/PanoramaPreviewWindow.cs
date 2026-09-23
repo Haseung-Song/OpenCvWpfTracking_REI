@@ -23,10 +23,15 @@ namespace OpenCvWpfTracking
             new TranslateTransform();
 
         private readonly Image _previewImage;
+
         private readonly Grid _root;
+
         private Point _dragStartPoint;
+
         private double _dragStartX;
+
         private double _dragStartY;
+
         private bool _isDragging;
 
         /// <summary>

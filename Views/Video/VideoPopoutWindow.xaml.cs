@@ -34,10 +34,15 @@ namespace OpenCvWpfTracking
         private readonly MainViewModel _viewModel;
 
         private readonly double _eoViewportAspectRatio;
+
         private readonly double _irViewportAspectRatio;
+
         private readonly Visual _eoRenderedVideo;
+
         private readonly Visual _irRenderedVideo;
+
         private double _currentViewportAspectRatio;
+
         private bool _isApplyingViewportAspectRatio;
 
         /// <summary>

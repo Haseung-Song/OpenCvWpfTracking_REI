@@ -18,29 +18,51 @@ namespace OpenCvWpfTracking.Services.Video
         private readonly SmokeCandidateAnalyzer _analyzer =
             new SmokeCandidateAnalyzer();
         private bool _isDetected;
+
         private int _clearFrameCount;
+
         private int _visionStableFrames;
+
         private bool _wasAiSmokeSuppressionActive;
+
         private bool _wasAiVehicleSuppressionActive;
+
         private bool? _lastStandaloneFallbackMode;
+
         private int _lastReportedConfirmationFrames = -1;
+
         private double _latchedVisionScore;
         private readonly List<VisionScoreTrack> _visionScoreTracks = new List<VisionScoreTrack>();
         private readonly List<Rect> _lastVisibleCandidates =
             new List<Rect>();
         private DateTime _lastErrorLogTime = DateTime.MinValue;
+
         private DateTime _lastRigidMotionLogTime = DateTime.MinValue;
+
         private DateTime _lastContinuityLogTime = DateTime.MinValue;
+
         private int _lastReportedVisibleCandidateCount = -1;
+
         private bool _lastDetectionWasVerified;
+
+        private int _lastZoomPosition = -1;
+
+        private DateTime _lastZoomResetLogTime = DateTime.MinValue;
         private readonly object _diagnosticSync = new object();
         private StreamWriter _diagnosticWriter;
+
         private string _diagnosticDirectory;
+
         private string _diagnosticChannel;
+
         private int _diagnosticFrameIndex;
+
         private int _diagnosticSnapshotCount;
+
         private bool _diagnosticSnapshotLimitLogged;
+
         private const int DiagnosticSnapshotIntervalFrames = 300;
+
         private const int DiagnosticMaximumSnapshotCount = 120;
 
         /// <summary>
@@ -117,7 +139,11 @@ namespace OpenCvWpfTracking.Services.Video
                 }
 
                 _diagnosticFrameIndex++;
-                return new SmokeDiagnosticCapture();
+                bool captureStageImages =
+                    (_diagnosticFrameIndex == 1 ||
+                     _diagnosticFrameIndex % DiagnosticSnapshotIntervalFrames == 0) &&
+                    _diagnosticSnapshotCount < DiagnosticMaximumSnapshotCount;
+                return new SmokeDiagnosticCapture(captureStageImages);
             }
 
         }
@@ -199,7 +225,9 @@ namespace OpenCvWpfTracking.Services.Video
                         _diagnosticChannel + " / LIMIT=" + DiagnosticMaximumSnapshotCount);
                 }
 
-                if (_diagnosticFrameIndex % 30 == 0)
+                // 장시간 진단 중 파일 I/O가 분석 Worker를 점유하지 않도록
+                // 약 12초(분석 10fps 기준) 단위로만 버퍼를 강제 반영한다.
+                if (_diagnosticFrameIndex % 120 == 0)
                 {
                     _diagnosticWriter.Flush();
                 }
@@ -236,6 +264,35 @@ namespace OpenCvWpfTracking.Services.Video
 
             try
             {
+                // 2026-09-23: 평행 이동 정합만으로는 Zoom에 따른 화면 배율 변화를
+                // 보정할 수 없다. 위치값이 실제로 변한 경우 이전 기준/Track을 즉시
+                // 폐기해 배경 전체 변화가 연기로 누적되는 것을 막는다.
+                bool zoomChanged =
+                    !isInfrared &&
+                    _lastZoomPosition >= 0 &&
+                    Math.Abs(zoomPosition - _lastZoomPosition) >= 4;
+                _lastZoomPosition = zoomPosition;
+                if (zoomChanged)
+                {
+                    bool stateChanged = _isDetected;
+                    _isDetected = false;
+                    _clearFrameCount = 0;
+                    _visionStableFrames = 0;
+                    _lastVisibleCandidates.Clear();
+                    _lastDetectionWasVerified = false;
+                    _analyzer.Reset();
+
+                    DateTime zoomResetTime = DateTime.Now;
+                    if ((zoomResetTime - _lastZoomResetLogTime).TotalSeconds >= 1.0)
+                    {
+                        _lastZoomResetLogTime = zoomResetTime;
+                        ConsoleLogHelper.State(
+                            "SMOKE ZOOM RESET",
+                            "EO reference and tracks reset / ZOOM=" + zoomPosition +
+                            " / ACTIVE_CLEARED=" + stateChanged);
+                    }
+                }
+
                 // 2026-08-27: 건물 경계와 순간 노출 변화를 연기로 확정하지 않도록
                 // 실제 Viewer에서는 후보가 충분히 지속된 경우에만 ACTIVE로 승격한다.
                 // 2026-08-28: EO는 24프레임 장기 기준 갱신을 넘어 36프레임

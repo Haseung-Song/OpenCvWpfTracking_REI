@@ -1592,8 +1592,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 선택 항목 전체를 SelectedItem으로 바인딩한다.
         /// </summary>
         private RtspSourceOption _selectedEoRtspSource;
+
         private RtspSourceOption _selectedIrRtspSource;
+
         private RtspSourceOption _selectedAiEoRtspSource;
+
         private RtspSourceOption _selectedAiIrRtspSource;
 
         public RtspSourceOption SelectedEoRtspSource
@@ -2980,12 +2983,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             = new ObservableCollection<VisionDetectionBox>();
 
         private bool _hasEoLocalFireDetection;
+
         private bool _hasIrLocalFireDetection;
+
         private bool _hasEoLocalSmokeDetection;
+
         private bool _hasIrLocalSmokeDetection;
+
         private bool _lastEoFireWarningVisible;
+
         private bool _lastIrFireWarningVisible;
+
         private bool _lastEoSmokeWarningVisible;
+
         private bool _lastIrSmokeWarningVisible;
 
         /// <summary>

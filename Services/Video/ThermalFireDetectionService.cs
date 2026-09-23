@@ -20,22 +20,31 @@ namespace OpenCvWpfTracking.Services.Video
         // 2026-09-17 V25: 순간 IR 노이즈가 4프레임만으로 BBox가 되는 것을 막고,
         // 연기 검출처럼 동일 위치 Track의 시간 누적 증거를 확인한다(30fps 기준 약 0.4초).
         private const int ConfirmFrameCount = 12;
+
         private const int ClearFrameCount = 45;
+
         private const int CandidateHoldFrameCount = 45;
 
         private int _candidateFrameCount;
+
         private int _clearFrameCount;
+
         private double _latchedVisionScore;
         private readonly List<FireVisionScoreTrack> _visionScoreTracks =
             new List<FireVisionScoreTrack>();
         private bool _isFireCandidateDetected;
+
         private Rect _trackedCandidateRect = Rect.Empty;
         private readonly List<FireCandidateTrack> _candidateTracks =
             new List<FireCandidateTrack>();
         private DateTime _lastTrackContinuityLogTime = DateTime.MinValue;
+
         private int _lastReportedTrackCount = -1;
+
         private int _lastReportedStaticHotspotCount = -1;
+
         private bool _wasAiFireSuppressionActive;
+
         // 2026-08-25: REI/MOE가 동일한 화재 후보 알고리즘과 오류 처리 정책을
         // 사용하도록 공통화하였다. 반복 오류 로그는 5초 간격으로 제한한다.
         private DateTime _lastProcessErrorLogTime = DateTime.MinValue;
@@ -46,12 +55,19 @@ namespace OpenCvWpfTracking.Services.Video
         private Mat _previousCandidateMask = new Mat();
         private readonly object _diagnosticSync = new object();
         private StreamWriter _diagnosticWriter;
+
         private string _diagnosticDirectory;
+
         private string _diagnosticChannel;
+
         private int _diagnosticFrameIndex;
+
         private int _diagnosticSnapshotCount;
+
         private bool _diagnosticSnapshotLimitLogged;
+
         private const int DiagnosticSnapshotIntervalFrames = 300;
+
         private const int DiagnosticMaximumSnapshotCount = 120;
 
         internal void StartDiagnostic(string directory, string channel)

@@ -139,9 +139,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 {
                     tcpClient?.Close();
                 }
-                catch
+                catch (Exception cleanupException)
                 {
-
+                    ConsoleLogHelper.Warning(
+                        "AI TCP / CLEANUP",
+                        "Failed connection cleanup failed / " + cleanupException.Message);
                 }
                 return false;
             }

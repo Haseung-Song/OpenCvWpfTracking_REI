@@ -23,6 +23,7 @@ namespace OpenCvWpfTracking
         private readonly List<double> _eoFovBoundaryX = new List<double>();
         private readonly List<double> _irFovBoundaryX = new List<double>();
         private bool _isFovValidationActive;
+
         private int _fovValidationLevel;
 
         /// <summary>

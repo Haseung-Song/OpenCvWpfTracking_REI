@@ -22,13 +22,16 @@ namespace OpenCvWpfTracking.Services.Control
 
         // XV-Z2090HC: 6~540 mm, HFOV 65.24~0.82 deg.
         private const double EoMinFocalMm = 6.0;
+
         private const double EoMaxFocalMm = 540.0;
         private static readonly double EoSensorWidthMm = 2.0 * EoMinFocalMm * Math.Tan(65.24 * Math.PI / 360.0);
 
         // Infra-LWZ-25-225-AF1 + 640x512/17um detector: 25~225 mm,
         // catalog HFOV 24.5~2.7 deg. Sensor width = 640 * 0.017 = 10.88 mm.
         private const double IrMinFocalMm = 25.0;
+
         private const double IrMaxFocalMm = 225.0;
+
         private const double IrSensorWidthMm = 10.88;
 
         public ZoomFovTarget CreateTarget(int level)

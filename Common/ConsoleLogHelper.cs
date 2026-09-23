@@ -789,8 +789,11 @@ namespace OpenCvWpfTracking.Common
         private sealed class ConsoleLogScope : IDisposable
         {
             private readonly string _category;
+
             private readonly string _operation;
+
             private readonly DateTime _startedAt;
+
             private bool _isDisposed;
 
             /// <summary>
@@ -843,6 +846,7 @@ namespace OpenCvWpfTracking.Common
             private readonly object _writeLock = new object();
             private readonly StringBuilder _pendingLine = new StringBuilder();
             private bool _separatorSinceContent;
+
             private bool _lastLineWasBlank;
 
             /// <summary>

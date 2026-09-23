@@ -18,7 +18,9 @@ namespace OpenCvWpfTracking.Services.Communication
     public sealed class McbMaintenanceCommandService
     {
         private const int ConnectTimeoutMs = 1500;
+
         private const int SendTimeoutMs = 1500;
+
         private const int InterPacketDelayMs = 100;
 
         /// <summary>

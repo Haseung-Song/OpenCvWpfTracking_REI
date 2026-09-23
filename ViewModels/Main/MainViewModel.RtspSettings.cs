@@ -61,6 +61,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             "4층 LR1000 - 열상(IR)";
 
         private bool _isLoadingRtspCommunicationSettings;
+
         private ControlAgentProfileOption _selectedControlAgentProfile;
 
         public ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; } =

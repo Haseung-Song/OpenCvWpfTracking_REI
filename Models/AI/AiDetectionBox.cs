@@ -165,6 +165,7 @@ namespace OpenCvWpfTracking.Models.AI
         public int Right { get; set; }
         public int Bottom { get; set; }
         public int Width => Right - Left;
+
         public int Height => Bottom - Top;
         /// <summary>
         /// 2026-09-17: 우측 경계의 작은 BBox에서 라벨이 영상 밖으로 잘리지 않도록

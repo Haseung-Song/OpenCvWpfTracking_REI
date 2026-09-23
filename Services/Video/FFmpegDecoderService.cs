@@ -26,15 +26,25 @@ namespace OpenCvWpfTracking.Services.Video
         public sealed class DecoderPerformanceSnapshot
         {
             public long PacketBytes;
+
             public long PacketCount;
+
             public long ReadTicks;
+
             public long ReadMaxTicks;
+
             public long ReadCount;
+
             public long DecodeTicks;
+
             public long DecodeMaxTicks;
+
             public long DecodeCount;
+
             public long ScaleTicks;
+
             public long ScaleMaxTicks;
+
             public long ScaleCount;
         }
 
@@ -60,6 +70,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// [RTSP] [Stream]에서 읽어온 압축 데이터 저장용
         /// </summary>
         private AVPacket* _packet;
+
         private bool _packetPendingSend;
 
         /// <summary>
@@ -99,15 +110,25 @@ namespace OpenCvWpfTracking.Services.Video
         // 2026-09-18: PTZ 이동 중 증가하는 압축량과 FFmpeg 단계별 지연을
         // WPF 표시 지연과 같은 1초 구간에서 비교하기 위한 lock-free 누적값이다.
         private long _metricPacketBytes;
+
         private long _metricPacketCount;
+
         private long _metricReadTicks;
+
         private long _metricReadMaxTicks;
+
         private long _metricReadCount;
+
         private long _metricDecodeTicks;
+
         private long _metricDecodeMaxTicks;
+
         private long _metricDecodeCount;
+
         private long _metricScaleTicks;
+
         private long _metricScaleMaxTicks;
+
         private long _metricScaleCount;
 
         // 2026-09-16: 기본은 작은 지터 버퍼를 허용하는 SMOOTH 프로파일이다.
@@ -321,7 +342,7 @@ namespace OpenCvWpfTracking.Services.Video
         ///
         /// 3. [max_delay]
         ///    RTSP Packet 수신 시 허용할 최대 지연 시간을 설정한다.
-        ///    현재 [500000 = 0.5초]로 설정한다.
+        ///    안정 재생은 [150000 = 0.15초], 저지연 재생은 [500000 = 0.5초]로 설정한다.
         ///
         ///    값을 지나치게 줄이면 네트워크 상태에 따라
         ///    Frame 손실이나 영상 끊김이 발생할 수 있다.

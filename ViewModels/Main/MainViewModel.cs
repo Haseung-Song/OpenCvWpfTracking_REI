@@ -362,38 +362,57 @@ namespace OpenCvWpfTracking.ViewModels.Main
             new SemaphoreSlim(1, 1);
 
         private const int LensSyncFeedbackTimeoutMs = 1200;
+
         private const int LensSyncTargetTolerance = 12;
+
         // 2026-09-18: IR은 약 500ms 간격의 상태 피드백과 정지 후 관성 이동이 있으므로
         // EO 허용오차와 분리된 일반 레벨 허용오차/선행 정지값을 사용한다.
         private const int IrZoomTargetTolerance = 25;
+
         private const int IrZoomMinimumStopLead = 150;
+
         private const int IrZoomMaximumStopLead = 360;
+
         private const int IrZoomShortPulseThreshold = 180;
+
         private const int IrZoomShortPulseMinimumMs = 100;
+
         private const int IrZoomShortPulseMaximumMs = 650;
+
         private const double IrZoomShortPulseScale = 0.58;
+
         private double _irZoomObservedStopLag = IrZoomMinimumStopLead;
+
         // 2026-09-21: 사용자가 APPLY를 반복하지 않도록 한 번의 작업 안에서
         // 정착값 기반 미세 보정을 수행한다. 방향 반전은 최대 2회로 제한한다.
         private const int IrZoomSyncMaxMoveAttempts = 4;
+
         private const int IrZoomMaximumDirectionReversals = 2;
+
         private const int IrZoomSyncTimeoutMs = 15000;
 
         // 2026-09-18: MOE 실장비 11:38:58~11:39:08 로그에서 확인된
         // Environment IR 물리 끝점(61/934)을 모델 기본값으로 사용한다.
         // 이후 Level 0/10 정착 피드백으로 같은 실행 세션에서 재학습한다.
         private int _environmentIrZoomPhysicalWideRaw = 61;
+
         private int _environmentIrZoomPhysicalTeleRaw = 934;
+
         private const int EnvironmentIrZoomEndpointLearningLimit = 70;
+
         // IR 상태는 약 500ms 주기이므로 Focus용 700ms 정착 제한을 재사용하지 않는다.
         private const int IrZoomSettleTimeoutMs = 2600;
+
         private const int IrZoomStableSampleCount = 3;
 
         // 환경부 Web Agent가 Function 0x07 IR 렌즈 상태를 보내지 않을 때
         // MOE와 동일한 시간/명령값 기반 보완을 사용한다.
         private const int EnvironmentIrFocusFullTravelMs = 1600;
+
         private const int EnvironmentIrFocusHomeMs = 1800;
+
         private const int EnvironmentIrZoomFullTravelMs = 5000;
+
         private DateTime _environmentIrManualMoveStartedUtc;
         private ContinuousMoveType _environmentIrManualMoveType =
             ContinuousMoveType.None;
@@ -430,6 +449,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 어떤 [연속 제어]가 동작 중인지
         /// </summary>
         private ContinuousMoveType _currentMoveType = ContinuousMoveType.None;
+
         // 2026-09-18: Pan/Tilt 축은 Lens(Zoom/Focus)와 독립 동작한다.
         private bool _isPanTiltMoveActive;
         private readonly FieldOfViewSyncService _fieldOfViewSyncService =
@@ -437,18 +457,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         // 2026-09-18: RTSP 성능 로그와 실제 사용자 제어 상태를 같은 시간축으로 비교한다.
         private string _ptzPerformanceScenario = "IDLE";
+
         private long _function01ReceiveCount;
+
         private long _ptzfStatusUpdateCount;
+
         private long _propertyChangedCount;
+
         private long _panPropertyChangedCount;
+
         private long _tiltPropertyChangedCount;
+
         private long _zoomPropertyChangedCount;
+
         private long _focusPropertyChangedCount;
+
         private long _panStartTxCount;
+
         private long _panStopTxCount;
+
         private long _tiltStartTxCount;
+
         private long _tiltStopTxCount;
+
         private long _zoomStartTxCount;
+
         private long _zoomStopTxCount;
 
         /// <summary>
@@ -692,7 +725,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         // 2026-09-17: EO Focus 요청값이 한 번 수신된 뒤 실장비 보정값으로
         // 복귀하는 경우를 실제 안정 피드백과 재명령으로 확인한다.
         private const int EnvironmentEoFocusTolerance = 18;
+
         private const int EnvironmentEoFocusWaitMs = 4000;
+
         private const int EnvironmentEoFocusMaxAttempts = 3;
 
         /// <summary>

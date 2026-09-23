@@ -18,14 +18,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
             new ThermalFireDetectionService();
 
         private bool _isThermalFireDetectionEnabled;
+
         private bool _isEoFireCandidateDetected;
+
         private bool _isIrFireCandidateDetected;
+
         // 2026-08-14: 컬러/흑백 IR 시험 영상 공통 초기값.
         private double _thermalHotThresholdRatio = 0.76;
+
         private double _thermalMinimumAreaRatio = 0.0015;
+
         // 2026-09-22 V25: 기존 FIRE 알고리즘은 유지하고 두 수동 Slider를
         // 현장 운용용 프리셋으로 묶는다. 0=SENSITIVE, 1=BALANCED, 2=STRICT.
         private int _fireSensitivityIndex = 1;
+
         // 2026-08-14: 1=전체 화염 단일 BBox, 2=분리 화염별 BBox(기본값).
         private int _thermalFireBoxGroupingMode = 2;
         private Brush _thermalFireBoxMode1Background = new SolidColorBrush(Color.FromRgb(62, 81, 94));
@@ -39,6 +45,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private Brush _thermalRainbowButtonBackground = Brushes.WhiteSmoke;
         private Brush _thermalRainbowButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
         private bool _isFireDiagnosticEnabled;
+
         private string _fireDiagnosticPathText = "OFF";
 
         public Brush ThermalBlackHotButtonBackground { get => _thermalBlackHotButtonBackground; private set { _thermalBlackHotButtonBackground = value; OnPropertyChanged(); } }

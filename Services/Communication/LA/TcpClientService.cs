@@ -40,9 +40,13 @@ namespace OpenCvWpfTracking.Services.Communication
         #region [Fields]
 
         private TcpClient _tcpClient;
+
         private NetworkStream _networkStream;
+
         private CancellationTokenSource _cts;
+
         private Task _receiveLoopTask = Task.CompletedTask;
+
         private long _sessionGeneration;
 
         /// <summary>
@@ -540,8 +544,11 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _cts?.Cancel();
             }
-            catch
+            catch (Exception ex)
             {
+                ConsoleLogHelper.Warning(
+                    "TCP / CLEANUP",
+                    "Cancellation cleanup failed / " + ex.Message);
             }
 
             try
@@ -549,8 +556,11 @@ namespace OpenCvWpfTracking.Services.Communication
                 _networkStream?.Close();
                 _networkStream?.Dispose();
             }
-            catch
+            catch (Exception ex)
             {
+                ConsoleLogHelper.Warning(
+                    "TCP / CLEANUP",
+                    "Network stream dispose failed / " + ex.Message);
             }
 
             try
@@ -558,8 +568,11 @@ namespace OpenCvWpfTracking.Services.Communication
                 _tcpClient?.Close();
                 _tcpClient?.Dispose();
             }
-            catch
+            catch (Exception ex)
             {
+                ConsoleLogHelper.Warning(
+                    "TCP / CLEANUP",
+                    "TCP client dispose failed / " + ex.Message);
             }
 
             _cts?.Dispose();

@@ -1040,6 +1040,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             catch (OperationCanceledException)
             {
+                // Stop/Disconnect로 취소된 정상 종료 경로이다.
                 LaPresetCommandStatusText =
                     $"P{preset.Number:00} DIRECT PTZF MOVE STOPPED";
             }
@@ -2935,6 +2936,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             catch (OperationCanceledException)
             {
+                // 사용자가 PRESET 순회 또는 연결을 중지한 정상 종료 경로이다.
             }
             finally
             {

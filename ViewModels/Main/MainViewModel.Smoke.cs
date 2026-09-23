@@ -25,21 +25,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly List<Rect> _latestEoAiVehicleCandidates = new List<Rect>();
         private readonly List<Rect> _latestIrAiVehicleCandidates = new List<Rect>();
         private DateTime _latestEoAiSmokeCandidateTime = DateTime.MinValue;
+
         private DateTime _latestIrAiSmokeCandidateTime = DateTime.MinValue;
+
         private DateTime _latestEoAiFireCandidateTime = DateTime.MinValue;
+
         private DateTime _latestIrAiFireCandidateTime = DateTime.MinValue;
+
         private DateTime _latestEoAiVehicleCandidateTime = DateTime.MinValue;
+
         private DateTime _latestIrAiVehicleCandidateTime = DateTime.MinValue;
+
         private bool _isSmokeDetectionEnabled;
+
         // 2026-09-18: 운용 기본값은 EO ONLY(1)로 고정한다.
         private int _smokeDetectionSourceIndex = 1;
+
         // 2026-09-02 V17: 원거리 탐지와 근거리 건물·산·수목 오탐의
         // 균형을 위해 SMOKE 콤보박스와 실제 내부 임계값은 BALANCED를 사용한다.
         private int _smokeSensitivityIndex = 1;
+
         private double _smokeMinimumAreaRatio = 0.0015;
+
         private double _smokeChangeThresholdRatio = 0.035;
+
         private bool _isSmokeDiagnosticEnabled;
+
         private string _smokeDiagnosticPathText = "OFF";
+
         // 2026-08-31: 1=전체 연기 단일 BBox, 2=연기 기둥별 BBox(기본값).
         private int _smokeBoxGroupingMode = 2;
         private Brush _smokeBoxMode1Background =

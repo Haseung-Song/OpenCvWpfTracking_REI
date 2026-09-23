@@ -38,14 +38,18 @@ namespace OpenCvWpfTracking.Services.Communication
         /// [CTEC] 고정 Header / Camera Code
         /// </summary>
         private const byte Header1 = 0xFF;
+
         private const byte Header2 = 0x01;
+
         private const byte CameraCode1 = 0x44;
+
         private const byte CameraCode2 = 0x77;
 
         /// <summary>
         /// [Zoom / Focus] 연속 제어 속도 범위
         /// </summary>
         private const byte MinimumControlSpeed = 1;
+
         private const byte MaximumControlSpeed = 7;
 
         /// <summary>

@@ -31,6 +31,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// CTEC Camera Response Header
         /// </summary>
         private const byte ResponseHeader1 = 0x99;
+
         private const byte ResponseHeader2 = 0x55;
 
         /// <summary>
@@ -756,6 +757,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (OperationCanceledException)
             {
+                // Stop/Disconnect에서 취소된 정상 종료 경로이다.
             }
 
         }
@@ -784,8 +786,11 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _receiveCts?.Cancel();
             }
-            catch
+            catch (Exception ex)
             {
+                ConsoleLogHelper.Warning(
+                    "CTEC RESPONSE / CLEANUP",
+                    "Receive cancellation cleanup failed / " + ex.Message);
             }
 
             _receiveCts?.Dispose();
@@ -813,16 +818,22 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _networkStream?.Close();
             }
-            catch
+            catch (Exception ex)
             {
+                ConsoleLogHelper.Warning(
+                    "CTEC RESPONSE / CLEANUP",
+                    "Network stream close failed / " + ex.Message);
             }
 
             try
             {
                 _tcpClient?.Close();
             }
-            catch
+            catch (Exception ex)
             {
+                ConsoleLogHelper.Warning(
+                    "CTEC RESPONSE / CLEANUP",
+                    "TCP client close failed / " + ex.Message);
             }
 
             _networkStream =

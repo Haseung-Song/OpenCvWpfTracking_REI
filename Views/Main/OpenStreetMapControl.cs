@@ -33,15 +33,21 @@ namespace OpenCvWpfTracking
     public sealed class OpenStreetMapControl : UserControl
     {
         private const int TileSize = 256;
+
         private const int MinimumZoom = 3;
+
         private const int MaximumZoom = 19;
+
         private const int DragRenderIntervalMilliseconds = 45;
+
         private const int WheelRenderDebounceMilliseconds = 120;
 
         // GLOBAL SYSTEMS
         // 265, Techno 2-ro, Yuseong-gu, Daejeon
         public const double DefaultLatitude = 36.4186235;
+
         public const double DefaultLongitude = 127.4118881;
+
         public const int DefaultZoom = 16;
 
         private static readonly HttpClient HttpClient =
@@ -53,27 +59,41 @@ namespace OpenCvWpfTracking
             new SemaphoreSlim(6, 6);
 
         private readonly Grid _root;
+
         private readonly Image _fallbackImage;
+
         private readonly Canvas _tileCanvas;
+
         private readonly Canvas _markerLayer;
+
         private Grid _companyMarker;
+
         private readonly TextBlock _statusText;
 
         private readonly string _tileCacheRoot;
+
         private readonly DispatcherTimer _renderDebounceTimer;
         private CancellationTokenSource _renderCancellation =
             new CancellationTokenSource();
 
         private double _centerLatitude;
+
         private double _centerLongitude;
+
         private int _zoom;
 
         private bool _isDragging;
+
         private bool _hasDragged;
+
         private Point _dragStartPoint;
+
         private double _dragStartCenterWorldX;
+
         private double _dragStartCenterWorldY;
+
         private long _renderVersion;
+
         private bool _isInitialRenderCompleted;
 
         // OSM Tile 실패 로그가 Tile 개수만큼 반복되지 않도록

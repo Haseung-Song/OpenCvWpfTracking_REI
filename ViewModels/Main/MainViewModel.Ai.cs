@@ -30,13 +30,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly Dictionary<int, bool> _pendingAiUiUpdateHasDetection =
             new Dictionary<int, bool>();
         private bool _isAiUiDrainScheduled;
+
         private bool _isApplicationShutdownRequested;
+
         private int _coalescedAiUiUpdateCount;
+
         private bool _hasAppliedDefaultAiModelMapping;
+
         private const int AiDisplayHoldMilliseconds = 750;
+
         private DateTime _lastEoAiDisplayDetectionTime = DateTime.MinValue;
+
         private DateTime _lastIrAiDisplayDetectionTime = DateTime.MinValue;
+
         private bool _isEoAiDisplayHoldActive;
+
         private bool _isIrAiDisplayHoldActive;
 
         #region [AI Detector Communication]

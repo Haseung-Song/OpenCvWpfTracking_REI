@@ -15,11 +15,17 @@ namespace FireCandidateValidator
         private Mat _phaseWindow = new Mat();
         private Mat _temporalCandidateMask = new Mat();
         private int _referenceFrameAge;
+
         private int _continuousCandidateFrames;
+
         private int _lastRigidMotionSuppressedCount;
+
         private int _lastMovingSourceSuppressedCount;
+
         private int _lastContinuityHeldCount;
+
         private int _lastTrafficAggregateSuppressedCount;
+
         private int _lastVerifiedVisibleCount;
         private readonly List<SmokeCandidateTrack> _tracks =
             new List<SmokeCandidateTrack>();
@@ -1112,12 +1118,46 @@ namespace FireCandidateValidator
                 double trackRectangleAreaRatio =
                     track.Rectangle.Width * (double)track.Rectangle.Height /
                     Math.Max(1.0, frameWidth * (double)frameHeight);
+                int boundaryMargin =
+                    Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
+                bool touchesTopBoundary =
+                    track.Rectangle.Y <= boundaryMargin;
+                bool touchesLeftBoundary =
+                    track.Rectangle.X <= boundaryMargin;
+                bool touchesRightBoundary =
+                    track.Rectangle.Right >= frameWidth - boundaryMargin;
+                bool touchesSingleHorizontalBoundary =
+                    touchesLeftBoundary != touchesRightBoundary;
+                int fastConfirmationFrameCount =
+                    Math.Max(16, confirmationFrameCount - 6);
+                // 2026-09-23: 화면 좌우로 잘린 실제 대형 플룸은 나무 가림으로
+                // Track이 분리되어 기존 24프레임에 도달하기 전에 사라졌다.
+                // 면적뿐 아니라 동적 형상·변형·상승/확산 증거가 함께 누적된 경우만
+                // 강한 플룸으로 분류해 일반 후보보다 빠른 진입을 허용한다.
+                bool strongPlumeEvidence =
+                    !isInfrared &&
+                    trackRectangleAreaRatio >= 0.015 &&
+                    trackRectangleAreaRatio <= 0.45 &&
+                    track.SeenFrames >= fastConfirmationFrameCount &&
+                    track.DynamicSamples >= Math.Max(6, fastConfirmationFrameCount / 3) &&
+                    track.DeformationSamples >= Math.Max(3, fastConfirmationFrameCount / 8) &&
+                    track.UpwardSamples + track.ExpansionSamples >=
+                        Math.Max(4, fastConfirmationFrameCount / 5);
+                bool borderPlumeCandidate =
+                    strongPlumeEvidence &&
+                    !touchesTopBoundary &&
+                    touchesSingleHorizontalBoundary;
+                int largePlumeEvidenceFrameCount =
+                    strongPlumeEvidence
+                        ? fastConfirmationFrameCount
+                        : confirmationFrameCount;
                 bool largePlumeCandidate =
                     !isInfrared &&
                     trackRectangleAreaRatio >= 0.06 &&
-                    track.SeenFrames >= confirmationFrameCount &&
-                    track.DynamicSamples >= Math.Max(4, confirmationFrameCount / 3) &&
-                    track.DeformationSamples >= Math.Max(2, confirmationFrameCount / 8);
+                    trackRectangleAreaRatio <= 0.60 &&
+                    track.SeenFrames >= largePlumeEvidenceFrameCount &&
+                    track.DynamicSamples >= Math.Max(4, largePlumeEvidenceFrameCount / 3) &&
+                    track.DeformationSamples >= Math.Max(2, largePlumeEvidenceFrameCount / 8);
                 bool hyperDynamicBackground =
                     !isInfrared &&
                     track.SeenFrames >= Math.Max(90, confirmationFrameCount * 3) &&
@@ -1127,6 +1167,7 @@ namespace FireCandidateValidator
                 bool weakBottomBoundary =
                     !isInfrared &&
                     !largePlumeCandidate &&
+                    !borderPlumeCandidate &&
                     TouchesBottomBoundary(track.Rectangle, frameWidth, frameHeight) &&
                     (track.UpwardSamples < Math.Max(2, track.SeenFrames * 0.10) ||
                      track.UpwardSamples + track.ExpansionSamples <
@@ -1149,6 +1190,7 @@ namespace FireCandidateValidator
                     track.DeformationSamples < Math.Max(4, track.SeenFrames / 5);
                 bool touchesFrameBoundary =
                     !largePlumeCandidate &&
+                    !borderPlumeCandidate &&
                     TouchesFrameBoundary(track.Rectangle, frameWidth, frameHeight);
                 bool maturePlumeEvidence =
                     !isInfrared &&
@@ -1170,7 +1212,8 @@ namespace FireCandidateValidator
                     track.Rectangle.Width /
                         (double)Math.Max(1, track.Rectangle.Height) <= 0.16;
                 bool directionAccepted =
-                    (baseDirectionAccepted || accumulatedDirectionAccepted || maturePlumeEvidence) &&
+                    (baseDirectionAccepted || accumulatedDirectionAccepted ||
+                     maturePlumeEvidence || strongPlumeEvidence) &&
                     !heatShimmerOscillation;
                 int requiredDynamicSamples = Math.Max(
                     4,
@@ -1190,6 +1233,7 @@ namespace FireCandidateValidator
                     requiredPlumeSamples;
                 bool sourceStabilityAccepted =
                     isInfrared ||
+                    borderPlumeCandidate ||
                     maturePlumeEvidence ||
                     HasStableSmokeSource(
                         track,
@@ -1212,6 +1256,7 @@ namespace FireCandidateValidator
                 bool movingSmokeSource =
                     !isInfrared &&
                     !maturePlumeEvidence &&
+                    !borderPlumeCandidate &&
                     IsMovingSmokeSourceTrack(
                         track,
                         confirmationFrameCount,
@@ -1227,7 +1272,10 @@ namespace FireCandidateValidator
 
                 bool validationAccepted =
                     track.MissingFrames <= Math.Max(12, confirmationFrameCount / 3) &&
-                    track.SeenFrames >= confirmationFrameCount &&
+                    track.SeenFrames >=
+                        (strongPlumeEvidence
+                            ? fastConfirmationFrameCount
+                            : confirmationFrameCount) &&
                     !touchesFrameBoundary &&
                     !weakBottomBoundary &&
                     !hyperDynamicBackground &&
@@ -1252,12 +1300,17 @@ namespace FireCandidateValidator
                     track.ConsecutiveAcceptedFrames = 0;
                 }
 
-                int entryEvidenceFrames = isInfrared ? 3 : 6;
+                int entryEvidenceFrames = isInfrared
+                    ? 3
+                    : strongPlumeEvidence ? 4 : 6;
                 bool currentlyAccepted =
                     validationAccepted &&
                     track.ConsecutiveAcceptedFrames >= entryEvidenceFrames;
 
-                int verifiedEvidenceFrames = maturePlumeEvidence ? 12 : 45;
+                int verifiedEvidenceFrames =
+                    maturePlumeEvidence || strongPlumeEvidence
+                        ? 12
+                        : 45;
                 if (currentlyAccepted &&
                     track.ConsecutiveAcceptedFrames >= verifiedEvidenceFrames)
                 {
@@ -1961,21 +2014,29 @@ namespace FireCandidateValidator
     /// </summary>
     internal sealed class SmokeDiagnosticCapture : IDisposable
     {
-        private const int MaximumAreaRejectRecords = 64;
+        private const int MaximumAreaRejectRecords = 8;
+
+        private readonly bool _captureStageImages;
         private readonly Dictionary<string, Mat> _stageMasks =
             new Dictionary<string, Mat>(StringComparer.OrdinalIgnoreCase);
         private readonly List<SmokeDiagnosticRecord> _records =
             new List<SmokeDiagnosticRecord>();
         private int _areaRejectRecordCount;
+
         private SmokeDiagnosticRecord _areaRejectSummary;
 
         internal IDictionary<string, Mat> StageMasks => _stageMasks;
 
         internal IList<SmokeDiagnosticRecord> Records => _records;
 
+        internal SmokeDiagnosticCapture(bool captureStageImages = true)
+        {
+            _captureStageImages = captureStageImages;
+        }
+
         internal void CaptureStage(string stage, Mat mask)
         {
-            if (mask == null || mask.Empty())
+            if (!_captureStageImages || mask == null || mask.Empty())
             {
                 return;
             }
@@ -1998,7 +2059,7 @@ namespace FireCandidateValidator
             string reason)
         {
             // 면적 탈락 외곽선은 한 프레임에 수백~수천 개가 생길 수 있다.
-            // 대표 64개와 누락 개수 요약만 남겨 장시간 실영상 진단 CSV가
+            // 대표 8개와 누락 개수 요약만 남겨 장시간 실영상 진단 CSV가
             // 수백 MB로 커지는 것을 막고, TRACK/구조 탈락 자료는 전부 보존한다.
             if (string.Equals(
                     reason,

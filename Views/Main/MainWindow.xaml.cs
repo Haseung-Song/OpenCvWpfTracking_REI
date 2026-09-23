@@ -37,8 +37,11 @@ namespace OpenCvWpfTracking
         private struct NativeRect
         {
             public int Left;
+
             public int Top;
+
             public int Right;
+
             public int Bottom;
         }
 
@@ -46,8 +49,11 @@ namespace OpenCvWpfTracking
         private struct NativeMonitorInfo
         {
             public int Size;
+
             public NativeRect Monitor;
+
             public NativeRect Work;
+
             public uint Flags;
         }
 
@@ -62,12 +68,19 @@ namespace OpenCvWpfTracking
             ref NativeMonitorInfo monitorInfo);
 
         private bool _isMainWindowFullScreen;
+
         private Rect _mainWindowRestoreBounds;
+
         private WindowState _mainWindowRestoreState;
+
         private WindowStyle _mainWindowRestoreStyle;
+
         private ResizeMode _mainWindowRestoreResizeMode;
+
         private bool _mainWindowRestoreTopmost;
+
         private double _mainWindowRestoreMaxWidth;
+
         private double _mainWindowRestoreMaxHeight;
 
         /// <summary>
@@ -121,11 +134,13 @@ namespace OpenCvWpfTracking
         private CompanyMapWindow _companyMapWindow;
 
         private bool _isWindowDragPending;
+
         private Point _windowDragStartPoint;
 
         // 2026-08-18: 분리 창을 열지 않아도 마우스가 올라간 EO/IR 화면을
         // 대상으로 W/S/A/D 줌·포커스 연속 제어를 수행한다.
         private Key? _activeHoverLensKey;
+
         private VideoPopoutCameraType? _activeHoverLensCameraType;
 
         #endregion

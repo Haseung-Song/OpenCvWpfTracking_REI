@@ -17,11 +17,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             TimeSpan.TicksPerSecond * 5;
 
         private long _lastLegacyEoLensStatusUtcTicks;
+
         private long _lastEoLensConflictWarningUtcTicks;
+
         private long _lastPanTiltMoveCommandUtcTicks;
+
         private long _lastPanTiltValueChangeUtcTicks;
+
         private long _lastPanTiltStallWarningUtcTicks;
+
         private int _lastWebAgentPanRaw = -1;
+
         private int _lastWebAgentTiltRaw = -1;
 
         private void InitializeWebAgentProtocolV18()

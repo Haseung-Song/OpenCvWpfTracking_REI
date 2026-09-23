@@ -14,10 +14,13 @@ namespace OpenCvWpfTracking.Services.Control
     internal sealed class HomePositionStabilityTracker
     {
         private readonly double _targetTolerance;
+
         private readonly double _stableTolerance;
+
         private readonly int _requiredStableSamples;
 
         private double _previousPan;
+
         private double _previousTilt;
 
         public int StableCount { get; private set; }

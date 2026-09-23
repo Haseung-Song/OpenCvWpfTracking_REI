@@ -24,14 +24,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public sealed class FireEventRecord : INotifyPropertyChanged
     {
         private string _status;
+
         private DateTime? _clearedTime;
+
         private int _displayIndex;
+
         private bool _isLiveAfterCsvLoad;
+
         private int _objectCount;
+
         private string _detectionType;
+
         private string _confidence;
+
         private int _pixelWidth;
+
         private int _pixelHeight;
+
         private double _pixelArea;
 
         internal FireEventRecord(
@@ -308,10 +317,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// AI/FIRE 이벤트 목록에 동일한 보존 정책을 적용한다.
         /// </summary>
         private const int MaximumEventHistoryCount = 22 * 100;
+
         private int _nextFireEventId = 1;
+
         private bool _isFireCsvHistoryLoaded;
+
         private int _activeFireCount;
+
         private DateTime? _lastFireDetectedTime;
+
         private long _nextVisionTrackId = 1;
         private readonly List<VisionBBoxEventTrack> _activeVisionBBoxEvents =
             new List<VisionBBoxEventTrack>();

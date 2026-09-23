@@ -33,8 +33,11 @@ namespace OpenCvWpfTracking.Services.Communication
             12;
 
         private const byte VariableFunctionMinimum = 0x23;
+
         private const byte VariableFunctionMaximum = 0x2A;
+
         private const int VariableHeaderSize = 4;
+
         private const int MaximumPayloadLength = 4096;
 
         #endregion

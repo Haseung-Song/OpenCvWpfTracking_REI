@@ -13,6 +13,7 @@ namespace OpenCvWpfTracking
     public sealed class CompanyMapWindow : Window
     {
         private readonly OpenStreetMapControl _mapControl;
+
         private readonly Border _loadingOverlay;
 
         public CompanyMapWindow(

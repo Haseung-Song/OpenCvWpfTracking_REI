@@ -17,16 +17,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
-        private const int StatusUiCoalesceMilliseconds = 75;
+        // 2026-09-23 TEST A: 수신/내부 상태/도착 판정은 즉시 처리하고,
+        // WPF 표시용 PropertyChanged만 최대 10Hz로 합쳐 영상 Render와 분리한다.
+        private const int StatusUiCoalesceMilliseconds = 100;
+
         private int _eoStatusNotificationPending;
+
         private int _eoPanNotificationDirty;
+
         private int _eoTiltNotificationDirty;
+
         private int _eoZoomNotificationDirty;
+
         private int _eoFocusNotificationDirty;
+
         private int _eoPowerNotificationDirty;
+
         private int _irStatusNotificationPending;
+
         // 2026-09-16: EO/IR 주소 검증과 연결을 채널별로 독립 처리한다.
         private bool _isEoRtspAddressValid;
+
         private bool _isIrRtspAddressValid;
 
         #region [LA Communication]
@@ -1199,8 +1210,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (notifyPower) OnPropertyChanged(nameof(CurrentControlPowerText));
             }
 
-            // 2026-09-18: 장비 상태 수신값은 즉시 내부 필드에 반영하되, 다수의
-            // Text Binding 알림은 75ms 단위 최신값으로 합쳐 영상 Render와의 경쟁을 줄인다.
+            // 2026-09-23 TEST A: 장비 상태 수신값은 즉시 내부 필드에 반영하되,
+            // Text Binding 알림만 100ms 단위 최신값으로 합쳐 영상 Render와 분리한다.
             if (Interlocked.CompareExchange(ref _eoStatusNotificationPending, 1, 0) != 0) return;
             _ = Task.Run(async () =>
             {

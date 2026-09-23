@@ -11,25 +11,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public partial class MainViewModel
     {
         private bool _isPanoramaCaptureRunning;
+
         private bool _isPanoramaProcessingRunning;
+
         private bool _isPanoramaCancellationRequested;
+
         private bool _isPanoramaCancellationCompleted;
+
         private bool _isPanoramaCompleted;
         private readonly object _panoramaSourceFrameSync = new object();
         private BitmapSource _latestRawEoPanoramaFrame;
+
         // 2026-08-31: 파노라마 PTZ 이동/잔진동 구간은 탐지 기준 영상으로 사용하지 않는다.
         private int _panoramaCameraMotionActive;
+
         private long _panoramaDetectionResumeUtcTicks;
 
         private const double PanoramaCaptureStepDegrees = 10.0;
+
         private const int PanoramaCaptureFrameCount = 36;
+
         // 2026-09-10: 실장비가 목표각 주변 ±0.2° 이상에서 정착하는 경우에도
         // 허위 timeout이 발생하지 않도록 한다. 10° 촬영 간격 대비 0.5°는
         // 행/열 정합 순서를 훼손하지 않는 충분히 작은 허용 범위다.
         private const double PanoramaPositionTolerance = 0.5;
+
         private const int PanoramaPanStableSampleCount = 3;
+
         private const int PanoramaCapturePositionSpeed = 15;
+
         private const int PanoramaMaximumEoZoomPosition = 100;
+
         private const int PanoramaDetectionSettleMs = 400;
 
         private static readonly IList<string> PanoramaCaptureRangeOptionItems =

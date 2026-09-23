@@ -22,11 +22,17 @@ namespace OpenCvWpfTracking
     public partial class EventAlertControl : UserControl
     {
         private EventPageController _aiPager;
+
         private EventPageController _firePager;
+
         private MainViewModel _subscribedViewModel;
+
         private DispatcherOperation _pendingEventTabSelection;
+
         private int _pendingEventTabIndex = -1;
+
         private bool _hadActiveAiEvent;
+
         private bool _hadActiveFireEvent;
 
         public EventAlertControl()
@@ -388,18 +394,29 @@ namespace OpenCvWpfTracking
              * 전체 페이지 수가 1/15와 1/13 사이에서 바뀌지 않도록 고정한다.
              */
             private const int FixedPageSize = 22;
+
             private readonly DataGrid _grid;
+
             private readonly TextBlock _totalText;
+
             private readonly TextBlock _selectedText;
+
             private readonly TextBlock _pageText;
+
             private readonly RepeatButton _previousButton;
+
             private readonly RepeatButton _nextButton;
+
             private readonly IList _source;
+
             private readonly ICollectionView _view;
+
             private readonly DispatcherTimer _refreshTimer;
             private readonly List<object> _orderedItems = new List<object>();
             private int _pageIndex;
+
             private int _pageSize = FixedPageSize;
+
             private double _lastAvailableHeight = -1.0;
             private EventRecordComparer _activeComparer =
                 new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
@@ -693,6 +710,7 @@ namespace OpenCvWpfTracking
             private sealed class EventRecordComparer : IComparer, IComparer<object>
             {
                 private readonly string _sortMemberPath;
+
                 private readonly int _directionFactor;
 
                 internal EventRecordComparer(

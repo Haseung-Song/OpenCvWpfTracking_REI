@@ -24,6 +24,7 @@ namespace OpenCvWpfTracking.Services.Video
         // Legacy Panorama_View.cpp에서 사용하던 카메라 각도 개념.
         // 실제 영상을 다시 투영하지 않고 검증/정렬 prior로만 사용한다.
         private const double LegacyPanAovDegrees = 26.0;
+
         private const double LegacyVerticalAovDegrees = 42.5;
 
         /// <summary>

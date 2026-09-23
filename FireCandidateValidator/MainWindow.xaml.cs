@@ -21,19 +21,29 @@ namespace FireCandidateValidator
     public partial class MainWindow : System.Windows.Window
     {
         private readonly FireCandidateAnalyzer _analyzer;
+
         private readonly SmokeCandidateAnalyzer _smokeAnalyzer;
+
         private readonly DispatcherTimer _videoTimer;
 
         private VideoCapture _videoCapture;
+
         private Mat _currentSource;
+
         private Mat _currentRendered;
+
         private bool _isVideoMode;
+
         private bool _loadedVideo;
+
         private VideoWriter _videoWriter;
+
         // 2026-08-14: 0=BLACK HOT, 1=WHITE HOT, 2=RAINBOW. 장비와 무관한 화면 표시 상태다.
         // 2026-08-14: Ten display palettes are cycled independently of equipment.
         private const int DisplayPaletteCount = 10;
+
         private int _displayPaletteIndex;
+
         // 2026-08-14: 1=전체 단일 BBox, 2=화염별 분리 BBox.
         private int _fireBoxGroupingMode = 2;
         private readonly List<StableCandidateTrack> _stableCandidateTracks =
@@ -43,13 +53,20 @@ namespace FireCandidateValidator
             new Dictionary<string, List<TestVisionScoreTrack>>(StringComparer.OrdinalIgnoreCase);
         // 2026-08-27: FIRE와 SMOKE 상태 전환을 서로 독립적으로 메인 Viewer에 전달한다.
         private bool _lastPublishedFireState;
+
         private bool _lastPublishedSmokeState;
+
         // 2026-09-03: TEST 전용 진단 출력. 기본 OFF이며 Viewer 탐지 로직에는 관여하지 않는다.
         private StreamWriter _smokeDiagnosticWriter;
+
         private string _smokeDiagnosticDirectory;
+
         private int _smokeDiagnosticFrameIndex;
+
         private StreamWriter _fireDiagnosticWriter;
+
         private string _fireDiagnosticDirectory;
+
         private int _fireDiagnosticFrameIndex;
 
         /// <summary>

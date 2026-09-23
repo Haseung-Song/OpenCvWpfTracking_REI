@@ -4,13 +4,19 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
     public sealed class WebAgentThermalPaletteService
     {
         private const byte IrTarget = 0x01;
+
         private const byte NucFeature = 0x04;
+
         private const byte PaletteFeature = 0x05;
+
         private const byte PolarityFeature = 0x06;
+
         private const int PaletteCount = 6;
+
         private readonly ControlCommandService _controlCommandService;
         private readonly object _sync = new object();
         private int _currentPalette = 1;
+
         private uint _supportedPaletteMask = 0x3F;
 
         public WebAgentThermalPaletteService(ControlCommandService controlCommandService)
