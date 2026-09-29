@@ -394,6 +394,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
+                bool useWebAgent =
+                    _selectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
+
+                if (useWebAgent)
+                {
+                    HomeZeroLockMessage =
+                        "SENDING PAN ZERO REQUEST TO WEB AGENT...";
+
+                    bool sent =
+                        _controlCommandService.RequestWebAgentPositionZero(0x01);
+
+                    ConsoleLogHelper.Command(
+                        "HOME / ZERO",
+                        "PAN ZERO WebAgent request " +
+                        "/ PACKET=FF 01 00 B3 01 00 B5 " +
+                        $"/ SENT={sent} / COMPLETION=ACK PENDING");
+
+                    HomeZeroStatusText =
+                        sent
+                            ? "PAN ZERO REQUEST SENT / WEB AGENT ACK PENDING"
+                            : "PAN ZERO REQUEST SEND FAILED";
+
+                    return;
+                }
+
                 HomeZeroStatusText =
                     "PAN ZERO / MOTOR STABILIZING...";
 
@@ -482,6 +507,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
+                bool useWebAgent =
+                    _selectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
+
+                if (useWebAgent)
+                {
+                    HomeZeroLockMessage =
+                        "SENDING TILT ZERO REQUEST TO WEB AGENT...";
+
+                    bool sent =
+                        _controlCommandService.RequestWebAgentPositionZero(0x02);
+
+                    ConsoleLogHelper.Command(
+                        "HOME / ZERO",
+                        "TILT ZERO WebAgent request " +
+                        "/ PACKET=FF 01 00 B3 02 00 B6 " +
+                        $"/ SENT={sent} / COMPLETION=ACK PENDING");
+
+                    HomeZeroStatusText =
+                        sent
+                            ? "TILT ZERO REQUEST SENT / WEB AGENT ACK PENDING"
+                            : "TILT ZERO REQUEST SEND FAILED";
+
+                    return;
+                }
+
                 HomeZeroStatusText =
                     "TILT ZERO / MOTOR STABILIZING...";
 
@@ -968,7 +1018,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     zoom.ToString(),
                     focus.ToString(),
                     GetCurrentIrZoomStandardPosition().ToString(),
-                    GetCurrentIrFocusStandardPosition().ToString());
+                    GetCurrentIrFocusStandardPosition().ToString(),
+                    positionSnapshot: CapturePositionSnapshot(
+                        "PRESET_L_SAVE",
+                        presetNumber));
 
             UpsertLaPresetPoint(
                 newPreset);
@@ -2489,7 +2542,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     CurrentEoZoomText,
                     CurrentEoFocusText,
                     GetCurrentIrZoomStandardPosition().ToString(),
-                    GetCurrentIrFocusStandardPosition().ToString());
+                    GetCurrentIrFocusStandardPosition().ToString(),
+                    positionSnapshot: CapturePositionSnapshot(
+                        "PRESET_W_SAVE",
+                        presetNumber));
 
             UpsertPresetPoint(
                 newPreset);

@@ -1,5 +1,6 @@
 using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.Main;
+using OpenCvWpfTracking.Models.Position;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -53,8 +54,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         tilt = NormalizeUnsignedWebAgentTilt(tilt, 0.0);
                     }
 
+                    PositionSnapshot.TryParseExportFields(
+                        p,
+                        10,
+                        out PositionSnapshot positionSnapshot);
+
                     PresetPointOption preset = new PresetPointOption(
-                        number, pan, tilt, p[6], p[7], p[8], p[9], p[3], order);
+                        number,
+                        pan,
+                        tilt,
+                        p[6],
+                        p[7],
+                        p[8],
+                        p[9],
+                        p[3],
+                        order,
+                        positionSnapshot);
                     if (p[0] == "L")
                     {
                         LaPresetPoints.Add(preset);
@@ -98,7 +113,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string temporaryPath = PresetStoragePath + ".tmp";
                 List<string> lines = new List<string>
                 {
-                    "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS",
+                    "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" +
+                    "POSITION_CAPTURED_AT\tPOSITION_SOURCE\tPOSITION_PRESET_ID\tPOSITION_PAN\tPOSITION_TILT\tPOSITION_EO_ZOOM\tPOSITION_EO_FOCUS\tPOSITION_IR_ZOOM\tPOSITION_IR_FOCUS\t" +
+                    "POSITION_LATITUDE\tPOSITION_LONGITUDE\tPOSITION_ALTITUDE\tPOSITION_ROLL\tPOSITION_PITCH\tPOSITION_YAW\t" +
+                    "POSITION_PTZ_STATUS\tPOSITION_EO_LENS_STATUS\tPOSITION_IR_LENS_STATUS\tPOSITION_GPS_STATUS\tPOSITION_IMU_STATUS",
                     string.Join("\t", new[] { "SETTINGS", "0", "0", _presetScanOrderMode.ToString(), _laPresetScanSpeed.ToString(), _laPresetScanDelay.ToString(), _presetScanSpeed.ToString(), _presetScanDelay.ToString(), "-", "-" })
                 };
                 AppendPresetStorageLines(lines, "L", LaPresetPoints);
@@ -130,7 +148,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 string safeName = (preset.Name ?? $"P{preset.Number:00}")
                     .Replace("\t", " ").Replace("\r", " ").Replace("\n", " ");
-                lines.Add(string.Join("\t", new[]
+                List<string> fields = new List<string>(new[]
                 {
                     type,
                     preset.SavedOrder.ToString(CultureInfo.InvariantCulture),
@@ -142,9 +160,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     preset.EoFocusText,
                     preset.IrZoomText,
                     preset.IrFocusText
-                }));
+                });
+
+                string[] positionFields = preset.PositionSnapshot?.ToExportFields() ??
+                                          Enumerable.Repeat(string.Empty, PositionSnapshot.ExportFieldCount).ToArray();
+                fields.AddRange(positionFields.Select(SanitizePresetStorageField));
+                lines.Add(string.Join("\t", fields));
             }
 
+        }
+
+        private static string SanitizePresetStorageField(string value)
+        {
+            return (value ?? string.Empty)
+                .Replace("\t", " ")
+                .Replace("\r", " ")
+                .Replace("\n", " ");
         }
 
         private void PreparePresetForUpsert(

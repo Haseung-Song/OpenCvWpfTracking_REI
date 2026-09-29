@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.AI;
+using OpenCvWpfTracking.Models.Position;
 using OpenCvWpfTracking.Services.Video;
 using System;
 using System.Collections.Generic;
@@ -55,7 +56,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int pixelHeight,
             double pixelArea,
             string detectionSource,
-            string status)
+            string status,
+            PositionSnapshot firstPositionSnapshot = null)
         {
             EventId = eventId;
             DetectedTime = detectedTime;
@@ -75,6 +77,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ? "TEST"
                 : detectionSource;
             _status = status;
+            FirstPositionSnapshot = firstPositionSnapshot;
         }
 
         public int EventId { get; }
@@ -139,6 +142,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             PixelArea.ToString("F0", CultureInfo.InvariantCulture) + " px²";
 
         public string DetectionSource { get; }
+
+        /// <summary>
+        /// 이벤트 최초 생성 순간의 위치 상태. ACTIVE 갱신과 카메라 이동으로 변경하지 않는다.
+        /// </summary>
+        public PositionSnapshot FirstPositionSnapshot { get; }
 
         public string Status
         {
@@ -660,7 +668,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     visionScore.ToString("F1", CultureInfo.InvariantCulture) + "%",
                     1, candidate.Width, candidate.Height,
                     candidate.Width * (double)candidate.Height,
-                    detectionSource, "ACTIVE");
+                    detectionSource, "ACTIVE",
+                    CapturePositionSnapshot(
+                        "VISION_" + detectionType + "_EVENT"));
                 if (_isFireCsvHistoryLoaded)
                 {
                     record.MarkLiveAfterCsvLoad();
@@ -978,29 +988,35 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private static string GetFireEventCsvHeader()
         {
-            return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,VisionScore,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status";
+            return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,VisionScore,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status," +
+                   "PositionCapturedAt,PositionSource,PositionPresetId,PositionPan,PositionTilt,PositionEoZoom,PositionEoFocus,PositionIrZoom,PositionIrFocus," +
+                   "PositionLatitude,PositionLongitude,PositionAltitude,PositionRoll,PositionPitch,PositionYaw," +
+                   "PositionPtzStatus,PositionEoLensStatus,PositionIrLensStatus,PositionGpsStatus,PositionImuStatus";
         }
 
         private static string ToFireEventCsvLine(
             FireEventRecord fireEvent)
         {
-            return string.Join(
-                ",",
-                new[]
-                {
-                    fireEvent.EventId.ToString(CultureInfo.InvariantCulture),
-                    EscapeCsv(ToExcelTextCell(fireEvent.DetectedTimeText)),
-                    EscapeCsv(ToExcelTextCell(fireEvent.ClearedTimeText)),
-                    EscapeCsv(fireEvent.Camera),
-                    EscapeCsv(fireEvent.DetectionType),
-                    EscapeCsv(fireEvent.Confidence),
-                    fireEvent.ObjectCount.ToString(CultureInfo.InvariantCulture),
-                    fireEvent.PixelWidth.ToString(CultureInfo.InvariantCulture),
-                    fireEvent.PixelHeight.ToString(CultureInfo.InvariantCulture),
-                    fireEvent.PixelArea.ToString("F0", CultureInfo.InvariantCulture),
-                    EscapeCsv(fireEvent.DetectionSource),
-                    EscapeCsv(fireEvent.Status)
-                });
+            List<string> fields = new List<string>
+            {
+                fireEvent.EventId.ToString(CultureInfo.InvariantCulture),
+                EscapeCsv(ToExcelTextCell(fireEvent.DetectedTimeText)),
+                EscapeCsv(ToExcelTextCell(fireEvent.ClearedTimeText)),
+                EscapeCsv(fireEvent.Camera),
+                EscapeCsv(fireEvent.DetectionType),
+                EscapeCsv(fireEvent.Confidence),
+                fireEvent.ObjectCount.ToString(CultureInfo.InvariantCulture),
+                fireEvent.PixelWidth.ToString(CultureInfo.InvariantCulture),
+                fireEvent.PixelHeight.ToString(CultureInfo.InvariantCulture),
+                fireEvent.PixelArea.ToString("F0", CultureInfo.InvariantCulture),
+                EscapeCsv(fireEvent.DetectionSource),
+                EscapeCsv(fireEvent.Status)
+            };
+
+            string[] positionFields = fireEvent.FirstPositionSnapshot?.ToExportFields() ??
+                                      Enumerable.Repeat(string.Empty, PositionSnapshot.ExportFieldCount).ToArray();
+            fields.AddRange(positionFields.Select(EscapeCsv));
+            return string.Join(",", fields);
         }
 
         private static IList<FireEventRecord> ReadFireEventCsv(
@@ -1053,6 +1069,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     CultureInfo.InvariantCulture,
                     out double pixelArea);
 
+                PositionSnapshot.TryParseExportFields(
+                    fields,
+                    12,
+                    out PositionSnapshot firstPositionSnapshot);
+
                 result.Add(
                     new FireEventRecord(
                         eventId,
@@ -1066,7 +1087,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         pixelHeight,
                         pixelArea,
                         fields[10],
-                        fields[11]));
+                        fields[11],
+                        firstPositionSnapshot));
             }
 
             return result;

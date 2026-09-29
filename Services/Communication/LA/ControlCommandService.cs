@@ -90,6 +90,31 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool MoveHomePosition(byte axis) => SendCommand(0x00, 0xB1, axis, 0x00);
 
         /// <summary>
+        /// WebAgent에 현재 Encoder 위치를 0으로 재정의하도록 요청한다.
+        ///
+        /// Cmd2 0xB3은 2026-09-29 제안 규격이며 WebAgent 구현 확정 전까지
+        /// 송신 성공은 TCP 전달 성공만 의미한다. 실제 장비 ZERO 완료 여부는
+        /// 향후 WebAgent 성공/실패 응답 규격으로 별도 판정해야 한다.
+        /// </summary>
+        /// <param name="axis">0x01: PAN, 0x02: TILT</param>
+        public bool RequestWebAgentPositionZero(byte axis)
+        {
+            if (axis != 0x01 && axis != 0x02)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(axis),
+                    axis,
+                    "WebAgent ZERO axis must be 0x01 (PAN) or 0x02 (TILT).");
+            }
+
+            return SendCommand(
+                0x00,
+                0xB3,
+                axis,
+                0x00);
+        }
+
+        /// <summary>
         /// [CheckSum] 계산 함수
         /// 지정 범위의 [byte] 합산값 반환
         /// </summary>

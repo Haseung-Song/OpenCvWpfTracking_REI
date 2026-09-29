@@ -106,6 +106,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
+                OnPropertyChanged(nameof(PanTiltZeroRouteText));
                 ApplyControlAgentProfile(value);
             }
 

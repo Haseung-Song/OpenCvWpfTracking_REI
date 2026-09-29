@@ -64,24 +64,50 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private static void ParseWebAgentGps(byte[] p)
+        private void ParseWebAgentGps(byte[] p)
         {
             if (p.Length < 20) return;
+
+            double latitude = BitConverter.ToInt32(p, 0) / 10000000.0;
+            double longitude = BitConverter.ToInt32(p, 4) / 10000000.0;
+            double altitude = BitConverter.ToInt32(p, 8) / 1000.0;
+            byte satelliteCount = p[18];
+            byte fixStatus = p[19];
+            bool valid =
+                fixStatus != 0 &&
+                latitude >= -90.0 && latitude <= 90.0 &&
+                longitude >= -180.0 && longitude <= 180.0;
+
+            UpdatePositionGps(latitude, longitude, altitude, valid);
+
             ConsoleLogHelper.State("WEB AGENT GPS", string.Format(
                 "LAT={0:F7} / LON={1:F7} / ALT={2:F3}m / SAT={3} / FIX={4}",
-                BitConverter.ToInt32(p, 0) / 10000000.0,
-                BitConverter.ToInt32(p, 4) / 10000000.0,
-                BitConverter.ToInt32(p, 8) / 1000.0, p[18], p[19]));
+                latitude,
+                longitude,
+                altitude,
+                satelliteCount,
+                fixStatus));
         }
 
-        private static void ParseWebAgentImu(byte[] p)
+        private void ParseWebAgentImu(byte[] p)
         {
             if (p.Length < 12) return;
+
+            double roll = BitConverter.ToInt32(p, 0) / 10000.0;
+            double pitch = BitConverter.ToInt32(p, 4) / 10000.0;
+            double yaw = BitConverter.ToInt32(p, 8) / 10000.0;
+            bool valid =
+                Math.Abs(roll) <= 360.0 &&
+                Math.Abs(pitch) <= 360.0 &&
+                Math.Abs(yaw) <= 360.0;
+
+            UpdatePositionImu(roll, pitch, yaw, valid);
+
             ConsoleLogHelper.State("WEB AGENT IMU", string.Format(
                 "ROLL={0:F4} / PITCH={1:F4} / YAW={2:F4}",
-                BitConverter.ToInt32(p, 0) / 10000.0,
-                BitConverter.ToInt32(p, 4) / 10000.0,
-                BitConverter.ToInt32(p, 8) / 10000.0));
+                roll,
+                pitch,
+                yaw));
         }
 
         private void ParseWebAgentCapability(byte[] p)
@@ -136,6 +162,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     if (zoomValid) _currentEoZoom = (short)zoom;
                     if (focusValid) _currentEoFocus = (short)focus;
+                    if (zoomValid && focusValid)
+                    {
+                        UpdatePositionEoLens(_currentEoZoom, _currentEoFocus);
+                    }
                     NotifyEoCurrentStatusChanged();
                 }
                 else if ((zoomValid && zoom != (ushort)_currentEoZoom) ||
@@ -148,6 +178,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (zoomValid) _currentIrZoom = zoom;
                 if (focusValid) _currentIrFocus = focus;
+                if (zoomValid && focusValid)
+                {
+                    UpdatePositionIrLens(_currentIrZoom, _currentIrFocus);
+                }
                 Interlocked.Increment(ref _irLensStatusVersion);
                 NotifyIrCurrentStatusChanged();
             }

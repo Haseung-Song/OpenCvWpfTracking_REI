@@ -51,6 +51,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string statusText,
             string statusColor)
         {
+            SetPositionConnectionState(
+                string.Equals(
+                    statusText,
+                    "Connected",
+                    StringComparison.OrdinalIgnoreCase));
+
             /*
              * 자동 재연결 Loop는 백그라운드 Task에서 실행되므로
              * UI Dispatcher를 통해 바인딩 값을 변경한다.
@@ -994,6 +1000,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _currentEoFocus =
                 focusRaw;
 
+            UpdatePositionPtzAndEoLens(
+                _currentPan,
+                _currentTilt,
+                _currentEoZoom,
+                _currentEoFocus);
+
             Interlocked.Increment(
                 ref _eoLensStatusVersion);
 
@@ -1428,6 +1440,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _currentIrFocus =
                 irFocusPosition;
+
+            UpdatePositionIrLens(
+                _currentIrZoom,
+                _currentIrFocus);
 
             Interlocked.Increment(
                 ref _irLensStatusVersion);

@@ -1,3 +1,5 @@
+using OpenCvWpfTracking.Models.Position;
+
 namespace OpenCvWpfTracking.Models.Main
 {
     /// <summary>
@@ -159,6 +161,12 @@ namespace OpenCvWpfTracking.Models.Main
         public string IrFocusText { get; }
 
         /// <summary>
+        /// 프리셋 등록 명령이 성공한 순간의 공통 위치 스냅샷.
+        /// 기존 저장 파일에서 불러온 항목은 null일 수 있다.
+        /// </summary>
+        public PositionSnapshot PositionSnapshot { get; }
+
+        /// <summary>
         /// ComboBox 한 줄 표시 문자열
         /// </summary>
         public string DisplayText =>
@@ -173,7 +181,8 @@ namespace OpenCvWpfTracking.Models.Main
             $"EO ZOOM  : {EoZoomText} / 1000\n" +
             $"EO FOCUS : {EoFocusText} / 1000\n" +
             $"IR ZOOM  : {IrZoomText} / 1000\n" +
-            $"IR FOCUS : {IrFocusText} / 1000";
+            $"IR FOCUS : {IrFocusText} / 1000\n" +
+            $"POSITION : {(PositionSnapshot == null ? "LEGACY / N/A" : PositionSnapshot.PtzStatus.ToString().ToUpperInvariant())}";
 
         /// <summary>
         /// PresetPointOption 동작 수행 함수.
@@ -187,7 +196,8 @@ namespace OpenCvWpfTracking.Models.Main
             string irZoomText,
             string irFocusText,
             string name = null,
-            int savedOrder = 0)
+            int savedOrder = 0,
+            PositionSnapshot positionSnapshot = null)
         {
             Number =
                 number;
@@ -216,6 +226,8 @@ namespace OpenCvWpfTracking.Models.Main
                     : name;
 
             SavedOrder = savedOrder;
+
+            PositionSnapshot = positionSnapshot;
         }
 
     }

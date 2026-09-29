@@ -701,8 +701,11 @@ namespace OpenCvWpfTracking
         {
             _isWindowDragPending = false;
 
-            // 2026-08-27: Button의 MouseUp이 다른 자식 요소에서 처리되거나
-            // 포인터가 버튼 밖에서 해제되어도 연속 Zoom / Focus STOP을 보장한다.
+            // 2026-09-28: 조그 버튼 내부뿐 아니라 창의 어느 위치에서 버튼을
+            // 해제하더라도 활성 Pan/Tilt 축별 STOP을 먼저 보장한다.
+            // Pan/Tilt가 활성 상태가 아니면 내부에서 즉시 반환하므로
+            // Zoom / Focus 해제 경로와 함께 호출해도 중복 패킷은 발생하지 않는다.
+            vm?.StopPanTiltContinuousMove();
             vm?.StopContinuousMove();
         }
 
@@ -2282,8 +2285,11 @@ namespace OpenCvWpfTracking
             object sender,
             MouseEventArgs e)
         {
-            if (IsPanTiltMoveSender(sender)) vm?.StopPanTiltContinuousMove();
-            else vm?.StopContinuousMove();
+            // 버튼 이름이나 Visual Tree 판별에 의존하지 않는다.
+            // Pan/Tilt 조그가 활성 상태면 축별 STOP을 반드시 송신하고,
+            // 이어서 Zoom / Focus 등 다른 연속 제어의 STOP도 처리한다.
+            vm?.StopPanTiltContinuousMove();
+            vm?.StopContinuousMove();
         }
 
         /// <summary>
@@ -2302,15 +2308,8 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            if (IsPanTiltMoveSender(sender)) vm?.StopPanTiltContinuousMove();
-            else vm?.StopContinuousMove();
-        }
-
-        private static bool IsPanTiltMoveSender(object sender)
-        {
-            string name = (sender as FrameworkElement)?.Name ?? string.Empty;
-            return name.IndexOf("Pan", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                   name.IndexOf("Tilt", StringComparison.OrdinalIgnoreCase) >= 0;
+            vm?.StopPanTiltContinuousMove();
+            vm?.StopContinuousMove();
         }
 
         /// <summary>

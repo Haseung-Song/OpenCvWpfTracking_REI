@@ -230,7 +230,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     (box.NormalizedConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
                     1, Math.Max(0, box.Width), Math.Max(0, box.Height),
                     Math.Max(0, box.Width) * (double)Math.Max(0, box.Height),
-                    "AI AGENT", "ACTIVE");
+                    "AI AGENT", "ACTIVE",
+                    CapturePositionSnapshot("AI_EVENT"));
                 if (_isAiCsvHistoryLoaded)
                 {
                     aiEvent.MarkLiveAfterCsvLoad();
@@ -383,7 +384,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         Math.Max(0, height),
                         Math.Max(0, area),
                         string.IsNullOrWhiteSpace(sourceName) ? "TEST PROGRAM" : sourceName,
-                        "ACTIVE");
+                        "ACTIVE",
+                        CapturePositionSnapshot(
+                            "TEST_" + detectionType + "_EVENT"));
 
                 // 2026-08-26: FIRE CSV 복원 이후 테스트 프로그램에서 추가된 신규 행도 청록색으로 구분한다.
                 if (_isFireCsvHistoryLoaded)

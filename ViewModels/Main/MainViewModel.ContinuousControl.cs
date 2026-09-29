@@ -2229,6 +2229,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ContinuousMoveType moveType =
                 _currentMoveType;
 
+            // 2026-09-28: WebAgent는 Pan/Tilt 조그 정지에 축별 0x4F를 사용한다.
+            // 중앙 STOP은 현재 UI 상태가 유실된 경우에도 두 축 정지를 모두
+            // 송신한 다음 기존 전체 STOP을 보내도록 하여 장비 정지를 보장한다.
+            bool positionStopResult = true;
+
+            if (_controlCommandService.UseUnsignedWebAgentPanCoordinates ||
+                _controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            {
+                positionStopResult = _controlCommandService
+                    .StopPanTiltPositionMove();
+
+                Interlocked.Increment(ref _panStopTxCount);
+                Interlocked.Increment(ref _tiltStopTxCount);
+            }
+
             if (moveType == ContinuousMoveType.EoZoom || moveType == ContinuousMoveType.IrZoom)
             {
                 Interlocked.Increment(ref _zoomStopTxCount);
@@ -2291,6 +2306,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command(
                 "PTZF GLOBAL STOP",
                 $"PACKET=FF 01 00 00 00 00 01 / TCP={tcpStopResult} / " +
+                $"POSITION_STOP_0x4F={positionStopResult} / " +
                 $"PREVIOUS_MOVE={moveType} / CTEC={ctecStopResult}");
         }
 

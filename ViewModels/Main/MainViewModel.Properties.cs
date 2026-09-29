@@ -459,11 +459,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsHomeZeroVisible => true;
 
-        // 2026-09-21: WebAgent 구현 요청용으로 두 버튼의 자리는 공통 표시한다.
-        // 실제 명령은 LA Agent에서만 활성화하고 WebAgent 모드에서는 비활성화한다.
+        // 2026-09-29: ZERO 버튼은 Agent 종류에 따라 송신 경로만 분리한다.
+        // LA Agent는 기존 MCB 유지보수 직접 시퀀스를 보존하고,
+        // WebAgent는 GUI-Agent 7바이트 ZERO 요청을 전송한다.
         public bool IsPanTiltZeroVisible => true;
 
-        public bool IsPanTiltZeroCommandEnabled => IsRooftopStatusSelected;
+        public bool IsPanTiltZeroCommandEnabled => true;
+
+        public string PanTiltZeroRouteText =>
+            _selectedControlAgentProfile?.AgentType == ControlAgentType.LaAgent
+                ? "LA AGENT : MCB DIRECT ZERO"
+                : "WEB AGENT : ZERO REQUEST (0xB3)";
 
         public string HomeControlHeaderText =>
             "HOME / ZERO";

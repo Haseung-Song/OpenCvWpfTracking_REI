@@ -3075,6 +3075,29 @@
                                                                            Foreground="White"/>
                                                             </Grid>
                                                         </Border>
+
+                                                        <!-- 위치 기반 기능 1차: 지도와 분리된 상태 유효성 및 최근 스냅샷 표시 -->
+                                                        <Border Background="#293138"
+                                                                BorderBrush="#607D8B"
+                                                                BorderThickness="1"
+                                                                CornerRadius="3"
+                                                                Padding="7,5"
+                                                                Margin="0,0,0,2">
+                                                            <StackPanel>
+                                                                <TextBlock Foreground="#8FD3FF"
+                                                                           FontSize="10"
+                                                                           FontWeight="Bold"
+                                                                           TextAlignment="Center"
+                                                                           Text="{Binding PositionStatusText, Mode=OneWay}"/>
+                                                                <TextBlock Foreground="#D0D7DE"
+                                                                           FontSize="9.5"
+                                                                           TextAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           ToolTip="{Binding LastPositionSnapshotText, Mode=OneWay}"
+                                                                           Text="{Binding LastPositionSnapshotText, Mode=OneWay}"
+                                                                           Margin="0,3,0,0"/>
+                                                            </StackPanel>
+                                                        </Border>
                                                     </StackPanel>
                                                 </ScrollViewer>
                                             </Border>
@@ -3437,32 +3460,22 @@
                                                                                 Height="26"
                                                                                 Margin="1"
                                                                                 IsEnabled="{Binding IsPanTiltZeroCommandEnabled}"
-                                                                                ToolTip="WebAgent PAN ZERO 외부 명령 구현 대기"
+                                                                                ToolTip="LA: MCB 직접 ZERO / WebAgent: 0xB3 PAN ZERO 요청"
                                                                                 Command="{Binding SetPanZeroCommand}"/>
                                                                         <Button Content="TILT ZERO"
                                                                                 Height="26"
                                                                                 Margin="1"
                                                                                 IsEnabled="{Binding IsPanTiltZeroCommandEnabled}"
-                                                                                ToolTip="WebAgent TILT ZERO 외부 명령 구현 대기"
+                                                                                ToolTip="LA: MCB 직접 ZERO / WebAgent: 0xB3 TILT ZERO 요청"
                                                                                 Command="{Binding SetTiltZeroCommand}"/>
                                                                     </UniformGrid>
 
-                                                                    <TextBlock Text="WEB AGENT ZERO COMMAND : IMPLEMENTATION PENDING"
+                                                                    <TextBlock Text="{Binding PanTiltZeroRouteText}"
                                                                                Foreground="#FFCC80"
                                                                                FontSize="9"
                                                                                FontWeight="Bold"
                                                                                TextAlignment="Center"
                                                                                Margin="0,3,0,0">
-                                                                        <TextBlock.Style>
-                                                                            <Style TargetType="TextBlock">
-                                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding IsRooftopStatusSelected}" Value="True">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </TextBlock.Style>
                                                                     </TextBlock>
 
                                                                     <TextBlock Text="{Binding HomeZeroStatusText}"
