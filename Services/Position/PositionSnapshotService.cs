@@ -14,6 +14,10 @@ namespace OpenCvWpfTracking.Services.Position
 
         private readonly TimeSpan _maximumTelemetryAge;
 
+
+
+
+
         public PositionSnapshotService(
             TimeSpan maximumPtzLensAge,
             TimeSpan maximumTelemetryAge)

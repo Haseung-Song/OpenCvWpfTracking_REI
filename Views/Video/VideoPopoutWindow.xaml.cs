@@ -45,6 +45,18 @@ namespace OpenCvWpfTracking
 
         private bool _isApplyingViewportAspectRatio;
 
+        private Rect _initialWindowBounds = Rect.Empty;
+
+        private Point _windowedLocation;
+
+        private bool _beginDragWhenLoaded;
+
+        /// <summary>
+        /// 2026-09-30: 메인 영상 안에서 마우스를 누른 위치.
+        /// 팝업이 열린 뒤에도 같은 영상 지점이 커서 아래에 오도록 사용한다.
+        /// </summary>
+        private Point _tearOffDragAnchor;
+
         /// <summary>
         /// 현재 분리 창에 표시되고,
         /// W / S / A / D 제어 대상으로 선택된 카메라.
@@ -64,6 +76,9 @@ namespace OpenCvWpfTracking
         /// 여러 번 송신되는 것을 방지하기 위해 한 개만 유지한다.
         /// </summary>
         private Key? _activeLensKey;
+
+
+
 
         #endregion
 
@@ -121,23 +136,147 @@ namespace OpenCvWpfTracking
         #region [Window Events]
 
         /// <summary>
+        /// 2026-09-29: 메인 EO/IR 영상의 현재 크기와 화면 위치를 분리 창의
+        /// 최초 Normal 크기로 사용한다. 별도 Decoder는 생성하지 않는다.
+        /// </summary>
+        public void ConfigureInitialPlacement(
+            Rect sourceScreenBounds,
+            Point dragAnchor,
+            bool beginDrag)
+        {
+            _initialWindowBounds = sourceScreenBounds;
+            _tearOffDragAnchor = dragAnchor;
+            _beginDragWhenLoaded = beginDrag;
+        }
+
+        /// <summary>
         /// Window_Loaded 이벤트 처리 함수.
         /// </summary>
         private void Window_Loaded(
             object sender,
             RoutedEventArgs e)
         {
-            // 2026-09-16: EO/IR 분리 영상은 작업영역이 아닌 모니터 전체를
-            // 사용하는 Borderless Full Screen으로 표시한다.
+            // 2026-09-29: 분리 창은 메인 EO/IR 영상과 같은 크기의 Normal 창으로
+            // 시작한다. 이후 창 내부 더블클릭으로 전체화면과 이 크기를 왕복한다.
             WindowStyle = WindowStyle.None;
-            ResizeMode = ResizeMode.NoResize;
-            WindowState = WindowState.Maximized;
-            Topmost = true;
+            ResizeMode = ResizeMode.CanResize;
+            WindowState = WindowState.Normal;
+            Topmost = false;
+
+            ApplyInitialWindowBounds();
+
+            _windowedLocation = new Point(Left, Top);
 
             ApplyViewportAspectRatio();
 
             Keyboard.Focus(
                 this);
+
+            if (_beginDragWhenLoaded)
+            {
+                _beginDragWhenLoaded = false;
+
+                Dispatcher.BeginInvoke(
+                    new Action(TryBeginDragMove),
+                    System.Windows.Threading.DispatcherPriority.Input);
+            }
+        }
+
+        public void BeginTearOffDrag(
+            Rect sourceScreenBounds,
+            Point dragAnchor)
+        {
+            _initialWindowBounds = sourceScreenBounds;
+            _tearOffDragAnchor = dragAnchor;
+
+            if (WindowState == WindowState.Maximized ||
+                WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+
+            ResizeMode = ResizeMode.CanResize;
+            Topmost = false;
+
+            ApplyInitialWindowBounds();
+            _windowedLocation = new Point(Left, Top);
+            Activate();
+            Focus();
+
+            Dispatcher.BeginInvoke(
+                new Action(TryBeginDragMove),
+                System.Windows.Threading.DispatcherPriority.Input);
+        }
+
+        private void ApplyInitialWindowBounds()
+        {
+            if (_initialWindowBounds.IsEmpty)
+            {
+                return;
+            }
+
+            Left = _initialWindowBounds.Left;
+            Top = _initialWindowBounds.Top;
+            Width = Math.Max(MinWidth, _initialWindowBounds.Width);
+            Height = Math.Max(MinHeight, _initialWindowBounds.Height);
+        }
+
+        private void TryBeginDragMove()
+        {
+            if (Mouse.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            try
+            {
+                AlignWindowWithCurrentPointer();
+                DragMove();
+
+                _windowedLocation = new Point(Left, Top);
+            }
+            catch (InvalidOperationException)
+            {
+                // MainWindow에서 분리 창으로 입력 소유권이 전환되는 짧은 구간에
+                // 버튼 상태가 먼저 해제되면 Normal 창만 유지한다.
+            }
+        }
+
+        /// <summary>
+        /// 2026-09-30: 메인 창에서 팝업으로 DragMove가 전환되는 순간에도
+        /// 사용자가 눌렀던 영상 지점과 현재 커서 위치를 일치시킨다.
+        /// </summary>
+        private void AlignWindowWithCurrentPointer()
+        {
+            Point pointerInWindow = Mouse.GetPosition(this);
+            Point pointerOnScreen = PointToScreen(pointerInWindow);
+            PresentationSource presentationSource =
+                PresentationSource.FromVisual(this);
+
+            if (presentationSource?.CompositionTarget != null)
+            {
+                pointerOnScreen = presentationSource.CompositionTarget
+                    .TransformFromDevice
+                    .Transform(pointerOnScreen);
+            }
+
+            double windowWidth =
+                ActualWidth > 0.0
+                    ? ActualWidth
+                    : Width;
+            double windowHeight =
+                ActualHeight > 0.0
+                    ? ActualHeight
+                    : Height;
+            double anchorX = Math.Max(
+                0.0,
+                Math.Min(windowWidth, _tearOffDragAnchor.X));
+            double anchorY = Math.Max(
+                0.0,
+                Math.Min(windowHeight, _tearOffDragAnchor.Y));
+
+            Left = pointerOnScreen.X - anchorX;
+            Top = pointerOnScreen.Y - anchorY;
         }
 
         /// <summary>
@@ -186,8 +325,16 @@ namespace OpenCvWpfTracking
                 WindowState = WindowState.Normal;
                 ResizeMode = ResizeMode.CanResize;
                 Topmost = false;
-                Width = Math.Max(MinWidth, Math.Min(1280.0, SystemParameters.WorkArea.Width * 0.8));
-                Height = Math.Max(MinHeight, Math.Min(720.0, SystemParameters.WorkArea.Height * 0.8));
+                Width = !_initialWindowBounds.IsEmpty
+                    ? Math.Max(MinWidth, _initialWindowBounds.Width)
+                    : Math.Max(
+                        MinWidth,
+                        Math.Min(1280.0, SystemParameters.WorkArea.Width * 0.8));
+                Height = !_initialWindowBounds.IsEmpty
+                    ? Math.Max(MinHeight, _initialWindowBounds.Height)
+                    : Math.Max(
+                        MinHeight,
+                        Math.Min(720.0, SystemParameters.WorkArea.Height * 0.8));
                 Left = screenPoint.X - (Width * horizontalRatio);
                 Top = screenPoint.Y - 8.0;
             }
@@ -195,6 +342,8 @@ namespace OpenCvWpfTracking
             try
             {
                 DragMove();
+
+                _windowedLocation = new Point(Left, Top);
             }
             catch (InvalidOperationException)
             {
@@ -209,16 +358,50 @@ namespace OpenCvWpfTracking
         {
             if (WindowState == WindowState.Maximized)
             {
-                WindowState = WindowState.Normal;
-                ResizeMode = ResizeMode.CanResize;
-                Topmost = false;
+                RestoreInitialWindowSize();
                 return;
             }
 
+            _windowedLocation = new Point(Left, Top);
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             WindowState = WindowState.Maximized;
             Topmost = true;
+        }
+
+        /// <summary>
+        /// 전체화면 해제 시 WPF RestoreBounds를 사용하지 않고, 메인 EO/IR에서
+        /// 처음 끌어낸 크기를 명시적으로 복원한다.
+        /// </summary>
+        private void RestoreInitialWindowSize()
+        {
+            WindowState = WindowState.Normal;
+            ResizeMode = ResizeMode.CanResize;
+            Topmost = false;
+
+            Dispatcher.BeginInvoke(
+                new Action(() =>
+                {
+                    if (_initialWindowBounds.IsEmpty)
+                    {
+                        return;
+                    }
+
+                    _isApplyingViewportAspectRatio = true;
+
+                    try
+                    {
+                        Left = _windowedLocation.X;
+                        Top = _windowedLocation.Y;
+                        Width = Math.Max(MinWidth, _initialWindowBounds.Width);
+                        Height = Math.Max(MinHeight, _initialWindowBounds.Height);
+                    }
+                    finally
+                    {
+                        _isApplyingViewportAspectRatio = false;
+                    }
+                }),
+                System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         /// <summary>

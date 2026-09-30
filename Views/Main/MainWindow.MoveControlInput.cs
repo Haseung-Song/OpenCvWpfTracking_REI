@@ -68,6 +68,9 @@ namespace OpenCvWpfTracking
         private const double MoveControlZoomRatioMaximumInput =
             90.0;
 
+
+
+
         #endregion
 
         #region [Move Control Preview Text Input]

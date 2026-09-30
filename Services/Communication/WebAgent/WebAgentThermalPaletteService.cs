@@ -14,10 +14,15 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         private const int PaletteCount = 6;
 
         private readonly ControlCommandService _controlCommandService;
+
         private readonly object _sync = new object();
+
         private int _currentPalette = 1;
 
         private uint _supportedPaletteMask = 0x3F;
+
+
+
 
         public WebAgentThermalPaletteService(ControlCommandService controlCommandService)
         {

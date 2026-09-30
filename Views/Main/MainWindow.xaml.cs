@@ -33,6 +33,9 @@ namespace OpenCvWpfTracking
         // 현재 창이 위치한 모니터 전체 영역(rcMonitor)을 사용한다.
         private const uint MonitorDefaultToNearest = 0x00000002;
 
+
+
+
         [StructLayout(LayoutKind.Sequential)]
         private struct NativeRect
         {
@@ -43,6 +46,9 @@ namespace OpenCvWpfTracking
             public int Right;
 
             public int Bottom;
+
+
+
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
@@ -55,6 +61,9 @@ namespace OpenCvWpfTracking
             public NativeRect Work;
 
             public uint Flags;
+
+
+
         }
 
         [DllImport("user32.dll")]
@@ -111,6 +120,22 @@ namespace OpenCvWpfTracking
         private VideoPopoutCameraType _primaryVideoType =
             VideoPopoutCameraType.Eo;
 
+        // 2026-09-29: 기존 더블클릭 분리 창 경로를 그대로 재사용하면서
+        // EO/IR 메인 영상의 의도적인 Drag도 분리 창 열기로 인식한다.
+        private bool _isVideoPopoutDragPending;
+
+        private Point _videoPopoutDragStartPoint;
+
+        private VideoPopoutCameraType _videoPopoutDragCameraType;
+
+        private Rect _videoPopoutDragSourceBounds;
+
+        /// <summary>
+        /// 2026-09-30: 영상 영역 안에서 마우스를 누른 위치.
+        /// 분리 창으로 입력을 넘길 때 동일한 지점을 커서 아래에 유지한다.
+        /// </summary>
+        private Point _videoPopoutDragAnchor;
+
         // TEST PROGRAM is a separate executable. Keep its process so it can
         // be stopped when the viewer closes.
         private Process _fireDetectorTestProgram;
@@ -142,6 +167,9 @@ namespace OpenCvWpfTracking
         private Key? _activeHoverLensKey;
 
         private VideoPopoutCameraType? _activeHoverLensCameraType;
+
+
+
 
         #endregion
 
@@ -383,16 +411,20 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            if (e.ClickCount != 2)
+            if (e.ClickCount == 1)
             {
+                BeginVideoPopoutDrag(
+                    VideoPopoutCameraType.Eo,
+                    sender as FrameworkElement,
+                    e);
+
                 return;
             }
 
-            ShowVideoPopoutWindow(
-                VideoPopoutCameraType.Eo);
-
-            e.Handled =
-                true;
+            // 2026-09-29: 메인 영상 더블클릭 분리 기능은 제거한다.
+            // 분리 창은 EO/IR 영상을 실제로 끌어낸 경우에만 생성한다.
+            _isVideoPopoutDragPending = false;
+            e.Handled = true;
         }
 
         /// <summary>
@@ -407,16 +439,91 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            if (e.ClickCount != 2)
+            if (e.ClickCount == 1)
+            {
+                BeginVideoPopoutDrag(
+                    VideoPopoutCameraType.Ir,
+                    sender as FrameworkElement,
+                    e);
+
+                return;
+            }
+
+            _isVideoPopoutDragPending = false;
+            e.Handled = true;
+        }
+
+        private void BeginVideoPopoutDrag(
+            VideoPopoutCameraType cameraType,
+            FrameworkElement sourceElement,
+            MouseButtonEventArgs e)
+        {
+            _isWindowDragPending = false;
+            _videoPopoutDragCameraType = cameraType;
+            _videoPopoutDragStartPoint = e.GetPosition(this);
+            _videoPopoutDragSourceBounds =
+                GetVideoSourceScreenBounds(sourceElement);
+            _videoPopoutDragAnchor =
+                GetVideoPopoutDragAnchor(sourceElement, e);
+            _isVideoPopoutDragPending = true;
+
+            // MainWindow의 DragMove가 뒤이어 시작되지 않도록 영상 Drag 입력을
+            // 영상 분리 기능에서 소비한다.
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// 2026-09-29: WPF 표준 Drag 거리 이상 이동했을 때만 분리 창을 연다.
+        /// 한 Drag당 한 번만 실행하며 기존 창이 있으면 생성 대신 복원·활성화한다.
+        /// </summary>
+        private void VideoBorder_PreviewMouseMove(
+            object sender,
+            MouseEventArgs e)
+        {
+            if (!_isVideoPopoutDragPending ||
+                e.LeftButton != MouseButtonState.Pressed)
             {
                 return;
             }
 
-            ShowVideoPopoutWindow(
-                VideoPopoutCameraType.Ir);
+            Point currentPoint = e.GetPosition(this);
+            double horizontalDistance = Math.Abs(
+                currentPoint.X - _videoPopoutDragStartPoint.X);
+            double verticalDistance = Math.Abs(
+                currentPoint.Y - _videoPopoutDragStartPoint.Y);
 
-            e.Handled =
-                true;
+            if (horizontalDistance < SystemParameters.MinimumHorizontalDragDistance &&
+                verticalDistance < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            _isVideoPopoutDragPending = false;
+
+            ShowVideoPopoutWindow(
+                _videoPopoutDragCameraType,
+                _videoPopoutDragSourceBounds,
+                _videoPopoutDragAnchor,
+                true);
+
+            Log.Information(
+                "[VIDEO POPOUT] Open by drag / CAMERA={CameraType} " +
+                "SOURCE={Width:0.0}x{Height:0.0} " +
+                "ANCHOR=({AnchorX:0.0},{AnchorY:0.0})",
+                _videoPopoutDragCameraType,
+                _videoPopoutDragSourceBounds.Width,
+                _videoPopoutDragSourceBounds.Height,
+                _videoPopoutDragAnchor.X,
+                _videoPopoutDragAnchor.Y);
+
+            e.Handled = true;
+        }
+
+        private void VideoBorder_PreviewMouseLeftButtonUp(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            _isVideoPopoutDragPending = false;
         }
 
         /// <summary>
@@ -426,7 +533,10 @@ namespace OpenCvWpfTracking
         /// 기존 창을 복원한 뒤 앞으로 가져온다.
         /// </summary>
         private void ShowVideoPopoutWindow(
-            VideoPopoutCameraType cameraType)
+            VideoPopoutCameraType cameraType,
+            Rect sourceScreenBounds,
+            Point dragAnchor,
+            bool beginDrag)
         {
             VideoPopoutWindow currentWindow =
                 cameraType == VideoPopoutCameraType.Eo
@@ -445,6 +555,13 @@ namespace OpenCvWpfTracking
                 currentWindow.Activate();
                 currentWindow.Focus();
 
+                if (beginDrag)
+                {
+                    currentWindow.BeginTearOffDrag(
+                        sourceScreenBounds,
+                        dragAnchor);
+                }
+
                 return;
             }
 
@@ -453,16 +570,21 @@ namespace OpenCvWpfTracking
                     vm,
                     cameraType,
                     GetViewportAspectRatio(
-                        EoCameraImageView,
+                        EoVideoBorder,
                         940.0 / 650.0),
                     GetViewportAspectRatio(
-                        IrCameraImageView,
+                        IrVideoBorder,
                         440.0 / 365.0),
                     EoRenderedVideoSurface,
                     IrRenderedVideoSurface)
                 {
                     Owner = this
                 };
+
+            popoutWindow.ConfigureInitialPlacement(
+                sourceScreenBounds,
+                dragAnchor,
+                beginDrag);
 
             popoutWindow.Closed +=
                 (sender, args) =>
@@ -498,27 +620,70 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// 2026-08-25: 현재 프레임의 실제 픽셀 종횡비를 분리 창에 전달한다.
-        /// 프레임 정보를 아직 받지 못한 경우에만 화면 영역 또는 기본값을 사용한다.
+        /// 메인 영상 영역의 화면 좌표와 현재 표시 크기를 DIP 단위로 반환한다.
+        /// 분리 창이 EO/IR 화면에서 그대로 떼어져 나온 듯한 크기로 시작하도록 사용한다.
+        /// </summary>
+        private static Rect GetVideoSourceScreenBounds(
+            FrameworkElement sourceElement)
+        {
+            if (sourceElement == null ||
+                sourceElement.ActualWidth <= 0.0 ||
+                sourceElement.ActualHeight <= 0.0)
+            {
+                return Rect.Empty;
+            }
+
+            Point screenPoint = sourceElement.PointToScreen(new Point(0.0, 0.0));
+            PresentationSource presentationSource =
+                PresentationSource.FromVisual(sourceElement);
+
+            if (presentationSource?.CompositionTarget != null)
+            {
+                screenPoint = presentationSource.CompositionTarget
+                    .TransformFromDevice
+                    .Transform(screenPoint);
+            }
+
+            return new Rect(
+                screenPoint.X,
+                screenPoint.Y,
+                sourceElement.ActualWidth,
+                sourceElement.ActualHeight);
+        }
+
+        /// <summary>
+        /// 2026-09-30: 메인 영상에서 누른 실제 위치를 분리 창 좌표로 전달한다.
+        /// 연결 여부와 관계없이 EO/IR 원본 뷰의 같은 지점이 커서 아래에 유지된다.
+        /// </summary>
+        private static Point GetVideoPopoutDragAnchor(
+            FrameworkElement sourceElement,
+            MouseButtonEventArgs e)
+        {
+            if (sourceElement == null)
+            {
+                return new Point(0.0, 0.0);
+            }
+
+            Point anchor = e.GetPosition(sourceElement);
+
+            return new Point(
+                Math.Max(
+                    0.0,
+                    Math.Min(sourceElement.ActualWidth, anchor.X)),
+                Math.Max(
+                    0.0,
+                    Math.Min(sourceElement.ActualHeight, anchor.Y)));
+        }
+
+        /// <summary>
+        /// 2026-09-30: 실제 메인 EO/IR 화면 영역의 종횡비를 분리 창에 전달한다.
+        /// 미연결 안내 이미지의 픽셀 비율은 실제 화면 배치와 다를 수 있으므로
+        /// 연결 여부와 관계없이 현재 레이아웃 크기를 최우선으로 사용한다.
         /// </summary>
         private static double GetViewportAspectRatio(
             FrameworkElement viewport,
             double fallbackAspectRatio)
         {
-            Image image =
-                viewport as Image;
-
-            BitmapSource frame =
-                image?.Source as BitmapSource;
-
-            if (frame != null &&
-                frame.PixelWidth > 0 &&
-                frame.PixelHeight > 0)
-            {
-                return (double)frame.PixelWidth /
-                       frame.PixelHeight;
-            }
-
             if (viewport == null ||
                 viewport.ActualWidth <= 0.0 ||
                 viewport.ActualHeight <= 0.0)
@@ -1881,6 +2046,8 @@ namespace OpenCvWpfTracking
             object sender,
             MouseEventArgs e)
         {
+            _isVideoPopoutDragPending = false;
+
             StopActiveHoverLensMove();
         }
 

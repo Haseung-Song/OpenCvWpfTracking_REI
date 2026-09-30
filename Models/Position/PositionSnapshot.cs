@@ -25,6 +25,10 @@ namespace OpenCvWpfTracking.Models.Position
     {
         public const int ExportFieldCount = 20;
 
+
+
+
+
         public DateTimeOffset CapturedAt { get; }
 
         public string Source { get; }

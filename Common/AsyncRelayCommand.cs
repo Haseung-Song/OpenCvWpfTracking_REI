@@ -12,6 +12,10 @@ namespace OpenCvWpfTracking.Common
 
         private readonly Func<bool> canExecute;
 
+
+
+
+
         /**
          * @brief AsyncRelayCommand 생성자 함수.
          * @param Func<Task> executeAsync : 실행 이벤트가 들어왔을 때 동작하기 위한 비동기 메서드 등록

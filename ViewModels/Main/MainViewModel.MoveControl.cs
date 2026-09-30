@@ -17,6 +17,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
+        // WebAgent ZERO는 패킷 송신이 즉시 끝나므로 잠금 상태를 바로 해제하면
+        // WPF Overlay가 화면에 그려지기 전에 사라진다. 장비 제어 지연을 추가하는
+        // 값이 아니라, 사용자가 요청 상태를 확인할 수 있도록 하는 최소 UI 표시 시간이다.
+        private const int WebAgentZeroOverlayMinimumMilliseconds = 1200;
+
+
+
+
+
         #region [Move Control Methods]
 
         /// <summary>
@@ -409,12 +418,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         "HOME / ZERO",
                         "PAN ZERO WebAgent request " +
                         "/ PACKET=FF 01 00 B3 01 00 B5 " +
-                        $"/ SENT={sent} / COMPLETION=ACK PENDING");
+                        $"/ SENT={sent}");
 
                     HomeZeroStatusText =
                         sent
-                            ? "PAN ZERO REQUEST SENT / WEB AGENT ACK PENDING"
+                            ? "PAN ZERO REQUEST SENT / WEB AGENT"
                             : "PAN ZERO REQUEST SEND FAILED";
+
+                    HomeZeroLockMessage =
+                        sent
+                            ? "PAN ZERO REQUEST SENT / APPLYING..."
+                            : "PAN ZERO REQUEST SEND FAILED";
+
+                    await Task.Delay(
+                        WebAgentZeroOverlayMinimumMilliseconds);
 
                     return;
                 }
@@ -522,12 +539,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         "HOME / ZERO",
                         "TILT ZERO WebAgent request " +
                         "/ PACKET=FF 01 00 B3 02 00 B6 " +
-                        $"/ SENT={sent} / COMPLETION=ACK PENDING");
+                        $"/ SENT={sent}");
 
                     HomeZeroStatusText =
                         sent
-                            ? "TILT ZERO REQUEST SENT / WEB AGENT ACK PENDING"
+                            ? "TILT ZERO REQUEST SENT / WEB AGENT"
                             : "TILT ZERO REQUEST SEND FAILED";
+
+                    HomeZeroLockMessage =
+                        sent
+                            ? "TILT ZERO REQUEST SENT / APPLYING..."
+                            : "TILT ZERO REQUEST SEND FAILED";
+
+                    await Task.Delay(
+                        WebAgentZeroOverlayMinimumMilliseconds);
 
                     return;
                 }

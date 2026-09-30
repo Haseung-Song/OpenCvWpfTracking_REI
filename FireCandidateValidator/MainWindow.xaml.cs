@@ -46,11 +46,14 @@ namespace FireCandidateValidator
 
         // 2026-08-14: 1=전체 단일 BBox, 2=화염별 분리 BBox.
         private int _fireBoxGroupingMode = 2;
+
         private readonly List<StableCandidateTrack> _stableCandidateTracks =
             new List<StableCandidateTrack>();
+
         // 2026-08-31: TEST FIRE/SMOKE도 Viewer와 동일한 기준으로 최초 확정 V.SCORE를 계산한다.
         private readonly Dictionary<string, List<TestVisionScoreTrack>> _testVisionScoreTracks =
             new Dictionary<string, List<TestVisionScoreTrack>>(StringComparer.OrdinalIgnoreCase);
+
         // 2026-08-27: FIRE와 SMOKE 상태 전환을 서로 독립적으로 메인 Viewer에 전달한다.
         private bool _lastPublishedFireState;
 
@@ -68,6 +71,10 @@ namespace FireCandidateValidator
         private string _fireDiagnosticDirectory;
 
         private int _fireDiagnosticFrameIndex;
+
+
+
+
 
         /// <summary>
         /// MainWindow 동작 수행 함수.

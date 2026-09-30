@@ -119,6 +119,9 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private int _digestNonceCount;
 
+
+
+
         #endregion
 
         #region [Zoom Continuous Control]

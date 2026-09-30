@@ -35,6 +35,9 @@ namespace OpenCvWpfTracking
 
         private bool _hadActiveFireEvent;
 
+
+
+
         public EventAlertControl()
         {
             InitializeComponent();
@@ -389,6 +392,7 @@ namespace OpenCvWpfTracking
         private sealed class EventPageController
         {
             private const double DefaultHeaderHeight = 30.0;
+
             /*
              * 2026-08-26: 파노라마 운용 Overlay 표시 여부로 표 높이가 변해도
              * 전체 페이지 수가 1/15와 1/13 사이에서 바뀌지 않도록 고정한다.
@@ -412,14 +416,20 @@ namespace OpenCvWpfTracking
             private readonly ICollectionView _view;
 
             private readonly DispatcherTimer _refreshTimer;
+
             private readonly List<object> _orderedItems = new List<object>();
+
             private int _pageIndex;
 
             private int _pageSize = FixedPageSize;
 
             private double _lastAvailableHeight = -1.0;
+
             private EventRecordComparer _activeComparer =
                 new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
+
+
+
 
             internal EventPageController(
                 DataGrid grid,
@@ -712,6 +722,9 @@ namespace OpenCvWpfTracking
                 private readonly string _sortMemberPath;
 
                 private readonly int _directionFactor;
+
+
+
 
                 internal EventRecordComparer(
                     string sortMemberPath,

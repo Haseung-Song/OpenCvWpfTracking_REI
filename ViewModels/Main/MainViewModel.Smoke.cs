@@ -14,16 +14,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private readonly SmokeDetectionService _eoSmokeDetectionService =
             new SmokeDetectionService();
+
         private readonly SmokeDetectionService _irSmokeDetectionService =
             new SmokeDetectionService();
+
         private bool _wasMotionCompensatedSmokeAnalysis;
+
         private readonly object _aiSmokeCandidateSync = new object();
+
         private readonly List<Rect> _latestEoAiSmokeCandidates = new List<Rect>();
+
         private readonly List<Rect> _latestIrAiSmokeCandidates = new List<Rect>();
+
         private readonly List<Rect> _latestEoAiFireCandidates = new List<Rect>();
+
         private readonly List<Rect> _latestIrAiFireCandidates = new List<Rect>();
+
         private readonly List<Rect> _latestEoAiVehicleCandidates = new List<Rect>();
+
         private readonly List<Rect> _latestIrAiVehicleCandidates = new List<Rect>();
+
         private DateTime _latestEoAiSmokeCandidateTime = DateTime.MinValue;
 
         private DateTime _latestIrAiSmokeCandidateTime = DateTime.MinValue;
@@ -55,10 +65,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         // 2026-08-31: 1=전체 연기 단일 BBox, 2=연기 기둥별 BBox(기본값).
         private int _smokeBoxGroupingMode = 2;
+
         private Brush _smokeBoxMode1Background =
             new SolidColorBrush(Color.FromRgb(62, 81, 94));
+
         private Brush _smokeBoxMode2Background =
             new SolidColorBrush(Color.FromRgb(42, 111, 151));
+
+
+
+
 
         public ICommand SelectSmokeBoxMode1Command { get; private set; }
 

@@ -1,5 +1,6 @@
 using OpenCvWpfTracking.Common;
 using System;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -41,6 +42,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private readonly SemaphoreSlim _sendLock =
             new SemaphoreSlim(1, 1);
+
+
+
 
         /// <summary>
         /// Pan 현재 Encoder 위치를 0으로 설정한다.
@@ -166,6 +170,14 @@ namespace OpenCvWpfTracking.Services.Communication
                     if (completedTask !=
                         connectTask)
                     {
+                        // 2026-09-29: Timeout으로 using TcpClient가 Dispose된 뒤
+                        // ConnectAsync가 fault되어도 예외가 미관찰 상태로 남지 않게 한다.
+                        ObserveTimedOutConnectTask(
+                            connectTask,
+                            commandName,
+                            ipAddress,
+                            port);
+
                         Console.WriteLine(
                             $"[MCB DIRECT] {commandName} FAILED : CONNECT TIMEOUT");
 
@@ -239,6 +251,28 @@ namespace OpenCvWpfTracking.Services.Communication
                 _sendLock.Release();
             }
 
+        }
+
+        private static void ObserveTimedOutConnectTask(
+            Task connectTask,
+            string commandName,
+            string ipAddress,
+            int port)
+        {
+            _ = connectTask.ContinueWith(
+                faultedTask =>
+                {
+                    Exception observedException = faultedTask.Exception;
+
+                    Debug.WriteLine(
+                        $"[MCB DIRECT CONNECT TIMEOUT CLEANUP] {commandName} / " +
+                        $"{ipAddress}:{port} / " +
+                        observedException?.GetBaseException().Message);
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted |
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
 
         /// <summary>

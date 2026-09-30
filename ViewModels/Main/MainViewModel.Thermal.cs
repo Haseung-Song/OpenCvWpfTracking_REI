@@ -14,6 +14,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         // 한 Service를 공유하면 채널 전환 시 이전 프레임과 상태가 섞이므로 분리한다.
         private readonly ThermalFireDetectionService _eoFireDetectionService =
             new ThermalFireDetectionService();
+
         private readonly ThermalFireDetectionService _irFireDetectionService =
             new ThermalFireDetectionService();
 
@@ -34,19 +35,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         // 2026-08-14: 1=전체 화염 단일 BBox, 2=분리 화염별 BBox(기본값).
         private int _thermalFireBoxGroupingMode = 2;
+
         private Brush _thermalFireBoxMode1Background = new SolidColorBrush(Color.FromRgb(62, 81, 94));
+
         private Brush _thermalFireBoxMode2Background = new SolidColorBrush(Color.FromRgb(42, 111, 151));
 
         // 2026-08-14: Direct palette buttons remain neutral until a command succeeds.
         private Brush _thermalBlackHotButtonBackground = Brushes.WhiteSmoke;
+
         private Brush _thermalBlackHotButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+
         private Brush _thermalWhiteHotButtonBackground = Brushes.WhiteSmoke;
+
         private Brush _thermalWhiteHotButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+
         private Brush _thermalRainbowButtonBackground = Brushes.WhiteSmoke;
+
         private Brush _thermalRainbowButtonForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+
         private bool _isFireDiagnosticEnabled;
 
         private string _fireDiagnosticPathText = "OFF";
+
+
+
+
 
         public Brush ThermalBlackHotButtonBackground { get => _thermalBlackHotButtonBackground; private set { _thermalBlackHotButtonBackground = value; OnPropertyChanged(); } }
         public Brush ThermalBlackHotButtonForeground { get => _thermalBlackHotButtonForeground; private set { _thermalBlackHotButtonForeground = value; OnPropertyChanged(); } }

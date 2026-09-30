@@ -18,13 +18,20 @@ namespace FireCandidateValidator
         // 2026-08-25: REI/MOE 검증 프로그램도 동일한 화재 후보 알고리즘과
         // 오류 처리 정책을 사용하며, 반복 오류 출력은 5초 간격으로 제한한다.
         private DateTime _lastAnalyzeErrorLogTime = DateTime.MinValue;
+
         // 2026-08-18: 동영상에서는 색상 자체가 아니라 실제 화염의 프레임간
         // 움직임과 외곽 형상 변화까지 확인한다.
         private Mat _previousGray = new Mat();
+
         private Mat _previousCandidateMask = new Mat();
+
         // 2026-09-22 V25: Viewer와 동일하게 장시간 고정되는 IR 열원만
         // 후보 생성 이후 Track 단계에서 보조 억제한다.
         private readonly List<TestFireTrack> _fireTracks = new List<TestFireTrack>();
+
+
+
+
 
         /// <summary>
         /// Analyze 동작 수행 함수.

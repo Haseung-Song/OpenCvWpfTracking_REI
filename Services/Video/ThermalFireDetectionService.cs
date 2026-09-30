@@ -30,13 +30,17 @@ namespace OpenCvWpfTracking.Services.Video
         private int _clearFrameCount;
 
         private double _latchedVisionScore;
+
         private readonly List<FireVisionScoreTrack> _visionScoreTracks =
             new List<FireVisionScoreTrack>();
+
         private bool _isFireCandidateDetected;
 
         private Rect _trackedCandidateRect = Rect.Empty;
+
         private readonly List<FireCandidateTrack> _candidateTracks =
             new List<FireCandidateTrack>();
+
         private DateTime _lastTrackContinuityLogTime = DateTime.MinValue;
 
         private int _lastReportedTrackCount = -1;
@@ -48,12 +52,16 @@ namespace OpenCvWpfTracking.Services.Video
         // 2026-08-25: REI/MOE가 동일한 화재 후보 알고리즘과 오류 처리 정책을
         // 사용하도록 공통화하였다. 반복 오류 로그는 5초 간격으로 제한한다.
         private DateTime _lastProcessErrorLogTime = DateTime.MinValue;
+
         // 2026-08-14: Static hot roofs/ground are rejected using inter-frame motion.
         private Mat _previousGray = new Mat();
+
         // 2026-08-18: 팔레트상 계속 붉게 보이는 건물/지면과 실제로 형상이
         // 흔들리는 화염을 구분하기 위한 직전 후보 마스크이다.
         private Mat _previousCandidateMask = new Mat();
+
         private readonly object _diagnosticSync = new object();
+
         private StreamWriter _diagnosticWriter;
 
         private string _diagnosticDirectory;
@@ -69,6 +77,10 @@ namespace OpenCvWpfTracking.Services.Video
         private const int DiagnosticSnapshotIntervalFrames = 300;
 
         private const int DiagnosticMaximumSnapshotCount = 120;
+
+
+
+
 
         internal void StartDiagnostic(string directory, string channel)
         {

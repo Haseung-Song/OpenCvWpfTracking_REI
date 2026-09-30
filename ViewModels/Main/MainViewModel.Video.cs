@@ -25,6 +25,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private sealed class DetectionFrameSlot
         {
             public readonly object Sync = new object();
+
             public Mat LatestFrame;
 
             public Mat ReusableFrame;
@@ -38,20 +39,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public SmokeDetectionResult SmokeResult;
 
             public long ResultVersion;
+
+
+
         }
 
         private sealed class DisplayFrameSlot
         {
             public readonly object Sync = new object();
+
             public Mat LatestFrame;
 
             public Mat ReusableFrame;
 
             public int WorkerRunning;
+
             public readonly Queue<BufferedDisplayFrame> BufferedFrames =
                 new Queue<BufferedDisplayFrame>();
+
             public readonly Queue<Mat> BufferedReusableFrames =
                 new Queue<Mat>();
+
             public int BufferedWorkerRunning;
 
             public Task BufferedWorkerTask = Task.CompletedTask;
@@ -63,6 +71,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public int OverlayDispatchPending;
 
             public long LastOverlayVersion;
+
+
+
         }
 
         private sealed class BufferedDisplayFrame
@@ -70,13 +81,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public Mat Frame;
 
             public long DecodedTicks;
+
+
+
         }
 
         private sealed class RtspChannelPerformance
         {
             public readonly object Sync = new object();
+
             public readonly Stopwatch Interval = Stopwatch.StartNew();
+
             public readonly Stopwatch LastFrame = Stopwatch.StartNew();
+
             public int Received;
 
             public int Displayed;
@@ -116,9 +133,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public long DisplayIntervalMaxTicks;
 
             public long LastDisplayTicks;
+
             public int LastGen0 = GC.CollectionCount(0);
+
             public int LastGen1 = GC.CollectionCount(1);
+
             public int LastGen2 = GC.CollectionCount(2);
+
             public long LastFunction01Count;
 
             public long LastPtzfStatusCount;
@@ -154,29 +175,98 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public int JitterBufferUnderrun;
 
             public int JitterBufferDropped;
+
+            public long LastDiagnosticArrivalTicks;
+
+            public long DecodeIntervalTicks;
+
+            public long DecodeIntervalMaxTicks;
+
+            public int DecodeIntervalCount;
+
+            public double LastTimestampMilliseconds;
+
+            public bool HasLastTimestamp;
+
+            public double TimestampDeltaMilliseconds;
+
+            public double TimestampDeltaMaximumMilliseconds;
+
+            public int TimestampDeltaCount;
+
+            public int TimestampMissingCount;
+
+            public int TimestampNonMonotonicCount;
+
+            public readonly byte[] PreviousFrameSamples = new byte[64];
+
+            public bool HasPreviousFrameSamples;
+
+            public double SampleDifferenceTotal;
+
+            public int SampleDifferenceCount;
+
+            public int ExactDuplicateFrameCount;
+
+            public int ConsecutiveDuplicateFrameCount;
+
+            public int MaximumConsecutiveDuplicateFrameCount;
+
+            public int NearStaticFrameCount;
+
+            public int InputStall70MillisecondsCount;
+
+            public int InputStall80MillisecondsCount;
+
+            public int InputStall100MillisecondsCount;
+
+            public int DisplayStall50MillisecondsCount;
+
+            public int DisplayStall60MillisecondsCount;
+
+            public int DisplayStall70MillisecondsCount;
+
+            public long LastFramePts;
+
+            public long LastFrameDts;
+
+
+
         }
 
         private readonly DetectionFrameSlot _eoDetectionSlot = new DetectionFrameSlot();
+
         private readonly DetectionFrameSlot _irDetectionSlot = new DetectionFrameSlot();
+
         private readonly DisplayFrameSlot _eoDisplaySlot = new DisplayFrameSlot();
+
         private readonly DisplayFrameSlot _irDisplaySlot = new DisplayFrameSlot();
+
         private readonly RtspChannelPerformance _eoRtspPerformance = new RtspChannelPerformance();
+
         private readonly RtspChannelPerformance _irRtspPerformance = new RtspChannelPerformance();
+
         private static readonly long DetectionMinimumIntervalTicks =
             Stopwatch.Frequency / 10;
-        // 2026-09-23: 옥상 EO RTSP는 평균 30fps이지만 70~100ms 단위로
-        // 패킷이 몰려 들어오는 구간이 있어, 표시 전용 3 Frame 버퍼로 흡수한다.
+
+        // 2026-09-29: 옥상 EO RTSP는 평균 30fps이지만 70~100ms 단위로
+        // 패킷이 몰려 들어오는 구간이 있다. 30fps 기준 3 Frame은 경계값이므로
+        // 기본 4 Frame으로 한 단계만 늘려 입력 Burst를 흡수한다.
         // 분석/알람/파노라마 입력은 이 버퍼를 거치지 않는다.
         private static readonly int EoJitterDisplayFramesPerSecond =
             ReadBoundedEnvironmentInteger("TORUSS_EO_JITTER_FPS", 30, 20, 60);
+
         private static readonly int EoJitterBufferCapacity =
-            ReadBoundedEnvironmentInteger("TORUSS_EO_JITTER_FRAMES", 3, 2, 6);
+            ReadBoundedEnvironmentInteger("TORUSS_EO_JITTER_FRAMES", 4, 2, 6);
+
         private static readonly long EoJitterDisplayIntervalTicks =
             Math.Max(1L, Stopwatch.Frequency / EoJitterDisplayFramesPerSecond);
+
         // 메인 EO 표시 크기(약 950px)에 1920px 원본을 매 프레임 복사하지 않도록
         // 표시 전용 복사본만 축소한다. 분석/파노라마 원본은 그대로 유지한다.
         private static readonly int EoDisplayMaximumWidth =
             ReadBoundedEnvironmentInteger("TORUSS_EO_DISPLAY_MAX_WIDTH", 1280, 640, 1920);
+
         private static readonly bool UseLegacyImmediateRtspDisplay =
             string.Equals(
                 Environment.GetEnvironmentVariable("TORUSS_RTSP_DISPLAY"),
@@ -185,11 +275,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         // 2026-09-17: 장비 Connect/Disconnect 생명주기를 직렬화한다.
         private readonly SemaphoreSlim _deviceConnectionLifecycleLock = new SemaphoreSlim(1, 1);
+
         private long _deviceSessionGeneration;
 
         private Task _eoCaptureTask = Task.CompletedTask;
 
         private Task _irCaptureTask = Task.CompletedTask;
+
+
+
 
         #region [Video Connect / Disconnect]
 
@@ -1509,6 +1603,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private RtspChannelPerformance GetRtspPerformance(string streamName) =>
             streamName == "EO" ? _eoRtspPerformance : _irRtspPerformance;
 
+        private static void RecordDisplayInterval(
+            RtspChannelPerformance performance,
+            long intervalTicks)
+        {
+            performance.DisplayIntervalTicks += intervalTicks;
+            performance.DisplayIntervalMaxTicks = Math.Max(
+                performance.DisplayIntervalMaxTicks,
+                intervalTicks);
+
+            double intervalMilliseconds =
+                intervalTicks * 1000.0 / Stopwatch.Frequency;
+
+            if (intervalMilliseconds >= 50.0)
+            {
+                performance.DisplayStall50MillisecondsCount++;
+            }
+
+            if (intervalMilliseconds >= 60.0)
+            {
+                performance.DisplayStall60MillisecondsCount++;
+            }
+
+            if (intervalMilliseconds >= 70.0)
+            {
+                performance.DisplayStall70MillisecondsCount++;
+            }
+        }
+
         private static int ReadBoundedEnvironmentInteger(
             string variableName,
             int defaultValue,
@@ -1904,9 +2026,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         if (performance.LastDisplayTicks > 0)
                         {
                             long intervalTicks = displayTicks - performance.LastDisplayTicks;
-                            performance.DisplayIntervalTicks += intervalTicks;
-                            performance.DisplayIntervalMaxTicks = Math.Max(
-                                performance.DisplayIntervalMaxTicks,
+
+                            RecordDisplayInterval(
+                                performance,
                                 intervalTicks);
                         }
                         performance.LastDisplayTicks = displayTicks;
@@ -2041,11 +2163,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 if (perf.LastDisplayTicks > 0)
                                 {
                                     long intervalTicks = displayTicks - perf.LastDisplayTicks;
-                                    perf.DisplayIntervalTicks += intervalTicks;
-                                    if (intervalTicks > perf.DisplayIntervalMaxTicks)
-                                    {
-                                        perf.DisplayIntervalMaxTicks = intervalTicks;
-                                    }
+
+                                    RecordDisplayInterval(
+                                        perf,
+                                        intervalTicks);
                                 }
                                 perf.LastDisplayTicks = displayTicks;
                             }
@@ -2303,6 +2424,143 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 원본 PTS/DTS, 실제 Decode 도착 간격과 8x8 표본 영상 변화를 기록한다.
+        /// 전체 Frame Hash나 Resize를 수행하지 않아 실시간 영상처리 부하를 늘리지 않는다.
+        /// </summary>
+        private static void UpdateFrameTimingDiagnostics(
+            RtspChannelPerformance performance,
+            FFmpegDecoderService.FrameTimingSnapshot timing,
+            Mat frame)
+        {
+            if (performance.LastDiagnosticArrivalTicks > 0 &&
+                timing.DecodedTicks > performance.LastDiagnosticArrivalTicks)
+            {
+                long intervalTicks =
+                    timing.DecodedTicks - performance.LastDiagnosticArrivalTicks;
+                performance.DecodeIntervalTicks += intervalTicks;
+                performance.DecodeIntervalCount++;
+                performance.DecodeIntervalMaxTicks = Math.Max(
+                    performance.DecodeIntervalMaxTicks,
+                    intervalTicks);
+
+                double intervalMilliseconds =
+                    intervalTicks * 1000.0 / Stopwatch.Frequency;
+
+                if (intervalMilliseconds >= 70.0)
+                {
+                    performance.InputStall70MillisecondsCount++;
+                }
+
+                if (intervalMilliseconds >= 80.0)
+                {
+                    performance.InputStall80MillisecondsCount++;
+                }
+
+                if (intervalMilliseconds >= 100.0)
+                {
+                    performance.InputStall100MillisecondsCount++;
+                }
+            }
+
+            performance.LastDiagnosticArrivalTicks = timing.DecodedTicks;
+            performance.LastFramePts = timing.Pts;
+            performance.LastFrameDts = timing.Dts;
+
+            if (timing.HasTimestamp)
+            {
+                if (performance.HasLastTimestamp)
+                {
+                    double deltaMilliseconds =
+                        timing.TimestampMilliseconds -
+                        performance.LastTimestampMilliseconds;
+
+                    if (deltaMilliseconds <= 0.0)
+                    {
+                        performance.TimestampNonMonotonicCount++;
+                    }
+                    else
+                    {
+                        performance.TimestampDeltaMilliseconds += deltaMilliseconds;
+                        performance.TimestampDeltaCount++;
+                        performance.TimestampDeltaMaximumMilliseconds = Math.Max(
+                            performance.TimestampDeltaMaximumMilliseconds,
+                            deltaMilliseconds);
+                    }
+                }
+
+                performance.LastTimestampMilliseconds =
+                    timing.TimestampMilliseconds;
+                performance.HasLastTimestamp = true;
+            }
+            else
+            {
+                performance.TimestampMissingCount++;
+            }
+
+            if (frame == null || frame.Empty() || frame.Channels() < 3)
+            {
+                return;
+            }
+
+            const int sampleGridSize = 8;
+            int sampleIndex = 0;
+            int differenceTotal = 0;
+
+            for (int row = 0; row < sampleGridSize; row++)
+            {
+                int y = Math.Min(
+                    frame.Rows - 1,
+                    ((row * 2 + 1) * frame.Rows) / (sampleGridSize * 2));
+
+                for (int column = 0; column < sampleGridSize; column++)
+                {
+                    int x = Math.Min(
+                        frame.Cols - 1,
+                        ((column * 2 + 1) * frame.Cols) / (sampleGridSize * 2));
+                    Vec3b pixel = frame.At<Vec3b>(y, x);
+                    byte luminance = (byte)((pixel.Item0 + pixel.Item1 + pixel.Item2) / 3);
+
+                    if (performance.HasPreviousFrameSamples)
+                    {
+                        differenceTotal += Math.Abs(
+                            luminance - performance.PreviousFrameSamples[sampleIndex]);
+                    }
+
+                    performance.PreviousFrameSamples[sampleIndex] = luminance;
+                    sampleIndex++;
+                }
+            }
+
+            if (performance.HasPreviousFrameSamples)
+            {
+                double averageDifference =
+                    differenceTotal / (double)performance.PreviousFrameSamples.Length;
+                performance.SampleDifferenceTotal += averageDifference;
+                performance.SampleDifferenceCount++;
+
+                if (differenceTotal == 0)
+                {
+                    performance.ExactDuplicateFrameCount++;
+                    performance.ConsecutiveDuplicateFrameCount++;
+                    performance.MaximumConsecutiveDuplicateFrameCount = Math.Max(
+                        performance.MaximumConsecutiveDuplicateFrameCount,
+                        performance.ConsecutiveDuplicateFrameCount);
+                }
+                else
+                {
+                    performance.ConsecutiveDuplicateFrameCount = 0;
+                }
+
+                if (averageDifference <= 1.0)
+                {
+                    performance.NearStaticFrameCount++;
+                }
+            }
+
+            performance.HasPreviousFrameSamples = true;
+        }
+
         private void WriteRtspPerformanceSummary(string streamName, FFmpegDecoderService decoder)
         {
             RtspChannelPerformance performance = GetRtspPerformance(streamName);
@@ -2336,6 +2594,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ? performance.DisplayIntervalTicks * 1000.0 / Stopwatch.Frequency / (performance.Displayed - 1)
                     : 0.0;
                 double intervalMaximumMs = performance.DisplayIntervalMaxTicks * 1000.0 / Stopwatch.Frequency;
+                double decodeIntervalAverageMs = performance.DecodeIntervalCount > 0
+                    ? performance.DecodeIntervalTicks * 1000.0 / Stopwatch.Frequency / performance.DecodeIntervalCount
+                    : 0.0;
+                double decodeIntervalMaximumMs =
+                    performance.DecodeIntervalMaxTicks * 1000.0 / Stopwatch.Frequency;
+                double timestampDeltaAverageMs = performance.TimestampDeltaCount > 0
+                    ? performance.TimestampDeltaMilliseconds / performance.TimestampDeltaCount
+                    : 0.0;
+                double sampleDifferenceAverage = performance.SampleDifferenceCount > 0
+                    ? performance.SampleDifferenceTotal / performance.SampleDifferenceCount
+                    : 0.0;
                 int gen0 = GC.CollectionCount(0);
                 int gen1 = GC.CollectionCount(1);
                 int gen2 = GC.CollectionCount(2);
@@ -2374,6 +2643,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     $"JITTER_BUFFER_UNDERRUN={performance.JitterBufferUnderrun} / JITTER_BUFFER_DROP={performance.JitterBufferDropped} / " +
                     $"FRAME_COPY_AVG_MS={frameCopyMs:F1} / FRAME_COPY_MAX_MS={frameCopyMaxMs:F1} / DISPLAY_INTERVAL_AVG_MS={intervalAverageMs:F1} / " +
                     $"DISPLAY_INTERVAL_MAX_MS={intervalMaximumMs:F1} / FRAME_AGE_AVG_MS={frameAgeMs:F1} / FRAME_AGE_MAX_MS={frameAgeMaxMs:F1} / " +
+                    $"DECODE_INTERVAL_AVG_MS={decodeIntervalAverageMs:F1} / DECODE_INTERVAL_MAX_MS={decodeIntervalMaximumMs:F1} / " +
+                    $"INPUT_STALL_70MS_COUNT={performance.InputStall70MillisecondsCount} / INPUT_STALL_80MS_COUNT={performance.InputStall80MillisecondsCount} / " +
+                    $"INPUT_STALL_100MS_COUNT={performance.InputStall100MillisecondsCount} / DISPLAY_STALL_50MS_COUNT={performance.DisplayStall50MillisecondsCount} / " +
+                    $"DISPLAY_STALL_60MS_COUNT={performance.DisplayStall60MillisecondsCount} / DISPLAY_STALL_70MS_COUNT={performance.DisplayStall70MillisecondsCount} / " +
+                    $"SOURCE_PTS={performance.LastFramePts} / SOURCE_DTS={performance.LastFrameDts} / PTS_DELTA_AVG_MS={timestampDeltaAverageMs:F2} / " +
+                    $"PTS_DELTA_MAX_MS={performance.TimestampDeltaMaximumMilliseconds:F2} / PTS_MISSING={performance.TimestampMissingCount} / " +
+                    $"PTS_NON_MONOTONIC={performance.TimestampNonMonotonicCount} / SAMPLE_DIFF_AVG={sampleDifferenceAverage:F2} / " +
+                    $"EXACT_DUPLICATE_FRAMES={performance.ExactDuplicateFrameCount} / MAX_CONSECUTIVE_DUPLICATE_FRAMES={performance.MaximumConsecutiveDuplicateFrameCount} / " +
+                    $"NEAR_STATIC_FRAMES={performance.NearStaticFrameCount} / " +
                     $"FUNCTION_01_RX_COUNT={function01 - performance.LastFunction01Count} / PTZF_STATUS_UPDATE_COUNT={ptzfStatus - performance.LastPtzfStatusCount} / " +
                     $"PROPERTY_CHANGED_COUNT={propertyChanged - performance.LastPropertyChangedCount} / PAN_PROPERTY_CHANGED_COUNT={panChanged - performance.LastPanPropertyChangedCount} / " +
                     $"TILT_PROPERTY_CHANGED_COUNT={tiltChanged - performance.LastTiltPropertyChangedCount} / ZOOM_PROPERTY_CHANGED_COUNT={zoomChanged - performance.LastZoomPropertyChangedCount} / " +
@@ -2418,6 +2696,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 performance.FrameAgeMaxTicks = 0;
                 performance.DisplayIntervalTicks = 0;
                 performance.DisplayIntervalMaxTicks = 0;
+                performance.DecodeIntervalTicks = 0;
+                performance.DecodeIntervalMaxTicks = 0;
+                performance.DecodeIntervalCount = 0;
+                performance.InputStall70MillisecondsCount = 0;
+                performance.InputStall80MillisecondsCount = 0;
+                performance.InputStall100MillisecondsCount = 0;
+                performance.DisplayStall50MillisecondsCount = 0;
+                performance.DisplayStall60MillisecondsCount = 0;
+                performance.DisplayStall70MillisecondsCount = 0;
+                performance.TimestampDeltaMilliseconds = 0.0;
+                performance.TimestampDeltaMaximumMilliseconds = 0.0;
+                performance.TimestampDeltaCount = 0;
+                performance.TimestampMissingCount = 0;
+                performance.TimestampNonMonotonicCount = 0;
+                performance.SampleDifferenceTotal = 0.0;
+                performance.SampleDifferenceCount = 0;
+                performance.ExactDuplicateFrameCount = 0;
+                performance.MaximumConsecutiveDuplicateFrameCount =
+                    performance.ConsecutiveDuplicateFrameCount;
+                performance.NearStaticFrameCount = 0;
                 performance.LastGen0 = gen0;
                 performance.LastGen1 = gen1;
                 performance.LastGen2 = gen2;
@@ -2476,15 +2774,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ? $"BOUNDED_JITTER_BUFFER / CAPACITY={EoJitterBufferCapacity} / " +
                   $"TARGET_FPS={EoJitterDisplayFramesPerSecond}"
                 : "DIRECT_LATEST_FRAME / NO_TIMER_DELAY";
+
+            double frameIntervalMilliseconds = streamName == "EO"
+                ? 1000.0 / EoJitterDisplayFramesPerSecond
+                : 0.0;
+
             ConsoleLogHelper.Info(
                 "RTSP DISPLAY " + streamName,
                 displayMode + " / SINGLE_PENDING_RENDER / " +
                 "WRITEABLE_BITMAP_REUSE / MAT_BUFFER_REUSE / OVERLAY_DECOUPLED / " +
+                $"BUFFER_CAPACITY={(streamName == "EO" ? EoJitterBufferCapacity : 1)} / " +
+                $"FRAME_INTERVAL_MS={frameIntervalMilliseconds:F1} / " +
+                $"PACING_MODE={(streamName == "EO" ? "ABSOLUTE_MONOTONIC" : "ARRIVAL_DRIVEN")} / " +
+                "LATEST_FRAME_PRIORITY=True / STALE_FRAME_DROP_ENABLED=True / " +
+                $"MAX_BUFFER_LIMIT={(streamName == "EO" ? EoJitterBufferCapacity : 1)} / " +
                 $"EO_DISPLAY_MAX_WIDTH={EoDisplayMaximumWidth}");
             RtspChannelPerformance watchdogPerformance = GetRtspPerformance(streamName);
             lock (watchdogPerformance.Sync)
             {
                 watchdogPerformance.LastFrame.Restart();
+                watchdogPerformance.LastDiagnosticArrivalTicks = 0;
+                watchdogPerformance.HasLastTimestamp = false;
+                watchdogPerformance.HasPreviousFrameSamples = false;
             }
             int firstFrameConfirmed = 0;
 
@@ -2567,6 +2878,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         channelPerformance.Received++;
                         channelPerformance.LastFrame.Restart();
+                        UpdateFrameTimingDiagnostics(
+                            channelPerformance,
+                            decoder.GetLastFrameTiming(),
+                            frame);
                     }
 
                     if (Interlocked.Exchange(ref firstFrameConfirmed, 1) == 0)
@@ -2878,6 +3193,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public bool EoResult;
 
             public bool IrResult;
+
+
+
         }
 
         #endregion

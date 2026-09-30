@@ -34,6 +34,9 @@ namespace OpenCvWpfTracking
 
         private bool _isDragging;
 
+
+
+
         /// <summary>
         /// PanoramaPreviewWindow 동작 수행 함수.
         /// </summary>

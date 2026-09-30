@@ -945,8 +945,10 @@
                                 BorderBrush="#5A5A5A"
                                 BorderThickness="2"
                                 PreviewMouseLeftButtonDown="EoVideoBorder_PreviewMouseLeftButtonDown"
+                                PreviewMouseMove="VideoBorder_PreviewMouseMove"
+                                PreviewMouseLeftButtonUp="VideoBorder_PreviewMouseLeftButtonUp"
                                 MouseLeave="VideoBorder_MouseLeave"
-                                ToolTip="더블클릭: EO 영상 분리 창 열기">
+                                ToolTip="드래그: EO 영상 분리 창 열기">
                             <Grid ClipToBounds="True">
 
                                 <!--
@@ -1174,8 +1176,10 @@
                                     BorderBrush="#5A5A5A"
                                     BorderThickness="2"
                                     PreviewMouseLeftButtonDown="IrVideoBorder_PreviewMouseLeftButtonDown"
+                                    PreviewMouseMove="VideoBorder_PreviewMouseMove"
+                                    PreviewMouseLeftButtonUp="VideoBorder_PreviewMouseLeftButtonUp"
                                     MouseLeave="VideoBorder_MouseLeave"
-                                    ToolTip="더블클릭: IR 영상 분리 창 열기">
+                                    ToolTip="드래그: IR 영상 분리 창 열기">
 
                                 <Grid ClipToBounds="True">
 
@@ -4428,6 +4432,7 @@
                                                                         <RowDefinition Height="Auto"/>
                                                                         <RowDefinition Height="Auto"/>
                                                                         <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
                                                                     </Grid.RowDefinitions>
 
                                                                     <!-- 제목 -->
@@ -4465,6 +4470,14 @@
 
                                                                     </StackPanel>
 
+                                                                    <!--
+                                                                        2026-09-29: IR 제어부의 비활성 Digital Zoom 행과
+                                                                        동일하게 EO Focus와 Auto Focus 사이에 10px 간격을 둔다.
+                                                                    -->
+                                                                    <Border Grid.Row="3"
+                                                                            Height="10"
+                                                                            Background="Transparent"/>
+
                                                                     <!-- [EO] [FOCUS] 제어 -->
                                                                     <StackPanel Grid.Row="2"
                                                                                 Orientation="Horizontal"
@@ -4496,6 +4509,19 @@
                                                                                 MouseLeave="MoveStop_MouseLeave"/>
 
                                                                     </StackPanel>
+
+                                                                    <!--
+                                                                        [EO] One-Push Auto Focus
+                                                                        일반 Agent: Cmd2=0x35 / Data1=0xAF
+                                                                        옥상 CTEC EO: 카메라 CGI One-Push Focus
+                                                                    -->
+                                                                    <Button Grid.Row="4"
+                                                                            Content="AUTO FOCUS"
+                                                                            Width="180"
+                                                                            Margin="5"
+                                                                            HorizontalAlignment="Center"
+                                                                            Style="{StaticResource EoControlButtonStyle}"
+                                                                            PreviewMouseDown="EoAutoFocus_MouseDown"/>
 
                                                                 </Grid>
                                                             </Border>

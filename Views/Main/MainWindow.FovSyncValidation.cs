@@ -21,10 +21,15 @@ namespace OpenCvWpfTracking
             new FovSyncValidationService();
 
         private readonly List<double> _eoFovBoundaryX = new List<double>();
+
         private readonly List<double> _irFovBoundaryX = new List<double>();
+
         private bool _isFovValidationActive;
 
         private int _fovValidationLevel;
+
+
+
 
         /// <summary>
         /// 2026-09-21: 현재 SYNC 선택 단계의 수동 화각 검증을 시작한다.

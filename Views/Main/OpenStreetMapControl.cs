@@ -73,6 +73,7 @@ namespace OpenCvWpfTracking
         private readonly string _tileCacheRoot;
 
         private readonly DispatcherTimer _renderDebounceTimer;
+
         private CancellationTokenSource _renderCancellation =
             new CancellationTokenSource();
 
@@ -99,6 +100,9 @@ namespace OpenCvWpfTracking
         // OSM Tile 실패 로그가 Tile 개수만큼 반복되지 않도록
         // 현재 Offline/Fallback 상태에서 1회만 기록한다.
         private bool _isTileFallbackLogged;
+
+
+
 
         /// <summary>
         /// 최초 화면에 필요한 모든 타일 요청이 끝나고 하나의 일관된 View가

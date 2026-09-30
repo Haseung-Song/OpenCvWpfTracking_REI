@@ -12,8 +12,11 @@ namespace FireCandidateValidator
     internal sealed class SmokeCandidateAnalyzer
     {
         private Mat _previousGray = new Mat();
+
         private Mat _phaseWindow = new Mat();
+
         private Mat _temporalCandidateMask = new Mat();
+
         private int _referenceFrameAge;
 
         private int _continuousCandidateFrames;
@@ -27,8 +30,13 @@ namespace FireCandidateValidator
         private int _lastTrafficAggregateSuppressedCount;
 
         private int _lastVerifiedVisibleCount;
+
         private readonly List<SmokeCandidateTrack> _tracks =
             new List<SmokeCandidateTrack>();
+
+
+
+
 
         internal SmokeCandidateAnalysis Analyze(
             Mat source,
@@ -1905,6 +1913,10 @@ namespace FireCandidateValidator
 
             private readonly Queue<double> _recentVerticalMotion = new Queue<double>();
 
+
+
+
+
             internal int RecentVerticalMotionCount => _recentVerticalMotion.Count;
 
             internal int RecentUpwardSamples => _recentVerticalMotion.Count(value => value <= -1.0);
@@ -2017,13 +2029,20 @@ namespace FireCandidateValidator
         private const int MaximumAreaRejectRecords = 8;
 
         private readonly bool _captureStageImages;
+
         private readonly Dictionary<string, Mat> _stageMasks =
             new Dictionary<string, Mat>(StringComparer.OrdinalIgnoreCase);
+
         private readonly List<SmokeDiagnosticRecord> _records =
             new List<SmokeDiagnosticRecord>();
+
         private int _areaRejectRecordCount;
 
         private SmokeDiagnosticRecord _areaRejectSummary;
+
+
+
+
 
         internal IDictionary<string, Mat> StageMasks => _stageMasks;
 

@@ -19,7 +19,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isPanoramaCancellationCompleted;
 
         private bool _isPanoramaCompleted;
+
         private readonly object _panoramaSourceFrameSync = new object();
+
         private BitmapSource _latestRawEoPanoramaFrame;
 
         // 2026-08-31: 파노라마 PTZ 이동/잔진동 구간은 탐지 기준 영상으로 사용하지 않는다.
@@ -55,6 +57,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }.AsReadOnly();
 
         private int _selectedPanoramaCaptureOptionIndex = 1;
+
+
+
+
 
         public IList<string> PanoramaCaptureRangeOptions =>
             PanoramaCaptureRangeOptionItems;

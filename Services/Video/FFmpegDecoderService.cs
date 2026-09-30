@@ -46,6 +46,33 @@ namespace OpenCvWpfTracking.Services.Video
             public long ScaleMaxTicks;
 
             public long ScaleCount;
+
+
+
+
+        }
+
+        /// <summary>
+        /// 가장 최근에 Decode된 영상 Frame의 원본 시간정보이다.
+        /// 표시 경로에서 PTS/DTS 불연속과 묶음 수신을 진단할 때만 사용한다.
+        /// </summary>
+        public struct FrameTimingSnapshot
+        {
+            public long Pts;
+
+            public long Dts;
+
+            public long BestEffortTimestamp;
+
+            public long DecodedTicks;
+
+            public double TimestampMilliseconds;
+
+            public bool HasTimestamp;
+
+
+
+
         }
 
         #region [Fields]
@@ -131,6 +158,8 @@ namespace OpenCvWpfTracking.Services.Video
 
         private long _metricScaleCount;
 
+        private FrameTimingSnapshot _lastFrameTiming;
+
         // 2026-09-16: 기본은 작은 지터 버퍼를 허용하는 SMOOTH 프로파일이다.
         // 환경변수 TORUSS_RTSP_PROFILE=LOW_LATENCY로 기존 최소 버퍼 모드를 선택할 수 있다.
         private readonly bool _useSmoothPlayback =
@@ -138,6 +167,10 @@ namespace OpenCvWpfTracking.Services.Video
                 Environment.GetEnvironmentVariable("TORUSS_RTSP_PROFILE"),
                 "LOW_LATENCY",
                 StringComparison.OrdinalIgnoreCase);
+
+
+
+
 
         #endregion
 
@@ -180,6 +213,14 @@ namespace OpenCvWpfTracking.Services.Video
                 ScaleMaxTicks = Interlocked.Exchange(ref _metricScaleMaxTicks, 0),
                 ScaleCount = Interlocked.Exchange(ref _metricScaleCount, 0)
             };
+        }
+
+        public FrameTimingSnapshot GetLastFrameTiming()
+        {
+            lock (_syncLock)
+            {
+                return _lastFrameTiming;
+            }
         }
 
         private static void UpdateMaximum(ref long destination, long value)
@@ -689,6 +730,7 @@ namespace OpenCvWpfTracking.Services.Video
                     UpdateMaximum(ref _metricDecodeMaxTicks, decodeElapsed);
                     if (result >= 0)
                     {
+                        CaptureFrameTiming(_frame);
                         return ConvertFrameToMat(_frame);
                     }
 
@@ -737,6 +779,44 @@ namespace OpenCvWpfTracking.Services.Video
 
             }
 
+        }
+
+        private void CaptureFrameTiming(AVFrame* frame)
+        {
+            long bestEffortTimestamp = frame->best_effort_timestamp;
+            long timestamp = bestEffortTimestamp != ffmpeg.AV_NOPTS_VALUE
+                ? bestEffortTimestamp
+                : frame->pts;
+            bool hasTimestamp =
+                timestamp != ffmpeg.AV_NOPTS_VALUE &&
+                _formatContext != null &&
+                _videoStreamIndex >= 0;
+            double timestampMilliseconds = 0.0;
+
+            if (hasTimestamp)
+            {
+                AVRational timeBase =
+                    _formatContext->streams[_videoStreamIndex]->time_base;
+                if (timeBase.den != 0)
+                {
+                    timestampMilliseconds =
+                        timestamp * 1000.0 * timeBase.num / timeBase.den;
+                }
+                else
+                {
+                    hasTimestamp = false;
+                }
+            }
+
+            _lastFrameTiming = new FrameTimingSnapshot
+            {
+                Pts = frame->pts,
+                Dts = frame->pkt_dts,
+                BestEffortTimestamp = bestEffortTimestamp,
+                DecodedTicks = Stopwatch.GetTimestamp(),
+                TimestampMilliseconds = timestampMilliseconds,
+                HasTimestamp = hasTimestamp
+            };
         }
 
         /// <summary>

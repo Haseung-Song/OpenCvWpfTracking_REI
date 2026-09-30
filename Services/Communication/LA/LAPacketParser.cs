@@ -62,6 +62,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private readonly object _bufferLock =
             new object();
 
+
+
+
         #endregion
 
         #region [Parse]

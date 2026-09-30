@@ -38,6 +38,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// </summary>
         private const byte Etx = 0x03;
 
+
+
+
         #endregion
 
         #region [Request Packet Builder]

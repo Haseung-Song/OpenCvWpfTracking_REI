@@ -25,10 +25,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
          * AI TCP 수신 Thread가 멈추지 않도록 채널별 최신 UI 갱신만 보관한다.
          */
         private readonly object _aiUiUpdateSync = new object();
+
         private readonly Dictionary<int, Action> _pendingAiUiUpdates =
             new Dictionary<int, Action>();
+
         private readonly Dictionary<int, bool> _pendingAiUiUpdateHasDetection =
             new Dictionary<int, bool>();
+
         private bool _isAiUiDrainScheduled;
 
         private bool _isApplicationShutdownRequested;
@@ -46,6 +49,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isEoAiDisplayHoldActive;
 
         private bool _isIrAiDisplayHoldActive;
+
+
+
+
 
         #region [AI Detector Communication]
 

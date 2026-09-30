@@ -95,6 +95,10 @@ namespace OpenCvWpfTracking
         /// </summary>
         private const uint OPEN_EXISTING = 3;
 
+
+
+
+
         #endregion
 
         #region [FFmpeg Initialize]

@@ -1,5 +1,6 @@
 using OpenCvWpfTracking.Common;
 using System;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -68,6 +69,9 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 잘못 발생하지 않도록 구분한다.
         /// </summary>
         private bool _isManualDisconnect;
+
+
+
 
         #endregion
 
@@ -158,6 +162,13 @@ namespace OpenCvWpfTracking.Services.Communication
                         "REASON : Timeout",
                         $"TARGET : {ip}:{port}");
 
+                    // 2026-09-29: Timeout 뒤 Socket을 닫으면 진행 중인
+                    // ConnectAsync가 나중에 fault될 수 있다. 해당 예외를 반드시
+                    // 관찰하여 Finalizer Thread의 UnobservedTaskException을 막는다.
+                    ObserveTimedOutConnectTask(
+                        connectTask,
+                        $"TCP {ip}:{port}");
+
                     newClient.Close();
                     newClient.Dispose();
 
@@ -215,6 +226,25 @@ namespace OpenCvWpfTracking.Services.Communication
                 return false;
             }
 
+        }
+
+        private static void ObserveTimedOutConnectTask(
+            Task connectTask,
+            string connectionName)
+        {
+            _ = connectTask.ContinueWith(
+                faultedTask =>
+                {
+                    Exception observedException = faultedTask.Exception;
+
+                    Debug.WriteLine(
+                        $"[TCP CONNECT TIMEOUT CLEANUP] {connectionName} / " +
+                        observedException?.GetBaseException().Message);
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted |
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
 
         #endregion

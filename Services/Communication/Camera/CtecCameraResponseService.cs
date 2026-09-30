@@ -1,6 +1,7 @@
 using OpenCvWpfTracking.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -118,6 +119,9 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 다음 Focus Position 응답 대기 작업
         /// </summary>
         private TaskCompletionSource<int> _focusPositionWaitSource;
+
+
+
 
         #endregion
 
@@ -348,6 +352,10 @@ namespace OpenCvWpfTracking.Services.Communication
                 if (completedTask !=
                     connectTask)
                 {
+                    // 2026-09-29: Close 이후 완료되는 ConnectAsync의 예외까지
+                    // 관찰하여 반복 재연결 중 UnobservedTaskException을 방지한다.
+                    ObserveTimedOutConnectTask(connectTask);
+
                     tcpClient.Close();
 
                     Console.WriteLine(
@@ -389,6 +397,24 @@ namespace OpenCvWpfTracking.Services.Communication
                 return false;
             }
 
+        }
+
+        private void ObserveTimedOutConnectTask(Task connectTask)
+        {
+            _ = connectTask.ContinueWith(
+                faultedTask =>
+                {
+                    Exception observedException = faultedTask.Exception;
+
+                    Debug.WriteLine(
+                        $"[CTEC RESPONSE CONNECT TIMEOUT CLEANUP] " +
+                        $"{_cameraIp}:{_responsePort} / " +
+                        observedException?.GetBaseException().Message);
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted |
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
 
         #endregion

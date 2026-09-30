@@ -40,6 +40,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private bool _isIrPaletteSynchronized;
 
+
+
+
         /// <summary>
         /// 2026-09-15: Web Agent만 사용하는 0 ~ 360도 unsigned Pan 좌표 모드.
         /// </summary>
@@ -1213,20 +1216,21 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [EO] 주간 카메라 [One Push Auto Focus] 요청
         ///
-        /// 기존 EO 제어 구현에서 사용하던
-        /// [Pelco-D] 확장 명령을 동일한 제어 TCP 연결로 송신한다.
+        /// Toruss V1 EO/IR 연동규격서 rev15의
+        /// 주간 카메라 제어 확장 명령을 동일한 제어 TCP 연결로 송신한다.
         ///
         /// [Command1 = 0x00]
-        /// [Command2 = 0x2B]
-        /// [Data1    = 0x00]
+        /// [Command2 = 0x35]
+        /// [Data1    = 0xAF]
         /// [Data2    = 0x00]
+        /// [Packet   = FF 01 00 35 AF 00 E5]
         /// </summary>
         public bool StartEoAutoFocus()
         {
             return SendCommand(
                 0x00,
-                0x2B,
-                0x00,
+                0x35,
+                0xAF,
                 0x00);
         }
 

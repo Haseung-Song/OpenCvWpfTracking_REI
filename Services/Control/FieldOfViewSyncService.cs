@@ -24,6 +24,7 @@ namespace OpenCvWpfTracking.Services.Control
         private const double EoMinFocalMm = 6.0;
 
         private const double EoMaxFocalMm = 540.0;
+
         private static readonly double EoSensorWidthMm = 2.0 * EoMinFocalMm * Math.Tan(65.24 * Math.PI / 360.0);
 
         // Infra-LWZ-25-225-AF1 + 640x512/17um detector: 25~225 mm,
@@ -33,6 +34,10 @@ namespace OpenCvWpfTracking.Services.Control
         private const double IrMaxFocalMm = 225.0;
 
         private const double IrSensorWidthMm = 10.88;
+
+
+
+
 
         public ZoomFovTarget CreateTarget(int level)
         {

@@ -17,6 +17,7 @@ namespace OpenCvWpfTracking.Services.Video
     {
         private readonly SmokeCandidateAnalyzer _analyzer =
             new SmokeCandidateAnalyzer();
+
         private bool _isDetected;
 
         private int _clearFrameCount;
@@ -32,9 +33,12 @@ namespace OpenCvWpfTracking.Services.Video
         private int _lastReportedConfirmationFrames = -1;
 
         private double _latchedVisionScore;
+
         private readonly List<VisionScoreTrack> _visionScoreTracks = new List<VisionScoreTrack>();
+
         private readonly List<Rect> _lastVisibleCandidates =
             new List<Rect>();
+
         private DateTime _lastErrorLogTime = DateTime.MinValue;
 
         private DateTime _lastRigidMotionLogTime = DateTime.MinValue;
@@ -48,7 +52,9 @@ namespace OpenCvWpfTracking.Services.Video
         private int _lastZoomPosition = -1;
 
         private DateTime _lastZoomResetLogTime = DateTime.MinValue;
+
         private readonly object _diagnosticSync = new object();
+
         private StreamWriter _diagnosticWriter;
 
         private string _diagnosticDirectory;
@@ -64,6 +70,10 @@ namespace OpenCvWpfTracking.Services.Video
         private const int DiagnosticSnapshotIntervalFrames = 300;
 
         private const int DiagnosticMaximumSnapshotCount = 120;
+
+
+
+
 
         /// <summary>
         /// 2026-09-03: 실영상 진단은 명시적으로 켠 동안에만 CSV와 단계별 마스크를 기록한다.

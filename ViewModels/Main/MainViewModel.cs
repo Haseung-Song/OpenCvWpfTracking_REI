@@ -414,8 +414,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const int EnvironmentIrZoomFullTravelMs = 5000;
 
         private DateTime _environmentIrManualMoveStartedUtc;
+
         private ContinuousMoveType _environmentIrManualMoveType =
             ContinuousMoveType.None;
+
         private int _environmentIrManualMoveDirection;
 
         /// <summary>
@@ -452,6 +454,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         // 2026-09-18: Pan/Tilt 축은 Lens(Zoom/Focus)와 독립 동작한다.
         private bool _isPanTiltMoveActive;
+
         private readonly FieldOfViewSyncService _fieldOfViewSyncService =
             new FieldOfViewSyncService();
 
@@ -852,7 +855,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private byte _panTiltSpeedLevel = 30;
 
-
         /// <summary>
         /// [ZOOM] 버튼 1회 클릭 시 이동할 값
         ///
@@ -983,6 +985,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const double MoveControlTiltMaximum =
             90.0;
 
+
+
+
+
         /// <summary>
         /// 2026-09-15: ROOFTOP은 기존 LA 범위, ENVIRONMENT는 Web Agent 0 ~ 360 범위.
         /// </summary>
@@ -1089,9 +1095,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// HOME POSITION 목표 위치 허용 오차.
+        /// 2026-09-29: 환경부 지향각 반복 정확도 기준과 ZERO 후 복귀 정밀도를
+        /// 확인할 수 있도록 기존 ±0.50°에서 ±0.05°로 강화한다.
+        /// 파노라마 전용 허용 오차는 별도 상수이므로 이 변경의 영향을 받지 않는다.
         /// </summary>
         private const double HomePositionTargetTolerance =
-            0.50;
+            0.05;
 
         /// <summary>
         /// HOME POSITION 정지 상태 판정용 연속 안정 샘플 수.
@@ -1538,6 +1547,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// false : 연결 완료 또는 종료 상태
         /// </summary>
         private bool _isVideoConnecting;
+
+
+
+
 
         #endregion
 

@@ -1605,6 +1605,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private RtspSourceOption _selectedAiIrRtspSource;
 
+
+
+
+
         public RtspSourceOption SelectedEoRtspSource
         {
             get
@@ -3003,6 +3007,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _lastEoSmokeWarningVisible;
 
         private bool _lastIrSmokeWarningVisible;
+
+
+
+
 
         /// <summary>
         /// 2026-09-22: 상단 FIRE/SMOKE 경고는 로컬 영상처리와 AI Agent 중

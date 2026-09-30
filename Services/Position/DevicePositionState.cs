@@ -12,25 +12,48 @@ namespace OpenCvWpfTracking.Services.Position
         private readonly object _sync = new object();
 
         private bool _connected;
+
         private double? _pan;
+
         private double? _tilt;
+
         private int? _eoZoom;
+
         private int? _eoFocus;
+
         private int? _irZoom;
+
         private int? _irFocus;
+
         private double? _latitude;
+
         private double? _longitude;
+
         private double? _altitude;
+
         private double? _roll;
+
         private double? _pitch;
+
         private double? _yaw;
+
         private DateTimeOffset? _ptzUpdatedAt;
+
         private DateTimeOffset? _eoLensUpdatedAt;
+
         private DateTimeOffset? _irLensUpdatedAt;
+
         private DateTimeOffset? _gpsUpdatedAt;
+
         private DateTimeOffset? _imuUpdatedAt;
+
         private bool _gpsValueValid;
+
         private bool _imuValueValid;
+
+
+
+
 
         public void SetConnected(bool connected)
         {

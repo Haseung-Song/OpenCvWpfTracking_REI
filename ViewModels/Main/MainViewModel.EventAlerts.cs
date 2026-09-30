@@ -19,10 +19,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _nextAiEventId = 1;
 
         private bool _isAiCsvHistoryLoaded;
+
         // 2026-09-09: 채널당 한 행이 아니라 화면의 AI 객체별로 ACTIVE 상태를 보존한다.
         // Key = RTSP channel + ObjectId + ClassIndex.
         private readonly Dictionary<string, AiEventTrack> _activeAiEvents =
             new Dictionary<string, AiEventTrack>(StringComparer.Ordinal);
+
+
+
+
 
         private sealed class AiEventTrack
         {
@@ -35,13 +40,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private DispatcherTimer _testProgramEventTimer;
 
         private int _processedTestProgramEventLineCount;
+
         private readonly List<FireEventRecord> _activeTestFireEvents =
             new List<FireEventRecord>();
+
         private int _activeAiCount;
 
         private DateTime? _lastAiDetectedTime;
 
         private int _selectedEventAlertTabIndex;
+
+
+
+
 
         public ObservableCollection<FireEventRecord> AiDetectionEvents { get; } =
             new ObservableCollection<FireEventRecord>();
