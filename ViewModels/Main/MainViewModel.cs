@@ -985,6 +985,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const double MoveControlTiltMaximum =
             90.0;
 
+        // 2026-09-30: WebAgent TILT ZERO 이후에는 기계적 가동 범위가
+        // 비대칭으로 바뀔 수 있으므로 0x02 응답에서 받은 값을 보관한다.
+        // 응답 전 또는 LA Agent 운용 시에는 기존 -90° ~ +90°를 유지한다.
+        private double _webAgentTiltMinimum =
+            MoveControlTiltMinimum;
+
+        private double _webAgentTiltMaximum =
+            MoveControlTiltMaximum;
+
+        private bool _hasWebAgentTiltLimits;
+
+        private int _webAgentTiltLimitQueryRequested;
+
         /// <summary>
         /// 2026-09-15: ROOFTOP은 기존 LA 범위, ENVIRONMENT는 Web Agent 0 ~ 360 범위.
         /// </summary>
@@ -993,10 +1006,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private double CurrentMoveControlPanMaximum => MoveControlPanMaximum;
 
         private double CurrentMoveControlTiltMinimum =>
-            MoveControlTiltMinimum;
+            _controlCommandService != null &&
+            _controlCommandService.UseUnsignedWebAgentTiltCoordinates &&
+            _hasWebAgentTiltLimits
+                ? _webAgentTiltMinimum
+                : MoveControlTiltMinimum;
 
         private double CurrentMoveControlTiltMaximum =>
-            MoveControlTiltMaximum;
+            _controlCommandService != null &&
+            _controlCommandService.UseUnsignedWebAgentTiltCoordinates &&
+            _hasWebAgentTiltLimits
+                ? _webAgentTiltMaximum
+                : MoveControlTiltMaximum;
 
         /// <summary>
         /// 현재 Pan 선회 모드

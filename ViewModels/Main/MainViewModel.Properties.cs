@@ -404,13 +404,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SelectedEquipmentStatusMode == EquipmentStatusMode.Environment;
 
         public string PanTiltCoordinateRangeText =>
-            "PAN : -180° ~ 180°   /   TILT : -90° ~ 90°";
+            "PAN : -180° ~ 180°   /   TILT : " +
+            $"{CurrentMoveControlTiltMinimum:F2}° ~ " +
+            $"{CurrentMoveControlTiltMaximum:F2}°";
 
         public string PanAbsoluteRangeLabel =>
             "Pan Target  (-180° ~ 180°)";
 
         public string TiltAbsoluteRangeLabel =>
-            "Tilt Target  (-90° ~ 90°)";
+            "Tilt Target  (" +
+            $"{CurrentMoveControlTiltMinimum:F2}° ~ " +
+            $"{CurrentMoveControlTiltMaximum:F2}°)";
 
         /// <summary>
         /// ROOFTOP / ENVIRONMENT 전환 직후에도 현재값과 입력값이 새 좌표계로 즉시 표시되게 한다.
@@ -419,11 +423,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ConvertPanTiltValuesForSelectedCoordinateMode()
         {
             _currentPan = NormalizeToSignedAngle(_currentPan);
-            _currentTilt = Math.Max(-90.0, Math.Min(90.0, NormalizeToSignedAngle(_currentTilt)));
+            _currentTilt = Math.Max(
+                CurrentMoveControlTiltMinimum,
+                Math.Min(
+                    CurrentMoveControlTiltMaximum,
+                    NormalizeToSignedAngle(_currentTilt)));
             PanAbsoluteValue = PanAbsoluteValue.HasValue
                 ? NormalizeToSignedAngle(PanAbsoluteValue.Value) : (double?)null;
             TiltAbsoluteValue = TiltAbsoluteValue.HasValue
-                ? Math.Max(-90.0, Math.Min(90.0, NormalizeToSignedAngle(TiltAbsoluteValue.Value))) : (double?)null;
+                ? Math.Max(
+                    CurrentMoveControlTiltMinimum,
+                    Math.Min(
+                        CurrentMoveControlTiltMaximum,
+                        NormalizeToSignedAngle(TiltAbsoluteValue.Value)))
+                : (double?)null;
 
             OnPropertyChanged(nameof(CurrentPanText));
             OnPropertyChanged(nameof(CurrentTiltText));

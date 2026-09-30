@@ -115,6 +115,23 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
+        /// 2026-09-30: TILT Set Zero 이후 변경된 실제 동작 범위를
+        /// WebAgent에 조회한다.
+        ///
+        /// Packet: FF 01 00 B5 02 00 B8
+        /// Cmd2  : 0xB5 (TILT 제한값 조회)
+        /// Data1 : 0x02 (TILT 축)
+        /// </summary>
+        public bool RequestWebAgentTiltLimits()
+        {
+            return SendCommand(
+                0x00,
+                0xB5,
+                0x02,
+                0x00);
+        }
+
+        /// <summary>
         /// [CheckSum] 계산 함수
         /// 지정 범위의 [byte] 합산값 반환
         /// </summary>

@@ -51,11 +51,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string statusText,
             string statusColor)
         {
+            bool isConnected = string.Equals(
+                statusText,
+                "Connected",
+                StringComparison.OrdinalIgnoreCase);
+
             SetPositionConnectionState(
-                string.Equals(
-                    statusText,
-                    "Connected",
-                    StringComparison.OrdinalIgnoreCase));
+                isConnected);
+
+            if (isConnected)
+            {
+                RequestWebAgentTiltLimitsAfterConnection();
+            }
+            else
+            {
+                ResetWebAgentTiltLimits();
+            }
 
             /*
              * 자동 재연결 Loop는 백그라운드 Task에서 실행되므로
@@ -665,6 +676,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             switch (packet.Function)
             {
+                case 0x02:
+                    ParseWebAgentTiltLimitPacket(packet.RawData);
+                    break;
+
                 case 0x01:
                     /// <summary>
                     /// [Pan] / [Tilt] / [Zoom] / [Focus] 상태 정보
@@ -783,6 +798,176 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     break;
             }
 
+        }
+
+        /// <summary>
+        /// 2026-09-30: WebAgent 연결마다 TILT 제한값을 한 번 조회한다.
+        /// LA Agent에서는 기존 고정 범위를 사용하므로 요청하지 않는다.
+        /// </summary>
+        private void RequestWebAgentTiltLimitsAfterConnection()
+        {
+            if (_controlCommandService == null ||
+                !_controlCommandService.UseUnsignedWebAgentTiltCoordinates ||
+                Interlocked.Exchange(
+                    ref _webAgentTiltLimitQueryRequested,
+                    1) != 0)
+            {
+                return;
+            }
+
+            bool sent =
+                _controlCommandService.RequestWebAgentTiltLimits();
+
+            ConsoleLogHelper.Command(
+                "WEB AGENT TILT LIMIT",
+                "Query requested / " +
+                "PACKET=FF 01 00 B5 02 00 B8 / " +
+                "RESULT=" + sent);
+
+            if (!sent)
+            {
+                Interlocked.Exchange(
+                    ref _webAgentTiltLimitQueryRequested,
+                    0);
+            }
+        }
+
+        /// <summary>
+        /// WebAgent Function 0x02 응답에서 TILT 음수/양수 한계를 해석한다.
+        /// POS/NEG는 각각 unsigned LE16이며 단위는 0.01°이다.
+        /// </summary>
+        private void ParseWebAgentTiltLimitPacket(
+            byte[] packet)
+        {
+            if (_controlCommandService == null ||
+                !_controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            {
+                ConsoleLogHelper.Warning(
+                    "WEB AGENT TILT LIMIT",
+                    "Function 0x02 ignored outside WebAgent mode");
+                return;
+            }
+
+            if (packet == null ||
+                packet.Length != 12)
+            {
+                ConsoleLogHelper.Warning(
+                    "WEB AGENT TILT LIMIT",
+                    "Invalid response length");
+                return;
+            }
+
+            ushort positiveRaw =
+                (ushort)(packet[2] | packet[3] << 8);
+
+            ushort negativeRaw =
+                (ushort)(packet[4] | packet[5] << 8);
+
+            double positiveLimit =
+                positiveRaw / 100.0;
+
+            double negativeLimit =
+                -(negativeRaw / 100.0);
+
+            // 손상되거나 다른 의미의 Function 0x02 패킷이 UI 이동 범위를
+            // 비정상적으로 확장하지 않도록 TILT 물리 범위 내에서 검증한다.
+            if (positiveLimit < 0.0 ||
+                positiveLimit > 180.0 ||
+                negativeLimit < -180.0 ||
+                negativeLimit > 0.0 ||
+                positiveRaw + negativeRaw == 0)
+            {
+                ConsoleLogHelper.Warning(
+                    "WEB AGENT TILT LIMIT",
+                    "Invalid limit values / " +
+                    $"POS_RAW={positiveRaw} / NEG_RAW={negativeRaw}");
+                return;
+            }
+
+            Action applyLimits = () =>
+            {
+                _webAgentTiltMinimum =
+                    negativeLimit;
+
+                _webAgentTiltMaximum =
+                    positiveLimit;
+
+                _hasWebAgentTiltLimits =
+                    true;
+
+                if (TiltAbsoluteValue.HasValue)
+                {
+                    TiltAbsoluteValue = Clamp(
+                        TiltAbsoluteValue.Value,
+                        CurrentMoveControlTiltMinimum,
+                        CurrentMoveControlTiltMaximum);
+                }
+
+                OnPropertyChanged(nameof(PanTiltCoordinateRangeText));
+                OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
+            };
+
+            if (App.Current?.Dispatcher == null ||
+                App.Current.Dispatcher.CheckAccess())
+            {
+                applyLimits();
+            }
+            else
+            {
+                App.Current.Dispatcher.BeginInvoke(
+                    applyLimits,
+                    DispatcherPriority.DataBind);
+            }
+
+            ConsoleLogHelper.StateSection(
+                "WEB AGENT TILT LIMIT",
+                "Limits updated",
+                string.Empty,
+                $"NEGATIVE={negativeLimit:F2}deg",
+                $"POSITIVE={positiveLimit:F2}deg",
+                "SOURCE=FUNCTION_0x02");
+        }
+
+        /// <summary>
+        /// 연결 종료 시 이전 장비의 제한값이 다음 연결에 남지 않게 초기화한다.
+        /// </summary>
+        private void ResetWebAgentTiltLimits()
+        {
+            Interlocked.Exchange(
+                ref _webAgentTiltLimitQueryRequested,
+                0);
+
+            if (!_hasWebAgentTiltLimits)
+            {
+                return;
+            }
+
+            Action resetLimits = () =>
+            {
+                _webAgentTiltMinimum =
+                    MoveControlTiltMinimum;
+
+                _webAgentTiltMaximum =
+                    MoveControlTiltMaximum;
+
+                _hasWebAgentTiltLimits =
+                    false;
+
+                OnPropertyChanged(nameof(PanTiltCoordinateRangeText));
+                OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
+            };
+
+            if (App.Current?.Dispatcher == null ||
+                App.Current.Dispatcher.CheckAccess())
+            {
+                resetLimits();
+            }
+            else
+            {
+                App.Current.Dispatcher.BeginInvoke(
+                    resetLimits,
+                    DispatcherPriority.DataBind);
+            }
         }
 
         #endregion
