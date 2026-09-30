@@ -14,9 +14,6 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
     {
         private readonly ControlCommandService _controlCommandService;
 
-
-
-
         /// <summary>
         /// WebAgentZoomControlService 동작 수행 함수.
         /// </summary>

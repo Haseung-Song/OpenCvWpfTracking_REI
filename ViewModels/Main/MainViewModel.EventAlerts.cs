@@ -25,10 +25,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly Dictionary<string, AiEventTrack> _activeAiEvents =
             new Dictionary<string, AiEventTrack>(StringComparer.Ordinal);
 
-
-
-
-
         private sealed class AiEventTrack
         {
             internal int RtspIndex { get; set; }
@@ -49,10 +45,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private DateTime? _lastAiDetectedTime;
 
         private int _selectedEventAlertTabIndex;
-
-
-
-
 
         public ObservableCollection<FireEventRecord> AiDetectionEvents { get; } =
             new ObservableCollection<FireEventRecord>();

@@ -50,10 +50,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _isIrAiDisplayHoldActive;
 
-
-
-
-
         #region [AI Detector Communication]
 
         #region [AI Detector Connect]

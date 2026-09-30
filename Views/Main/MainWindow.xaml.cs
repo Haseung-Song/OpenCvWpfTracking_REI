@@ -33,9 +33,6 @@ namespace OpenCvWpfTracking
         // 현재 창이 위치한 모니터 전체 영역(rcMonitor)을 사용한다.
         private const uint MonitorDefaultToNearest = 0x00000002;
 
-
-
-
         [StructLayout(LayoutKind.Sequential)]
         private struct NativeRect
         {
@@ -46,8 +43,6 @@ namespace OpenCvWpfTracking
             public int Right;
 
             public int Bottom;
-
-
 
         }
 
@@ -61,8 +56,6 @@ namespace OpenCvWpfTracking
             public NativeRect Work;
 
             public uint Flags;
-
-
 
         }
 
@@ -167,9 +160,6 @@ namespace OpenCvWpfTracking
         private Key? _activeHoverLensKey;
 
         private VideoPopoutCameraType? _activeHoverLensCameraType;
-
-
-
 
         #endregion
 

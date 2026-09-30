@@ -35,9 +35,6 @@ namespace OpenCvWpfTracking
 
         private bool _hadActiveFireEvent;
 
-
-
-
         public EventAlertControl()
         {
             InitializeComponent();
@@ -428,9 +425,6 @@ namespace OpenCvWpfTracking
             private EventRecordComparer _activeComparer =
                 new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
 
-
-
-
             internal EventPageController(
                 DataGrid grid,
                 TextBlock totalText,
@@ -722,9 +716,6 @@ namespace OpenCvWpfTracking
                 private readonly string _sortMemberPath;
 
                 private readonly int _directionFactor;
-
-
-
 
                 internal EventRecordComparer(
                     string sortMemberPath,

@@ -72,10 +72,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private Brush _smokeBoxMode2Background =
             new SolidColorBrush(Color.FromRgb(42, 111, 151));
 
-
-
-
-
         public ICommand SelectSmokeBoxMode1Command { get; private set; }
 
         public ICommand SelectSmokeBoxMode2Command { get; private set; }

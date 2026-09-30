@@ -68,9 +68,6 @@ namespace OpenCvWpfTracking
         private const double MoveControlZoomRatioMaximumInput =
             90.0;
 
-
-
-
         #endregion
 
         #region [Move Control Preview Text Input]
@@ -256,7 +253,6 @@ namespace OpenCvWpfTracking
                 MoveControlTiltMaximumInput,
                 2);
         }
-
 
         /// <summary>
         /// Zoom / Focus Position 입력 완료 처리

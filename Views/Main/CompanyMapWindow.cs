@@ -16,9 +16,6 @@ namespace OpenCvWpfTracking
 
         private readonly Border _loadingOverlay;
 
-
-
-
         public CompanyMapWindow(
             double latitude,
             double longitude,

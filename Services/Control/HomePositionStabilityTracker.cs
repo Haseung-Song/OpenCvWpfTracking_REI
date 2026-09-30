@@ -23,10 +23,6 @@ namespace OpenCvWpfTracking.Services.Control
 
         private double _previousTilt;
 
-
-
-
-
         public int StableCount { get; private set; }
 
         public bool IsNearTarget { get; private set; }

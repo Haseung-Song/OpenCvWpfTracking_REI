@@ -29,10 +29,6 @@ namespace FireCandidateValidator
         // 후보 생성 이후 Track 단계에서 보조 억제한다.
         private readonly List<TestFireTrack> _fireTracks = new List<TestFireTrack>();
 
-
-
-
-
         /// <summary>
         /// Analyze 동작 수행 함수.
         /// </summary>

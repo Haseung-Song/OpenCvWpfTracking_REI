@@ -70,9 +70,6 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private bool _isManualDisconnect;
 
-
-
-
         #endregion
 
         #region [Events]

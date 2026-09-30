@@ -194,7 +194,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public ICommand ResetPositionInputCommand { get; }
 
-
         /// <summary>
         /// PRESET 1 (LA TEST) 현재 PTZF를 LA 스캔 프리셋으로 등록
         /// </summary>
@@ -1605,10 +1604,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private RtspSourceOption _selectedAiIrRtspSource;
 
-
-
-
-
         public RtspSourceOption SelectedEoRtspSource
         {
             get
@@ -3007,10 +3002,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _lastEoSmokeWarningVisible;
 
         private bool _lastIrSmokeWarningVisible;
-
-
-
-
 
         /// <summary>
         /// 2026-09-22: 상단 FIRE/SMOKE 경고는 로컬 영상처리와 AI Agent 중

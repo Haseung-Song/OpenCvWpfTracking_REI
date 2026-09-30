@@ -30,9 +30,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private int _lastWebAgentTiltRaw = -1;
 
-
-
-
         private void InitializeWebAgentProtocolV18()
         {
             if (!IsEnvironmentStatusSelected) return;

@@ -44,10 +44,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private double _pixelArea;
 
-
-
-
-
         internal FireEventRecord(
             int eventId,
             DateTime detectedTime,
@@ -342,10 +338,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly List<VisionBBoxEventTrack> _activeVisionBBoxEvents =
             new List<VisionBBoxEventTrack>();
-
-
-
-
 
         private sealed class VisionBBoxEventTrack
         {

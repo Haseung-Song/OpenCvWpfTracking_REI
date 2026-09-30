@@ -71,10 +71,6 @@ namespace OpenCvWpfTracking.Services.Video
 
         private const int DiagnosticMaximumSnapshotCount = 120;
 
-
-
-
-
         /// <summary>
         /// 2026-09-03: 실영상 진단은 명시적으로 켠 동안에만 CSV와 단계별 마스크를 기록한다.
         /// EO/IR 서비스가 각자 전용 폴더와 Writer를 사용해 프레임 스레드 간 혼합을 방지한다.

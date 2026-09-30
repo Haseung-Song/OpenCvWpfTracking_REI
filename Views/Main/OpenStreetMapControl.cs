@@ -101,9 +101,6 @@ namespace OpenCvWpfTracking
         // 현재 Offline/Fallback 상태에서 1회만 기록한다.
         private bool _isTileFallbackLogged;
 
-
-
-
         /// <summary>
         /// 최초 화면에 필요한 모든 타일 요청이 끝나고 하나의 일관된 View가
         /// 준비되었을 때 한 번만 발생한다. 확대 창은 이 시점까지 Loading

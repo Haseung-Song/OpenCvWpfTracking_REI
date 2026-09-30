@@ -35,10 +35,6 @@ namespace OpenCvWpfTracking.Services.Control
 
         private const double IrSensorWidthMm = 10.88;
 
-
-
-
-
         public ZoomFovTarget CreateTarget(int level)
         {
             int safeLevel = Math.Max(0, Math.Min(10, level));

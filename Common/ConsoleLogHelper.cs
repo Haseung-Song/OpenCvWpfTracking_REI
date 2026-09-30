@@ -46,10 +46,6 @@ namespace OpenCvWpfTracking.Common
 
         private static long _totalWriteCount;
 
-
-
-
-
         public static long TotalWriteCount =>
             Interlocked.Read(ref _totalWriteCount);
 
@@ -63,10 +59,6 @@ namespace OpenCvWpfTracking.Common
         /// </summary>
         public const string LogLine =
             "=======================================================================================================================";
-
-
-
-
 
         static ConsoleLogHelper()
         {
@@ -804,10 +796,6 @@ namespace OpenCvWpfTracking.Common
 
             private bool _isDisposed;
 
-
-
-
-
             /// <summary>
             /// ConsoleLogScope 동작 수행 함수.
             /// </summary>
@@ -863,10 +851,6 @@ namespace OpenCvWpfTracking.Common
             private bool _separatorSinceContent;
 
             private bool _lastLineWasBlank;
-
-
-
-
 
             /// <summary>
             /// NormalizedConsoleTextWriter 동작 수행 함수.

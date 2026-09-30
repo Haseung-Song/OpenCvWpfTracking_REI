@@ -47,9 +47,6 @@ namespace OpenCvWpfTracking.Services.Video
 
             public long ScaleCount;
 
-
-
-
         }
 
         /// <summary>
@@ -69,9 +66,6 @@ namespace OpenCvWpfTracking.Services.Video
             public double TimestampMilliseconds;
 
             public bool HasTimestamp;
-
-
-
 
         }
 
@@ -167,10 +161,6 @@ namespace OpenCvWpfTracking.Services.Video
                 Environment.GetEnvironmentVariable("TORUSS_RTSP_PROFILE"),
                 "LOW_LATENCY",
                 StringComparison.OrdinalIgnoreCase);
-
-
-
-
 
         #endregion
 

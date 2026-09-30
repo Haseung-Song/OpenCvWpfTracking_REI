@@ -40,9 +40,6 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private bool _isIrPaletteSynchronized;
 
-
-
-
         /// <summary>
         /// 2026-09-15: Web Agent만 사용하는 0 ~ 360도 unsigned Pan 좌표 모드.
         /// </summary>
@@ -186,7 +183,6 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x02,
                 0x00);
         }
-
 
         /// <summary>
         /// LA 실제 구현 기준 스캔 프리셋 ID를 설정한다.

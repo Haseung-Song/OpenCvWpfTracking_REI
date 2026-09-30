@@ -985,10 +985,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const double MoveControlTiltMaximum =
             90.0;
 
-
-
-
-
         /// <summary>
         /// 2026-09-15: ROOFTOP은 기존 LA 범위, ENVIRONMENT는 Web Agent 0 ~ 360 범위.
         /// </summary>
@@ -1548,10 +1544,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private bool _isVideoConnecting;
 
-
-
-
-
         #endregion
 
         #endregion
@@ -1589,7 +1581,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     IsCrosshairVisible =
                         !IsCrosshairVisible;
                 });
-
 
             /// <summary>
             /// [Environment Equipment / Zoom Synchronization]
@@ -1990,7 +1981,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 new RelayCommand(
                     ResetMoveControlInput);
 
-
             AddOrUpdateLaPresetCommand =
                 new RelayCommand(
                     AddOrUpdateLaPresetPoint);
@@ -2120,7 +2110,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// [TORUSS] 제어 명령 서비스 생성
             /// </summary>
             _controlCommandService = new ControlCommandService(_laTcpService);
-
 
             /// <summary>
             /// MCB 유지보수 직접 명령 서비스 생성

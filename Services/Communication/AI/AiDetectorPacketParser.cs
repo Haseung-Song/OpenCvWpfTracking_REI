@@ -70,9 +70,6 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// </summary>
         private const string DetectCommand = "55";
 
-
-
-
         #endregion
 
         #region [Packet Extract]

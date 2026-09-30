@@ -51,10 +51,6 @@ namespace OpenCvWpfTracking.Services.Position
 
         private bool _imuValueValid;
 
-
-
-
-
         public void SetConnected(bool connected)
         {
             lock (_sync)

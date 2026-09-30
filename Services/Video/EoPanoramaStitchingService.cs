@@ -27,10 +27,6 @@ namespace OpenCvWpfTracking.Services.Video
 
         private const double LegacyVerticalAovDegrees = 42.5;
 
-
-
-
-
         /// <summary>
         /// StitchAndSave 동작 수행 함수.
         /// </summary>

@@ -72,10 +72,6 @@ namespace FireCandidateValidator
 
         private int _fireDiagnosticFrameIndex;
 
-
-
-
-
         /// <summary>
         /// MainWindow 동작 수행 함수.
         /// </summary>

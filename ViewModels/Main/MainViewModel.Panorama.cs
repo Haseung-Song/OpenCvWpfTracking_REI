@@ -58,10 +58,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private int _selectedPanoramaCaptureOptionIndex = 1;
 
-
-
-
-
         public IList<string> PanoramaCaptureRangeOptions =>
             PanoramaCaptureRangeOptionItems;
 

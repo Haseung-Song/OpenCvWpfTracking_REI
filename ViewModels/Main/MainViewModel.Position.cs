@@ -30,10 +30,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private int _positionStatusNotificationPending;
 
-
-
-
-
         /// <summary>
         /// CURRENT STATUS 하단에서 최근 상태 패킷의 유효성을 간단히 확인한다.
         /// 실제 값은 기존 PTZF 행을 유지하고 여기서는 유효성만 표시한다.
@@ -209,10 +205,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         private int _positionLastSnapshotNotificationDirty;
-
-
-
-
 
         private static string ToUiStatus(PositionDataStatus status)
         {

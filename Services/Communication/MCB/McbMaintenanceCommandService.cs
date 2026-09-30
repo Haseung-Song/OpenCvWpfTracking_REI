@@ -43,9 +43,6 @@ namespace OpenCvWpfTracking.Services.Communication
         private readonly SemaphoreSlim _sendLock =
             new SemaphoreSlim(1, 1);
 
-
-
-
         /// <summary>
         /// Pan 현재 Encoder 위치를 0으로 설정한다.
         /// </summary>

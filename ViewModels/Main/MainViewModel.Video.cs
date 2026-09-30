@@ -40,8 +40,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             public long ResultVersion;
 
-
-
         }
 
         private sealed class DisplayFrameSlot
@@ -72,8 +70,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             public long LastOverlayVersion;
 
-
-
         }
 
         private sealed class BufferedDisplayFrame
@@ -81,8 +77,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public Mat Frame;
 
             public long DecodedTicks;
-
-
 
         }
 
@@ -230,8 +224,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             public long LastFrameDts;
 
-
-
         }
 
         private readonly DetectionFrameSlot _eoDetectionSlot = new DetectionFrameSlot();
@@ -281,9 +273,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private Task _eoCaptureTask = Task.CompletedTask;
 
         private Task _irCaptureTask = Task.CompletedTask;
-
-
-
 
         #region [Video Connect / Disconnect]
 
@@ -1070,7 +1059,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _cts = new CancellationTokenSource();
         }
-
 
         #endregion
 
@@ -3179,7 +3167,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "FFmpeg Capture Loop End");
         }
 
-
         #region [Video Result Type]
 
         /// <summary>
@@ -3193,8 +3180,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public bool EoResult;
 
             public bool IrResult;
-
-
 
         }
 

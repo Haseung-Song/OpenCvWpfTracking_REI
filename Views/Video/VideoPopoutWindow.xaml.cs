@@ -77,9 +77,6 @@ namespace OpenCvWpfTracking
         /// </summary>
         private Key? _activeLensKey;
 
-
-
-
         #endregion
 
         #region [Constructor]

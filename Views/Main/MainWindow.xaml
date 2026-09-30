@@ -3334,7 +3334,6 @@
                                                                 </Grid>
                                                             </Border>
 
-
                                                             <!-- [PTZF] Position 기반 이동 제어
 
                                                                 기존 AI DETECTOR SETTING 내부에 잘못 배치되었던
@@ -3709,7 +3708,6 @@
                                                                 </StackPanel>
 
                                                             </Border>
-
 
                                                         </StackPanel>
                                                     </ScrollViewer>

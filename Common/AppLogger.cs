@@ -15,10 +15,6 @@ namespace OpenCvWpfTracking.Common
     {
         private static bool _isInitialized;
 
-
-
-
-
         /// <summary>
         /// Initialize 초기화 함수.
         /// </summary>

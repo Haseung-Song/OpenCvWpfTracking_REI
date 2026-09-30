@@ -62,9 +62,6 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// </summary>
         private bool _isReconnectLoopStarted;
 
-
-
-
         #endregion
 
         #region [Events]

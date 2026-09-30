@@ -120,9 +120,6 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private TaskCompletionSource<int> _focusPositionWaitSource;
 
-
-
-
         #endregion
 
         #region [Events]

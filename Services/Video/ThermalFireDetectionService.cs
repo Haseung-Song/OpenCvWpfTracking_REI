@@ -78,10 +78,6 @@ namespace OpenCvWpfTracking.Services.Video
 
         private const int DiagnosticMaximumSnapshotCount = 120;
 
-
-
-
-
         internal void StartDiagnostic(string directory, string channel)
         {
             lock (_diagnosticSync)

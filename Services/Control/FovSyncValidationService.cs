@@ -10,10 +10,6 @@ namespace OpenCvWpfTracking.Services.Control
     {
         public const double PassThresholdPercent = 10.0;
 
-
-
-
-
         public FovSyncValidationResult Calculate(
             int level,
             double eoLeftX,

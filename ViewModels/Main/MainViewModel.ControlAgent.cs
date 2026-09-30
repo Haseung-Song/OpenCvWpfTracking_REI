@@ -40,10 +40,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _isIrRtspAddressValid;
 
-
-
-
-
         #region [LA Communication]
 
         #region [LA Connect]

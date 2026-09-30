@@ -34,10 +34,6 @@ namespace FireCandidateValidator
         private readonly List<SmokeCandidateTrack> _tracks =
             new List<SmokeCandidateTrack>();
 
-
-
-
-
         internal SmokeCandidateAnalysis Analyze(
             Mat source,
             bool isInfrared,
@@ -1913,10 +1909,6 @@ namespace FireCandidateValidator
 
             private readonly Queue<double> _recentVerticalMotion = new Queue<double>();
 
-
-
-
-
             internal int RecentVerticalMotionCount => _recentVerticalMotion.Count;
 
             internal int RecentUpwardSamples => _recentVerticalMotion.Count(value => value <= -1.0);
@@ -2039,10 +2031,6 @@ namespace FireCandidateValidator
         private int _areaRejectRecordCount;
 
         private SmokeDiagnosticRecord _areaRejectSummary;
-
-
-
-
 
         internal IDictionary<string, Mat> StageMasks => _stageMasks;
 

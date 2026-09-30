@@ -22,10 +22,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         // 값이 아니라, 사용자가 요청 상태를 확인할 수 있도록 하는 최소 UI 표시 시간이다.
         private const int WebAgentZeroOverlayMinimumMilliseconds = 1200;
 
-
-
-
-
         #region [Move Control Methods]
 
         /// <summary>
@@ -945,7 +941,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"SPEED COMMAND={speedResult} / " +
                 $"MOVE COMMAND={moveResult}");
         }
-
 
         /// <summary>
         /// PRESET 1 (LA TEST) 등록.

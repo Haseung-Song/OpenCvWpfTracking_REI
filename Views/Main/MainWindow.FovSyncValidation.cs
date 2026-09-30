@@ -28,9 +28,6 @@ namespace OpenCvWpfTracking
 
         private int _fovValidationLevel;
 
-
-
-
         /// <summary>
         /// 2026-09-21: 현재 SYNC 선택 단계의 수동 화각 검증을 시작한다.
         /// </summary>

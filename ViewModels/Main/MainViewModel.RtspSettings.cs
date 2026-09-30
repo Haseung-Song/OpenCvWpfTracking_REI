@@ -64,10 +64,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private ControlAgentProfileOption _selectedControlAgentProfile;
 
-
-
-
-
         public ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; } =
             new ObservableCollection<ControlAgentProfileOption>
             {

@@ -57,10 +57,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private string _fireDiagnosticPathText = "OFF";
 
-
-
-
-
         public Brush ThermalBlackHotButtonBackground { get => _thermalBlackHotButtonBackground; private set { _thermalBlackHotButtonBackground = value; OnPropertyChanged(); } }
         public Brush ThermalBlackHotButtonForeground { get => _thermalBlackHotButtonForeground; private set { _thermalBlackHotButtonForeground = value; OnPropertyChanged(); } }
         public Brush ThermalWhiteHotButtonBackground { get => _thermalWhiteHotButtonBackground; private set { _thermalWhiteHotButtonBackground = value; OnPropertyChanged(); } }

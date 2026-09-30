@@ -21,9 +21,6 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
 
         private uint _supportedPaletteMask = 0x3F;
 
-
-
-
         public WebAgentThermalPaletteService(ControlCommandService controlCommandService)
         {
             _controlCommandService = controlCommandService;
