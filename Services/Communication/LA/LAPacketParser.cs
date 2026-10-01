@@ -3,18 +3,19 @@ using System.Collections.Generic;
 namespace OpenCvWpfTracking.Services.Communication
 {
     /// <summary>
-    /// [WEB AGENT](Local Agent) 수신 데이터를
-    /// [TORUSS] [12byte] 응답 [Packet] 단위로 분리 / 검증하는 [Parser] 클래스
+    /// WebAgent(Local Agent) 수신 데이터를 Legacy 12Byte 또는
+    /// 가변 길이 응답 Packet 단위로 분리하고 검증하는 Parser 클래스.
     ///
     /// TCP는 Message 단위 통신이 아니므로 다음 형태가 모두 발생할 수 있다.
     ///
-    /// 1. 하나의 12byte Packet이 여러 번으로 분할 수신
-    /// 2. 여러 개의 12byte Packet이 한 번에 합쳐져 수신
+    /// 1. 하나의 Packet이 여러 번으로 분할 수신
+    /// 2. 여러 개의 Packet이 한 번에 합쳐져 수신
     /// 3. Packet 앞에 불필요한 byte가 포함되어 수신
     ///
     /// 따라서 ReadAsync에서 전달된 byte[] 하나를
     /// 완전한 Packet이라고 가정하지 않고 내부 Buffer에 누적한 뒤,
-    /// Header(0xFF) 기준으로 정확히 12byte씩 분리한다.
+    /// Header(0xFF)와 Function을 확인하여 Legacy 12Byte 또는
+    /// Function 0x23~0x2C의 Payload 길이 기반으로 분리한다.
     /// </summary>
     public class LAPacketParser
     {
@@ -34,7 +35,8 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private const byte VariableFunctionMinimum = 0x23;
 
-        private const byte VariableFunctionMaximum = 0x2A;
+        // 2026-10-01: RPY 주파수(0x2B)와 Offset(0x2C) 응답을 가변 Packet에 포함한다.
+        private const byte VariableFunctionMaximum = 0x2C;
 
         private const int VariableHeaderSize = 4;
 
@@ -68,7 +70,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// 수신 byte[] 데이터를 내부 Buffer에 누적하고,
-        /// 완성된 12byte Packet만 반환한다.
+        /// 완성된 Legacy 또는 가변 길이 Packet만 반환한다.
         /// </summary>
         public List<LaResponsePacket> Parse(
             byte[] receivedData)
@@ -113,7 +115,7 @@ namespace OpenCvWpfTracking.Services.Communication
                     }
 
                     /// <summary>
-                    /// Header부터 12byte가 아직 모이지 않은 경우
+                    /// Header와 Function이 아직 모이지 않은 경우
                     /// 다음 TCP 수신까지 Buffer를 유지한다.
                     /// </summary>
                     if (_receiveBuffer.Count < 2)
@@ -240,9 +242,8 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [TORUSS] 응답 [Packet Checksum] 검증
         ///
-        /// 문서 기준:
-        /// [Checksum] = packet[1] ~ packet[10] byte 합산값
-        /// [packet[11] = Checksum]
+        /// Checksum은 Function부터 마지막 Payload까지 합산한
+        /// 하위 1Byte이며 Packet의 마지막 Byte와 비교한다.
         /// </summary>
         private bool ValidateChecksum(
             byte[] packet)

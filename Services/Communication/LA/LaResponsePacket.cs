@@ -1,10 +1,10 @@
 namespace OpenCvWpfTracking.Services.Communication
 {
     /// <summary>
-    /// [WEB AGENT](Local Agent) 응답 [Packet] 데이터 클래스
+    /// WebAgent(Local Agent) 응답 Packet 데이터 클래스.
     /// 
     /// 역할:
-    /// 1. [WEB AGENT]에서 수신한 원본 [12byte Packet] 데이터 저장
+    /// 1. WebAgent에서 수신한 원본 Legacy/가변 Packet 데이터 저장
     /// 2. [Header] / [Function] / [Checksum] 정보 접근
     /// 3. [Packet] 유효성 상태 저장
     /// 
@@ -31,7 +31,7 @@ namespace OpenCvWpfTracking.Services.Communication
         #region [Fields / Properties]
 
         /// <summary>
-        /// [WEB AGENT]에서 수신한 원본 [12byte Packet]
+        /// WebAgent에서 수신한 원본 Packet.
         /// 
         /// 예: FF 01 F8 FF 00 00 00 00 8B 00 C9 4C
         /// </summary>
@@ -71,12 +71,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 
         /// [TORUSS] 응답 [Packet] 마지막 [byte] 값
         /// 
-        /// 위치: packet[11]
+        /// 위치: Packet의 마지막 Byte.
         /// </summary>
         public byte Checksum => RawData[RawData.Length - 1];
 
         public bool IsVariableLength =>
-            Function >= 0x23 && Function <= 0x2A;
+            Function >= 0x23 && Function <= 0x2C;
 
         public int PayloadLength =>
             IsVariableLength && RawData != null && RawData.Length >= 5

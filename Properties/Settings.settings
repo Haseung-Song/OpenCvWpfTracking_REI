@@ -11,13 +11,13 @@
       <Value Profile="(Default)">rtsp://root:rmffhqjf1!@192.168.0.121:554/cam0_0</Value>
     </Setting>
     <Setting Name="SavedEoRtspPreset" Type="System.String" Scope="User">
-      <Value Profile="(Default)">옥상 GOP 주간(EO)</Value>
+      <Value Profile="(Default)">옥상 MR300(테스트) - 주간(EO)</Value>
     </Setting>
     <Setting Name="SavedIrRtspPreset" Type="System.String" Scope="User">
-      <Value Profile="(Default)">옥상 GOP 열상(IR)</Value>
+      <Value Profile="(Default)">옥상 MR300(테스트) - 열상(IR)</Value>
     </Setting>
     <Setting Name="SavedControlAgentProfile" Type="System.String" Scope="User">
-      <Value Profile="(Default)">옥상 GOP EO/IR - LA 방식</Value>
+      <Value Profile="(Default)">옥상 MR300(테스트) EO/IR</Value>
     </Setting>
   </Settings>
 </SettingsFile>

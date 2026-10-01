@@ -41,7 +41,7 @@ namespace OpenCvWpfTracking.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("옥상 GOP 주간(EO)")]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 MR300(테스트) - 주간(EO)")]
         public string SavedEoRtspPreset {
             get { return ((string)(this["SavedEoRtspPreset"])); }
             set { this["SavedEoRtspPreset"] = value; }
@@ -49,7 +49,7 @@ namespace OpenCvWpfTracking.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("옥상 GOP 열상(IR)")]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 MR300(테스트) - 열상(IR)")]
         public string SavedIrRtspPreset {
             get { return ((string)(this["SavedIrRtspPreset"])); }
             set { this["SavedIrRtspPreset"] = value; }
@@ -57,7 +57,7 @@ namespace OpenCvWpfTracking.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("옥상 GOP EO/IR - LA 방식")]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 MR300(테스트) EO/IR")]
         public string SavedControlAgentProfile {
             get { return ((string)(this["SavedControlAgentProfile"])); }
             set { this["SavedControlAgentProfile"] = value; }

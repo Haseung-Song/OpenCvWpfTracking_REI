@@ -533,7 +533,8 @@
             </Setter>
         </Style>
 
-        <!-- [통신 설정] CONTROL / RTSP 및 AI DETECTOR 하위 탭 전용 스타일
+        <!-- 2026-10-01: 현재 표시되는 통신 설정 하위 탭만 계산하여
+             사용 가능 폭 전체에 균등 배치한다.
 
             상위 탭의 둥근 모서리 Template을 중첩해 사용하지 않고,
             직선형 Header와 하나의 Content Border만 사용한다.
@@ -586,7 +587,7 @@
                             </Grid.RowDefinitions>
                             <UniformGrid Grid.Row="0"
                                          Rows="1"
-                                         Columns="2"
+                                         Columns="0"
                                          IsItemsHost="True"
                                          HorizontalAlignment="Stretch"/>
                             <Border Grid.Row="1"
@@ -1843,6 +1844,7 @@
                                                                     BorderThickness="0"
                                                                     Padding="0"
                                                                     ClipToBounds="True"
+                                                                    SelectedIndex="{Binding SelectedCommunicationSettingsTabIndex, Mode=TwoWay}"
                                                                     HorizontalContentAlignment="Stretch"
                                                                     VerticalContentAlignment="Stretch"
                                                                     Style="{StaticResource CommunicationSubTabControlStyle}"
@@ -2154,8 +2156,184 @@
                                                                 </ScrollViewer>
                                                             </TabItem>
 
+                                                            <!-- 2026-10-01: WebAgent Build 86 IMU RPY 설정 하위 탭 -->
+                                                            <TabItem Header="IMU / RPY">
+                                                                <TabItem.Style>
+                                                                    <Style TargetType="TabItem"
+                                                                           BasedOn="{StaticResource CommunicationSubTabItemStyle}">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsImuRpyTabVisible}"
+                                                                                         Value="True">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TabItem.Style>
+                                                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                                              HorizontalScrollBarVisibility="Disabled"
+                                                                              Padding="0,8,8,14">
+                                                                    <StackPanel Margin="7"
+                                                                                IsEnabled="{Binding IsEnvironmentStatusSelected}">
+
+                                                                        <Border Padding="8"
+                                                                                Background="#394148"
+                                                                                BorderBrush="#6F8996"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="IMU RPY STATUS"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"/>
+                                                                                <TextBlock Text="{Binding CurrentRpyDisplay}"
+                                                                                           Foreground="#7DD3FC"
+                                                                                           FontWeight="Bold"
+                                                                                           TextAlignment="Center"
+                                                                                           TextWrapping="Wrap"
+                                                                                           Margin="0,8,0,0"/>
+                                                                                <TextBlock Text="{Binding WebAgentBuildStatusText}"
+                                                                                           Foreground="#FDE68A"
+                                                                                           FontSize="10"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,5,0,0"/>
+                                                                                <Button Content="RPY 단건 조회 (0xE5)"
+                                                                                        Height="28"
+                                                                                        Margin="0,8,0,0"
+                                                                                        Style="{StaticResource AiSettingButtonStyle}"
+                                                                                        Command="{Binding RequestRpyTelemetryCommand}"/>
+                                                                            </StackPanel>
+                                                                        </Border>
+
+                                                                        <Border Margin="0,8,0,0"
+                                                                                Padding="8"
+                                                                                Background="#394148"
+                                                                                BorderBrush="#6F8996"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="RPY OFFSET"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"/>
+
+                                                                                <Grid Margin="0,8,0,0">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="8"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="8"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <Grid.RowDefinitions>
+                                                                                        <RowDefinition Height="Auto"/>
+                                                                                        <RowDefinition Height="Auto"/>
+                                                                                    </Grid.RowDefinitions>
+
+                                                                                    <TextBlock Grid.Column="0"
+                                                                                               Text="ROLL (-180~180)"
+                                                                                               Foreground="#B8C0C8"
+                                                                                               FontSize="9"/>
+                                                                                    <TextBlock Grid.Column="2"
+                                                                                               Text="PITCH (-180~180)"
+                                                                                               Foreground="#B8C0C8"
+                                                                                               FontSize="9"/>
+                                                                                    <TextBlock Grid.Column="4"
+                                                                                               Text="YAW (0~359.99)"
+                                                                                               Foreground="#B8C0C8"
+                                                                                               FontSize="9"/>
+
+                                                                                    <TextBox Grid.Row="1"
+                                                                                             Grid.Column="0"
+                                                                                             MaxLength="7"
+                                                                                             Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                             Text="{Binding RpyRollOffsetInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    <TextBox Grid.Row="1"
+                                                                                             Grid.Column="2"
+                                                                                             MaxLength="7"
+                                                                                             Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                             Text="{Binding RpyPitchOffsetInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    <TextBox Grid.Row="1"
+                                                                                             Grid.Column="4"
+                                                                                             MaxLength="6"
+                                                                                             Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                             Text="{Binding RpyYawOffsetInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                </Grid>
+
+                                                                                <Button Content="OFFSET 적용"
+                                                                                        Height="30"
+                                                                                        Margin="0,8,0,0"
+                                                                                        Style="{StaticResource AiSettingButtonStyle}"
+                                                                                        Command="{Binding ApplyRpyOffsetCommand}"/>
+                                                                                <TextBlock Text="{Binding RpyOffsetStatusText}"
+                                                                                           Foreground="#FDE68A"
+                                                                                           FontWeight="Bold"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,6,0,0"/>
+                                                                                <TextBlock Text="{Binding CurrentRpyOffsetDisplay}"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontSize="10"
+                                                                                           TextAlignment="Center"
+                                                                                           TextWrapping="Wrap"
+                                                                                           Margin="0,4,0,0"/>
+                                                                            </StackPanel>
+                                                                        </Border>
+
+                                                                        <Border Margin="0,8,0,0"
+                                                                                Padding="8"
+                                                                                Background="#394148"
+                                                                                BorderBrush="#6F8996"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="RPY AUTO TX"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"/>
+                                                                                <Grid Margin="0,8,0,0">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="Auto"/>
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBox Grid.Column="0"
+                                                                                             MaxLength="2"
+                                                                                             Style="{StaticResource CommunicationTextBoxStyle}"
+                                                                                             Text="{Binding RpyAutoTxRateInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    <TextBlock Grid.Column="1"
+                                                                                               Text="Hz"
+                                                                                               Foreground="White"
+                                                                                               VerticalAlignment="Center"
+                                                                                               Margin="7,0,0,0"/>
+                                                                                </Grid>
+                                                                                <Button Content="주파수 적용"
+                                                                                        Height="30"
+                                                                                        Margin="0,8,0,0"
+                                                                                        Style="{StaticResource AiSettingButtonStyle}"
+                                                                                        Command="{Binding ApplyRpyAutoTxRateCommand}"/>
+                                                                                <TextBlock Text="{Binding RpyRateStatusText}"
+                                                                                           Foreground="#FDE68A"
+                                                                                           FontWeight="Bold"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,6,0,0"/>
+                                                                                <TextBlock Text="{Binding CurrentRpyRateDisplay}"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontSize="10"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,4,0,0"/>
+                                                                                <TextBlock Text="※ 0Hz는 자동 전송 중지이며, 전송 주파수는 WebAgent 공통 설정입니다."
+                                                                                           Foreground="#B8C0C8"
+                                                                                           FontSize="9"
+                                                                                           TextWrapping="Wrap"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,6,0,0"/>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </StackPanel>
+                                                                </ScrollViewer>
+                                                            </TabItem>
+
                                                             <!-- AI Detector 연결 및 분석 설정 하위 탭 -->
-                                                            <TabItem Header="AI / FIRE / SMOKE SETTING">
+                                                            <TabItem Header="AI SETTING">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
                                                                               Padding="0,8,8,14">

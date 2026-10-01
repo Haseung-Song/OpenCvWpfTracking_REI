@@ -982,7 +982,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [EO] 주간 카메라 [ZOOM] [Tele] 연속 이동 시작
         ///
-        /// 옥상 GOP EO 카메라 선택 시:
+        /// 옥상 MR300 EO 카메라 선택 시:
         /// - XV-Z4850HC CTEC CGI 직접 제어
         ///
         /// 그 외 EO 카메라 선택 시:
@@ -1026,7 +1026,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlUserName,
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
-                            GopEoCtecControlSpeed);
+                            RooftopMr300EoCtecControlSpeed);
                 if (!result)
                 {
                     _activeEoCtecSource = null;
@@ -1118,7 +1118,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlUserName,
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
-                            GopEoCtecControlSpeed);
+                            RooftopMr300EoCtecControlSpeed);
                 if (!result)
                 {
                     _activeEoCtecSource = null;
@@ -1169,7 +1169,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [EO] 주간 카메라 Focus Near 연속 이동 시작
         ///
-        /// 옥상 GOP EO 선택 시:
+        /// 옥상 MR300 EO 선택 시:
         /// Focus Manual -> Focus Near 순서로 CTEC CGI 직접 송신한다.
         ///
         /// 그 외 EO 선택 시:
@@ -1224,7 +1224,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlUserName,
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
-                            GopEoCtecControlSpeed);
+                            RooftopMr300EoCtecControlSpeed);
                 if (!result)
                 {
                     _activeEoCtecSource = null;
@@ -1275,7 +1275,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [EO] 주간 카메라 Focus Far 연속 이동 시작
         ///
-        /// 옥상 GOP EO 선택 시:
+        /// 옥상 MR300 EO 선택 시:
         /// Focus Manual -> Focus Far 순서로 CTEC CGI 직접 송신한다.
         ///
         /// 그 외 EO 선택 시:
@@ -1330,7 +1330,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             ctecSource.ControlUserName,
                             ctecSource.ControlPassword,
                             ctecSource.UseHttps,
-                            GopEoCtecControlSpeed);
+                            RooftopMr300EoCtecControlSpeed);
                 if (!result)
                 {
                     _activeEoCtecSource = null;
@@ -1381,7 +1381,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [EO] 주간 카메라 [One Push Focus] 요청
         ///
-        /// 옥상 GOP EO 선택 시 CTEC CGI 직접 제어,
+        /// 옥상 MR300 EO 선택 시 CTEC CGI 직접 제어,
         /// 그 외 EO 선택 시 기존 Control Agent 명령을 사용한다.
         /// </summary>
         public async void StartEoAutoFocusMove()
@@ -1443,7 +1443,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 선택된 EO 프리셋 기준으로
         /// CTEC Response TCP Port 9000 연결 시작
         ///
-        /// 옥상 GOP EO CTEC 직접 제어 프리셋이 아니면
+        /// 옥상 MR300 EO CTEC 직접 제어 프리셋이 아니면
         /// 기존 Response 연결을 종료하고 별도 TCP 연결을 생성하지 않는다.
         /// </summary>
         private async Task StartSelectedEoCtecResponseAsync()
@@ -1498,14 +1498,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine();
             Console.WriteLine(
                 $"[CTEC RESPONSE] START : " +
-                $"{sourceOption.ControlIp}:{GopEoCtecResponsePort}");
+                $"{sourceOption.ControlIp}:{RooftopMr300EoCtecResponsePort}");
 
             ConsoleLogHelper.PrintLine();
 
             await _ctecCameraResponseService
                 .StartAsync(
                     sourceOption.ControlIp,
-                    GopEoCtecResponsePort);
+                    RooftopMr300EoCtecResponsePort);
         }
 
         /// <summary>
@@ -1534,7 +1534,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 현재 연결된 옥상 GOP EO 카메라 상태 조회
+        /// 현재 연결된 옥상 MR300 EO 카메라 상태 조회
         ///
         /// Inquiry 명령은 CGI로 송신하고,
         /// 실제 응답은 TCP Port 9000 수신 서비스에서 처리한다.
@@ -2315,7 +2315,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// 버튼 [MouseUp] 또는 [MouseLeave] 시 호출된다.
         ///
-        /// 옥상 GOP EO Zoom / Focus는 CTEC CGI 전용 Stop 명령을 송신하고,
+        /// 옥상 MR300 EO Zoom / Focus는 CTEC CGI 전용 Stop 명령을 송신하고,
         /// 그 외 제어는 기존 Control Agent Stop 명령을 유지한다.
         /// </summary>
         public async void StopContinuousMove()

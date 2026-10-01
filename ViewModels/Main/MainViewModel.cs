@@ -97,47 +97,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
          */
 
         /// <summary>
-        /// [1] 옥상 [GOP] 주간(EO) 카메라 RTSP 주소
+        /// 옥상 MR300 주간(EO) 카메라 RTSP 주소
         /// </summary>
-        private const string GopEoRtspAddress =
+        private const string RooftopMr300EoRtspAddress =
             "rtsp://root:rmffhqjf1!@192.168.1.2:554/AVStream1_1";
 
         /// <summary>
-        /// [4] 옥상 [GOP] 주간(EO) 카메라 CTEC CGI 직접 제어 정보
+        /// 옥상 MR300 주간(EO) 카메라 CTEC CGI 직접 제어 정보
         ///
         /// RTSP 영상 수신 주소와 별도로
         /// Zoom / Focus 명령을 카메라 CGI로 직접 송신할 때 사용한다.
         /// </summary>
-        private const string GopEoControlIp =
+        private const string RooftopMr300EoControlIp =
             "192.168.1.2";
 
-        private const string GopEoControlUserName =
+        private const string RooftopMr300EoControlUserName =
             "root";
 
-        private const string GopEoControlPassword =
+        private const string RooftopMr300EoControlPassword =
             "rmffhqjf1!";
 
         /// <summary>
-        /// [옥상 GOP EO] 카메라 CGI 제어 HTTPS 사용 여부
+        /// 옥상 MR300 주간(EO) 카메라 CGI 제어 HTTPS 사용 여부
         ///
         /// 실제 카메라 웹 설정의 [Connection Mode]가 [HTTPS]이므로
         /// HTTP 요청 시 Viewer Page Redirection HTML이 반환된다.
         /// 
         /// 따라서 CTEC CGI 명령은 HTTPS Port 443으로 직접 송신한다.
         /// </summary>
-        private const bool GopEoControlUseHttps =
+        private const bool RooftopMr300EoControlUseHttps =
             true;
 
         /// <summary>
-        /// 옥상 GOP EO 카메라 Zoom / Focus 연속 제어 속도
+        /// 옥상 MR300 주간(EO) 카메라 Zoom / Focus 연속 제어 속도
         ///
         /// XV-Z4850HC 문서 기준 유효 범위는 [1 ~ 7]이다.
         /// </summary>
-        private const byte GopEoCtecControlSpeed =
+        private const byte RooftopMr300EoCtecControlSpeed =
             7;
 
         /// <summary>
-        /// 옥상 GOP EO 카메라 CTEC 응답 수신 TCP Port
+        /// 옥상 MR300 주간(EO) 카메라 CTEC 응답 수신 TCP Port
         ///
         /// 카메라 웹 설정:
         /// [Services] -> [Port] -> [Serial Port #1]
@@ -146,26 +146,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 카메라 웹 설정의 Port를 변경한 경우
         /// 이 값도 동일하게 변경해야 한다.
         /// </summary>
-        private const int GopEoCtecResponsePort =
+        private const int RooftopMr300EoCtecResponsePort =
             9000;
 
         /// <summary>
-        /// [4] 옥상 [GOP] 열상(IR) 카메라 RTSP 주소
+        /// 옥상 MR300 열상(IR) 카메라 RTSP 주소
         /// </summary>
-        private const string GopIrRtspAddress =
+        private const string RooftopMr300IrRtspAddress =
             "rtsp://root:rmffhqjf1!@192.168.0.121:554/cam0_0";
 
         /// <summary>
-        /// [5] 4층 개발팀 환경부 주간(EO) PTZ 카메라 RTSP 주소
+        /// 옥상 MR500 주간(EO) 카메라 RTSP 주소
         /// </summary>
-        private const string MoeEoRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.0.100:554/AVStream1_1";
+        private const string RooftopMr500EoRtspAddress =
+            "rtsp://root:rmffhqjf1!@192.168.0.110:554/AVStream1_1";
 
         /// <summary>
-        /// [5] 4층 개발팀 환경부 열상(IR) PTZ 카메라 RTSP 주소
+        /// 옥상 MR500 열상(IR) 카메라 RTSP 주소
         /// </summary>
-        private const string MoeIrRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.0.101:554/cam0_0";
+        private const string RooftopMr500IrRtspAddress =
+            "rtsp://root:rmffhqjf1!@192.168.0.111:554/cam0_0";
 
         #endregion
 
@@ -193,7 +193,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly McbMaintenanceCommandService _mcbMaintenanceCommandService;
 
         /// <summary>
-        /// 2026-08-26: 옥상 GOP MCB 유지보수 기본 Port.
+        /// 2026-08-26: 옥상 MR300 MCB 유지보수 기본 Port.
         /// MCB는 4001, SCB는 4002를 사용하므로 서로 혼용하지 않는다.
         /// </summary>
         private const int McbMaintenancePort =
@@ -207,7 +207,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly WebAgentThermalPaletteService _webAgentThermalPaletteService;
 
         /// <summary>
-        /// [옥상 GOP EO] [XV-Z4850HC] CTEC CGI 직접 제어 서비스
+        /// [옥상 MR300 EO] [XV-Z4850HC] CTEC CGI 직접 제어 서비스
         ///
         /// 선택된 EO 프리셋의 제어 방식이 CtecCgi인 경우에만 사용하며,
         /// 그 외 EO / Pan / Tilt / IR 제어는 기존 Control Agent 경로를 유지한다.
@@ -215,7 +215,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly CtecCameraCommandService _ctecCameraCommandService;
 
         /// <summary>
-        /// [옥상 GOP EO] [XV-Z4850HC] CTEC 응답 수신 서비스
+        /// [옥상 MR300 EO] [XV-Z4850HC] CTEC 응답 수신 서비스
         ///
         /// 카메라 IP의 TCP Port 9000에 Client로 연결하여
         /// CGI Inquiry 명령에 대한 [0x99 0x55 ... 0xFF] 응답을 수신한다.
@@ -1716,6 +1716,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// </summary>
             DisconnectCommand = new RelayCommand(Disconnect);
 
+            // 2026-10-01: WebAgent Build 86 RPY Offset 및 자동 전송 주파수 명령 초기화.
+            InitializeRpySettings();
+
             #endregion
 
             #region [AI Detector Setting Command Binding]
@@ -2150,13 +2153,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _controlCommandService);
 
             /// <summary>
-            /// [옥상 GOP EO] CTEC CGI 직접 제어 서비스 생성
+            /// [옥상 MR300 EO] CTEC CGI 직접 제어 서비스 생성
             /// </summary>
             _ctecCameraCommandService =
                 new CtecCameraCommandService();
 
             /// <summary>
-            /// [옥상 GOP EO] CTEC Port 9000 응답 수신 서비스 생성
+            /// [옥상 MR300 EO] CTEC Port 9000 응답 수신 서비스 생성
             /// </summary>
             _ctecCameraResponseService =
                 new CtecCameraResponseService();
@@ -2275,15 +2278,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //ControlAgentPortText =
             //    "5005";
 
-            // 2-1. 옥상 GOP 장비 Local Control Agent(LA) IP
+            // 2-1. 옥상 MR300 장비 Local Control Agent(LA) IP
             ControlAgentIp =
                 "127.0.0.1";
 
-            // 2-2. 옥상 GOP 장비 Control Agent(LA) Port
+            // 2-2. 옥상 MR300 장비 Control Agent(LA) Port
             ControlAgentPortText =
                 "5001";
 
-            // 2026-08-26: 옥상 GOP MCB 실장비 IP를 192.168.0.112로 변경한다.
+            // 2026-08-26: 옥상 MR300 MCB 실장비 IP를 192.168.0.112로 변경한다.
             McbMaintenanceIpAddress =
                 "192.168.0.112";
 
@@ -2299,20 +2302,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// 통신 설정 탭에서 제공하는 카메라 프리셋:
         ///
-        /// [1] 옥상 GOP 카메라
+        /// [1] 옥상 MR300 카메라
         /// - EO: 주간 카메라
         /// - IR: 열상 카메라
         ///
-        /// [2] 환경부 PTZ 카메라
+        /// [2] 옥상 MR500 카메라
         /// - EO: 주간 PTZ 카메라
         /// - IR: 열상 PTZ 카메라
         ///
-        /// [3] 옥상 MR300 카메라
+        /// [3] 4층 LR1000 카메라
         /// - EO: 주간 카메라
         /// - IR: 열상 카메라
         ///
-        /// 프로그램 시작 시에는 현재 개발에 사용하는
-        /// 환경부 EO / IR 카메라를 기본 선택한다.
+        /// 프로그램 시작 시에는 옥상 MR300 EO / IR 카메라를 기본 선택한다.
         /// </summary>
         private void InitializeDefaultSourceAddress()
         {
@@ -2320,17 +2322,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 프로그램 시작 기본 선택값
              *
              * 기존 하드코딩 주소 중 현재 테스트에 사용 중인
-             * 1. 주간(EO): 옥상 GOP 주간(EO) 카메라를 기본값으로 설정한다.
-             * 2. 열상(IR): 옥상 GOP 열상(IR) 카메라를 기본값으로 설정한다.
+             * 1. 주간(EO): 옥상 MR300 주간(EO) 카메라를 기본값으로 설정한다.
+             * 2. 열상(IR): 옥상 MR300 열상(IR) 카메라를 기본값으로 설정한다.
              *
              * 이후에는 소스코드 주석을 변경하지 않고
              * 통신 설정 탭의 EO / IR ComboBox에서 개별 선택한다.
              */
             EoSourceAddress =
-                GopEoRtspAddress;
+                RooftopMr300EoRtspAddress;
 
             IrSourceAddress =
-                GopIrRtspAddress;
+                RooftopMr300IrRtspAddress;
         }
 
         /// <summary>

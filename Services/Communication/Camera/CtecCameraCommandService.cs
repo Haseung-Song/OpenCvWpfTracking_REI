@@ -17,7 +17,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// [EO] 주간 카메라 [XV-Z4850HC] [CTEC CGI] 직접 제어 서비스
     ///
     /// 기존 [Control Agent TCP]는 [Pan / Tilt] 및 [IR] 제어에 계속 사용한다.
-    /// [옥상 GOP EO]의 [Zoom / Focus]만 카메라 [HTTP / HTTPS CGI]로 직접 송신한다.
+    /// [옥상 MR300 EO]의 [Zoom / Focus]만 카메라 [HTTP / HTTPS CGI]로 직접 송신한다.
     ///
     /// CGI 형식:
     /// http://[Camera IP]/api/ptz.cgi
@@ -704,7 +704,7 @@ namespace OpenCvWpfTracking.Services.Communication
         ///
         /// HTTP / HTTPS 선택은 RTSP 프리셋의 UseHttps 값으로 결정한다.
         ///
-        /// 옥상 GOP 카메라는 실제 웹 설정이 HTTPS이므로
+        /// 옥상 MR300 카메라는 실제 웹 설정이 HTTPS이므로
         /// HTTP Redirect에 의존하지 않고 HTTPS 주소로 직접 요청한다.
         /// </summary>
         private async Task<bool> SendCgiRequestAsync(

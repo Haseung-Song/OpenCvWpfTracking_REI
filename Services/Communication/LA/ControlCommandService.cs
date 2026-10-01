@@ -78,6 +78,99 @@ namespace OpenCvWpfTracking.Services.Communication
             return _tcpClientService.Send(packet);
         }
 
+        /// <summary>
+        /// 2026-10-01: WebAgent Build 86 이상에서 RPY 자동 전송 주파수를 설정한다.
+        /// 0Hz는 자동 전송 중지이며 허용 범위는 0~30Hz이다.
+        /// </summary>
+        public bool SetRpyAutoTxRate(byte frequencyHz)
+        {
+            if (frequencyHz > 30)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(frequencyHz),
+                    frequencyHz,
+                    "RPY auto TX rate must be between 0 and 30 Hz.");
+            }
+
+            return _tcpClientService.Send(
+                BuildRpyAutoTxRatePacket(frequencyHz));
+        }
+
+        /// <summary>
+        /// RPY 자동 전송 주파수 7Byte 요청 Packet을 생성한다.
+        /// Sample: 10Hz → FF 01 00 EB 0A 00 F6
+        /// </summary>
+        public static byte[] BuildRpyAutoTxRatePacket(byte frequencyHz)
+        {
+            if (frequencyHz > 30)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(frequencyHz),
+                    frequencyHz,
+                    "RPY auto TX rate must be between 0 and 30 Hz.");
+            }
+
+            byte[] packet =
+            {
+                0xFF,
+                0x01,
+                0x00,
+                0xEB,
+                frequencyHz,
+                0x00,
+                0x00
+            };
+
+            packet[6] = CheckSum(packet, 1, 5);
+            return packet;
+        }
+
+        /// <summary>
+        /// 2026-10-01: Roll/Pitch/Yaw 오프셋을 하나의 11Byte 요청으로 전송한다.
+        /// Roll/Pitch는 signed int16, Yaw는 unsigned uint16이며 모두 0.01도 단위,
+        /// Little Endian 순서로 배치한다.
+        /// </summary>
+        public bool SetRpyOffsets(
+            short rollHundredths,
+            short pitchHundredths,
+            ushort yawHundredths)
+        {
+            return _tcpClientService.Send(
+                BuildRpyOffsetPacket(
+                    rollHundredths,
+                    pitchHundredths,
+                    yawHundredths));
+        }
+
+        /// <summary>
+        /// RPY 오프셋 요청 Packet을 생성한다.
+        /// Sample: 1.00, -2.00, 30.00 →
+        /// FF 01 00 ED 64 00 38 FF B8 0B 4C
+        /// </summary>
+        public static byte[] BuildRpyOffsetPacket(
+            short rollHundredths,
+            short pitchHundredths,
+            ushort yawHundredths)
+        {
+            byte[] packet =
+            {
+                0xFF,
+                0x01,
+                0x00,
+                0xED,
+                (byte)(rollHundredths & 0xFF),
+                (byte)((rollHundredths >> 8) & 0xFF),
+                (byte)(pitchHundredths & 0xFF),
+                (byte)((pitchHundredths >> 8) & 0xFF),
+                (byte)(yawHundredths & 0xFF),
+                (byte)((yawHundredths >> 8) & 0xFF),
+                0x00
+            };
+
+            packet[10] = CheckSum(packet, 1, 9);
+            return packet;
+        }
+
         // 2026-09-15: WebAgent GUI-SBC additional protocol v1.8 requests.
         public bool RequestWebAgentIdentity() => SendCommand(0x00, 0xE1, 0x00, 0x00);
         public bool RequestLensCapability(byte target) => SendCommand(0x00, 0xE3, target, 0x00);
@@ -135,7 +228,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// [CheckSum] 계산 함수
         /// 지정 범위의 [byte] 합산값 반환
         /// </summary>
-        private byte CheckSum(byte[] data, int startIndex, int length)
+        private static byte CheckSum(byte[] data, int startIndex, int length)
         {
             byte sum = 0;
 

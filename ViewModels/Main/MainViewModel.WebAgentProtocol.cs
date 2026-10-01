@@ -33,6 +33,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void InitializeWebAgentProtocolV18()
         {
             if (!IsEnvironmentStatusSelected) return;
+            BeginWebAgentBuildCheck();
             _controlCommandService.RequestWebAgentIdentity();
             _controlCommandService.RequestLensCapabilityAndTelemetry(0x00);
             _controlCommandService.RequestLensCapabilityAndTelemetry(0x01);
@@ -56,6 +57,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     case 0x28: ParseWebAgentLensTelemetry(payload); break;
                     case 0x29: ParseWebAgentHoming(payload); break;
                     case 0x2A: ParseWebAgentUnavailable(payload); break;
+                    case 0x2B: ParseWebAgentRpyRateAck(payload); break;
+                    case 0x2C: ParseWebAgentRpyOffsetAck(payload); break;
                 }
             }
             catch (Exception ex)
@@ -102,12 +105,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Math.Abs(yaw) <= 360.0;
 
             UpdatePositionImu(roll, pitch, yaw, valid);
-
-            ConsoleLogHelper.State("WEB AGENT IMU", string.Format(
-                "ROLL={0:F4} / PITCH={1:F4} / YAW={2:F4}",
-                roll,
-                pitch,
-                yaw));
+            RecordRpyTelemetry(roll, pitch, yaw);
         }
 
         private void ParseWebAgentCapability(byte[] p)
@@ -128,7 +126,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private static void ParseWebAgentIdentity(byte[] p)
+        private void ParseWebAgentIdentity(byte[] p)
         {
             if (p.Length < 2) return;
             int versionLength = p[0];
@@ -137,6 +135,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (p.Length < versionLength + buildLength + 2) return;
             string version = Encoding.ASCII.GetString(p, 1, versionLength);
             string build = Encoding.ASCII.GetString(p, versionLength + 2, buildLength);
+            UpdateWebAgentBuild(build);
             ConsoleLogHelper.State("WEB AGENT IDENTITY", "VERSION=" + version + " / BUILD=" + build);
         }
 

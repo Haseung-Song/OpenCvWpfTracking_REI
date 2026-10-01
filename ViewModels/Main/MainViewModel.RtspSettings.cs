@@ -34,18 +34,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
     public partial class MainViewModel
     {
-        // 2026-09-08: 신규 옥상 MR300 EO/IR Camera Preset.
-        private const string RooftopMr300EoRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.1.25:554/AVStream1_1";
-
-        private const string RooftopMr300IrRtspAddress =
-            "rtsp://admin:Cg600ip100m@192.168.2.101:554/stream1";
-
+        // 2026-10-01: 운용 장비 명칭은 RTSP 주소 모음 기준으로 통일한다.
         private const string RooftopMr300EoDisplayName =
-            "옥상 MR300 - 주간(EO)";
+            "옥상 MR300(테스트) - 주간(EO)";
 
         private const string RooftopMr300IrDisplayName =
-            "옥상 MR300 - 열상(IR)";
+            "옥상 MR300(테스트) - 열상(IR)";
+
+        private const string RooftopMr500EoDisplayName =
+            "옥상 MR500(환경부) - 주간(EO)";
+
+        private const string RooftopMr500IrDisplayName =
+            "옥상 MR500(환경부) - 열상(IR)";
 
         // 2026-09-16: 기동형 LR1000 장비 리스트 ver3 기준 4층 장비 설정.
         private const string Lr1000EoRtspAddress =
@@ -55,37 +55,49 @@ namespace OpenCvWpfTracking.ViewModels.Main
             "rtsp://root:rmffhqjf1!@192.168.1.41/cam0_0";
 
         private const string Lr1000EoDisplayName =
-            "4층 LR1000 - 주간(EO)";
+            "4층 LR1000(기동형) - 주간(EO)";
 
         private const string Lr1000IrDisplayName =
-            "4층 LR1000 - 열상(IR)";
+            "4층 LR1000(기동형) - 열상(IR)";
+
+        private const string ErWatcherEoRtspAddress =
+            "rtsp://root:rmffhqjf1!@192.168.0.100:554/AVStream1_1";
+
+        private const string ErWatcherIrRtspAddress =
+            "rtsp://root:rmffhqjf1!@192.168.0.101:554/cam0_0";
+
+        private const string ErWatcherEoDisplayName =
+            "4층 MR300(ER-WATCHER) - 주간(EO)";
+
+        private const string ErWatcherIrDisplayName =
+            "4층 MR300(ER-WATCHER) - 열상(IR)";
 
         private bool _isLoadingRtspCommunicationSettings;
 
         private ControlAgentProfileOption _selectedControlAgentProfile;
 
+        private int _selectedCommunicationSettingsTabIndex;
+
         public ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; } =
             new ObservableCollection<ControlAgentProfileOption>
             {
                 new ControlAgentProfileOption(
-                    "옥상 GOP EO/IR - LA 방식",
+                    "옥상 MR300(테스트) EO/IR",
                     "127.0.0.1", "5001",
-                    "옥상 GOP 주간(EO)", "옥상 GOP 열상(IR)",
+                    RooftopMr300EoDisplayName, RooftopMr300IrDisplayName,
                     agentType: ControlAgentType.LaAgent),
                 new ControlAgentProfileOption(
-                    "옥상 MR300 EO/IR - O-droid 방식",
-                    "192.168.20.164", "5005",
-                    RooftopMr300EoDisplayName, RooftopMr300IrDisplayName,
-                    agentType: ControlAgentType.WebAgent),
+                    "옥상 MR500(환경부) EO/IR",
+                    "192.168.20.161", "5005",
+                    RooftopMr500EoDisplayName, RooftopMr500IrDisplayName),
                 new ControlAgentProfileOption(
-                    "4층 LR1000 EO/IR - Web Agent 방식",
+                    "4층 LR1000(기동형) EO/IR",
                     "192.168.20.163", "5005",
                     Lr1000EoDisplayName, Lr1000IrDisplayName),
                 new ControlAgentProfileOption(
-                    "환경부(MOE) PTZ EO/IR - Web Agent 방식",
-                    "192.168.20.161", "5005",
-                    "환경부(MOE) PTZ 주간(EO)",
-                    "환경부(MOE) PTZ 열상(IR)"),
+                    "4층 MR300(ER-WATCHER) EO/IR",
+                    "192.168.20.168", "5005",
+                    ErWatcherEoDisplayName, ErWatcherIrDisplayName),
                 new ControlAgentProfileOption(
                     "직접 입력",
                     null, null, null, null,
@@ -106,8 +118,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
+                OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(PanTiltZeroRouteText));
                 ApplyControlAgentProfile(value);
+                EnsureVisibleCommunicationSettingsTab();
             }
 
         }
@@ -119,9 +133,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             try
             {
                 Properties.Settings settings = Properties.Settings.Default;
-                _selectedControlAgentProfile = ControlAgentProfiles.FirstOrDefault(item =>
-                    string.Equals(item.DisplayName, settings.SavedControlAgentProfile,
-                        StringComparison.OrdinalIgnoreCase)) ?? ControlAgentProfiles.First();
+                _selectedControlAgentProfile = ResolveControlAgentProfile(
+                    settings.SavedControlAgentProfile);
 
                 // 2026-09-21: 저장된 CONNECT 프로필을 복원할 때도 화면의 활성 Agent와
                 // 패킷 좌표계를 동시에 맞춘다. 기존에는 IP/Port와 unsigned 좌표만 복원되어
@@ -156,14 +169,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string eoAddress = settings.SavedEoRtspUrl?.Trim();
                 string irAddress = settings.SavedIrRtspUrl?.Trim();
 
+                MigrateLegacyRtspSettings(
+                    settings.SavedEoRtspPreset,
+                    settings.SavedIrRtspPreset,
+                    ref eoAddress,
+                    ref irAddress);
+
                 if (!IsValidRtspAddress(eoAddress))
                 {
-                    eoAddress = profileEoSource?.Address ?? GopEoRtspAddress;
+                    eoAddress = profileEoSource?.Address ?? RooftopMr300EoRtspAddress;
                 }
 
                 if (!IsValidRtspAddress(irAddress))
                 {
-                    irAddress = profileIrSource?.Address ?? GopIrRtspAddress;
+                    irAddress = profileIrSource?.Address ?? RooftopMr300IrRtspAddress;
                 }
 
                 EoSourceAddress = eoAddress;
@@ -181,6 +200,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(SelectedEoRtspSource));
                 OnPropertyChanged(nameof(SelectedControlAgentProfile));
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
+                OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(SelectedIrRtspSource));
                 OnPropertyChanged(nameof(SelectedAiEoRtspSource));
                 OnPropertyChanged(nameof(SelectedAiIrRtspSource));
@@ -201,13 +221,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             catch (Exception ex)
             {
-                EoSourceAddress = GopEoRtspAddress;
-                IrSourceAddress = GopIrRtspAddress;
+                EoSourceAddress = RooftopMr300EoRtspAddress;
+                IrSourceAddress = RooftopMr300IrRtspAddress;
                 AiRtsp0Address = EoSourceAddress;
                 AiRtsp1Address = IrSourceAddress;
                 ConsoleLogHelper.Error(
                     "RTSP CONFIG",
-                    "Load failed; rooftop GOP defaults retained",
+                    "Load failed; rooftop MR300 defaults retained",
                     ex);
             }
             finally
@@ -295,6 +315,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SelectedControlAgentProfile?.IsDirectInput == true;
 
         /// <summary>
+        /// 2026-10-01: IMU가 장착된 4층 LR1000(기동형) 프로필에서만
+        /// IMU/RPY 탭을 표시한다. 직접 입력은 기동형 WebAgent IP인
+        /// 192.168.20.163을 입력한 경우에만 동일하게 표시한다.
+        /// 연결 여부와 Build 지원 여부는 탭 내부에서 별도로 안내한다.
+        /// </summary>
+        public bool IsImuRpyTabVisible =>
+            ReferenceEquals(SelectedControlAgentProfile, ControlAgentProfiles[2]) ||
+            (IsControlAgentDirectInput && string.Equals(
+                ControlAgentIp?.Trim(),
+                "192.168.20.163",
+                StringComparison.OrdinalIgnoreCase));
+
+        public int SelectedCommunicationSettingsTabIndex
+        {
+            get => _selectedCommunicationSettingsTabIndex;
+            set
+            {
+                if (_selectedCommunicationSettingsTabIndex == value)
+                {
+                    return;
+                }
+
+                _selectedCommunicationSettingsTabIndex = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private void EnsureVisibleCommunicationSettingsTab()
+        {
+            // IMU/RPY 탭을 보고 있던 중 다른 장비로 전환하면
+            // 숨겨진 탭의 내용이 남지 않도록 CONTROL/RTSP로 돌아간다.
+            if (!IsImuRpyTabVisible && SelectedCommunicationSettingsTabIndex == 1)
+            {
+                SelectedCommunicationSettingsTabIndex = 0;
+            }
+        }
+
+        /// <summary>
         /// 2026-09-15: REI 통합본에서는 Web Agent 프로필에만 unsigned Pan 좌표를 적용한다.
         /// </summary>
         private void ApplyControlAgentPanCoordinateMode(ControlAgentProfileOption profile)
@@ -328,6 +386,93 @@ namespace OpenCvWpfTracking.ViewModels.Main
                        !option.IsDirectInput && string.Equals(
                            option.Address, address, StringComparison.OrdinalIgnoreCase))
                    ?? options.First(option => option.IsDirectInput);
+        }
+
+        /// <summary>
+        /// 2026-10-01: 이전 버전에 저장된 장비명도 현재 장비 프로필로 안전하게 이관한다.
+        /// </summary>
+        private ControlAgentProfileOption ResolveControlAgentProfile(
+            string savedDisplayName)
+        {
+            ControlAgentProfileOption exact = ControlAgentProfiles.FirstOrDefault(item =>
+                string.Equals(item.DisplayName, savedDisplayName,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (exact != null)
+            {
+                return exact;
+            }
+
+            if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
+                (savedDisplayName.IndexOf("MR500",
+                     StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 savedDisplayName.IndexOf("환경부",
+                     StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                return ControlAgentProfiles[1];
+            }
+
+            if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
+                savedDisplayName.IndexOf("LR1000",
+                    StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return ControlAgentProfiles[2];
+            }
+
+            if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
+                savedDisplayName.IndexOf("ER-WATCHER",
+                    StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return ControlAgentProfiles[3];
+            }
+
+            if (string.Equals(savedDisplayName, "직접 입력",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return ControlAgentProfiles.Last();
+            }
+
+            // 폐기된 옥상 GOP 및 기존 MR300 명칭은 옥상 MR300(테스트, LA)로 통합한다.
+            return ControlAgentProfiles[0];
+        }
+
+        /// <summary>
+        /// 2026-10-01: 폐기된 임시 주소와 구 환경부 프리셋을 현재 장비 주소로 변환한다.
+        /// 사용자가 직접 입력한 다른 정상 RTSP 주소는 변경하지 않는다.
+        /// </summary>
+        private static void MigrateLegacyRtspSettings(
+            string savedEoPreset,
+            string savedIrPreset,
+            ref string eoAddress,
+            ref string irAddress)
+        {
+            if (string.Equals(eoAddress,
+                    "rtsp://root:rmffhqjf1!@192.168.1.25:554/AVStream1_1",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                eoAddress = RooftopMr300EoRtspAddress;
+            }
+
+            if (string.Equals(irAddress,
+                    "rtsp://admin:Cg600ip100m@192.168.2.101:554/stream1",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                irAddress = RooftopMr300IrRtspAddress;
+            }
+
+            if (string.Equals(savedEoPreset,
+                    "환경부(MOE) PTZ 주간(EO)",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                eoAddress = RooftopMr500EoRtspAddress;
+            }
+
+            if (string.Equals(savedIrPreset,
+                    "환경부(MOE) PTZ 열상(IR)",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                irAddress = RooftopMr500IrRtspAddress;
+            }
         }
 
     }

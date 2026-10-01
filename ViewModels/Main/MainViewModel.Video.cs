@@ -478,7 +478,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 /// <summary>
-                /// 선택된 EO 카메라가 [옥상 GOP CTEC] 직접 제어 장비이면
+                /// 선택된 EO 카메라가 [옥상 MR300 CTEC] 직접 제어 장비이면
                 /// 카메라 IP의 [TCP Port 9000] 응답 수신 연결을 시작한다.
                 ///
                 /// CGI 명령 송신과 TCP 응답 수신은 서로 다른 통로이며,
@@ -762,7 +762,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             await _laTcpService.DisconnectAsync();
 
             /// <summary>
-            /// [옥상 GOP EO] CTEC Response TCP Port 9000 연결 해제
+            /// [옥상 MR300 EO] CTEC Response TCP Port 9000 연결 해제
             /// </summary>
             _ctecCameraResponseService.Stop();
 
@@ -1135,6 +1135,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _eoCaptureTask = Task.Run(() =>
                         FFmpegCaptureLoop(
                             _eoDecoder,
+                            EoSourceAddress,
                             "EO",
                             bitmap =>
                             {
@@ -1235,6 +1236,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _irCaptureTask = Task.Run(() =>
                         FFmpegCaptureLoop(
                             _irDecoder,
+                            IrSourceAddress,
                             "IR",
                             bitmap =>
                             {
@@ -1407,6 +1409,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         Task captureTask = Task.Run(() =>
                             FFmpegCaptureLoop(
                                 decoder,
+                                sourceAddress,
                                 streamName,
                                 setImageAction,
                                 captureToken));
@@ -2743,6 +2746,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <param name="decoder">
         /// EO 또는 IR FFmpeg Decoder
         /// </param>
+        /// <param name="sourceAddress">
+        /// 채널 자동 재연결에 재사용할 RTSP 주소
+        /// </param>
         /// <param name="streamName">
         /// EO / IR Stream 구분
         /// </param>
@@ -2754,6 +2760,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </param>
         private void FFmpegCaptureLoop(
             FFmpegDecoderService decoder,
+            string sourceAddress,
             string streamName,
             Action<BitmapSource> setImageAction,
             CancellationToken cancellationToken)
@@ -2787,6 +2794,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             int firstFrameConfirmed = 0;
 
+            // 2026-10-01: 운용 중 Frame 정지 시 기존 Capture Loop를 먼저 끝낸 뒤
+            // 동일 채널만 재연결하기 위한 Watchdog 요청 Flag이다.
+            int watchdogReconnectRequested = 0;
+
             // 2026-09-17: Decoder Open 상태와 실제 영상 수신을 분리 판정한다.
             // 전원 차단/RTSP 정지로 5초간 프레임이 없으면 백그라운드에서
             // Decoder를 닫아 ReadFrame을 해제하고 UI를 Disconnected로 전환한다.
@@ -2802,7 +2813,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                     if (noFrameMs < 5000) continue;
 
-                    ConsoleLogHelper.Warning(streamName + " VIDEO", $"Frame watchdog timeout / LAST_FRAME_MS={noFrameMs}");
+                    Interlocked.Exchange(ref watchdogReconnectRequested, 1);
+                    ConsoleLogHelper.Warning(
+                        streamName + " VIDEO",
+                        $"Frame watchdog timeout / LAST_FRAME_MS={noFrameMs} / AUTO_RECONNECT=True");
                     try { decoder.Close(); } catch (Exception closeException)
                     {
                         ConsoleLogHelper.Error(streamName + " VIDEO", "Watchdog decoder close failed", closeException);
@@ -2818,13 +2832,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             {
                                 _isEoFrameDisplayed = false;
                                 EOCameraImage = null;
-                                EoStatusText = "[EO] Disconnected";
+                                EoStatusText = "[EO] Reconnecting...";
                             }
                             else
                             {
                                 _isIrFrameDisplayed = false;
                                 IRCameraImage = null;
-                                IrStatusText = "[IR] Disconnected";
+                                IrStatusText = "[IR] Reconnecting...";
                             }
                         }));
                     }
@@ -2834,6 +2848,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             while (!cancellationToken.IsCancellationRequested)
             {
+                if (Volatile.Read(ref watchdogReconnectRequested) != 0)
+                {
+                    break;
+                }
+
                 Mat frame = null;
 
                 try
@@ -2843,6 +2862,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// </summary>
                     frame =
                         decoder.ReadFrame();
+
+                    if (Volatile.Read(ref watchdogReconnectRequested) != 0)
+                    {
+                        break;
+                    }
 
                     if (cancellationToken.IsCancellationRequested)
                     {
@@ -3165,6 +3189,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Info(
                 $"{streamName} VIDEO",
                 "FFmpeg Capture Loop End");
+
+            // 2026-10-01: Watchdog가 종료시킨 채널만 새 Decoder/Capture Loop로 복구한다.
+            // 기존 Loop가 완전히 끝난 뒤 시작하므로 하나의 RTSP를 두 Loop가 동시에
+            // 소비하는 경쟁 상태를 방지한다.
+            if (Volatile.Read(ref watchdogReconnectRequested) != 0 &&
+                _isDeviceConnectionRequested &&
+                !cancellationToken.IsCancellationRequested &&
+                _videoReconnectCts != null &&
+                !_videoReconnectCts.IsCancellationRequested)
+            {
+                ConsoleLogHelper.Info(
+                    streamName + " VIDEO",
+                    "Runtime frame stall recovery started");
+
+                _ = ReconnectVideoAsync(
+                    decoder,
+                    sourceAddress,
+                    streamName,
+                    setImageAction,
+                    _videoReconnectCts.Token);
+            }
         }
 
         #region [Video Result Type]

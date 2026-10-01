@@ -1606,7 +1606,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 통신 설정 탭에서 선택된 EO RTSP 프리셋
         ///
         /// 기존에는 SelectedValue로 주소만 바인딩했지만,
-        /// 옥상 GOP EO 카메라의 CTEC CGI 직접 제어 여부까지 판단해야 하므로
+        /// 옥상 MR300 EO 카메라의 CTEC CGI 직접 제어 여부까지 판단해야 하므로
         /// 선택 항목 전체를 SelectedItem으로 바인딩한다.
         /// </summary>
         private RtspSourceOption _selectedEoRtspSource;
@@ -1742,6 +1742,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     value;
 
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsImuRpyTabVisible));
+                EnsureVisibleCommunicationSettingsTab();
             }
 
         }
@@ -2737,7 +2739,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 현재 EO Zoom 상태 표시 문자열
         ///
-        /// 옥상 GOP EO CTEC 직접 제어 장비는
+        /// 옥상 MR300 EO CTEC 직접 제어 장비는
         /// 원시 Position / 최대 Position / 퍼센트를 함께 표시한다.
         ///
         /// 예: 8192 / 16384 (50.0%)
@@ -2908,25 +2910,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 통신 설정 탭의 [EO RTSP] 카메라 선택 목록
         ///
         /// Control Agent 프로필과 같은 순서로
-        /// 옥상 GOP(LA) / 옥상 MR300(O-Droid) / 4층 LR1000(O-Droid) /
-        /// 환경부 PTZ(Web Agent)의 장비 주소를 UI에서 선택하도록 제공한다.
+        /// 옥상 MR300(테스트, LA) / 옥상 MR500(환경부, WebAgent) /
+        /// 4층 LR1000(기동형, WebAgent) / 4층 MR300(ER-WATCHER, WebAgent)의
+        /// 장비 주소를 UI에서 선택하도록 제공한다.
         /// </summary>
         public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; }
             = new ObservableCollection<RtspSourceOption>
             {
                 new RtspSourceOption(
-                    "옥상 GOP 주간(EO)",
-                    GopEoRtspAddress,
-                    CameraControlType.CtecCgi,
-                    GopEoControlIp,
-                    GopEoControlUserName,
-                    GopEoControlPassword,
-                    GopEoControlUseHttps),
-
-                // 2026-09-08: 신규 옥상 MR300 주간 카메라.
-                new RtspSourceOption(
                     RooftopMr300EoDisplayName,
-                    RooftopMr300EoRtspAddress),
+                    RooftopMr300EoRtspAddress,
+                    CameraControlType.CtecCgi,
+                    RooftopMr300EoControlIp,
+                    RooftopMr300EoControlUserName,
+                    RooftopMr300EoControlPassword,
+                    RooftopMr300EoControlUseHttps),
+
+                // 2026-10-01: 옥상 MR500 주간 카메라.
+                new RtspSourceOption(
+                    RooftopMr500EoDisplayName,
+                    RooftopMr500EoRtspAddress),
 
                 // 2026-09-16: 기동형 LR1000 장비 리스트 ver3의 주간 RTSP.
                 new RtspSourceOption(
@@ -2934,8 +2937,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Lr1000EoRtspAddress),
 
                 new RtspSourceOption(
-                    "환경부(MOE) PTZ 주간(EO)",
-                    MoeEoRtspAddress),
+                    ErWatcherEoDisplayName,
+                    ErWatcherEoRtspAddress),
 
                 new RtspSourceOption(
                     "직접 입력",
@@ -2953,13 +2956,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             = new ObservableCollection<RtspSourceOption>
             {
                 new RtspSourceOption(
-                    "옥상 GOP 열상(IR)",
-                    GopIrRtspAddress),
-
-                // 2026-09-08: 신규 옥상 MR300 열상 카메라.
-                new RtspSourceOption(
                     RooftopMr300IrDisplayName,
                     RooftopMr300IrRtspAddress),
+
+                // 2026-10-01: 옥상 MR500 열상 카메라.
+                new RtspSourceOption(
+                    RooftopMr500IrDisplayName,
+                    RooftopMr500IrRtspAddress),
 
                 // 2026-09-16: 기동형 LR1000 장비 리스트 ver3의 열상 RTSP.
                 new RtspSourceOption(
@@ -2967,8 +2970,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Lr1000IrRtspAddress),
 
                 new RtspSourceOption(
-                    "환경부(MOE) PTZ 열상(IR)",
-                    MoeIrRtspAddress),
+                    ErWatcherIrDisplayName,
+                    ErWatcherIrRtspAddress),
 
                 new RtspSourceOption(
                     "직접 입력",
