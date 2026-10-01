@@ -35,8 +35,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private const byte VariableFunctionMinimum = 0x23;
 
-        // 2026-10-01: RPY 주파수(0x2B)와 Offset(0x2C) 응답을 가변 Packet에 포함한다.
-        private const byte VariableFunctionMaximum = 0x2C;
+        // 2026-10-01: RPY 설정/DB 조회(0x2B/0x2C/0x2E/0x2F)와
+        // 시스템 시간(0x2D) 응답을 가변 Packet에 포함한다.
+        private const byte VariableFunctionMaximum = 0x2F;
 
         private const int VariableHeaderSize = 4;
 

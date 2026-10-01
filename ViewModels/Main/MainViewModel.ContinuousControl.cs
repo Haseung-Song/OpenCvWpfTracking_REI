@@ -15,6 +15,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
+        // 2026-10-01: 메인 화면에서 현재 활성화된 영상의 줌값을
+        // PAN/TILT 조그 속도 감쇄 기준으로 사용한다. 0=EO, 1=IR.
+        private int _activePanTiltZoomSource;
+
         #region [Continuous Move Control Methods]
 
         #region [Keyboard Pan / Tilt Control Methods]
@@ -510,27 +514,46 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 2026-09-10: EO 광학 줌이 커질수록 같은 PT 속도도 화면에서는 더 크게
-        /// 이동해 보이므로, 조그 명령에 사용하는 실제 Protocol 속도를 낮춘다.
+        /// 2026-10-01: 현재 활성 EO/IR 카메라의 광학 줌이 커질수록 같은 PT
+        /// 속도도 화면에서는 더 크게 이동해 보이므로 실제 전송 속도를 낮춘다.
         /// UI Slider 값은 사용자가 선택한 기준 속도로 유지하며 광각(1x)에서는
-        /// 기존 속도를 그대로 사용한다. 최대 줌에서도 조작이 멈추지 않도록
-        /// 기준 속도의 20%를 하한으로 둔다.
+        /// 기존 속도를 그대로 사용한다. 2026-10-01 실장비 로그에서 EO 최대 줌 시
+        /// 20% 하한(30→6)이 빠르게 보이는 것을 확인하여 5% 안전 하한으로 완화한다.
+        /// 실제 EO 90x 계산값은 약 10.5%이므로 기준 속도 30에서 약 3이 적용된다.
         /// </summary>
         private byte ApplyZoomAdaptivePanTiltSpeed(
             byte baseProtocolSpeed,
-            out ushort standardZoom,
+            out int standardZoom,
+            out string activeCamera,
+            out double opticalZoomRatio,
             out double speedScale)
         {
-            standardZoom =
-                GetCurrentPresetStandardZoom();
+            bool isInfrared =
+                Volatile.Read(ref _activePanTiltZoomSource) == 1;
 
-            double opticalZoomRatio =
-                1.0 +
-                standardZoom / 1000.0 * 89.0;
+            activeCamera = isInfrared ? "IR" : "EO";
+            standardZoom = isInfrared
+                ? GetCurrentIrZoomStandardPosition()
+                : GetCurrentPresetStandardZoom();
+
+            standardZoom = Math.Max(
+                MoveControlPositionMinimum,
+                Math.Min(
+                    MoveControlPositionMaximum,
+                    standardZoom));
+
+            double maximumZoomRatio = isInfrared
+                ? MoveControlIrMaximumZoomRatio
+                : MoveControlEoMaximumZoomRatio;
+
+            opticalZoomRatio =
+                MoveControlMinimumZoomRatio +
+                standardZoom / 1000.0 *
+                (maximumZoomRatio - MoveControlMinimumZoomRatio);
 
             speedScale =
                 Math.Max(
-                    0.20,
+                    0.05,
                     1.0 / Math.Sqrt(opticalZoomRatio));
 
             int adaptiveSpeed =
@@ -540,8 +563,38 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return (byte)Math.Max(
                 1,
                 Math.Min(
-                    63,
+                    60,
                     adaptiveSpeed));
+        }
+
+        /// <summary>
+        /// 2026-10-01: 메인 화면의 활성 EO/IR 영상 변경을 PT 감쇄 기준에 반영한다.
+        /// 신규 WebAgent 프로토콜 없이 기존 PT 이동 패킷의 속도값만 조정한다.
+        /// </summary>
+        public void SetActivePanTiltZoomSource(
+            bool isInfrared)
+        {
+            int nextSource = isInfrared ? 1 : 0;
+            int previousSource = Interlocked.Exchange(
+                ref _activePanTiltZoomSource,
+                nextSource);
+
+            if (previousSource == nextSource)
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(EffectivePanTiltSpeedLevel));
+            OnPropertyChanged(nameof(PanTiltSpeedDisplayText));
+
+            int standardZoom = isInfrared
+                ? GetCurrentIrZoomStandardPosition()
+                : GetCurrentPresetStandardZoom();
+
+            ConsoleLogHelper.State(
+                "PAN / TILT SPEED SOURCE",
+                $"ACTIVE_CAMERA={(isInfrared ? "IR" : "EO")} / " +
+                $"ZOOM={standardZoom}/1000");
         }
 
         /// <summary>
@@ -561,27 +614,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (baseProtocolSpeed > 0)
             {
-                ushort standardZoom = GetCurrentPresetStandardZoom();
-                double speedScale = 1.0;
-
-                // 2026-09-17: Web Agent에는 UI 0~60 값을 변환 없이 직접 송신한다.
-                if (!_controlCommandService.UseUnsignedWebAgentPanCoordinates)
-                {
-                    protocolSpeed =
-                        ApplyZoomAdaptivePanTiltSpeed(
-                            baseProtocolSpeed,
-                            out standardZoom,
-                            out speedScale);
-                }
+                protocolSpeed =
+                    ApplyZoomAdaptivePanTiltSpeed(
+                        baseProtocolSpeed,
+                        out int standardZoom,
+                        out string activeCamera,
+                        out double opticalZoomRatio,
+                        out double speedScale);
 
                 ClearActivePanTiltAbsoluteMove();
 
                 ConsoleLogHelper.State(
                     "PAN / TILT SPEED",
                     $"Jog speed / UI_SPEED={PanTiltSpeedLevel} / " +
-                    $"BASE_PROTOCOL_SPEED={baseProtocolSpeed} / EO_ZOOM={standardZoom}/1000 / " +
+                    $"BASE_PROTOCOL_SPEED={baseProtocolSpeed} / " +
+                    $"ACTIVE_CAMERA={activeCamera} / ZOOM={standardZoom}/1000 / " +
+                    $"OPTICAL_ZOOM={opticalZoomRatio:F2}x / " +
                     $"SCALE={speedScale:F3} / EFFECTIVE_PROTOCOL_SPEED={protocolSpeed} / " +
-                    $"MODE={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_LINEAR" : "LA_ZOOM_ADAPTIVE")}");
+                    $"MODE=GUI_ZOOM_ADAPTIVE / " +
+                    $"TRANSPORT={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT" : "LA_AGENT")}");
 
                 return true;
             }
@@ -990,6 +1041,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void StartEoZoomInMove()
         {
+            // 2026-10-01: 사용자가 조작한 Lens 채널을 PT 감쇄 기준과 UI 표시에 즉시 반영한다.
+            SetActivePanTiltZoomSource(false);
             _ptzPerformanceScenario = "ZOOM_IN";
             Interlocked.Increment(ref _zoomStartTxCount);
             /*
@@ -1082,6 +1135,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void StartEoZoomOutMove()
         {
+            SetActivePanTiltZoomSource(false);
             _ptzPerformanceScenario = "ZOOM_OUT";
             Interlocked.Increment(ref _zoomStartTxCount);
             /*
@@ -1705,6 +1759,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StartIrZoomInMove()
         {
+            // 2026-10-01: IR Zoom 조작 중에는 IR 실제 줌값으로 감쇄하고 ACTIVE(IR)로 표시한다.
+            SetActivePanTiltZoomSource(true);
             _ptzPerformanceScenario = "ZOOM_IN";
             Interlocked.Increment(ref _zoomStartTxCount);
             _currentMoveType = ContinuousMoveType.IrZoom;
@@ -1725,6 +1781,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StartIrZoomOutMove()
         {
+            SetActivePanTiltZoomSource(true);
             _ptzPerformanceScenario = "ZOOM_OUT";
             Interlocked.Increment(ref _zoomStartTxCount);
             _currentMoveType = ContinuousMoveType.IrZoom;

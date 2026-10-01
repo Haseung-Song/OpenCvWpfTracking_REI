@@ -68,6 +68,19 @@ namespace OpenCvWpfTracking
         private const double MoveControlZoomRatioMaximumInput =
             90.0;
 
+        // 2026-10-01: IMU/RPY 설정값도 장비 허용 범위에서만 입력되도록 보정한다.
+        private const double RpySignedMinimumInput = -180.0;
+
+        private const double RpySignedMaximumInput = 180.0;
+
+        private const double RpyYawMinimumInput = 0.0;
+
+        private const double RpyYawMaximumInput = 359.99;
+
+        private const int RpyRateMinimumInput = 0;
+
+        private const int RpyRateMaximumInput = 30;
+
         #endregion
 
         #region [Move Control Preview Text Input]
@@ -211,6 +224,26 @@ namespace OpenCvWpfTracking
                     @"^\d{0,2}(\.\d{0,1})?$");
         }
 
+        /// <summary>
+        /// RPY Yaw 입력은 음수 없이 0~359.99 형식만 허용한다.
+        /// 실제 상·하한 보정은 LostFocus에서 적용한다.
+        /// </summary>
+        private void UnsignedDecimalNumberOnly_PreviewTextInput(
+            object sender,
+            TextCompositionEventArgs e)
+        {
+            if (!(sender is TextBox textBox))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            string previewText = CreatePreviewText(textBox, e.Text);
+            e.Handled = !Regex.IsMatch(
+                previewText,
+                @"^\d{0,3}(\.\d{0,2})?$");
+        }
+
         #endregion
 
         #region [Move Control Lost Focus]
@@ -284,6 +317,47 @@ namespace OpenCvWpfTracking
                 MoveControlZoomRatioMinimumInput,
                 MoveControlZoomRatioMaximumInput,
                 1);
+        }
+
+        /// <summary>
+        /// Roll/Pitch Offset 입력을 -180.00~180.00 범위로 보정한다.
+        /// </summary>
+        private void RpySignedOffset_LostFocus(
+            object sender,
+            System.Windows.RoutedEventArgs e)
+        {
+            ClampDecimalTextBoxValue(
+                sender,
+                RpySignedMinimumInput,
+                RpySignedMaximumInput,
+                2);
+        }
+
+        /// <summary>
+        /// Yaw Offset 입력을 0.00~359.99 범위로 보정한다.
+        /// </summary>
+        private void RpyYawOffset_LostFocus(
+            object sender,
+            System.Windows.RoutedEventArgs e)
+        {
+            ClampDecimalTextBoxValue(
+                sender,
+                RpyYawMinimumInput,
+                RpyYawMaximumInput,
+                2);
+        }
+
+        /// <summary>
+        /// RPY 자동 전송 주파수 입력을 0~30Hz 범위로 보정한다.
+        /// </summary>
+        private void RpyRate_LostFocus(
+            object sender,
+            System.Windows.RoutedEventArgs e)
+        {
+            ClampIntegerTextBoxValue(
+                sender,
+                RpyRateMinimumInput,
+                RpyRateMaximumInput);
         }
 
         #endregion

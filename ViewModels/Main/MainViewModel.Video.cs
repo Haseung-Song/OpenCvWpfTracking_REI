@@ -652,6 +652,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _isDeviceConnectionRequested = false;
             _controlAgentReconnectCts?.Cancel();
             _videoReconnectCts?.Cancel();
+
+            // 2026-10-01: native RTSP 자원 정리가 끝날 때까지 기존 Connected/Waiting
+            // 문구가 남지 않도록 해제 요청을 UI에 즉시 표시한다.
+            EoStatusText = "[EO] Disconnecting...";
+            IrStatusText = "[IR] Disconnecting...";
+            SetControlAgentConnectionStatus(
+                "Disconnecting...",
+                "#FFD166");
             _cts?.Cancel();
 
             await _deviceConnectionLifecycleLock.WaitAsync();
@@ -2828,18 +2836,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         _ = dispatcher.BeginInvoke(new Action(() =>
                         {
                             if (cancellationToken.IsCancellationRequested) return;
-                            if (streamName == "EO")
-                            {
-                                _isEoFrameDisplayed = false;
-                                EOCameraImage = null;
-                                EoStatusText = "[EO] Reconnecting...";
-                            }
-                            else
-                            {
-                                _isIrFrameDisplayed = false;
-                                IRCameraImage = null;
-                                IrStatusText = "[IR] Reconnecting...";
-                            }
+                            HandleRtspFrameLossOnUiThread(streamName);
                         }));
                     }
                     break;
@@ -3210,6 +3207,65 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     setImageAction,
                     _videoReconnectCts.Token);
             }
+        }
+
+        /// <summary>
+        /// 2026-10-01: 장비 전원 차단 또는 RTSP Frame 정지 시 영상, 연결 표시,
+        /// AI BBox 및 FIRE/SMOKE 상태가 서로 다른 시점에 남지 않도록 한 번에 정리한다.
+        /// Connected 복귀는 CaptureLoop에서 실제 첫 Frame을 받은 뒤에만 수행한다.
+        /// </summary>
+        private void HandleRtspFrameLossOnUiThread(string streamName)
+        {
+            bool isEo = string.Equals(
+                streamName,
+                "EO",
+                StringComparison.OrdinalIgnoreCase);
+
+            if (isEo)
+            {
+                _isEoFrameDisplayed = false;
+                EOCameraImage = null;
+                EoStatusText = "[EO] Reconnecting...";
+                EoDetectionBoxes.Clear();
+                EoFireSmokeDetectionBoxes.Clear();
+                SetLocalFireSmokeDetectionState(0, false, false);
+            }
+            else
+            {
+                _isIrFrameDisplayed = false;
+                IRCameraImage = null;
+                IrStatusText = "[IR] Reconnecting...";
+                IrDetectionBoxes.Clear();
+                IrFireSmokeDetectionBoxes.Clear();
+                SetLocalFireSmokeDetectionState(1, false, false);
+            }
+
+            ResetFireSmokeFrameAnalysis(streamName + " RTSP frame loss");
+
+            bool allVideoFramesLost =
+                !_isEoFrameDisplayed &&
+                !_isIrFrameDisplayed;
+
+            if (allVideoFramesLost)
+            {
+                IsCrosshairVisible = false;
+
+                if (AiPowerStatusText == "ON" ||
+                    IsThermalFireDetectionEnabled ||
+                    IsSmokeDetectionEnabled)
+                {
+                    DisconnectAiAgent();
+                }
+
+                ConsoleLogHelper.State(
+                    "DEVICE STATE SYNC",
+                    "EO_FRAME=False / IR_FRAME=False / AI=OFF / FIRE=OFF / SMOKE=OFF");
+            }
+
+            ConsoleLogHelper.State(
+                streamName + " VIDEO",
+                "Frame loss UI synchronized / STATUS=Reconnecting / " +
+                "IMAGE_CLEARED=True / DETECTION_CLEARED=True");
         }
 
         #region [Video Result Type]

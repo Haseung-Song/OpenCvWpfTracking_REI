@@ -550,6 +550,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     await Task.Delay(
                         WebAgentZeroOverlayMinimumMilliseconds);
 
+                    // 2026-10-01: WebAgent가 TILT ZERO 성공 직후 Function 0x02를
+                    // 자동 송신하지만, 누락 여부를 즉시 확인할 수 있도록 제한값도
+                    // 한 번 더 명시적으로 조회한다.
+                    bool limitQuerySent =
+                        _controlCommandService.RequestWebAgentTiltLimits();
+
+                    ConsoleLogHelper.Command(
+                        "WEB AGENT TILT LIMIT",
+                        "Post TILT ZERO query / " +
+                        "PACKET=FF 01 00 B5 02 00 B8 / " +
+                        "SENT=" + limitQuerySent);
+
                     return;
                 }
 

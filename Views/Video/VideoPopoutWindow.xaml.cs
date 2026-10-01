@@ -165,6 +165,7 @@ namespace OpenCvWpfTracking
             _windowedLocation = new Point(Left, Top);
 
             ApplyViewportAspectRatio();
+            UpdateCameraInfoScale();
 
             Keyboard.Focus(
                 this);
@@ -277,14 +278,19 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// 2026-09-17: 분리 영상 화면 드래그/더블클릭 처리.
-        /// 전체화면에서 드래그를 시작하면 창 모드로 복원한 뒤 DragMove를 호출하여
-        /// 멀티모니터 사이에서도 일반 창처럼 이동할 수 있게 한다.
+        /// 2026-10-01: 분리 영상 화면 드래그/더블클릭 처리.
+        /// 창 모드에서는 단일 클릭 Drag로 이동하고, 전체화면에서는 단일 클릭을
+        /// 포커스 선택에만 사용한다. 원크기/전체화면 전환은 더블클릭으로만 수행한다.
         /// </summary>
         private void Window_MouseLeftButtonDown(
             object sender,
             MouseButtonEventArgs e)
         {
+            // 2026-10-01: 분리 창도 실제 제어 가능한 영상 화면이므로
+            // 클릭한 EO/IR 채널을 메인 창과 같은 PT 감쇄 기준으로 동기화한다.
+            _viewModel.SetActivePanTiltZoomSource(
+                _cameraType == VideoPopoutCameraType.Ir);
+
             // 좌상단 단축키 안내 UI 조작은 창 이동으로 소비하지 않는다.
             if (CameraInfoToggleButton.IsMouseOver ||
                 CameraInfoBorder.IsMouseOver)
@@ -307,33 +313,9 @@ namespace OpenCvWpfTracking
 
             if (WindowState == WindowState.Maximized)
             {
-                Point localPoint = e.GetPosition(this);
-                double horizontalRatio = ActualWidth > 0.0
-                    ? Math.Max(0.0, Math.Min(1.0, localPoint.X / ActualWidth))
-                    : 0.5;
-                Point screenPoint = PointToScreen(localPoint);
-                PresentationSource source = PresentationSource.FromVisual(this);
-
-                if (source?.CompositionTarget != null)
-                {
-                    screenPoint = source.CompositionTarget.TransformFromDevice.Transform(screenPoint);
-                }
-
-                WindowState = WindowState.Normal;
-                ResizeMode = ResizeMode.CanResize;
-                Topmost = false;
-                Width = !_initialWindowBounds.IsEmpty
-                    ? Math.Max(MinWidth, _initialWindowBounds.Width)
-                    : Math.Max(
-                        MinWidth,
-                        Math.Min(1280.0, SystemParameters.WorkArea.Width * 0.8));
-                Height = !_initialWindowBounds.IsEmpty
-                    ? Math.Max(MinHeight, _initialWindowBounds.Height)
-                    : Math.Max(
-                        MinHeight,
-                        Math.Min(720.0, SystemParameters.WorkArea.Height * 0.8));
-                Left = screenPoint.X - (Width * horizontalRatio);
-                Top = screenPoint.Y - 8.0;
+                // 전체화면의 단일 클릭은 활성 EO/IR 채널 선택만 수행한다.
+                // 창 복원은 위의 ClickCount == 2 경로에서만 허용한다.
+                return;
             }
 
             try
@@ -417,6 +399,37 @@ namespace OpenCvWpfTracking
             }
 
             ApplyViewportAspectRatio();
+            UpdateCameraInfoScale();
+        }
+
+        /// <summary>
+        /// 2026-10-01: 분리창의 단축키 설명 패널을 영상 창 해상도에 비례해 조정한다.
+        /// 작은 IR 서브창에서는 영상 가림을 줄이고, EO/전체화면에서는 가독성을 유지한다.
+        /// </summary>
+        private void UpdateCameraInfoScale()
+        {
+            if (CameraInfoScaleTransform == null ||
+                ActualWidth <= 0.0 ||
+                ActualHeight <= 0.0)
+            {
+                return;
+            }
+
+            const double ReferenceWidth = 1280.0;
+            const double ReferenceHeight = 720.0;
+            const double MinimumScale = 0.55;
+            const double MaximumScale = 1.15;
+
+            double widthScale = ActualWidth / ReferenceWidth;
+            double heightScale = ActualHeight / ReferenceHeight;
+            double scale = Math.Max(
+                MinimumScale,
+                Math.Min(
+                    MaximumScale,
+                    Math.Min(widthScale, heightScale)));
+
+            CameraInfoScaleTransform.ScaleX = scale;
+            CameraInfoScaleTransform.ScaleY = scale;
         }
 
         private void ApplyViewportAspectRatio()
@@ -608,6 +621,9 @@ namespace OpenCvWpfTracking
             if (IsPanTiltShortcutKey(
                     e.Key))
             {
+                _viewModel.SetActivePanTiltZoomSource(
+                    _cameraType == VideoPopoutCameraType.Ir);
+
                 _viewModel
                     .HandlePanTiltKeyDown(
                         e.Key);
@@ -764,6 +780,9 @@ namespace OpenCvWpfTracking
 
             _cameraType =
                 cameraType;
+
+            _viewModel.SetActivePanTiltZoomSource(
+                _cameraType == VideoPopoutCameraType.Ir);
 
             ConfigureCameraBinding();
 

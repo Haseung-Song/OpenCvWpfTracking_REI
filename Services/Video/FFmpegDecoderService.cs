@@ -128,6 +128,13 @@ namespace OpenCvWpfTracking.Services.Video
         /// </summary>
         private readonly string _streamName;
 
+        // 2026-10-01: av_read_frame이 RTSP timeout 동안 native 호출에서 대기해도
+        // Disconnect/Watchdog 요청으로 즉시 빠져나오도록 FFmpeg interrupt callback을
+        // 유지한다. Delegate는 FormatContext 수명 동안 GC되지 않아야 한다.
+        private readonly AVIOInterruptCB_callback _interruptCallback;
+
+        private int _interruptRequested;
+
         // 2026-09-18: PTZ 이동 중 증가하는 압축량과 FFmpeg 단계별 지연을
         // WPF 표시 지연과 같은 1초 구간에서 비교하기 위한 lock-free 누적값이다.
         private long _metricPacketBytes;
@@ -237,6 +244,14 @@ namespace OpenCvWpfTracking.Services.Video
         public FFmpegDecoderService(string streamName)
         {
             _streamName = streamName;
+            _interruptCallback = InterruptCallback;
+        }
+
+        private int InterruptCallback(void* opaque)
+        {
+            return Volatile.Read(ref _interruptRequested) != 0
+                ? 1
+                : 0;
         }
 
         #endregion
@@ -261,6 +276,7 @@ namespace OpenCvWpfTracking.Services.Video
         public bool Open(string rtspUrl)
         {
             Close();
+            Interlocked.Exchange(ref _interruptRequested, 0);
             LastOpenErrorCode = 0;
             LastOpenErrorText = string.Empty;
 
@@ -285,7 +301,20 @@ namespace OpenCvWpfTracking.Services.Video
 
             ffmpeg.avformat_network_init();
 
-            AVFormatContext* formatContext = null;
+            AVFormatContext* formatContext =
+                ffmpeg.avformat_alloc_context();
+
+            if (formatContext == null)
+            {
+                LastOpenErrorText = "avformat_alloc_context failed";
+                return false;
+            }
+
+            formatContext->interrupt_callback.callback =
+                _interruptCallback;
+
+            formatContext->interrupt_callback.opaque =
+                null;
 
             AVDictionary* options = CreateRtspOptions();
 
@@ -882,6 +911,10 @@ namespace OpenCvWpfTracking.Services.Video
         /// </summary>
         public void Close()
         {
+            // lock을 얻기 전에 먼저 Flag를 올려 현재 av_read_frame 호출을 중단시킨다.
+            // 기존에는 ReadFrame의 5초 rw_timeout이 끝날 때까지 Close가 대기했다.
+            Interlocked.Exchange(ref _interruptRequested, 1);
+
             // [Close()] 중에는 [ReadFrame()] 못 들어오게
             lock (_syncLock)
             {

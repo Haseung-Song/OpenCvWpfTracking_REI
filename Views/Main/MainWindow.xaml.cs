@@ -5,6 +5,7 @@ using OpenCvWpfTracking.Services.Video;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -161,6 +162,18 @@ namespace OpenCvWpfTracking
 
         private VideoPopoutCameraType? _activeHoverLensCameraType;
 
+        // 2026-10-01: 제목 표시줄의 PC 로컬 시계는 화면 표시 전용이다.
+        // WebAgent 연결 상태와 무관하게 1초 간격으로 갱신하고 창 종료 시 해제한다.
+        private readonly DispatcherTimer _pcTitleBarClockTimer;
+
+        // 2026-10-01: 우측 상위/통신 하위 탭 Header를 마우스로 끌어
+        // 같은 TabControl 안에서 순서를 변경한다.
+        private Point _tabDragStartPoint;
+
+        private TabItem _draggedTabItem;
+
+        private TabControl _tabDragSource;
+
         #endregion
 
         #region [Constructor]
@@ -174,10 +187,200 @@ namespace OpenCvWpfTracking
         {
             InitializeComponent();
 
+            ApplyDefaultCommunicationTabOrder();
+
             DataContext =
                 vm;
 
+            _pcTitleBarClockTimer = new DispatcherTimer(
+                DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _pcTitleBarClockTimer.Tick += PcTitleBarClockTimer_Tick;
+            UpdatePcTitleBarClock();
+            _pcTitleBarClockTimer.Start();
+
             LoadLatestGeneratedPanoramaOrKeepDefault();
+        }
+
+        private void ApplyDefaultCommunicationTabOrder()
+        {
+            if (CommunicationSettingsTabControl == null)
+            {
+                return;
+            }
+
+            string[] defaultHeaders =
+            {
+                "CTRL / RTSP",
+                "SYSTEM TIME",
+                "IMU / RPY",
+                "AI SETTING"
+            };
+
+            Dictionary<string, TabItem> tabs =
+                CommunicationSettingsTabControl.Items
+                    .OfType<TabItem>()
+                    .Where(tab => tab.Header != null)
+                    .ToDictionary(
+                        tab => tab.Header.ToString(),
+                        tab => tab,
+                        StringComparer.Ordinal);
+
+            if (defaultHeaders.Any(header => !tabs.ContainsKey(header)))
+            {
+                return;
+            }
+
+            foreach (string header in defaultHeaders)
+            {
+                CommunicationSettingsTabControl.Items.Remove(tabs[header]);
+            }
+
+            for (int index = 0; index < defaultHeaders.Length; index++)
+            {
+                CommunicationSettingsTabControl.Items.Insert(
+                    index,
+                    tabs[defaultHeaders[index]]);
+            }
+
+            CommunicationSettingsTabControl.SelectedIndex = 0;
+        }
+
+        private void ReorderableTabControl_PreviewMouseLeftButtonDown(
+            object sender,
+            MouseButtonEventArgs e)
+        {
+            TabControl tabControl = sender as TabControl;
+            TabItem tabItem = FindVisualAncestor<TabItem>(
+                e.OriginalSource as DependencyObject);
+
+            if (tabControl == null ||
+                tabItem == null ||
+                !ReferenceEquals(
+                    ItemsControl.ItemsControlFromItemContainer(tabItem),
+                    tabControl))
+            {
+                _draggedTabItem = null;
+                _tabDragSource = null;
+                return;
+            }
+
+            _tabDragStartPoint = e.GetPosition(tabControl);
+            _draggedTabItem = tabItem;
+            _tabDragSource = tabControl;
+        }
+
+        private void ReorderableTabControl_PreviewMouseMove(
+            object sender,
+            MouseEventArgs e)
+        {
+            TabControl tabControl = sender as TabControl;
+            if (e.LeftButton != MouseButtonState.Pressed ||
+                _draggedTabItem == null ||
+                !ReferenceEquals(tabControl, _tabDragSource))
+            {
+                return;
+            }
+
+            Point current = e.GetPosition(tabControl);
+            if (Math.Abs(current.X - _tabDragStartPoint.X) <
+                    SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(current.Y - _tabDragStartPoint.Y) <
+                    SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            TabItem dragged = _draggedTabItem;
+            dragged.Opacity = 0.62;
+            try
+            {
+                DragDrop.DoDragDrop(
+                    dragged,
+                    dragged,
+                    DragDropEffects.Move);
+            }
+            finally
+            {
+                dragged.Opacity = 1.0;
+                _draggedTabItem = null;
+                _tabDragSource = null;
+            }
+        }
+
+        private void ReorderableTabControl_Drop(
+            object sender,
+            DragEventArgs e)
+        {
+            TabControl tabControl = sender as TabControl;
+            TabItem dragged = e.Data.GetData(typeof(TabItem)) as TabItem;
+            TabItem target = FindVisualAncestor<TabItem>(
+                e.OriginalSource as DependencyObject);
+
+            if (tabControl == null ||
+                dragged == null ||
+                !ReferenceEquals(
+                    ItemsControl.ItemsControlFromItemContainer(dragged),
+                    tabControl) ||
+                target == null ||
+                !ReferenceEquals(
+                    ItemsControl.ItemsControlFromItemContainer(target),
+                    tabControl) ||
+                ReferenceEquals(dragged, target))
+            {
+                return;
+            }
+
+            int targetIndex = tabControl.Items.IndexOf(target);
+            tabControl.Items.Remove(dragged);
+            tabControl.Items.Insert(targetIndex, dragged);
+            tabControl.SelectedItem = dragged;
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+
+        private static T FindVisualAncestor<T>(DependencyObject source)
+            where T : DependencyObject
+        {
+            DependencyObject current = source;
+            while (current != null)
+            {
+                if (current is T match)
+                {
+                    return match;
+                }
+
+                current = current is Visual
+                    ? VisualTreeHelper.GetParent(current)
+                    : LogicalTreeHelper.GetParent(current);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 2026-10-01: 메인 제목 표시줄의 PC 로컬 시간을 초 단위로 갱신한다.
+        /// 매 Tick 로그는 기록하지 않아 불필요한 I/O를 방지한다.
+        /// </summary>
+        private void PcTitleBarClockTimer_Tick(
+            object sender,
+            EventArgs e)
+        {
+            UpdatePcTitleBarClock();
+        }
+
+        private void UpdatePcTitleBarClock()
+        {
+            if (PcTitleBarClockText == null)
+            {
+                return;
+            }
+
+            PcTitleBarClockText.Text = "PC TIME  " + DateTime.Now.ToString(
+                "yyyy-MM-dd HH:mm:ss",
+                CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -286,6 +489,12 @@ namespace OpenCvWpfTracking
              */
             try
             {
+                if (_pcTitleBarClockTimer != null)
+                {
+                    _pcTitleBarClockTimer.Stop();
+                    _pcTitleBarClockTimer.Tick -= PcTitleBarClockTimer_Tick;
+                }
+
                 _panoramaCaptureCts?.Cancel();
                 vm.ShutdownForApplicationExit();
 
@@ -396,6 +605,10 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            // 2026-10-01: 화면 배치와 무관하게 사용자가 선택한 영상 채널을
+            // PT 줌 감쇄 기준으로 사용한다. EO가 서브 화면이어도 동일하다.
+            vm?.SetActivePanTiltZoomSource(false);
+
             if (TryHandleFovValidationClick(false, e))
             {
                 return;
@@ -424,6 +637,9 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            // 2026-10-01: IR이 메인/서브 어느 위치에 있어도 클릭 즉시 ACTIVE(IR)로 전환한다.
+            vm?.SetActivePanTiltZoomSource(true);
+
             if (TryHandleFovValidationClick(true, e))
             {
                 return;
@@ -717,6 +933,11 @@ namespace OpenCvWpfTracking
                 cameraType ==
                 VideoPopoutCameraType.Eo;
 
+            // 2026-10-01: 현재 메인 영상의 EO/IR 줌값을 GUI PT 속도 감쇄
+            // 기준으로 사용한다. PT 명령은 기존 WebAgent/LA 경로를 유지한다.
+            vm.SetActivePanTiltZoomSource(
+                !isEoPrimary);
+
             ApplyPrimaryVideoLayout(
                 EoVideoBorder,
                 isEoPrimary);
@@ -975,9 +1196,13 @@ namespace OpenCvWpfTracking
 
             // 2026-08-24: OriginalSource는 클릭한 TabItem이 될 수 있으므로
             // 실제 SelectionChanged 발생원(Source)으로 상위 TabControl을 판별한다.
+            TabItem selectedTab = tabControl?.SelectedItem as TabItem;
             if (!ReferenceEquals(e.Source, sender) ||
-                tabControl == null ||
-                tabControl.SelectedIndex != 2)
+                selectedTab == null ||
+                !string.Equals(
+                    selectedTab.Header?.ToString(),
+                    "이벤트 알림",
+                    StringComparison.Ordinal))
             {
                 return;
             }
@@ -1955,6 +2180,17 @@ namespace OpenCvWpfTracking
                     e.Key))
             {
                 return;
+            }
+
+            // 2026-10-01: 메인/서브 배치가 아니라 현재 마우스가 위치한
+            // 영상 채널을 방향키 PT 감쇄 기준으로 사용한다.
+            if (EoVideoBorder?.IsMouseOver == true)
+            {
+                vm?.SetActivePanTiltZoomSource(false);
+            }
+            else if (IrVideoBorder?.IsMouseOver == true)
+            {
+                vm?.SetActivePanTiltZoomSource(true);
             }
 
             vm?.HandlePanTiltKeyDown(

@@ -1719,6 +1719,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: WebAgent Build 86 RPY Offset 및 자동 전송 주파수 명령 초기화.
             InitializeRpySettings();
 
+            // 2026-10-01: WebAgent 시스템 UTC 조회 및 PC 시간 설정 명령 초기화.
+            InitializeSystemDateTimeSettings();
+
             #endregion
 
             #region [AI Detector Setting Command Binding]

@@ -775,6 +775,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 case 0x2A:
                 case 0x2B:
                 case 0x2C:
+                case 0x2D:
+                case 0x2E:
+                case 0x2F:
                     ParseWebAgentV18Packet(packet);
                     break;
 
@@ -1388,6 +1391,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     OnPropertyChanged(nameof(CurrentEoZoomText));
                     OnPropertyChanged(nameof(RooftopEoZoomStatusText));
                     OnPropertyChanged(nameof(EnvironmentEoZoomStatusText));
+                    OnPropertyChanged(nameof(EffectivePanTiltSpeedLevel));
+                    OnPropertyChanged(nameof(PanTiltSpeedDisplayText));
                 }
                 if (notifyFocus)
                 {
@@ -1459,6 +1464,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged(
                     nameof(EnvironmentIrZoomStatusText));
+
+                OnPropertyChanged(
+                    nameof(EffectivePanTiltSpeedLevel));
+
+                OnPropertyChanged(
+                    nameof(PanTiltSpeedDisplayText));
 
                 OnPropertyChanged(
                     nameof(CurrentIrFocusText));

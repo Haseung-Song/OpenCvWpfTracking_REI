@@ -832,6 +832,25 @@
                                FontWeight="Bold"
                                VerticalAlignment="Center"/>
 
+                    <!-- 2026-10-01: 우측 장비 제어 로고 중심축에 가깝게 시계를
+                         왼쪽으로 이동하여 최소화 버튼과 충분한 간격을 확보한다. -->
+                    <Border HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="0,0,225,0"
+                            Padding="10,3"
+                            Background="#33424B"
+                            BorderBrush="#71808A"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            IsHitTestVisible="False">
+                        <TextBlock x:Name="PcTitleBarClockText"
+                                   Text="PC TIME  ---- -- -- --:--:--"
+                                   Foreground="#E5F3FA"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
@@ -1742,11 +1761,12 @@
                                         BorderBrush="#95A5B0"
                                         BorderThickness="1.5"
                                         CornerRadius="5"
-                                        Padding="10,7">
+                                        Padding="10,4">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="25"/>
+                                            <RowDefinition Height="12"/>
                                         </Grid.RowDefinitions>
 
                                         <Grid>
@@ -1762,28 +1782,56 @@
                                                        FontWeight="Bold"/>
 
                                             <TextBlock Grid.Column="1"
-                                                       Text="{Binding PanTiltSpeedLevel,
-                                                               StringFormat={}LEVEL : {0} / 60}"
+                                                       Text="{Binding PanTiltSpeedDisplayText}"
                                                        Foreground="#D0D7DE"
-                                                       FontSize="12"
+                                                       FontSize="10.5"
                                                        FontWeight="Bold"
                                                        Margin="10,0,4,0"/>
                                         </Grid>
 
-                                        <Slider Grid.Row="1"
-                                                Minimum="0"
-                                                Maximum="60"
-                                                TickFrequency="5"
-                                                SmallChange="5"
-                                                LargeChange="5"
-                                                TickPlacement="BottomRight"
-                                                IsSnapToTickEnabled="True"
-                                                Value="{Binding PanTiltSpeedLevel,
-                                                        Mode=TwoWay,
-                                                        UpdateSourceTrigger=PropertyChanged}"
-                                                IsEnabled="{Binding IsPanTiltSpeedControlEnabled}"
-                                                Height="30"
-                                                Margin="8,0,8,0"/>
+                                        <!-- 2026-10-01: SET 조작부와 ACTIVE 감쇄 표시부를
+                                             각각 독립 Border로 분리한다. 입력은 1단위를 유지하고
+                                             시각 눈금만 3단위로 줄여 총 20구간으로 표시한다. -->
+                                        <Border Grid.Row="1"
+                                                Margin="5,1,5,1"
+                                                Background="#596168"
+                                                BorderBrush="#8997A1"
+                                                BorderThickness="1"
+                                                CornerRadius="2">
+                                            <Slider Minimum="0"
+                                                    Maximum="60"
+                                                    TickFrequency="3"
+                                                    SmallChange="1"
+                                                    LargeChange="3"
+                                                    TickPlacement="BottomRight"
+                                                    IsSnapToTickEnabled="False"
+                                                    Value="{Binding PanTiltSpeedLevel,
+                                                            Mode=TwoWay,
+                                                            UpdateSourceTrigger=PropertyChanged}"
+                                                    IsEnabled="{Binding IsPanTiltSpeedControlEnabled}"
+                                                    Height="23"
+                                                    VerticalAlignment="Center"
+                                                    Margin="7,-1,7,0"/>
+                                        </Border>
+
+                                        <Border Grid.Row="2"
+                                                Margin="5,2,5,0"
+                                                Background="#2F3942"
+                                                BorderBrush="#8997A1"
+                                                BorderThickness="1"
+                                                CornerRadius="2"
+                                                ToolTip="줌 감쇄 후 실제 PT 전송 속도">
+                                            <ProgressBar Minimum="0"
+                                                         Maximum="60"
+                                                         Value="{Binding EffectivePanTiltSpeedLevel,
+                                                                         Mode=OneWay}"
+                                                         Height="5"
+                                                         Margin="3"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="#5EE7F7"
+                                                         Background="#2F3942"
+                                                         IsHitTestVisible="False"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
 
@@ -1798,6 +1846,10 @@
                                             VerticalContentAlignment="Stretch"
                                             SelectedIndex="{Binding SelectedRightPanelTabIndex, Mode=TwoWay}"
                                             SelectionChanged="RightPanelTabControl_SelectionChanged"
+                                            AllowDrop="True"
+                                            PreviewMouseLeftButtonDown="ReorderableTabControl_PreviewMouseLeftButtonDown"
+                                            PreviewMouseMove="ReorderableTabControl_PreviewMouseMove"
+                                            Drop="ReorderableTabControl_Drop"
                                             IsEnabled="{Binding IsMainControlEnabled}"
                                             Style="{StaticResource TopRightPanelTabControlStyle}"
                                             ItemContainerStyle="{StaticResource TopRightPanelTabItemStyle}">
@@ -1840,18 +1892,25 @@
                                                             BorderThickness="0"
                                                             Padding="0"
                                                             ClipToBounds="True">
-                                                        <TabControl Background="#4B5259"
+                                                        <TabControl x:Name="CommunicationSettingsTabControl"
+                                                                    Background="#4B5259"
                                                                     BorderThickness="0"
                                                                     Padding="0"
                                                                     ClipToBounds="True"
                                                                     SelectedIndex="{Binding SelectedCommunicationSettingsTabIndex, Mode=TwoWay}"
+                                                                    AllowDrop="True"
+                                                                    PreviewMouseLeftButtonDown="ReorderableTabControl_PreviewMouseLeftButtonDown"
+                                                                    PreviewMouseMove="ReorderableTabControl_PreviewMouseMove"
+                                                                    Drop="ReorderableTabControl_Drop"
                                                                     HorizontalContentAlignment="Stretch"
                                                                     VerticalContentAlignment="Stretch"
                                                                     Style="{StaticResource CommunicationSubTabControlStyle}"
                                                                     ItemContainerStyle="{StaticResource CommunicationSubTabItemStyle}">
 
                                                             <!-- Control Agent 및 EO / IR RTSP 설정 하위 탭 -->
-                                                            <TabItem Header="CONTROL / RTSP">
+                                                            <!-- 2026-10-01: 네 개 하위 탭 표시 시 제목이 잘리지 않도록
+                                                                 화면 표시명만 축약하고 기능 및 내부 의미는 유지한다. -->
+                                                            <TabItem Header="CTRL / RTSP">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
                                                                               Padding="0,0,8,18">
@@ -2186,6 +2245,41 @@
                                                                                            Foreground="#D7E7EE"
                                                                                            FontWeight="Bold"
                                                                                            HorizontalAlignment="Center"/>
+                                                                                <Expander IsExpanded="False"
+                                                                                          Margin="0,7,0,0"
+                                                                                          Foreground="#5EE7F7">
+                                                                                    <Expander.Header>
+                                                                                        <TextBlock Text="RPY 보정 계산 안내"
+                                                                                                   Foreground="#5EE7F7"
+                                                                                                   FontSize="10"
+                                                                                                   FontWeight="Bold"/>
+                                                                                    </Expander.Header>
+                                                                                    <Border Margin="0,5,0,1"
+                                                                                            Padding="7"
+                                                                                            Background="#30383E"
+                                                                                            BorderBrush="#5EE7F7"
+                                                                                            BorderThickness="1"
+                                                                                            CornerRadius="3">
+                                                                                        <StackPanel>
+                                                                                            <TextBlock Text="보정값 = 원본값 - DB Offset"
+                                                                                                       Foreground="White"
+                                                                                                       FontSize="10"
+                                                                                                       FontWeight="Bold"
+                                                                                                       TextAlignment="Center"/>
+                                                                                            <TextBlock Text="Yaw는 계산 후 0~360° 범위로 정규화합니다."
+                                                                                                       Foreground="#B8F27C"
+                                                                                                       FontSize="9"
+                                                                                                       TextAlignment="Center"
+                                                                                                       Margin="0,3,0,0"/>
+                                                                                            <TextBlock Text="예: 원본 359.95° - Offset 350.00° = 보정 9.95°"
+                                                                                                       Foreground="#FDE68A"
+                                                                                                       FontSize="9"
+                                                                                                       TextAlignment="Center"
+                                                                                                       TextWrapping="Wrap"
+                                                                                                       Margin="0,3,0,0"/>
+                                                                                        </StackPanel>
+                                                                                    </Border>
+                                                                                </Expander>
                                                                                 <TextBlock Text="{Binding CurrentRpyDisplay}"
                                                                                            Foreground="#7DD3FC"
                                                                                            FontWeight="Bold"
@@ -2200,7 +2294,7 @@
                                                                                 <Button Content="RPY 단건 조회 (0xE5)"
                                                                                         Height="28"
                                                                                         Margin="0,8,0,0"
-                                                                                        Style="{StaticResource AiSettingButtonStyle}"
+                                                                                        Style="{StaticResource ConnectButtonStyle}"
                                                                                         Command="{Binding RequestRpyTelemetryCommand}"/>
                                                                             </StackPanel>
                                                                         </Border>
@@ -2247,24 +2341,43 @@
                                                                                              Grid.Column="0"
                                                                                              MaxLength="7"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                             Text="{Binding RpyRollOffsetInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                             PreviewTextInput="DecimalNumberOnly_PreviewTextInput"
+                                                                                             LostFocus="RpySignedOffset_LostFocus"
+                                                                                             Text="{Binding RpyRollOffsetInput, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                                                                                     <TextBox Grid.Row="1"
                                                                                              Grid.Column="2"
                                                                                              MaxLength="7"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                             Text="{Binding RpyPitchOffsetInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                             PreviewTextInput="DecimalNumberOnly_PreviewTextInput"
+                                                                                             LostFocus="RpySignedOffset_LostFocus"
+                                                                                             Text="{Binding RpyPitchOffsetInput, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                                                                                     <TextBox Grid.Row="1"
                                                                                              Grid.Column="4"
                                                                                              MaxLength="6"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                             Text="{Binding RpyYawOffsetInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                             PreviewTextInput="UnsignedDecimalNumberOnly_PreviewTextInput"
+                                                                                             LostFocus="RpyYawOffset_LostFocus"
+                                                                                             Text="{Binding RpyYawOffsetInput, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                                                                                 </Grid>
 
-                                                                                <Button Content="OFFSET 적용"
-                                                                                        Height="30"
-                                                                                        Margin="0,8,0,0"
-                                                                                        Style="{StaticResource AiSettingButtonStyle}"
-                                                                                        Command="{Binding ApplyRpyOffsetCommand}"/>
+                                                                                <Grid Margin="0,8,0,0">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="6"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <Button Grid.Column="0"
+                                                                                            Content="OFFSET 적용"
+                                                                                            Height="30"
+                                                                                            Style="{StaticResource ConnectButtonStyle}"
+                                                                                            Command="{Binding ApplyRpyOffsetCommand}"/>
+                                                                                    <Button Grid.Column="2"
+                                                                                            Content="DB 저장값 조회 (0xF3)"
+                                                                                            Height="30"
+                                                                                            FontSize="10"
+                                                                                            Style="{StaticResource ConnectButtonStyle}"
+                                                                                            Command="{Binding RequestStoredRpyOffsetCommand}"/>
+                                                                                </Grid>
                                                                                 <TextBlock Text="{Binding RpyOffsetStatusText}"
                                                                                            Foreground="#FDE68A"
                                                                                            FontWeight="Bold"
@@ -2298,18 +2411,33 @@
                                                                                     <TextBox Grid.Column="0"
                                                                                              MaxLength="2"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
-                                                                                             Text="{Binding RpyAutoTxRateInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                             PreviewTextInput="IntegerNumberOnly_PreviewTextInput"
+                                                                                             LostFocus="RpyRate_LostFocus"
+                                                                                             Text="{Binding RpyAutoTxRateInput, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                                                                                     <TextBlock Grid.Column="1"
                                                                                                Text="Hz"
                                                                                                Foreground="White"
                                                                                                VerticalAlignment="Center"
                                                                                                Margin="7,0,0,0"/>
                                                                                 </Grid>
-                                                                                <Button Content="주파수 적용"
-                                                                                        Height="30"
-                                                                                        Margin="0,8,0,0"
-                                                                                        Style="{StaticResource AiSettingButtonStyle}"
-                                                                                        Command="{Binding ApplyRpyAutoTxRateCommand}"/>
+                                                                                <Grid Margin="0,8,0,0">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                        <ColumnDefinition Width="6"/>
+                                                                                        <ColumnDefinition Width="*"/>
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <Button Grid.Column="0"
+                                                                                            Content="주파수 적용"
+                                                                                            Height="30"
+                                                                                            Style="{StaticResource ConnectButtonStyle}"
+                                                                                            Command="{Binding ApplyRpyAutoTxRateCommand}"/>
+                                                                                    <Button Grid.Column="2"
+                                                                                            Content="DB 저장값 조회 (0xF5)"
+                                                                                            Height="30"
+                                                                                            FontSize="10"
+                                                                                            Style="{StaticResource ConnectButtonStyle}"
+                                                                                            Command="{Binding RequestStoredRpyRateCommand}"/>
+                                                                                </Grid>
                                                                                 <TextBlock Text="{Binding RpyRateStatusText}"
                                                                                            Foreground="#FDE68A"
                                                                                            FontWeight="Bold"
@@ -2326,6 +2454,113 @@
                                                                                            TextWrapping="Wrap"
                                                                                            TextAlignment="Center"
                                                                                            Margin="0,6,0,0"/>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </StackPanel>
+                                                                </ScrollViewer>
+                                                            </TabItem>
+
+                                                            <!-- 2026-10-01: WebAgent SBC 시스템 UTC 조회 및 PC 시간 설정 -->
+                                                            <TabItem Header="SYSTEM TIME">
+                                                                <TabItem.Style>
+                                                                    <Style TargetType="TabItem"
+                                                                           BasedOn="{StaticResource CommunicationSubTabItemStyle}">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsSystemDateTimeTabVisible}"
+                                                                                         Value="True">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TabItem.Style>
+                                                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                                              HorizontalScrollBarVisibility="Disabled"
+                                                                              Padding="0,8,8,14">
+                                                                    <StackPanel Margin="7"
+                                                                                IsEnabled="{Binding IsEnvironmentStatusSelected}">
+                                                                        <Border Padding="9"
+                                                                                Background="#394148"
+                                                                                BorderBrush="#6F8996"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="WEBAGENT SYSTEM TIME"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"/>
+                                                                                <TextBlock Text="{Binding WebAgentUtcDateTimeText}"
+                                                                                           Foreground="#7DD3FC"
+                                                                                           FontWeight="Bold"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,9,0,0"/>
+                                                                                <TextBlock Text="{Binding WebAgentLocalDateTimeText}"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,5,0,0"/>
+                                                                                <Button Content="장비 시간 조회 (0xF1)"
+                                                                                        Height="30"
+                                                                                        Margin="0,9,0,0"
+                                                                                        Style="{StaticResource ConnectButtonStyle}"
+                                                                                        Command="{Binding RequestSystemDateTimeCommand}"/>
+                                                                            </StackPanel>
+                                                                        </Border>
+
+                                                                        <Border Margin="0,8,0,0"
+                                                                                Padding="9"
+                                                                                Background="#394148"
+                                                                                BorderBrush="#6F8996"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="4">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="PC TIME → WEBAGENT"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center"/>
+                                                                                <TextBlock Text="{Binding PcLocalDateTimeText}"
+                                                                                           Foreground="#D7E7EE"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,9,0,0"/>
+                                                                                <TextBlock Text="{Binding PcUtcDateTimeText}"
+                                                                                           Foreground="#7DD3FC"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,5,0,0"/>
+                                                                                <Button Content="PC 현재 시간으로 설정 (0xEF)"
+                                                                                        Height="30"
+                                                                                        Margin="0,9,0,0"
+                                                                                        Style="{StaticResource ConnectButtonStyle}"
+                                                                                        Command="{Binding SetSystemDateTimeFromPcCommand}"/>
+                                                                                <TextBlock Text="{Binding SystemDateTimeStatusText}"
+                                                                                           Foreground="#FDE68A"
+                                                                                           FontWeight="Bold"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,7,0,0"/>
+                                                                                <!-- 2026-10-01: 좁은 패널에서 단어 중간이 잘리지 않도록
+                                                                                     안내와 주의 문구를 각각 독립된 한 줄로 표시한다. -->
+                                                                                <TextBlock Text="※ PC 로컬 시간을 UTC로 변환하여 WebAgent에 전송합니다."
+                                                                                           Foreground="#B8C0C8"
+                                                                                           FontSize="9"
+                                                                                           TextWrapping="NoWrap"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,7,0,0"/>
+                                                                                <TextBlock Text="※ WebAgent의 시간대 설정은 변경하지 않습니다."
+                                                                                           Foreground="#B8C0C8"
+                                                                                           FontSize="9"
+                                                                                           TextWrapping="NoWrap"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,3,0,0"/>
+                                                                                <TextBlock Text="※ 시스템 시간 변경은 로그·예약 동작에 영향을 줄 수 있습니다."
+                                                                                           Foreground="#F9A8A8"
+                                                                                           FontSize="9"
+                                                                                           TextWrapping="NoWrap"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,6,0,0"/>
+                                                                                <TextBlock Text="※ 장비 상태를 확인한 후 적용하십시오."
+                                                                                           Foreground="#F9A8A8"
+                                                                                           FontSize="9"
+                                                                                           TextWrapping="NoWrap"
+                                                                                           TextAlignment="Center"
+                                                                                           Margin="0,3,0,0"/>
                                                                             </StackPanel>
                                                                         </Border>
                                                                     </StackPanel>
@@ -4130,6 +4365,11 @@
                                                                                 <RadioButton Content="SAVED ORDER" GroupName="LaPresetScanOrder" IsChecked="{Binding IsPresetSavedOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold" Margin="0,0,18,0"/>
                                                                                 <RadioButton Content="NEAREST" GroupName="LaPresetScanOrder" IsChecked="{Binding IsPresetNearestOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold"/>
                                                                             </StackPanel>
+                                                                            <TextBlock Text="SAVED ORDER: 저장 순서 / NEAREST: PRESET 번호 오름차순"
+                                                                                       Foreground="#D7E7EE"
+                                                                                       FontSize="9"
+                                                                                       TextAlignment="Center"
+                                                                                       Margin="0,5,0,0"/>
                                                                         </StackPanel>
                                                                     </Border>
 
@@ -4474,6 +4714,11 @@
                                                                                 <RadioButton Content="SAVED ORDER" GroupName="WebPresetScanOrder" IsChecked="{Binding IsPresetSavedOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold" Margin="0,0,18,0"/>
                                                                                 <RadioButton Content="NEAREST" GroupName="WebPresetScanOrder" IsChecked="{Binding IsPresetNearestOrderMode, Mode=TwoWay}" Foreground="White" FontSize="10" FontWeight="Bold"/>
                                                                             </StackPanel>
+                                                                            <TextBlock Text="SAVED ORDER: 저장 순서 / NEAREST: PRESET 번호 오름차순"
+                                                                                       Foreground="#D7E7EE"
+                                                                                       FontSize="9"
+                                                                                       TextAlignment="Center"
+                                                                                       Margin="0,5,0,0"/>
                                                                         </StackPanel>
                                                                     </Border>
 

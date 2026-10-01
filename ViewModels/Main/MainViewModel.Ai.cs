@@ -332,6 +332,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            // 2026-10-01: 장비 전원 차단 뒤 지연 수신된 AI Packet이
+            // 이미 Blackout된 화면 위에 BBox를 다시 생성하지 못하게 한다.
+            bool isTargetFrameAvailable =
+                result.RtspIndex == 0
+                    ? _isEoFrameDisplayed
+                    : result.RtspIndex == 1 && _isIrFrameDisplayed;
+
+            if (!isTargetFrameAvailable)
+            {
+                return;
+            }
+
             HandleAiDetectionResult(
                 result,
                 receiveTime);

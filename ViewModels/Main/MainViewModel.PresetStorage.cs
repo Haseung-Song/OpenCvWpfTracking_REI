@@ -209,38 +209,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private PresetPointOption[] CreatePresetScanQueue(IEnumerable<PresetPointOption> source)
         {
-            List<PresetPointOption> remaining = source
-                .OrderBy(p => p.SavedOrder)
-                .ThenBy(p => p.Number)
-                .ToList();
-            if (_presetScanOrderMode == PresetScanOrderMode.SavedOrder)
-            {
-                return remaining.ToArray();
-            }
+            PresetPointOption[] registered = source.ToArray();
 
-            List<PresetPointOption> result = new List<PresetPointOption>();
-            double pan = _currentPan;
-            double tilt = _currentTilt;
-            while (remaining.Count > 0)
-            {
-                PresetPointOption nearest = remaining
-                    .OrderBy(p => PresetDistance(pan, tilt, p))
+            // 2026-10-01: 본 GUI에서 NEAREST는 PAN/TILT 공간거리가 아니라
+            // 등록된 PRESET 번호의 오름차순을 의미한다. SAVED ORDER는 사용자가
+            // 저장한 순서를 그대로 보존하며 기본 모드로 유지한다.
+            PresetPointOption[] result = _presetScanOrderMode == PresetScanOrderMode.SavedOrder
+                ? registered
+                    .OrderBy(p => p.SavedOrder)
+                    .ThenBy(p => p.Number)
+                    .ToArray()
+                : registered
+                    .OrderBy(p => p.Number)
                     .ThenBy(p => p.SavedOrder)
-                    .First();
-                result.Add(nearest);
-                remaining.Remove(nearest);
-                pan = nearest.Pan;
-                tilt = nearest.Tilt;
-            }
-            return result.ToArray();
-        }
+                    .ToArray();
 
-        private double PresetDistance(double currentPan, double currentTilt, PresetPointOption preset)
-        {
-            double panDifference = Math.Abs(currentPan - preset.Pan) % 360.0;
-            panDifference = Math.Min(panDifference, 360.0 - panDifference);
-            double tiltDifference = GetTiltDifference(currentTilt, preset.Tilt);
-            return Math.Sqrt(panDifference * panDifference + tiltDifference * tiltDifference);
+            ConsoleLogHelper.State(
+                "PRESET SCAN ORDER",
+                "MODE=" + _presetScanOrderMode +
+                " / REGISTERED=" + string.Join("->", registered
+                    .OrderBy(p => p.SavedOrder)
+                    .ThenBy(p => p.Number)
+                    .Select(p => p.Number)) +
+                " / EXECUTION=" + string.Join("->", result.Select(p => p.Number)));
+
+            return result;
         }
 
         private static int ClampPresetScanSetting(int value) => Math.Max(1, Math.Min(60, value));

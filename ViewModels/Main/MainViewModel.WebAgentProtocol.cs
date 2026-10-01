@@ -59,6 +59,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     case 0x2A: ParseWebAgentUnavailable(payload); break;
                     case 0x2B: ParseWebAgentRpyRateAck(payload); break;
                     case 0x2C: ParseWebAgentRpyOffsetAck(payload); break;
+                    case 0x2D: ParseWebAgentSystemDateTime(payload); break;
+                    case 0x2E: ParseStoredRpyOffsetResponse(payload); break;
+                    case 0x2F: ParseStoredRpyRateResponse(payload); break;
                 }
             }
             catch (Exception ex)

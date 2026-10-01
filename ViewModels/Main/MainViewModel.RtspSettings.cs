@@ -119,6 +119,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
+                OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(PanTiltZeroRouteText));
                 ApplyControlAgentProfile(value);
                 EnsureVisibleCommunicationSettingsTab();
@@ -201,6 +202,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(SelectedControlAgentProfile));
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
+                OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(SelectedIrRtspSource));
                 OnPropertyChanged(nameof(SelectedAiEoRtspSource));
                 OnPropertyChanged(nameof(SelectedAiIrRtspSource));
@@ -327,6 +329,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "192.168.20.163",
                 StringComparison.OrdinalIgnoreCase));
 
+        /// <summary>
+        /// 2026-10-01: 시스템 시간 조회/설정은 WebAgent 프로필에서만 표시한다.
+        /// LA 방식인 옥상 MR300(테스트)에는 해당 프로토콜이 없다.
+        /// </summary>
+        public bool IsSystemDateTimeTabVisible => IsEnvironmentStatusSelected;
+
         public int SelectedCommunicationSettingsTabIndex
         {
             get => _selectedCommunicationSettingsTabIndex;
@@ -344,9 +352,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void EnsureVisibleCommunicationSettingsTab()
         {
-            // IMU/RPY 탭을 보고 있던 중 다른 장비로 전환하면
-            // 숨겨진 탭의 내용이 남지 않도록 CONTROL/RTSP로 돌아간다.
-            if (!IsImuRpyTabVisible && SelectedCommunicationSettingsTabIndex == 1)
+            // IMU/RPY 또는 SYSTEM TIME 탭을 보고 있던 중 지원하지 않는
+            // 장비로 전환하면 숨겨진 탭이 남지 않도록 CONTROL/RTSP로 돌아간다.
+            // 사용자가 탭을 Drag해 순서를 바꿀 수 있으므로 고정 Index로
+            // 숨김 탭을 판별하지 않는다. 지원 탭 구성이 줄어드는 장비 전환 시
+            // 항상 안전한 CTRL/RTSP 탭으로 복귀한다.
+            if (!IsImuRpyTabVisible || !IsSystemDateTimeTabVisible)
             {
                 SelectedCommunicationSettingsTabIndex = 0;
             }

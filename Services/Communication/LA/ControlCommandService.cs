@@ -171,6 +171,101 @@ namespace OpenCvWpfTracking.Services.Communication
             return packet;
         }
 
+        /// <summary>
+        /// 2026-10-01: WebAgent Build 93 이상에서 DB에 저장된
+        /// Roll/Pitch/Yaw Offset을 직접 조회한다.
+        /// Packet: FF 01 00 F3 00 00 F4
+        /// </summary>
+        public bool RequestStoredRpyOffsets()
+        {
+            return _tcpClientService.Send(
+                BuildStoredRpyOffsetQueryPacket());
+        }
+
+        public static byte[] BuildStoredRpyOffsetQueryPacket()
+        {
+            return new byte[]
+            {
+                0xFF, 0x01, 0x00, 0xF3, 0x00, 0x00, 0xF4
+            };
+        }
+
+        /// <summary>
+        /// 2026-10-01: WebAgent Build 93 이상에서 DB에 저장된
+        /// RPY 자동 전송 주파수를 직접 조회한다.
+        /// Packet: FF 01 00 F5 00 00 F6
+        /// </summary>
+        public bool RequestStoredRpyAutoTxRate()
+        {
+            return _tcpClientService.Send(
+                BuildStoredRpyAutoTxRateQueryPacket());
+        }
+
+        public static byte[] BuildStoredRpyAutoTxRateQueryPacket()
+        {
+            return new byte[]
+            {
+                0xFF, 0x01, 0x00, 0xF5, 0x00, 0x00, 0xF6
+            };
+        }
+
+        /// <summary>
+        /// 2026-10-01: WebAgent 현재 UTC 날짜·시간을 조회한다.
+        /// Packet: FF 01 00 F1 00 00 F2
+        /// </summary>
+        public bool RequestSystemDateTime()
+        {
+            return SendCommand(0x00, 0xF1, 0x00, 0x00);
+        }
+
+        /// <summary>
+        /// 2026-10-01: PC 현재 시간을 UTC로 변환하여 WebAgent OS 시간으로 설정한다.
+        /// 시간대는 변경하지 않으며 초 단위까지만 전송한다.
+        /// </summary>
+        public bool SetSystemDateTimeUtc(DateTime utcDateTime)
+        {
+            return _tcpClientService.Send(BuildSystemDateTimePacket(utcDateTime));
+        }
+
+        /// <summary>
+        /// UTC 날짜·시간 설정 12Byte Packet을 생성한다.
+        /// Sample: 2026-10-01 03:04:05 UTC →
+        /// FF 01 00 EF EA 07 0A 01 03 04 05 F8
+        /// </summary>
+        public static byte[] BuildSystemDateTimePacket(DateTime dateTime)
+        {
+            DateTime utcDateTime = dateTime.Kind == DateTimeKind.Local
+                ? dateTime.ToUniversalTime()
+                : DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+
+            if (utcDateTime.Year < 1970 || utcDateTime.Year > 9999)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(dateTime),
+                    dateTime,
+                    "System UTC year must be between 1970 and 9999.");
+            }
+
+            byte[] packet =
+            {
+                0xFF,
+                0x01,
+                0x00,
+                0xEF,
+                (byte)(utcDateTime.Year & 0xFF),
+                (byte)((utcDateTime.Year >> 8) & 0xFF),
+                (byte)utcDateTime.Month,
+                (byte)utcDateTime.Day,
+                (byte)utcDateTime.Hour,
+                (byte)utcDateTime.Minute,
+                (byte)utcDateTime.Second,
+                0x00
+            };
+
+            packet[11] = CheckSum(packet, 1, 10);
+            return packet;
+        }
+
         // 2026-09-15: WebAgent GUI-SBC additional protocol v1.8 requests.
         public bool RequestWebAgentIdentity() => SendCommand(0x00, 0xE1, 0x00, 0x00);
         public bool RequestLensCapability(byte target) => SendCommand(0x00, 0xE3, target, 0x00);

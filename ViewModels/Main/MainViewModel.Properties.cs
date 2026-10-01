@@ -392,6 +392,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(PanTiltCoordinateRangeText));
                 OnPropertyChanged(nameof(PanAbsoluteRangeLabel));
                 OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
+                OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
 
             }
 
@@ -2405,14 +2406,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [PAN / TILT] 속도제어 현재 속도 [Level]
         ///
         /// [XAML] [UI]와 바인딩하여 현재 속도값을 표시하거나 변경할 때 사용한다.
-        /// 2026-09-17: Web Agent 기준 UI 운용 범위는 [0 ~ 60], 5단위이며 0은 STOP이다.
+        /// 2026-10-01: 줌 연동 감쇄 결과를 세밀하게 선택·표시할 수 있도록
+        /// Web Agent 기준 UI 운용 범위 [0 ~ 60]을 1단위로 사용하며 0은 STOP이다.
         /// </summary>
         public byte PanTiltSpeedLevel
         {
             get => _panTiltSpeedLevel;
             set
             {
-                byte normalizedValue = (byte)Math.Max(0, Math.Min(60, ((value + 2) / 5) * 5));
+                byte normalizedValue =
+                    (byte)Math.Max(
+                        0,
+                        Math.Min(
+                            60,
+                            (int)value));
 
                 if (_panTiltSpeedLevel !=
                     normalizedValue)
@@ -2421,6 +2428,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         normalizedValue;
 
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(EffectivePanTiltSpeedLevel));
+                    OnPropertyChanged(nameof(PanTiltSpeedDisplayText));
 
                     ApplyPanTiltSpeedWhileMoving();
                 }
@@ -2428,6 +2437,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
         }
+
+        /// <summary>
+        /// 2026-10-01: 현재 메인 활성 EO/IR 줌값을 적용한 실제 PT 전송 속도.
+        /// 사용자 SET 값은 보존하고 화면에는 감쇄 결과를 별도로 표시한다.
+        /// </summary>
+        public byte EffectivePanTiltSpeedLevel
+        {
+            get
+            {
+                byte baseProtocolSpeed =
+                    ConvertPanTiltSpeedLevel(
+                        PanTiltSpeedLevel);
+
+                if (baseProtocolSpeed == 0)
+                {
+                    return 0;
+                }
+
+                return ApplyZoomAdaptivePanTiltSpeed(
+                    baseProtocolSpeed,
+                    out _,
+                    out _,
+                    out _,
+                    out _);
+            }
+        }
+
+        public string PanTiltSpeedDisplayText =>
+            $"SET : {PanTiltSpeedLevel} / " +
+            $"ACTIVE({(_activePanTiltZoomSource == 1 ? "IR" : "EO")}) : " +
+            $"{EffectivePanTiltSpeedLevel} / 60";
 
         /// <summary>
         /// [LRF] 최근 거리측정 값 표시 문자열

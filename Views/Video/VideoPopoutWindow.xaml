@@ -241,9 +241,16 @@
         </Grid>
 
         <!-- 카메라 및 단축키 안내 -->
-        <Grid Margin="14"
+        <Grid x:Name="CameraInfoHost"
+              Margin="14"
               HorizontalAlignment="Left"
               VerticalAlignment="Top">
+
+        <Grid.LayoutTransform>
+            <ScaleTransform x:Name="CameraInfoScaleTransform"
+                            ScaleX="1"
+                            ScaleY="1"/>
+        </Grid.LayoutTransform>
 
         <Border x:Name="CameraInfoBorder"
                 Visibility="Collapsed"
