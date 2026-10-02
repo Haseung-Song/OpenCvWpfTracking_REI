@@ -31,6 +31,16 @@ namespace OpenCvWpfTracking.Services.Position
 
         private double? _altitude;
 
+        private double? _gpsSpeed;
+
+        private double? _gpsCourse;
+
+        private double? _gpsHdop;
+
+        private int? _gpsSatelliteCount;
+
+        private int? _gpsFixStatus;
+
         private double? _roll;
 
         private double? _pitch;
@@ -117,6 +127,11 @@ namespace OpenCvWpfTracking.Services.Position
             double latitude,
             double longitude,
             double altitude,
+            double speed,
+            double course,
+            double hdop,
+            int satelliteCount,
+            int fixStatus,
             bool valid,
             DateTimeOffset receivedAt)
         {
@@ -125,6 +140,11 @@ namespace OpenCvWpfTracking.Services.Position
                 _latitude = latitude;
                 _longitude = longitude;
                 _altitude = altitude;
+                _gpsSpeed = speed;
+                _gpsCourse = course;
+                _gpsHdop = hdop;
+                _gpsSatelliteCount = satelliteCount;
+                _gpsFixStatus = fixStatus;
                 _gpsValueValid = valid;
                 _gpsUpdatedAt = receivedAt;
             }
@@ -175,6 +195,11 @@ namespace OpenCvWpfTracking.Services.Position
                     gpsStatus == PositionDataStatus.Valid ? _latitude : null,
                     gpsStatus == PositionDataStatus.Valid ? _longitude : null,
                     gpsStatus == PositionDataStatus.Valid ? _altitude : null,
+                    gpsStatus == PositionDataStatus.Valid ? _gpsSpeed : null,
+                    gpsStatus == PositionDataStatus.Valid ? _gpsCourse : null,
+                    gpsStatus == PositionDataStatus.Valid ? _gpsHdop : null,
+                    gpsStatus == PositionDataStatus.Valid ? _gpsSatelliteCount : null,
+                    gpsStatus == PositionDataStatus.Valid ? _gpsFixStatus : null,
                     imuStatus == PositionDataStatus.Valid ? _roll : null,
                     imuStatus == PositionDataStatus.Valid ? _pitch : null,
                     imuStatus == PositionDataStatus.Valid ? _yaw : null,

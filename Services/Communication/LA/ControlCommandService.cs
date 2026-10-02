@@ -79,6 +79,74 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
+        /// 2026-10-02: WebAgent에 최신 GPS 상태를 단건 조회한다.
+        /// Packet: FF 01 00 A3 00 00 A4
+        /// </summary>
+        public bool RequestGpsTelemetry()
+        {
+            return _tcpClientService.Send(BuildGpsTelemetryQueryPacket());
+        }
+
+        public static byte[] BuildGpsTelemetryQueryPacket()
+        {
+            return new byte[]
+            {
+                0xFF, 0x01, 0x00, 0xA3, 0x00, 0x00, 0xA4
+            };
+        }
+
+        /// <summary>
+        /// 2026-10-02: 모든 GUI 연결에 공통 적용되는 GPS 자동 전송률을 설정한다.
+        /// 0Hz는 자동 전송 중지이며 단건 조회는 계속 사용할 수 있다.
+        /// </summary>
+        public bool SetGpsAutoTxRate(byte frequencyHz)
+        {
+            return _tcpClientService.Send(BuildGpsAutoTxRatePacket(frequencyHz));
+        }
+
+        public static byte[] BuildGpsAutoTxRatePacket(byte frequencyHz)
+        {
+            if (frequencyHz > 10)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(frequencyHz),
+                    frequencyHz,
+                    "GPS auto TX rate must be between 0 and 10 Hz.");
+            }
+
+            byte[] packet =
+            {
+                0xFF,
+                0x01,
+                0x00,
+                0xF7,
+                frequencyHz,
+                0x00,
+                0x00
+            };
+
+            packet[6] = CheckSum(packet, 1, 5);
+            return packet;
+        }
+
+        /// <summary>
+        /// 2026-10-02: 현재 GPS 자동 전송률을 조회한다.
+        /// Packet: FF 01 00 F9 00 00 FA
+        /// </summary>
+        public bool RequestGpsAutoTxRate()
+        {
+            return _tcpClientService.Send(BuildGpsAutoTxRateQueryPacket());
+        }
+
+        public static byte[] BuildGpsAutoTxRateQueryPacket()
+        {
+            return new byte[]
+            {
+                0xFF, 0x01, 0x00, 0xF9, 0x00, 0x00, 0xFA
+            };
+        }
+
+        /// <summary>
         /// 2026-10-01: WebAgent Build 86 이상에서 RPY 자동 전송 주파수를 설정한다.
         /// 0Hz는 자동 전송 중지이며 허용 범위는 0~30Hz이다.
         /// </summary>

@@ -116,7 +116,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" +
                     "POSITION_CAPTURED_AT\tPOSITION_SOURCE\tPOSITION_PRESET_ID\tPOSITION_PAN\tPOSITION_TILT\tPOSITION_EO_ZOOM\tPOSITION_EO_FOCUS\tPOSITION_IR_ZOOM\tPOSITION_IR_FOCUS\t" +
                     "POSITION_LATITUDE\tPOSITION_LONGITUDE\tPOSITION_ALTITUDE\tPOSITION_ROLL\tPOSITION_PITCH\tPOSITION_YAW\t" +
-                    "POSITION_PTZ_STATUS\tPOSITION_EO_LENS_STATUS\tPOSITION_IR_LENS_STATUS\tPOSITION_GPS_STATUS\tPOSITION_IMU_STATUS",
+                    "POSITION_PTZ_STATUS\tPOSITION_EO_LENS_STATUS\tPOSITION_IR_LENS_STATUS\tPOSITION_GPS_STATUS\tPOSITION_IMU_STATUS\t" +
+                    "POSITION_GPS_SPEED\tPOSITION_GPS_COURSE\tPOSITION_GPS_HDOP\tPOSITION_GPS_SATELLITES\tPOSITION_GPS_FIX",
                     string.Join("\t", new[] { "SETTINGS", "0", "0", _presetScanOrderMode.ToString(), _laPresetScanSpeed.ToString(), _laPresetScanDelay.ToString(), _presetScanSpeed.ToString(), _presetScanDelay.ToString(), "-", "-" })
                 };
                 AppendPresetStorageLines(lines, "L", LaPresetPoints);

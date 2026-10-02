@@ -778,6 +778,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 case 0x2D:
                 case 0x2E:
                 case 0x2F:
+                case 0x30:
                     ParseWebAgentV18Packet(packet);
                     break;
 

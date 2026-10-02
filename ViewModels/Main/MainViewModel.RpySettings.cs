@@ -12,8 +12,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     /// <summary>
     /// 2026-10-01: WebAgent Build 86 이상에서 제공하는 IMU RPY Offset과
-    /// 자동 전송 주파수 설정을 관리한다. Function 0x24 수신값은 WebAgent가
-    /// 이미 보정한 값이므로 REI에서 Offset을 다시 적용하지 않는다.
+    /// 자동 전송 주파수 설정을 관리한다. 2026-10-02 협의 기준 Function 0x24는
+    /// DB Offset 미적용 IMU RAW 값이다. RAW 표시는 유지하며, GPS 탭의 진북 표시에만
+    /// WebAgent API 의미와 동일하게 DB Yaw Offset을 GUI 계산으로 적용한다.
     /// </summary>
     public partial class MainViewModel
     {
@@ -552,6 +553,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     RpyRollOffsetInput = roll.ToString("0.00", CultureInfo.InvariantCulture);
                     RpyPitchOffsetInput = pitch.ToString("0.00", CultureInfo.InvariantCulture);
                     RpyYawOffsetInput = yaw.ToString("0.00", CultureInfo.InvariantCulture);
+                    UpdateGpsHeadingReferenceDisplay();
                 }
             });
 
@@ -611,6 +613,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     roll,
                     pitch,
                     yaw);
+                UpdateGpsHeadingReferenceDisplay();
             });
 
             ConsoleLogHelper.State(
@@ -689,7 +692,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     CurrentRpyDisplay = string.Format(
                         CultureInfo.InvariantCulture,
-                        "보정 R {0:F2}° / P {1:F2}° / Y {2:F2}°",
+                        "RAW R {0:F2}° / P {1:F2}° / Y {2:F2}°",
                         roll,
                         pitch,
                         yaw);

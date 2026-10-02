@@ -76,7 +76,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public byte Checksum => RawData[RawData.Length - 1];
 
         public bool IsVariableLength =>
-            Function >= 0x23 && Function <= 0x2F;
+            Function >= 0x23 && Function <= 0x30;
 
         public int PayloadLength =>
             IsVariableLength && RawData != null && RawData.Length >= 5

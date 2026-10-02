@@ -393,6 +393,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(PanAbsoluteRangeLabel));
                 OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
+                OnPropertyChanged(nameof(IsGpsTabVisible));
 
             }
 
@@ -1744,6 +1745,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
+                OnPropertyChanged(nameof(IsGpsTabVisible));   // 추가
                 EnsureVisibleCommunicationSettingsTab();
             }
 
@@ -2018,6 +2020,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsAiEoRtspDirectInput));
+                SaveRtspCommunicationSettings();
             }
 
         }
@@ -2046,6 +2049,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsAiIrRtspDirectInput));
+                SaveRtspCommunicationSettings();
             }
 
         }

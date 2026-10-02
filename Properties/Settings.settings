@@ -19,5 +19,17 @@
     <Setting Name="SavedControlAgentProfile" Type="System.String" Scope="User">
       <Value Profile="(Default)">옥상 MR300(테스트) EO/IR</Value>
     </Setting>
+    <Setting Name="SavedAiEoRtspUrl" Type="System.String" Scope="User">
+      <Value Profile="(Default)">rtsp://root:rmffhqjf1!@192.168.1.2:554/AVStream1_1</Value>
+    </Setting>
+    <Setting Name="SavedAiIrRtspUrl" Type="System.String" Scope="User">
+      <Value Profile="(Default)">rtsp://root:rmffhqjf1!@192.168.0.121:554/cam0_0</Value>
+    </Setting>
+    <Setting Name="SavedAiEoRtspPreset" Type="System.String" Scope="User">
+      <Value Profile="(Default)">옥상 MR300(테스트) - 주간(EO)</Value>
+    </Setting>
+    <Setting Name="SavedAiIrRtspPreset" Type="System.String" Scope="User">
+      <Value Profile="(Default)">옥상 MR300(테스트) - 열상(IR)</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

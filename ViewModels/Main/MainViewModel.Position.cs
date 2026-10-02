@@ -93,12 +93,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double latitude,
             double longitude,
             double altitude,
+            double speed,
+            double course,
+            double hdop,
+            int satelliteCount,
+            int fixStatus,
             bool valid)
         {
             _positionSnapshotService.UpdateGps(
                 latitude,
                 longitude,
                 altitude,
+                speed,
+                course,
+                hdop,
+                satelliteCount,
+                fixStatus,
                 valid);
 
             QueuePositionStatusNotification();
@@ -242,6 +252,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 " / EO_LENS=" + snapshot.EoLensStatus +
                 " / IR_LENS=" + snapshot.IrLensStatus +
                 " / GPS=" + snapshot.GpsStatus +
+                " / GPS_COURSE=" + FormatSnapshotValue(snapshot.GpsCourse, snapshot.GpsStatus, "F2") +
+                " / GPS_HDOP=" + FormatSnapshotValue(snapshot.GpsHdop, snapshot.GpsStatus, "F2") +
+                " / GPS_SAT=" + FormatSnapshotValue(snapshot.GpsSatelliteCount, snapshot.GpsStatus) +
+                " / GPS_FIX=" + FormatSnapshotValue(snapshot.GpsFixStatus, snapshot.GpsStatus) +
                 " / IMU=" + snapshot.ImuStatus +
                 " / CONNECTED=" + snapshot.WebAgentConnected +
                 " / CAPTURED_AT=" + snapshot.CapturedAt.ToString("O", CultureInfo.InvariantCulture));

@@ -992,7 +992,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,VisionScore,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status," +
                    "PositionCapturedAt,PositionSource,PositionPresetId,PositionPan,PositionTilt,PositionEoZoom,PositionEoFocus,PositionIrZoom,PositionIrFocus," +
                    "PositionLatitude,PositionLongitude,PositionAltitude,PositionRoll,PositionPitch,PositionYaw," +
-                   "PositionPtzStatus,PositionEoLensStatus,PositionIrLensStatus,PositionGpsStatus,PositionImuStatus";
+                   "PositionPtzStatus,PositionEoLensStatus,PositionIrLensStatus,PositionGpsStatus,PositionImuStatus," +
+                   "PositionGpsSpeed,PositionGpsCourse,PositionGpsHdop,PositionGpsSatellites,PositionGpsFix";
         }
 
         private static string ToFireEventCsvLine(

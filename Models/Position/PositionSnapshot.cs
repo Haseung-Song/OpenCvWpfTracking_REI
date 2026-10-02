@@ -23,7 +23,10 @@ namespace OpenCvWpfTracking.Models.Position
     /// </summary>
     public sealed class PositionSnapshot
     {
-        public const int ExportFieldCount = 20;
+        public const int LegacyExportFieldCount = 20;
+
+        // 2026-10-02: 기존 20개 필드 뒤에 GPS 상세 5개 필드를 append-only로 추가한다.
+        public const int ExportFieldCount = 25;
 
         public DateTimeOffset CapturedAt { get; }
 
@@ -48,6 +51,16 @@ namespace OpenCvWpfTracking.Models.Position
         public double? Longitude { get; }
 
         public double? Altitude { get; }
+
+        public double? GpsSpeed { get; }
+
+        public double? GpsCourse { get; }
+
+        public double? GpsHdop { get; }
+
+        public int? GpsSatelliteCount { get; }
+
+        public int? GpsFixStatus { get; }
 
         public double? Roll { get; }
 
@@ -80,6 +93,11 @@ namespace OpenCvWpfTracking.Models.Position
             double? latitude,
             double? longitude,
             double? altitude,
+            double? gpsSpeed,
+            double? gpsCourse,
+            double? gpsHdop,
+            int? gpsSatelliteCount,
+            int? gpsFixStatus,
             double? roll,
             double? pitch,
             double? yaw,
@@ -102,6 +120,11 @@ namespace OpenCvWpfTracking.Models.Position
             Latitude = latitude;
             Longitude = longitude;
             Altitude = altitude;
+            GpsSpeed = gpsSpeed;
+            GpsCourse = gpsCourse;
+            GpsHdop = gpsHdop;
+            GpsSatelliteCount = gpsSatelliteCount;
+            GpsFixStatus = gpsFixStatus;
             Roll = roll;
             Pitch = pitch;
             Yaw = yaw;
@@ -140,7 +163,12 @@ namespace OpenCvWpfTracking.Models.Position
                 EoLensStatus.ToString(),
                 IrLensStatus.ToString(),
                 GpsStatus.ToString(),
-                ImuStatus.ToString()
+                ImuStatus.ToString(),
+                FormatExportDouble(GpsSpeed, GpsStatus),
+                FormatExportDouble(GpsCourse, GpsStatus),
+                FormatExportDouble(GpsHdop, GpsStatus),
+                FormatExportInt(GpsSatelliteCount, GpsStatus),
+                FormatExportInt(GpsFixStatus, GpsStatus)
             };
         }
 
@@ -150,7 +178,8 @@ namespace OpenCvWpfTracking.Models.Position
             out PositionSnapshot snapshot)
         {
             snapshot = null;
-            if (fields == null || startIndex < 0 || fields.Count < startIndex + ExportFieldCount)
+            if (fields == null || startIndex < 0 ||
+                fields.Count < startIndex + LegacyExportFieldCount)
             {
                 return false;
             }
@@ -179,6 +208,14 @@ namespace OpenCvWpfTracking.Models.Position
             double? pitch = ParseNullableDouble(fields[startIndex + 13]);
             double? yaw = ParseNullableDouble(fields[startIndex + 14]);
 
+            // 기존 V27의 20필드 파일도 계속 읽는다. 상세 GPS 필드는 존재할 때만 복원한다.
+            bool hasExtendedGps = fields.Count >= startIndex + ExportFieldCount;
+            double? gpsSpeed = hasExtendedGps ? ParseNullableDouble(fields[startIndex + 20]) : null;
+            double? gpsCourse = hasExtendedGps ? ParseNullableDouble(fields[startIndex + 21]) : null;
+            double? gpsHdop = hasExtendedGps ? ParseNullableDouble(fields[startIndex + 22]) : null;
+            int? gpsSatelliteCount = hasExtendedGps ? ParseNullableInt(fields[startIndex + 23]) : null;
+            int? gpsFixStatus = hasExtendedGps ? ParseNullableInt(fields[startIndex + 24]) : null;
+
             if (!TryParseStatus(fields[startIndex + 15], out PositionDataStatus ptzStatus) ||
                 !TryParseStatus(fields[startIndex + 16], out PositionDataStatus eoLensStatus) ||
                 !TryParseStatus(fields[startIndex + 17], out PositionDataStatus irLensStatus) ||
@@ -201,6 +238,11 @@ namespace OpenCvWpfTracking.Models.Position
                 latitude,
                 longitude,
                 altitude,
+                gpsSpeed,
+                gpsCourse,
+                gpsHdop,
+                gpsSatelliteCount,
+                gpsFixStatus,
                 roll,
                 pitch,
                 yaw,

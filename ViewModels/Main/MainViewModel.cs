@@ -1723,6 +1723,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: WebAgent 시스템 UTC 조회 및 PC 시간 설정 명령 초기화.
             InitializeSystemDateTimeSettings();
 
+            // 2026-10-02: GPS 20Byte 상태 및 0~10Hz 자동 전송 설정/조회 초기화.
+            InitializeGpsSettings();
+
             #endregion
 
             #region [AI Detector Setting Command Binding]

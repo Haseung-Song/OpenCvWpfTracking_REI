@@ -119,6 +119,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
+                OnPropertyChanged(nameof(IsGpsTabVisible));        // 추가
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(PanTiltZeroRouteText));
                 ApplyControlAgentProfile(value);
@@ -188,20 +189,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 EoSourceAddress = eoAddress;
                 IrSourceAddress = irAddress;
-                AiRtsp0Address = eoAddress;
-                AiRtsp1Address = irAddress;
+                // 2026-10-02: AI 탭에서 마지막으로 고른 EO/IR 입력은
+                // Viewer 선택과 독립적으로 복원한다.
+                string aiEoAddress = settings.SavedAiEoRtspUrl?.Trim();
+                string aiIrAddress = settings.SavedAiIrRtspUrl?.Trim();
+                if (!IsValidRtspAddress(aiEoAddress)) aiEoAddress = eoAddress;
+                if (!IsValidRtspAddress(aiIrAddress)) aiIrAddress = irAddress;
+
+                AiRtsp0Address = aiEoAddress;
+                AiRtsp1Address = aiIrAddress;
 
                 _selectedEoRtspSource = ResolveRtspSource(
                     EoRtspSourceOptions, settings.SavedEoRtspPreset, eoAddress);
                 _selectedIrRtspSource = ResolveRtspSource(
                     IrRtspSourceOptions, settings.SavedIrRtspPreset, irAddress);
-                _selectedAiEoRtspSource = _selectedEoRtspSource;
-                _selectedAiIrRtspSource = _selectedIrRtspSource;
+                _selectedAiEoRtspSource = ResolveRtspSource(
+                    EoRtspSourceOptions, settings.SavedAiEoRtspPreset, aiEoAddress);
+                _selectedAiIrRtspSource = ResolveRtspSource(
+                    IrRtspSourceOptions, settings.SavedAiIrRtspPreset, aiIrAddress);
 
                 OnPropertyChanged(nameof(SelectedEoRtspSource));
                 OnPropertyChanged(nameof(SelectedControlAgentProfile));
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
+                OnPropertyChanged(nameof(IsGpsTabVisible));        // 추가
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(SelectedIrRtspSource));
                 OnPropertyChanged(nameof(SelectedAiEoRtspSource));
@@ -219,6 +230,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "EO=" + ConsoleLogHelper.MaskRtspPassword(eoAddress),
                     "IR_PRESET=" + _selectedIrRtspSource?.DisplayName,
                     "IR=" + ConsoleLogHelper.MaskRtspPassword(irAddress),
+                    "AI_EO_PRESET=" + _selectedAiEoRtspSource?.DisplayName,
+                    "AI_IR_PRESET=" + _selectedAiIrRtspSource?.DisplayName,
                     "CONTROL_PROFILE=" + _selectedControlAgentProfile?.DisplayName);
             }
             catch (Exception ex)
@@ -257,6 +270,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     SelectedIrRtspSource?.DisplayName ?? "직접 입력";
                 settings.SavedControlAgentProfile =
                     SelectedControlAgentProfile.DisplayName;
+                settings.SavedAiEoRtspUrl = AiRtsp0Address?.Trim() ?? string.Empty;
+                settings.SavedAiIrRtspUrl = AiRtsp1Address?.Trim() ?? string.Empty;
+                settings.SavedAiEoRtspPreset =
+                    SelectedAiEoRtspSource?.DisplayName ?? "직접 입력";
+                settings.SavedAiIrRtspPreset =
+                    SelectedAiIrRtspSource?.DisplayName ?? "직접 입력";
                 settings.Save();
 
                 ConsoleLogHelper.StateSection(
@@ -267,6 +286,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "EO=" + ConsoleLogHelper.MaskRtspPassword(settings.SavedEoRtspUrl),
                     "IR_PRESET=" + settings.SavedIrRtspPreset,
                     "IR=" + ConsoleLogHelper.MaskRtspPassword(settings.SavedIrRtspUrl),
+                    "AI_EO_PRESET=" + settings.SavedAiEoRtspPreset,
+                    "AI_IR_PRESET=" + settings.SavedAiIrRtspPreset,
                     "CONTROL_PROFILE=" + settings.SavedControlAgentProfile);
             }
             catch (Exception ex)
@@ -335,6 +356,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsSystemDateTimeTabVisible => IsEnvironmentStatusSelected;
 
+        /// <summary>
+        /// 2026-10-02: GPS는 IMU/RPY와 동일하게
+        /// 4층 LR1000(기동형) 프로필에서만 표시한다.
+        /// 직접 입력은 기동형 WebAgent IP 192.168.20.163인 경우에만 표시한다.
+        /// </summary>
+        public bool IsGpsTabVisible => IsImuRpyTabVisible;
+
         public int SelectedCommunicationSettingsTabIndex
         {
             get => _selectedCommunicationSettingsTabIndex;
@@ -357,7 +385,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 사용자가 탭을 Drag해 순서를 바꿀 수 있으므로 고정 Index로
             // 숨김 탭을 판별하지 않는다. 지원 탭 구성이 줄어드는 장비 전환 시
             // 항상 안전한 CTRL/RTSP 탭으로 복귀한다.
-            if (!IsImuRpyTabVisible || !IsSystemDateTimeTabVisible)
+            if (!IsImuRpyTabVisible || !IsSystemDateTimeTabVisible || !IsGpsTabVisible)
             {
                 SelectedCommunicationSettingsTabIndex = 0;
             }

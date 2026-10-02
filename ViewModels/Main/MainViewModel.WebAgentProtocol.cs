@@ -39,7 +39,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _controlCommandService.RequestLensCapabilityAndTelemetry(0x01);
             _controlCommandService.RequestCameraFeatureCapability(0x01);
             _controlCommandService.RequestImuTelemetry();
-            ConsoleLogHelper.State("WEB AGENT V1.8", "Identity, EO/IR lens, IR feature and IMU queries sent");
+            RequestGpsAutoTxRateAfterConnection();
+            ConsoleLogHelper.State("WEB AGENT V1.8", "Identity, EO/IR lens, IR feature, IMU and GPS rate queries sent");
         }
 
         private void ParseWebAgentV18Packet(LaResponsePacket packet)
@@ -62,37 +63,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     case 0x2D: ParseWebAgentSystemDateTime(payload); break;
                     case 0x2E: ParseStoredRpyOffsetResponse(payload); break;
                     case 0x2F: ParseStoredRpyRateResponse(payload); break;
+                    case 0x30: ParseGpsAutoTxRateResponse(payload); break;
                 }
             }
             catch (Exception ex)
             {
                 ConsoleLogHelper.Warning("WEB AGENT V1.8", "Response parse failed / " + ex.Message);
             }
-        }
-
-        private void ParseWebAgentGps(byte[] p)
-        {
-            if (p.Length < 20) return;
-
-            double latitude = BitConverter.ToInt32(p, 0) / 10000000.0;
-            double longitude = BitConverter.ToInt32(p, 4) / 10000000.0;
-            double altitude = BitConverter.ToInt32(p, 8) / 1000.0;
-            byte satelliteCount = p[18];
-            byte fixStatus = p[19];
-            bool valid =
-                fixStatus != 0 &&
-                latitude >= -90.0 && latitude <= 90.0 &&
-                longitude >= -180.0 && longitude <= 180.0;
-
-            UpdatePositionGps(latitude, longitude, altitude, valid);
-
-            ConsoleLogHelper.State("WEB AGENT GPS", string.Format(
-                "LAT={0:F7} / LON={1:F7} / ALT={2:F3}m / SAT={3} / FIX={4}",
-                latitude,
-                longitude,
-                altitude,
-                satelliteCount,
-                fixStatus));
         }
 
         private void ParseWebAgentImu(byte[] p)
@@ -109,6 +86,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             UpdatePositionImu(roll, pitch, yaw, valid);
             RecordRpyTelemetry(roll, pitch, yaw);
+            UpdateGpsImuRawReference(yaw);
         }
 
         private void ParseWebAgentCapability(byte[] p)
@@ -345,9 +323,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 p[1], p[2], p[3], p[4], BitConverter.ToUInt16(p, 5)));
         }
 
-        private static void ParseWebAgentUnavailable(byte[] p)
+        private void ParseWebAgentUnavailable(byte[] p)
         {
             if (p.Length < 6) return;
+            HandleGpsUnavailable(p);
             ConsoleLogHelper.Warning("WEB AGENT V1.8", string.Format(
                 "Request unavailable / STATUS={0} / REQUEST={1:X2}{2:X2}{3:X2}{4:X2}",
                 p[1], p[2], p[3], p[4], p[5]));

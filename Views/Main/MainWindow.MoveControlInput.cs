@@ -81,6 +81,10 @@ namespace OpenCvWpfTracking
 
         private const int RpyRateMaximumInput = 30;
 
+        private const int GpsRateMinimumInput = 0;
+
+        private const int GpsRateMaximumInput = 10;
+
         #endregion
 
         #region [Move Control Preview Text Input]
@@ -358,6 +362,19 @@ namespace OpenCvWpfTracking
                 sender,
                 RpyRateMinimumInput,
                 RpyRateMaximumInput);
+        }
+
+        /// <summary>
+        /// 2026-10-02: GPS 자동 전송 주파수 입력을 0~10Hz로 보정한다.
+        /// </summary>
+        private void GpsRate_LostFocus(
+            object sender,
+            System.Windows.RoutedEventArgs e)
+        {
+            ClampIntegerTextBoxValue(
+                sender,
+                GpsRateMinimumInput,
+                GpsRateMaximumInput);
         }
 
         #endregion

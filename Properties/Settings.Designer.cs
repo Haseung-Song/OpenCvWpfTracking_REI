@@ -63,6 +63,38 @@ namespace OpenCvWpfTracking.Properties {
             set { this["SavedControlAgentProfile"] = value; }
         }
 
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("rtsp://root:rmffhqjf1!@192.168.1.2:554/AVStream1_1")]
+        public string SavedAiEoRtspUrl {
+            get { return ((string)(this["SavedAiEoRtspUrl"])); }
+            set { this["SavedAiEoRtspUrl"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("rtsp://root:rmffhqjf1!@192.168.0.121:554/cam0_0")]
+        public string SavedAiIrRtspUrl {
+            get { return ((string)(this["SavedAiIrRtspUrl"])); }
+            set { this["SavedAiIrRtspUrl"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 MR300(테스트) - 주간(EO)")]
+        public string SavedAiEoRtspPreset {
+            get { return ((string)(this["SavedAiEoRtspPreset"])); }
+            set { this["SavedAiEoRtspPreset"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("옥상 MR300(테스트) - 열상(IR)")]
+        public string SavedAiIrRtspPreset {
+            get { return ((string)(this["SavedAiIrRtspPreset"])); }
+            set { this["SavedAiIrRtspPreset"] = value; }
+        }
+
     }
 
 }
