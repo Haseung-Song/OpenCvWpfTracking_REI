@@ -55,7 +55,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 선택한 10단계 Zoom Position을 현재 장비 구성에 적용한다.
+        /// 2026-10-02: 선택한 11단계(LEVEL 0~10) Zoom Position을 현재 장비 구성에 적용한다.
         ///
         /// 환경장비:
         /// - Web Agent 기준 EO / IR Position 0 ~ 1000을 동일하게 송신
@@ -93,6 +93,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ZoomFovTarget fovTarget = _fieldOfViewSyncService.CreateTarget(selectedLevel.Level);
             short eoStandardPosition = fovTarget.EoPosition;
             short irStandardPosition = fovTarget.IrPosition;
+            ConsoleLogHelper.State(
+                "ZOOM SYNC",
+                $"2026-10-02 calibration selected / MODEL=PIECEWISE_LINEAR_IR_TO_EO / " +
+                $"LEVEL={selectedLevel.Level} / EO_TARGET={eoStandardPosition} / IR_TARGET={irStandardPosition}");
             int irRawTarget = ConvertIrZoomStandardToStatusPosition(irStandardPosition);
             CancellationTokenSource zoomSyncCts = new CancellationTokenSource();
             _rooftopZoomSyncCts = zoomSyncCts;
@@ -142,7 +146,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 ConsoleLogHelper.State(
                     "ZOOM SYNC",
-                    $"MODEL=MEASURED_10_LEVEL_260921 / LEVEL={selectedLevel.Level} / " +
+                    $"MODEL=MEASURED_LEVEL_0_10_261002_PIECEWISE / LEVEL={selectedLevel.Level} / " +
                     $"EO_COMMANDED={eoStandardPosition} / IR_COMMANDED={irStandardPosition} / " +
                     $"IR_COMMAND_RAW_TARGET={irRawTarget} / EO_ACTUAL={_currentEoZoom} / " +
                     $"IR_SETTLED_RAW={_currentIrZoom} / IR_STANDARD_FINAL={NormalizeIrZoomStatusPosition(_currentIrZoom)} / " +

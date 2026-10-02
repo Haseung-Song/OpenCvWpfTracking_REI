@@ -591,7 +591,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             EquipmentStatusMode.Rooftop;
 
         /// <summary>
-        /// [EO / IR Zoom Synchronization] 현재 선택된 10단계 Zoom Level
+        /// [EO / IR Zoom Synchronization] 현재 선택된 11단계(LEVEL 0~10) Zoom Level
         /// </summary>
         private ZoomSyncLevelOption _selectedZoomSyncLevel;
 
@@ -1617,14 +1617,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// ...
             /// LEVEL 10 = 1000
             ///
-            /// Enumerable.Range(1, 10):
-            /// LEVEL 1부터 LEVEL 10까지 총 10개의 항목을 생성한다.
+            /// 2026-10-02: LEVEL 0 실측 Anchor를 GUI 선택 목록에도 포함한다.
+            /// Enumerable.Range(0, 11):
+            /// LEVEL 0부터 LEVEL 10까지 총 11개의 항목을 생성한다.
             /// </summary>
             ZoomSyncLevelOptions =
                 new ObservableCollection<ZoomSyncLevelOption>(
                     Enumerable.Range(
-                            1,
-                            10)
+                            0,
+                            11)
                         .Select(level =>
                             new ZoomSyncLevelOption(
                                 level,

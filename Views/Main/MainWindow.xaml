@@ -5086,7 +5086,7 @@
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
                                                                   Padding="0,10,8,14">
                                                         <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,2,2,4">
-                                                            <!-- 환경장비 기준 EO / IR Zoom 10단계 동기화 -->
+                                                            <!-- 2026-10-02: LEVEL 0 실측점을 포함한 EO / IR Zoom 총 11단계 동기화 -->
                                                             <Border Background="#2F363D"
                                                                     BorderBrush="#8A9BA8"
                                                                     BorderThickness="1"
@@ -5098,11 +5098,49 @@
                                                                                HorizontalAlignment="Center"
                                                                                Margin="0,0,0,6"/>
 
-                                                                    <TextBlock Text="CALIBRATED 10 LEVEL : 100 ~ 1000"
+                                                                    <TextBlock Text="CALIBRATED LEVEL 0 ~ 10 : 0 ~ 1000"
                                                                                Foreground="#B9C4CC"
                                                                                FontSize="10"
                                                                                HorizontalAlignment="Center"
                                                                                Margin="0,0,0,6"/>
+
+                                                                    <Expander IsExpanded="False"
+                                                                              Margin="0,0,0,7"
+                                                                              Foreground="#5EE7F7">
+                                                                        <Expander.Header>
+                                                                            <TextBlock Text="FOV 역산 계산 안내"
+                                                                                       Foreground="#5EE7F7"
+                                                                                       FontSize="10"
+                                                                                       FontWeight="Bold"/>
+                                                                        </Expander.Header>
+                                                                        <Border Margin="0,5,0,1"
+                                                                                Padding="7"
+                                                                                Background="#30383E"
+                                                                                BorderBrush="#5EE7F7"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="3">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="EO 목표 = EO1 + (IR-IR1) × (EO2-EO1) / (IR2-IR1)"
+                                                                                           Foreground="White"
+                                                                                           FontSize="9"
+                                                                                           FontWeight="Bold"
+                                                                                           TextAlignment="Center"
+                                                                                           TextWrapping="Wrap"/>
+                                                                                <TextBlock Text="Level 0~10 실측 Anchor 사이는 구간 선형 보간합니다."
+                                                                                           Foreground="#B8F27C"
+                                                                                           FontSize="9"
+                                                                                           TextAlignment="Center"
+                                                                                           TextWrapping="Wrap"
+                                                                                           Margin="0,3,0,0"/>
+                                                                                <TextBlock Text="예: IR 650 → 636 + (650-599)×(693-636)/(700-599) ≈ EO 665"
+                                                                                           Foreground="#FDE68A"
+                                                                                           FontSize="9"
+                                                                                           TextAlignment="Center"
+                                                                                           TextWrapping="Wrap"
+                                                                                           Margin="0,3,0,0"/>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </Expander>
 
                                                                     <Grid Margin="0,0,0,6">
                                                                         <Grid.ColumnDefinitions>

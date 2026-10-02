@@ -266,6 +266,10 @@
     <Content Include="FFmpeg\swscale-9.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- 2026-10-02: 화각 동기화 실측 Anchor 및 역산 근거를 모든 빌드 산출물에 함께 배포한다. -->
+    <Content Include="EO_IR_화각동기화_실측역산_적용정리_261002.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Resource Include="파노라마_공통경도_RowFirst_상세_코드리뷰_260921.txt" />
     <Resource Include="Images\Demo\BackPanel.png" />
     <Resource Include="Images\Demo\DefaultRooftopPanorama.jpg" />

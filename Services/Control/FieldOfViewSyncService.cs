@@ -3,8 +3,8 @@ using System;
 namespace OpenCvWpfTracking.Services.Control
 {
     /// <summary>
-    /// 2026-09-21: 실장비 화면을 기준으로 확인한 EO/IR 10단계 화각 보정표를 사용한다.
-    /// UI의 단계 표시는 100 단위를 유지하지만 실제 명령은 장비가 정착한 실측값을 쓴다.
+    /// 2026-10-02: 동일 건물 기준으로 재측정한 Level 0~10 실측 Anchor를 사용한다.
+    /// Anchor 사이는 IR Position을 기준으로 EO Position을 구간 선형 역산한다.
     /// </summary>
     public sealed class FieldOfViewSyncService
     {
@@ -12,12 +12,12 @@ namespace OpenCvWpfTracking.Services.Control
 
         private static readonly short[] CalibratedEoPositions =
         {
-            0, 410, 449, 492, 531, 596, 646, 705, 764, 809, 929
+            0, 399, 443, 492, 536, 588, 636, 693, 765, 834, 940
         };
 
         private static readonly short[] CalibratedIrPositions =
         {
-            0, 102, 205, 299, 400, 502, 597, 699, 804, 905, 1000
+            0, 99, 200, 302, 397, 501, 599, 700, 801, 900, 1000
         };
 
         // XV-Z2090HC: 6~540 mm, HFOV 65.24~0.82 deg.
@@ -38,8 +38,8 @@ namespace OpenCvWpfTracking.Services.Control
         public ZoomFovTarget CreateTarget(int level)
         {
             int safeLevel = Math.Max(0, Math.Min(10, level));
-            short eoPosition = CalibratedEoPositions[safeLevel];
             short irPosition = CalibratedIrPositions[safeLevel];
+            short eoPosition = GetEoPositionForIr(irPosition);
             double irHfov = PositionToHfov(irPosition, IrMinFocalMm, IrMaxFocalMm, IrSensorWidthMm);
             double eoHfov = PositionToHfov(eoPosition, EoMinFocalMm, EoMaxFocalMm, EoSensorWidthMm);
 
@@ -54,6 +54,43 @@ namespace OpenCvWpfTracking.Services.Control
         public double GetIrHfov(short normalizedPosition)
         {
             return PositionToHfov(normalizedPosition, IrMinFocalMm, IrMaxFocalMm, IrSensorWidthMm);
+        }
+
+        /// <summary>
+        /// IR Position이 속한 두 실측 Anchor 사이를 선형 보간하여 EO Position을 역산한다.
+        /// EO = EO1 + (IR - IR1) * (EO2 - EO1) / (IR2 - IR1)
+        /// </summary>
+        public short GetEoPositionForIr(short irPosition)
+        {
+            // 2026-10-02: 비정상 입력은 장비 표준 범위로 제한한다.
+            // Anchor는 11개뿐이므로 할당 없는 최대 10회 순회가 이진 탐색보다 단순하고 충분히 빠르다.
+            int safeIr = Math.Max(0, Math.Min(1000, (int)irPosition));
+
+            for (int index = 0; index < CalibratedIrPositions.Length - 1; index++)
+            {
+                int irStart = CalibratedIrPositions[index];
+                int irEnd = CalibratedIrPositions[index + 1];
+
+                if (safeIr > irEnd)
+                {
+                    continue;
+                }
+
+                int eoStart = CalibratedEoPositions[index];
+                int eoEnd = CalibratedEoPositions[index + 1];
+                int irSpan = irEnd - irStart;
+                if (irSpan <= 0)
+                {
+                    // 보정표가 잘못된 경우 0으로 나누지 않고 다음 정상 구간을 찾는다.
+                    continue;
+                }
+
+                double ratio = (safeIr - irStart) / (double)irSpan;
+                return (short)Math.Round(eoStart + ((eoEnd - eoStart) * ratio));
+            }
+
+            // 정상 표에서는 IR 1000 Anchor로만 도달한다. 표 이상 시에도 안전한 끝값을 반환한다.
+            return CalibratedEoPositions[CalibratedEoPositions.Length - 1];
         }
 
         public static double GetErrorPercent(double firstHfov, double secondHfov)
