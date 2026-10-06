@@ -657,6 +657,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 문구가 남지 않도록 해제 요청을 UI에 즉시 표시한다.
             EoStatusText = "[EO] Disconnecting...";
             IrStatusText = "[IR] Disconnecting...";
+            // V28_1: 명시적 연결 해제는 전원 명령 대기도 즉시 취소한다.
+            // 네이티브 자원 정리 동안 WAIT 잠금이 남지 않도록 상태를 먼저 초기화한다.
+            ResetDevicePowerStatus();
             SetControlAgentConnectionStatus(
                 "Disconnecting...",
                 "#FFD166");

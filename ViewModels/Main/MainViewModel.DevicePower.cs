@@ -82,8 +82,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (string.Equals(status, "[" + camera + "] Connected", StringComparison.OrdinalIgnoreCase))
                 return "ON";
             if (!string.IsNullOrEmpty(status) &&
-                (status.IndexOf("Connecting", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                 status.IndexOf("Waiting", StringComparison.OrdinalIgnoreCase) >= 0))
+                (status.StartsWith("[" + camera + "] Connecting", StringComparison.OrdinalIgnoreCase) ||
+                 status.StartsWith("[" + camera + "] Reconnecting", StringComparison.OrdinalIgnoreCase) ||
+                 status.StartsWith("[" + camera + "] Waiting", StringComparison.OrdinalIgnoreCase)))
                 return "WAIT";
             return "OFF";
         }
