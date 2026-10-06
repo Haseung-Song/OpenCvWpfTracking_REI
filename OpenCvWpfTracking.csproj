@@ -163,6 +163,7 @@
     <Compile Include="ViewModels\Main\MainViewModel.RtspSettings.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.RpySettings.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.GpsSettings.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.DevicePower.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.SystemDateTime.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Smoke.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Sync.cs" />

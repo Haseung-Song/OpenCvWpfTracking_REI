@@ -45,6 +45,14 @@
     </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <Style x:Key="MobileDeviceStatusStyle" TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGpsTabVisible}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <!-- 2026-09-17: 로컬 FIRE/SMOKE 분석 BBox. AI Agent BBox와 독립 표시한다. -->
         <DataTemplate x:Key="FireSmokeDetectionBoxTemplate">
             <Canvas Width="{Binding OverlayWidth}"
@@ -621,7 +629,7 @@
                      Value="True">
 
                     <Setter Property="FontSize"
-                    Value="10"/>
+                    Value="11"/>
 
                     <Setter Property="Padding"
                     Value="2,0"/>
@@ -1918,7 +1926,7 @@
                                                 <!-- 통신 설정 하위 탭 영역 -->
                                                 <RowDefinition Height="*"/>
 
-                                                <!-- 항상 표시하는 전체 연결 상태 영역 -->
+                                                <!-- 2026-10-06: 모든 하위 탭에서 보이는 고정 장비 상태 -->
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
 
@@ -2085,7 +2093,7 @@
                                                                         <!-- Control Agent와 RTSP 설정 구분선 -->
                                                                         <Border Height="1"
                                                                                 Background="#69737C"
-                                                                                Margin="0,12,0,10"/>
+                                                                                Margin="0,18,0,16"/>
 
                                                                         <!-- [2] EO / IR RTSP 카메라 선택 설정 -->
                                                                         <Grid>
@@ -2268,6 +2276,63 @@
                                                                                     Command="{Binding DisconnectCommand}"/>
                                                                         </Grid>
 
+                                                                        <!-- 2026-10-06: 송신 제어와 0x31 수신 상태를 독립 섹션으로 분리 -->
+                                                                        <Border Height="1" Background="#69737C" Margin="0,18,0,16"/>
+
+                                                                        <StackPanel>
+                                                                            <TextBlock Text="3. DEVICE POWER CONTROL"
+                                                                                       Foreground="White"
+                                                                                       FontWeight="Bold"
+                                                                                       HorizontalAlignment="Left"
+                                                                                       Margin="0,0,0,8"/>
+                                                                            <Grid Margin="0,0,0,5">
+                                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                                                <TextBlock Text="EO CAMERA" Foreground="#5EE7F7" FontWeight="Bold" FontSize="11"/>
+                                                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                                                    <Ellipse Width="8" Height="8" Fill="{Binding CurrentEoPowerStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
+                                                                                    <TextBlock Text="{Binding EoPowerControlStatusText, Mode=OneWay}" Foreground="{Binding CurrentEoPowerStatusColor, Mode=OneWay}" FontSize="11" FontWeight="Bold" Margin="5,0,0,0"/>
+                                                                                </StackPanel>
+                                                                            </Grid>
+                                                                            <Grid Margin="0,4,0,10">
+                                                                                <Grid.ColumnDefinitions>
+                                                                                    <ColumnDefinition Width="*"/>
+                                                                                    <ColumnDefinition Width="8"/>
+                                                                                    <ColumnDefinition Width="*"/>
+                                                                                </Grid.ColumnDefinitions>
+                                                                                <Button Grid.Column="0" Content="POWER ON"
+                                                                                        Height="28" Style="{StaticResource ConnectButtonStyle}"
+                                                                                        IsEnabled="{Binding IsEoPowerControlEnabled, Mode=OneWay}"
+                                                                                        Command="{Binding EoPowerOnCommand}"/>
+                                                                                <Button Grid.Column="2" Content="POWER OFF"
+                                                                                        Height="28" Style="{StaticResource DisconnectButtonStyle}"
+                                                                                        IsEnabled="{Binding IsEoPowerControlEnabled, Mode=OneWay}"
+                                                                                        Command="{Binding EoPowerOffCommand}"/>
+                                                                            </Grid>
+                                                                            <Grid Margin="0,0,0,5">
+                                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                                                <TextBlock Text="IR CAMERA" Foreground="#C4B5FD" FontWeight="Bold" FontSize="11"/>
+                                                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                                                    <Ellipse Width="8" Height="8" Fill="{Binding CurrentIrPowerStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
+                                                                                    <TextBlock Text="{Binding IrPowerControlStatusText, Mode=OneWay}" Foreground="{Binding CurrentIrPowerStatusColor, Mode=OneWay}" FontSize="11" FontWeight="Bold" Margin="5,0,0,0"/>
+                                                                                </StackPanel>
+                                                                            </Grid>
+                                                                            <Grid Margin="0,4,0,0">
+                                                                                <Grid.ColumnDefinitions>
+                                                                                    <ColumnDefinition Width="*"/>
+                                                                                    <ColumnDefinition Width="8"/>
+                                                                                    <ColumnDefinition Width="*"/>
+                                                                                </Grid.ColumnDefinitions>
+                                                                                <Button Grid.Column="0" Content="POWER ON"
+                                                                                        Height="28" Style="{StaticResource ConnectButtonStyle}"
+                                                                                        IsEnabled="{Binding IsIrPowerControlEnabled, Mode=OneWay}"
+                                                                                        Command="{Binding IrPowerOnCommand}"/>
+                                                                                <Button Grid.Column="2" Content="POWER OFF"
+                                                                                        Height="28" Style="{StaticResource DisconnectButtonStyle}"
+                                                                                        IsEnabled="{Binding IsIrPowerControlEnabled, Mode=OneWay}"
+                                                                                        Command="{Binding IrPowerOffCommand}"/>
+                                                                            </Grid>
+                                                                        </StackPanel>
+
                                                                     </StackPanel>
                                                                 </ScrollViewer>
                                                             </TabItem>
@@ -2368,6 +2433,7 @@
                                                                                 </Expander>
 
                                                                                 <Button Content="GPS 단건 조회 (0xA3)"
+                                                                                        IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                         Height="30"
                                                                                         Margin="0,8,0,0"
                                                                                         Style="{StaticResource ConnectButtonStyle}"
@@ -2392,6 +2458,7 @@
                                                                                         <ColumnDefinition Width="Auto"/>
                                                                                     </Grid.ColumnDefinitions>
                                                                                     <TextBox Grid.Column="0"
+                                                                                             IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                              MaxLength="2"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
                                                                                              PreviewTextInput="IntegerNumberOnly_PreviewTextInput"
@@ -2410,12 +2477,14 @@
                                                                                         <ColumnDefinition Width="*"/>
                                                                                     </Grid.ColumnDefinitions>
                                                                                     <Button Grid.Column="0"
+                                                                                            IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                             Content="주파수 적용 (0xF7)"
                                                                                             Height="30"
                                                                                             FontSize="10"
                                                                                             Style="{StaticResource ConnectButtonStyle}"
                                                                                             Command="{Binding ApplyGpsAutoTxRateCommand}"/>
                                                                                     <Button Grid.Column="2"
+                                                                                            IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                             Content="현재 설정 조회 (0xF9)"
                                                                                             Height="30"
                                                                                             FontSize="10"
@@ -2528,6 +2597,7 @@
                                                                                            TextAlignment="Center"
                                                                                            Margin="0,5,0,0"/>
                                                                                 <Button Content="RPY 단건 조회 (0xE5)"
+                                                                                        IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                         Height="28"
                                                                                         Margin="0,8,0,0"
                                                                                         Style="{StaticResource ConnectButtonStyle}"
@@ -2574,6 +2644,7 @@
                                                                                                FontSize="9"/>
 
                                                                                     <TextBox Grid.Row="1"
+                                                                                             IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                              Grid.Column="0"
                                                                                              MaxLength="7"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
@@ -2581,6 +2652,7 @@
                                                                                              LostFocus="RpySignedOffset_LostFocus"
                                                                                              Text="{Binding RpyRollOffsetInput, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                                                                                     <TextBox Grid.Row="1"
+                                                                                             IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                              Grid.Column="2"
                                                                                              MaxLength="7"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
@@ -2588,6 +2660,7 @@
                                                                                              LostFocus="RpySignedOffset_LostFocus"
                                                                                              Text="{Binding RpyPitchOffsetInput, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                                                                                     <TextBox Grid.Row="1"
+                                                                                             IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                              Grid.Column="4"
                                                                                              MaxLength="6"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
@@ -2603,11 +2676,13 @@
                                                                                         <ColumnDefinition Width="*"/>
                                                                                     </Grid.ColumnDefinitions>
                                                                                     <Button Grid.Column="0"
+                                                                                            IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                             Content="OFFSET 적용"
                                                                                             Height="30"
                                                                                             Style="{StaticResource ConnectButtonStyle}"
                                                                                             Command="{Binding ApplyRpyOffsetCommand}"/>
                                                                                     <Button Grid.Column="2"
+                                                                                            IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                             Content="DB 저장값 조회 (0xF3)"
                                                                                             Height="30"
                                                                                             FontSize="10"
@@ -2645,6 +2720,7 @@
                                                                                         <ColumnDefinition Width="Auto"/>
                                                                                     </Grid.ColumnDefinitions>
                                                                                     <TextBox Grid.Column="0"
+                                                                                             IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                              MaxLength="2"
                                                                                              Style="{StaticResource CommunicationTextBoxStyle}"
                                                                                              PreviewTextInput="IntegerNumberOnly_PreviewTextInput"
@@ -2663,11 +2739,13 @@
                                                                                         <ColumnDefinition Width="*"/>
                                                                                     </Grid.ColumnDefinitions>
                                                                                     <Button Grid.Column="0"
+                                                                                            IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                             Content="주파수 적용"
                                                                                             Height="30"
                                                                                             Style="{StaticResource ConnectButtonStyle}"
                                                                                             Command="{Binding ApplyRpyAutoTxRateCommand}"/>
                                                                                     <Button Grid.Column="2"
+                                                                                            IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                             Content="DB 저장값 조회 (0xF5)"
                                                                                             Height="30"
                                                                                             FontSize="10"
@@ -2735,6 +2813,7 @@
                                                                                            TextAlignment="Center"
                                                                                            Margin="0,5,0,0"/>
                                                                                 <Button Content="장비 시간 조회 (0xF1)"
+                                                                                        IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                         Height="30"
                                                                                         Margin="0,9,0,0"
                                                                                         Style="{StaticResource ConnectButtonStyle}"
@@ -2762,11 +2841,12 @@
                                                                                            TextAlignment="Center"
                                                                                            Margin="0,5,0,0"/>
                                                                                 <Button Content="PC 현재 시간으로 설정 (0xEF)"
+                                                                                        IsEnabled="{Binding IsOperationCommandEnabled}"
                                                                                         Height="30"
                                                                                         Margin="0,9,0,0"
                                                                                         Style="{StaticResource ConnectButtonStyle}"
                                                                                         Command="{Binding SetSystemDateTimeFromPcCommand}"/>
-                                                                                <TextBlock Text="{Binding SystemDateTimeStatusText}"
+                                                                                <TextBlock Text="{Binding SystemDateTimeStatusText, Mode=OneWay}"
                                                                                            Foreground="#FDE68A"
                                                                                            FontWeight="Bold"
                                                                                            TextAlignment="Center"
@@ -2807,8 +2887,9 @@
                                                             <TabItem Header="AI SETTING">
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
-                                                                              Padding="0,8,8,14">
-                                                                    <StackPanel Margin="5,2,5,2"
+                                                                              CanContentScroll="False"
+                                                                              Padding="0,8,8,16">
+                                                                    <StackPanel Margin="5,8,5,24"
                                                                                 IsEnabled="{Binding IsOperationCommandEnabled}">
 
                                                                         <!--
@@ -3158,10 +3239,11 @@
                                                                                     <StackPanel Grid.Column="0">
                                                                                         <TextBlock Text="FIRE SOURCE"
                                                                                                    Foreground="White"/>
-                                                                                        <ComboBox SelectedIndex="{Binding FireDetectionSourceIndex}"
+                                                                                        <ComboBox SelectedIndex="{Binding FireDetectionSourceIndex, Mode=TwoWay}"
                                                                                                   Height="28"
-                                                                                                  IsEnabled="False"
-                                                                                                  ToolTip="현재 로컬 FIRE 영상처리는 IR 전용입니다.">
+                                                                                                  ToolTip="원본 EO / IR 화재 영상처리 채널 선택">
+                                                                                            <ComboBoxItem Content="AUTO (EO + IR)"/>
+                                                                                            <ComboBoxItem Content="EO ONLY"/>
                                                                                             <ComboBoxItem Content="IR ONLY"/>
                                                                                         </ComboBox>
                                                                                     </StackPanel>
@@ -3360,7 +3442,7 @@
                                                 </Grid>
                                             </Border>
 
-                                            <!-- 영상 및 장비 상태 카드 -->
+                                            <!-- 2026-10-06: 하위 탭 전환과 무관하게 항상 보이는 요약 상태 -->
                                             <Border Grid.Row="1"
                                                     Background="#5F666D"
                                                     BorderBrush="#95A5B0"
@@ -3368,42 +3450,35 @@
                                                     CornerRadius="5"
                                                     Padding="8">
                                                 <StackPanel>
-                                                    <TextBlock Text="CONNECTION STATUS"
+                                                    <TextBlock Text="4. DEVICE CONNECTION STATUS"
                                                                Foreground="White"
                                                                FontWeight="Bold"
                                                                HorizontalAlignment="Center"
                                                                Margin="0,0,0,8"/>
 
-                                                    <Border Background="#40464D"
-                                                            BorderBrush="#76818B"
-                                                            BorderThickness="1"
-                                                            Padding="9">
-                                                        <!-- 2026-08-27: FIRE/SMOKE 상태를 분리하고 남는 폭의 중앙에 배치한다. -->
-                                                        <TextBlock FontSize="9.5"
-                                                                   FontWeight="Bold"
-                                                                   HorizontalAlignment="Center"
-                                                                   TextAlignment="Center"
-                                                                   VerticalAlignment="Center">
-                                                            <Run Text="POWER" Foreground="#D0D7DE"/>
-                                                            <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="TCP:" Foreground="#6CB6FF"/>
-                                                            <Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#9FE870"/>
-                                                            <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="EO:" Foreground="#5EE7F7"/>
-                                                            <Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#9FE870"/>
-                                                            <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="IR:" Foreground="#C6E77B"/>
-                                                            <Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#9FE870"/>
-                                                            <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="AI:" Foreground="#39FF14"/>
-                                                            <Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
-                                                            <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="FIRE:" Foreground="#FF6B5E"/>
-                                                            <Run Text="{Binding FirePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
-                                                            <Run Text=" / " Foreground="#D0D7DE"/>
-                                                            <Run Text="SMOKE:" Foreground="#FFA000"/>
-                                                            <Run Text="{Binding SmokePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
-                                                        </TextBlock>
+                                                    <Border Background="#40464D" BorderBrush="#76818B" BorderThickness="1" Padding="7" Margin="0,0,0,5">
+                                                        <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="68"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                            <TextBlock Text="CONTROL" Foreground="#6CB6FF" FontWeight="Bold" FontSize="10" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="TCP "/><Run Text="{Binding DeviceControlConnectionStatusText, Mode=OneWay}" Foreground="#9FE870"/></TextBlock>
+                                                            <TextBlock Style="{StaticResource MobileDeviceStatusStyle}" Grid.Column="2" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="DRIVE "/><Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
+                                                            <TextBlock Style="{StaticResource MobileDeviceStatusStyle}" Grid.Column="3" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="0x31 "/><Run Text="{Binding DevicePowerFreshnessText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
+                                                        </Grid>
+                                                    </Border>
+                                                    <Border Background="#40464D" BorderBrush="#76818B" BorderThickness="1" Padding="7" Margin="0,0,0,5">
+                                                        <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="68"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                            <TextBlock Text="CAMERA" Foreground="#5EE7F7" FontWeight="Bold" FontSize="10" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="EO "/><Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
+                                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="IR "/><Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
+                                                            <TextBlock Style="{StaticResource MobileDeviceStatusStyle}" Grid.Column="3" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="GPS "/><Run Text="{Binding CurrentGpsPowerText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
+                                                        </Grid>
+                                                    </Border>
+                                                    <Border Background="#40464D" BorderBrush="#76818B" BorderThickness="1" Padding="7">
+                                                        <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="68"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                            <TextBlock Text="DETECT" Foreground="#FFB86C" FontWeight="Bold" FontSize="10" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="AI "/><Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/></TextBlock>
+                                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="FIRE "/><Run Text="{Binding FirePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/></TextBlock>
+                                                            <TextBlock Grid.Column="3" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="SMOKE "/><Run Text="{Binding SmokePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/></TextBlock>
+                                                        </Grid>
                                                     </Border>
                                                 </StackPanel>
                                             </Border>

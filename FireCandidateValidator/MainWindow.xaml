@@ -119,8 +119,9 @@
                         <ComboBoxItem Content="FIRE MASK"/>
                         <ComboBoxItem Content="SMOKE MASK"/>
                     </ComboBox>
-                    <TextBlock Text="IR DISPLAY PALETTE" FontWeight="Bold"/>
-                    <UniformGrid Columns="3" Margin="0,4,0,2">
+                    <TextBlock Text="DISPLAY MODE (EO ORIGINAL / IR PALETTE)" FontWeight="Bold"/>
+                    <UniformGrid Columns="4" Margin="0,4,0,2">
+                        <Button x:Name="EoOriginalButton" Content="EO ORIGINAL" Background="#2F6F58" Foreground="White" Padding="2,1" Click="EoOriginal_Click"/>
                         <Button x:Name="BlackHotPaletteButton" Content="BLACK HOT" Background="#F4F4F4" Foreground="#20262D" Padding="2,1" Click="BlackHotPalette_Click"/>
                         <Button x:Name="WhiteHotPaletteButton" Content="WHITE HOT" Background="#F4F4F4" Foreground="#20262D" Padding="2,1" Click="WhiteHotPalette_Click"/>
                         <Button x:Name="RandomPaletteButton" Content="RANDOM" Background="#F4F4F4" Foreground="#20262D" Padding="2,1" Click="RandomPalette_Click"/>

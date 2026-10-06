@@ -846,6 +846,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _currentPowerStatus =
                 0x00;
 
+            // 2026-10-06: 재연결 전에는 0x31 상태를 OFF로 오인하지 않는다.
+            ResetDevicePowerStatus();
+
             _currentMoveType =
                 ContinuousMoveType.None;
 
@@ -1969,6 +1972,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        private void ConfirmDisplayedVideoFrame(string streamName)
+        {
+            bool isEo = string.Equals(streamName, "EO", StringComparison.OrdinalIgnoreCase);
+            string connected = isEo ? "[EO] Connected" : "[IR] Connected";
+            if ((isEo ? EoStatusText : IrStatusText) == connected) return;
+            if (isEo) EoStatusText = connected;
+            else IrStatusText = connected;
+            ConsoleLogHelper.State("DEVICE CONNECT",
+                $"SESSION={Interlocked.Read(ref _deviceSessionGeneration)} / {streamName}_DISPLAY_FRAME=True / {streamName}_STREAMING=True");
+        }
+
         private async Task RenderBufferedDisplayFrameAsync(
             string streamName,
             DisplayFrameSlot slot,
@@ -1993,16 +2007,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     long displayTicks = Stopwatch.GetTimestamp();
                     Stopwatch bitmapTimer = Stopwatch.StartNew();
-                    WriteableBitmap previous = slot.Bitmap;
                     slot.Bitmap = MatToBitmapSourceConverter.UpdateOrCreate(
                         bufferedFrame.Frame,
                         slot.Bitmap);
                     bitmapTimer.Stop();
 
-                    if (!ReferenceEquals(previous, slot.Bitmap))
-                    {
-                        setImageAction(slot.Bitmap);
-                    }
+                    // 재연결 시 비워진 Image Source에 재사용 Bitmap을 다시 연결한다.
+                    setImageAction(slot.Bitmap);
+                    ConfirmDisplayedVideoFrame(streamName);
 
                     RtspChannelPerformance performance = GetRtspPerformance(streamName);
                     lock (performance.Sync)
@@ -2138,14 +2150,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                             long displayTicks = Stopwatch.GetTimestamp();
                             Stopwatch bitmapTimer = Stopwatch.StartNew();
-                            WriteableBitmap previous = slot.Bitmap;
                             slot.Bitmap = MatToBitmapSourceConverter.UpdateOrCreate(frame, slot.Bitmap);
                             bitmapTimer.Stop();
 
-                            if (!ReferenceEquals(previous, slot.Bitmap))
-                            {
-                                setImageAction(slot.Bitmap);
-                            }
+                            setImageAction(slot.Bitmap);
+                            ConfirmDisplayedVideoFrame(streamName);
 
                             RtspChannelPerformance perf = GetRtspPerformance(streamName);
                             lock (perf.Sync)
@@ -2268,10 +2277,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         out SmokeDetectionResult smokeResult,
                         out long latestVersion);
 
-                    if (streamName == "IR")
-                    {
-                        UpdateThermalFireCandidateState(streamName, thermalResult);
-                    }
+                    // 2026-10-06: 화재 후보 상태/경고는 IR뿐 아니라 원본 EO 영상에도 동일하게 반영한다.
+                    UpdateThermalFireCandidateState(streamName, thermalResult);
 
                     UpdateVisionBBoxEvents(
                         streamName,
@@ -2353,17 +2360,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Stopwatch stopwatch = Stopwatch.StartNew();
                     try
                     {
-                        ThermalFireDetectionResult thermalResult = default(ThermalFireDetectionResult);
-                        if (streamName == "IR")
-                        {
-                            thermalResult = _irFireDetectionService.Process(
+                        bool isInfraredFire = string.Equals(streamName, "IR", StringComparison.OrdinalIgnoreCase);
+                        ThermalFireDetectionService fireService = isInfraredFire
+                            ? _irFireDetectionService : _eoFireDetectionService;
+                        ThermalFireDetectionResult thermalResult = fireService.Process(
                                 frame,
-                                IsThermalFireDetectionEnabled && IsFireSmokeFrameAnalysisAllowed(),
+                                IsThermalFireDetectionEnabled && IsFireSourceEnabled(isInfraredFire) && IsFireSmokeFrameAnalysisAllowed(),
                                 ThermalHotThresholdRatio,
                                 ThermalMinimumAreaRatio,
                                 ThermalFireBoxGroupingMode,
-                                GetRecentAiFireCandidates(true));
-                        }
+                                GetRecentAiFireCandidates(isInfraredFire));
 
                         SmokeDetectionResult smokeResult = ProcessSmokeFrame(
                             frame,
@@ -2800,7 +2806,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 watchdogPerformance.HasLastTimestamp = false;
                 watchdogPerformance.HasPreviousFrameSamples = false;
             }
-            int firstFrameConfirmed = 0;
 
             // 2026-10-01: 운용 중 Frame 정지 시 기존 Capture Loop를 먼저 끝낸 뒤
             // 동일 채널만 재연결하기 위한 Watchdog 요청 Flag이다.
@@ -2891,20 +2896,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             channelPerformance,
                             decoder.GetLastFrameTiming(),
                             frame);
-                    }
-
-                    if (Interlocked.Exchange(ref firstFrameConfirmed, 1) == 0)
-                    {
-                        App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
-                        {
-                            if (cancellationToken.IsCancellationRequested) return;
-                            if (streamName == "EO") EoStatusText = "[EO] Connected";
-                            else IrStatusText = "[IR] Connected";
-                            ConsoleLogHelper.State(
-                                "DEVICE CONNECT",
-                                $"SESSION={Interlocked.Read(ref _deviceSessionGeneration)} / " +
-                                $"{streamName}_FIRST_FRAME=True / {streamName}_STREAMING=True");
-                        }));
                     }
 
                     QueueLatestDetectionFrame(streamName, frame);
@@ -3090,6 +3081,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     /// </summary>
                                     setImageAction(
                                         bitmap);
+                                    ConfirmDisplayedVideoFrame(streamName);
 
                                     long dispatchElapsedTicks =
                                         Stopwatch.GetTimestamp() - dispatchQueuedTicks;
@@ -3101,10 +3093,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                         channelPerformance.DispatchMaxTicks = Math.Max(channelPerformance.DispatchMaxTicks, dispatchElapsedTicks);
                                     }
 
-                                    if (streamName == "IR")
-                                    {
-                                        UpdateThermalFireCandidateState(streamName, thermalResult);
-                                    }
+                                    // 2026-10-06: 라이브 EO 원본 프레임에서도 화재 BBOX/경고 상태를 갱신한다.
+                                    UpdateThermalFireCandidateState(streamName, thermalResult);
 
                                     UpdateVisionBBoxEvents(
                                         streamName,

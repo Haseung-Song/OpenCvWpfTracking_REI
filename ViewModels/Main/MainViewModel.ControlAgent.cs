@@ -61,10 +61,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (isConnected)
             {
+                BeginConnectedControlAgentSession();
                 RequestWebAgentTiltLimitsAfterConnection();
+                StartSystemTimePollingAfterConnection();
             }
             else
             {
+                EndConnectedControlAgentSession();
+                StopSystemTimePolling("Control Agent disconnected");
                 ResetWebAgentTiltLimits();
             }
 
@@ -698,6 +702,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ConsoleLogHelper.PrintLine();
                     break;
 
+                case 0x31:
+                    // 2026-10-06: 기존 0x01 PTZF와 동일한 위치값에
+                    // MCB/SCB 원본 상태 바이트를 추가한 고정 13Byte 응답.
+                    ParseLaStatusPacket(packet.RawData, canPrintLog, false);
+                    ApplyDevicePowerStatus(packet.RawData[10], packet.RawData[11]);
+                    break;
+
                 case 0x07:
                     /// <summary>
                     /// [Function] [0x07]
@@ -1041,7 +1052,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ParseLaStatusPacket(
             byte[] packet,
-            bool printLog)
+            bool printLog,
+            bool countFunction01 = true)
         {
             const int requiredLength =
                 12;
@@ -1059,7 +1071,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            Interlocked.Increment(ref _function01ReceiveCount);
+            if (countFunction01)
+            {
+                Interlocked.Increment(ref _function01ReceiveCount);
+            }
             Interlocked.Increment(ref _ptzfStatusUpdateCount);
 
             ushort panUnsignedRaw =

@@ -33,6 +33,12 @@ namespace OpenCvWpfTracking.Services.Communication
         private const int LegacyPacketSize =
             12;
 
+        // 2026-10-06: Function 0x31은 LEN 필드가 없는 고정 13Byte
+        // PTZF + MCB/SCB 상태 응답이다.
+        private const byte DevicePowerStatusFunction = 0x31;
+
+        private const int DevicePowerStatusPacketSize = 13;
+
         private const byte VariableFunctionMinimum = 0x23;
 
         // 2026-10-02: GPS 자동 전송 주파수 설정/조회 응답(0x30)도
@@ -126,7 +132,11 @@ namespace OpenCvWpfTracking.Services.Communication
 
                     int packetSize = LegacyPacketSize;
                     byte function = _receiveBuffer[1];
-                    if (function >= VariableFunctionMinimum &&
+                    if (function == DevicePowerStatusFunction)
+                    {
+                        packetSize = DevicePowerStatusPacketSize;
+                    }
+                    else if (function >= VariableFunctionMinimum &&
                         function <= VariableFunctionMaximum)
                     {
                         if (_receiveBuffer.Count < VariableHeaderSize)

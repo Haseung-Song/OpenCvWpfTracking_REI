@@ -78,6 +78,12 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool IsVariableLength =>
             Function >= 0x23 && Function <= 0x30;
 
+        /// <summary>
+        /// 2026-10-06: PTZF + MCB/SCB 상태를 전달하는 고정 13Byte 응답.
+        /// </summary>
+        public bool IsDevicePowerStatus =>
+            Function == 0x31 && RawData != null && RawData.Length == 13;
+
         public int PayloadLength =>
             IsVariableLength && RawData != null && RawData.Length >= 5
                 ? RawData[2] | RawData[3] << 8

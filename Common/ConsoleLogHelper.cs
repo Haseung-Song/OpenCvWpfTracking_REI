@@ -852,6 +852,8 @@ namespace OpenCvWpfTracking.Common
 
             private bool _lastLineWasBlank;
 
+            private bool _innerUnavailable;
+
             /// <summary>
             /// NormalizedConsoleTextWriter 동작 수행 함수.
             /// </summary>
@@ -956,7 +958,7 @@ namespace OpenCvWpfTracking.Common
             {
                 lock (_writeLock)
                 {
-                    _inner.Flush();
+                    SafeFlush();
                 }
 
             }
@@ -981,7 +983,7 @@ namespace OpenCvWpfTracking.Common
                         return;
                     }
 
-                    _inner.WriteLine(LogLine);
+                    SafeWriteLine(LogLine);
                     _separatorSinceContent = true;
                     _lastLineWasBlank = false;
                     return;
@@ -992,16 +994,60 @@ namespace OpenCvWpfTracking.Common
                     if (!_separatorSinceContent &&
                         !_lastLineWasBlank)
                     {
-                        _inner.WriteLine();
+                        SafeWriteLine();
                         _lastLineWasBlank = true;
                     }
 
                     return;
                 }
 
-                _inner.WriteLine(line);
+                SafeWriteLine(line);
                 _separatorSinceContent = false;
                 _lastLineWasBlank = false;
+            }
+
+            /// <summary>
+            /// 2026-10-06: 디버그 콘솔이 닫히거나 출력 핸들이 무효화되어도
+            /// 로그 보조 기능의 IOException이 RTSP/제어 작업으로 전파되지 않게 한다.
+            /// 최초 실패 후에는 해당 Writer 출력을 중단해 예외 반복과 성능 저하를 막는다.
+            /// </summary>
+            private void SafeWriteLine(string value = null)
+            {
+                if (_innerUnavailable) return;
+                try
+                {
+                    if (value == null) _inner.WriteLine();
+                    else _inner.WriteLine(value);
+                }
+                catch (IOException ex)
+                {
+                    DisableInnerWriter(ex);
+                }
+                catch (ObjectDisposedException ex)
+                {
+                    DisableInnerWriter(ex);
+                }
+            }
+
+            private void SafeFlush()
+            {
+                if (_innerUnavailable) return;
+                try { _inner.Flush(); }
+                catch (IOException ex) { DisableInnerWriter(ex); }
+                catch (ObjectDisposedException ex) { DisableInnerWriter(ex); }
+            }
+
+            private void DisableInnerWriter(Exception exception)
+            {
+                _innerUnavailable = true;
+                try
+                {
+                    Debug.WriteLine("Console writer disabled: " + exception.Message);
+                }
+                catch
+                {
+                    // 진단 출력 실패는 애플리케이션 기능에 영향을 주지 않는다.
+                }
             }
 
         }

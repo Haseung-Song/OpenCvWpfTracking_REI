@@ -147,6 +147,46 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
+        /// 2026-10-06: WebAgent를 통해 EO/IR 장비 전원을 제어한다.
+        /// 요청 성공만으로 화면 상태를 바꾸지 않으며, 실제 ON/OFF 표시는
+        /// Function 0x31의 MCB/SCB 보드 상태 비트를 기준으로 갱신한다.
+        /// </summary>
+        public bool SetDevicePower(byte deviceCode, bool turnOn)
+        {
+            return _tcpClientService.Send(
+                BuildDevicePowerPacket(deviceCode, turnOn));
+        }
+
+        /// <summary>
+        /// 전원 요청: FF 01 CMD1 00 DEVICE 00 CHECKSUM.
+        /// CMD1 ON=0x88, OFF=0x08. 현재 GUI는 EO(0x00), IR(0x01)을 제공한다.
+        /// </summary>
+        public static byte[] BuildDevicePowerPacket(byte deviceCode, bool turnOn)
+        {
+            if (deviceCode != 0x00 && deviceCode != 0x01)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(deviceCode),
+                    deviceCode,
+                    "GUI device power control supports EO(0x00) and IR(0x01)." );
+            }
+
+            byte[] packet =
+            {
+                0xFF,
+                0x01,
+                turnOn ? (byte)0x88 : (byte)0x08,
+                0x00,
+                deviceCode,
+                0x00,
+                0x00
+            };
+
+            packet[6] = CheckSum(packet, 1, 5);
+            return packet;
+        }
+
+        /// <summary>
         /// 2026-10-01: WebAgent Build 86 이상에서 RPY 자동 전송 주파수를 설정한다.
         /// 0Hz는 자동 전송 중지이며 허용 범위는 0~30Hz이다.
         /// </summary>

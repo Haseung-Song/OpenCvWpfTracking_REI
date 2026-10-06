@@ -169,6 +169,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool CanUseGpsSettings(out string reason)
         {
+            // 2026-10-06: HOME/ZERO, AUTO SCAN, panorama capture/processing 중에는
+            // 다른 장비 명령과 동일하게 GPS 조회 및 설정 송신을 차단한다.
+            if (!IsOperationCommandEnabled)
+            {
+                reason = "운용 작업 중 GPS 제어 잠금";
+                return false;
+            }
+
             if (!IsEnvironmentStatusSelected)
             {
                 reason = "WebAgent 전용 기능";

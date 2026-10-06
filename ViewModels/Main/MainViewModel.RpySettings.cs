@@ -405,6 +405,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool CanUseRpySettings(out string reason)
         {
+            // 2026-10-06: 장비 운용 작업과 IMU/RPY 설정 명령이 교차 송신되지 않도록
+            // 공통 운용 잠금 상태에서는 모든 RPY 조회/설정을 거부한다.
+            if (!IsOperationCommandEnabled)
+            {
+                reason = "운용 작업 중 IMU/RPY 제어 잠금";
+                return false;
+            }
+
             if (!IsEnvironmentStatusSelected)
             {
                 reason = "WebAgent 전용 기능";

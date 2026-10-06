@@ -118,8 +118,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
+                OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(IsGpsTabVisible));        // 추가
+                OnPropertyChanged(nameof(DevicePowerFreshnessText));
+                OnPropertyChanged(nameof(CurrentControlPowerText));
+                OnPropertyChanged(nameof(CurrentEoPowerText));
+                OnPropertyChanged(nameof(CurrentIrPowerText));
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(PanTiltZeroRouteText));
                 ApplyControlAgentProfile(value);
@@ -211,8 +216,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(SelectedEoRtspSource));
                 OnPropertyChanged(nameof(SelectedControlAgentProfile));
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
+                OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(IsGpsTabVisible));        // 추가
+                OnPropertyChanged(nameof(DevicePowerFreshnessText));
+                OnPropertyChanged(nameof(CurrentControlPowerText));
+                OnPropertyChanged(nameof(CurrentEoPowerText));
+                OnPropertyChanged(nameof(CurrentIrPowerText));
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(SelectedIrRtspSource));
                 OnPropertyChanged(nameof(SelectedAiEoRtspSource));
@@ -338,6 +348,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SelectedControlAgentProfile?.IsDirectInput == true;
 
         /// <summary>
+        /// 2026-10-06: 좌표계/화면 모드와 분리된 Control Agent 프로필 기준값.
+        /// 전원 제어 명령은 WebAgent 프로필에 공통 적용한다.
+        /// 상태 표시는 기동형만 Function 0x31을 사용하고 나머지는 기존 응답으로 폴백한다.
+        /// </summary>
+        public bool IsSelectedControlAgentWebAgent =>
+            SelectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
+
+        /// <summary>
         /// 2026-10-01: IMU가 장착된 4층 LR1000(기동형) 프로필에서만
         /// IMU/RPY 탭을 표시한다. 직접 입력은 기동형 WebAgent IP인
         /// 192.168.20.163을 입력한 경우에만 동일하게 표시한다.
@@ -375,6 +393,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _selectedCommunicationSettingsTabIndex = value;
                 OnPropertyChanged();
+                UpdateSystemTimePollingState();
             }
         }
 

@@ -1726,6 +1726,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-02: GPS 20Byte 상태 및 0~10Hz 자동 전송 설정/조회 초기화.
             InitializeGpsSettings();
 
+            // 2026-10-06: WebAgent EO/IR 전원 제어 및 Function 0x31 상태 동기화.
+            InitializeDevicePowerSettings();
+
             #endregion
 
             #region [AI Detector Setting Command Binding]
@@ -2398,6 +2401,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             PropertyChanged?.Invoke(
                 this,
                 new PropertyChangedEventArgs(propertyName));
+            if (propertyName == nameof(EoPowerControlStatusText) ||
+                propertyName == nameof(CurrentEoPowerText) || propertyName == nameof(IsOperationCommandEnabled))
+                OnPropertyChanged(nameof(IsEoPowerControlEnabled));
+            if (propertyName == nameof(IrPowerControlStatusText) ||
+                propertyName == nameof(CurrentIrPowerText) || propertyName == nameof(IsOperationCommandEnabled))
+                OnPropertyChanged(nameof(IsIrPowerControlEnabled));
+            if (propertyName == nameof(IsEoPowerControlEnabled) || propertyName == nameof(IsIrPowerControlEnabled))
+                System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
         #endregion
     }

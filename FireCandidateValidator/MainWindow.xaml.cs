@@ -42,7 +42,8 @@ namespace FireCandidateValidator
         // 2026-08-14: Ten display palettes are cycled independently of equipment.
         private const int DisplayPaletteCount = 10;
 
-        private int _displayPaletteIndex;
+        // 2026-10-06: -1은 팔레트를 적용하지 않는 EO 원본 컬러 표시 모드이다.
+        private int _displayPaletteIndex = -1;
 
         // 2026-08-14: 1=전체 단일 BBox, 2=화염별 분리 BBox.
         private int _fireBoxGroupingMode = 2;
@@ -105,7 +106,7 @@ namespace FireCandidateValidator
             OpenFileDialog dialog =
                 new OpenFileDialog
                 {
-                    Title = "IR 시험 이미지 선택",
+                    Title = "EO/IR 시험 이미지 선택",
                     Filter = "Image files|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff|All files|*.*"
                 };
 
@@ -1409,6 +1410,7 @@ namespace FireCandidateValidator
         // 2026-08-14: 콤보박스 대신 메인 Viewer와 같은 직접/상대 팔레트 버튼을 사용한다.
         private void BlackHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(0);
         private void WhiteHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(1);
+        private void EoOriginal_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(-1);
         /// <summary>
         /// RandomPalette_Click 이벤트 처리 함수.
         /// </summary>
@@ -1442,6 +1444,13 @@ namespace FireCandidateValidator
         /// </summary>
         private Mat ApplySelectedPalette(Mat source)
         {
+            // 2026-10-06: EO ORIGINAL은 입력 컬러를 변경하지 않고 그대로 표시한다.
+            // 검출은 이 메서드 호출 전부터 항상 _currentSource 원본으로 수행된다.
+            if (_displayPaletteIndex < 0)
+            {
+                return source.Clone();
+            }
+
             Mat gray = new Mat();
             if (source.Channels() == 1)
             {
@@ -1498,6 +1507,8 @@ namespace FireCandidateValidator
         {
             SolidColorBrush neutral = new SolidColorBrush(Color.FromRgb(244, 244, 244));
             SolidColorBrush darkText = new SolidColorBrush(Color.FromRgb(32, 38, 45));
+            EoOriginalButton.Background = neutral;
+            EoOriginalButton.Foreground = darkText;
             BlackHotPaletteButton.Background = neutral;
             BlackHotPaletteButton.Foreground = darkText;
             WhiteHotPaletteButton.Background = neutral;
@@ -1505,7 +1516,12 @@ namespace FireCandidateValidator
             RandomPaletteButton.Background = neutral;
             RandomPaletteButton.Foreground = darkText;
 
-            if (_displayPaletteIndex == 0)
+            if (_displayPaletteIndex < 0)
+            {
+                EoOriginalButton.Background = new SolidColorBrush(Color.FromRgb(47, 111, 88));
+                EoOriginalButton.Foreground = Brushes.White;
+            }
+            else if (_displayPaletteIndex == 0)
             {
                 BlackHotPaletteButton.Background = Brushes.Black;
                 BlackHotPaletteButton.Foreground = Brushes.White;

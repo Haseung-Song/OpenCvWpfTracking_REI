@@ -2372,6 +2372,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     value;
 
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(DeviceControlConnectionStatusText));
             }
 
         }
@@ -2537,6 +2538,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged(
                     nameof(CurrentEoPowerText));
+                OnPropertyChanged(nameof(EoPowerControlStatusText));
+                OnPropertyChanged(nameof(CurrentEoPowerStatusColor));
             }
 
         }
@@ -2580,6 +2583,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged(
                     nameof(CurrentIrPowerText));
+                OnPropertyChanged(nameof(IrPowerControlStatusText));
+                OnPropertyChanged(nameof(CurrentIrPowerStatusColor));
             }
 
         }
@@ -2856,6 +2861,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
+                if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
+                {
+                    // 2026-10-06: WebAgent는 Function 0x31의 보드 상태를 단일 기준으로 사용한다.
+                    // 첫 상태 패킷 전에는 OFF로 오인하지 않도록 UNKNOWN을 유지한다.
+                    return
+                        $"CONTROL:{CurrentControlPowerText} / " +
+                        $"EO:{CurrentEoPowerText} / " +
+                        $"IR:{CurrentIrPowerText}";
+                }
+
                 bool isPanOn =
                     (_currentPowerStatus & 0x80) != 0;
 
@@ -2885,6 +2900,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
+                if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
+                {
+                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
+                        ? ToOnOff((_currentMcbPowerStatus & 0x01) != 0)
+                        : "UNKNOWN";
+                }
+
                 bool isPanOn =
                     (_currentPowerStatus & 0x80) != 0;
 
@@ -2905,12 +2927,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                bool isEoOn =
-                    EoStatusText ==
-                    "[EO] Connected";
+                if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
+                {
+                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
+                        ? ToOnOff((_currentScbPowerStatus & 0x01) != 0)
+                        : "UNKNOWN";
+                }
 
-                return ToOnOff(
-                    isEoOn);
+                return GetLegacyCameraPowerText(EoStatusText, "EO");
             }
 
         }
@@ -2922,12 +2946,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                bool isIrOn =
-                    IrStatusText ==
-                    "[IR] Connected";
+                if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
+                {
+                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
+                        ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0)
+                        : "UNKNOWN";
+                }
 
-                return ToOnOff(
-                    isIrOn);
+                return GetLegacyCameraPowerText(IrStatusText, "IR");
             }
 
         }

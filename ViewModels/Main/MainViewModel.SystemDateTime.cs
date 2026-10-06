@@ -3,6 +3,7 @@ using OpenCvWpfTracking.Services.Communication;
 using System;
 using System.Globalization;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
@@ -21,6 +22,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private string _pcUtcDateTimeText = "PC UTC: 확인 대기";
 
         private string _systemDateTimeStatusText = "Ready";
+        private DispatcherTimer _systemTimePollTimer;
+        private bool _systemTimeQueryInFlight;
+        private DateTime _systemTimeQuerySentAt;
+        private bool _isAutomaticSystemTimeQuery;
+        private bool _manualSystemTimeQueryPending;
 
         public ICommand RequestSystemDateTimeCommand { get; private set; }
 
@@ -85,6 +91,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             RequestSystemDateTimeCommand = new RelayCommand(RequestSystemDateTime);
             SetSystemDateTimeFromPcCommand = new RelayCommand(SetSystemDateTimeFromPc);
+            _systemTimePollTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _systemTimePollTimer.Tick += SystemTimePollTimer_Tick;
             UpdatePcDateTimePreview();
             VerifySystemDateTimePacketEncoding();
         }
@@ -98,16 +109,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            bool isAutomatic = _isAutomaticSystemTimeQuery;
             UpdatePcDateTimePreview();
-            SystemDateTimeStatusText = "조회 응답 대기";
-            bool sent = _controlCommandService.RequestSystemDateTime();
 
-            ConsoleLogHelper.Command(
-                "SYSTEM TIME QUERY TX",
-                "CMD2=0xF1 / PACKET=FF 01 00 F1 00 00 F2 / SENT=" + sent);
+            // 2026-10-06: 사용자가 누른 단건 조회는 자동 폴링의 응답 대기 상태보다
+            // 우선한다. 자동 조회가 진행 중이어도 즉시 새 요청을 송신한다.
+            if (!isAutomatic)
+            {
+                _systemTimeQueryInFlight = false;
+                _manualSystemTimeQueryPending = true;
+                SystemDateTimeStatusText = "조회 응답 대기";
+            }
+            bool sent = _controlCommandService.RequestSystemDateTime();
+            if (sent)
+            {
+                _systemTimeQueryInFlight = true;
+                _systemTimeQuerySentAt = DateTime.Now;
+            }
+
+            if (!isAutomatic)
+            {
+                ConsoleLogHelper.Command(
+                    "SYSTEM TIME QUERY TX",
+                    "CMD2=0xF1 / PACKET=FF 01 00 F1 00 00 F2 / SENT=" + sent);
+            }
 
             if (!sent)
             {
+                _manualSystemTimeQueryPending = false;
                 SystemDateTimeStatusText = "Failed: 조회 명령 전송 실패";
             }
         }
@@ -144,6 +173,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool CanUseSystemDateTime(out string reason)
         {
+            // 2026-10-06: 파노라마/AUTO SCAN/HOME/ZERO 수행 중에는
+            // 조회와 설정 모두 막아 장비 명령 흐름을 단일화한다.
+            if (!IsOperationCommandEnabled)
+            {
+                reason = "운용 작업 중 SYSTEM TIME 제어 잠금";
+                return false;
+            }
+
             if (!IsEnvironmentStatusSelected)
             {
                 reason = "WebAgent 전용 기능";
@@ -162,6 +199,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void ParseWebAgentSystemDateTime(byte[] payload)
         {
+            _systemTimeQueryInFlight = false;
+            _manualSystemTimeQueryPending = false;
             if (payload == null || payload.Length < 10)
             {
                 SetSystemDateTimeFailure("Failed: 0x2D 응답 길이 오류");
@@ -218,6 +257,86 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "(" + statusText + ")" +
                 " / UTC=" + FormatDateTime(utcDateTime) +
                 " / LOCAL=" + FormatDateTime(utcDateTime.ToLocalTime()));
+
+            // 2026-10-06: 시간 설정 성공 직후 실제 적용값을 단건 재조회한다.
+            if (success && operation == 0x01)
+            {
+                RunOnUiThread(RequestSystemDateTime);
+            }
+        }
+
+        /// <summary>
+        /// 2026-10-06: 연결 직후 1회 조회하고 SYSTEM TIME 탭 활성 중에만
+        /// 1Hz로 조회한다. 응답 대기 중에는 중복 송신하지 않는다.
+        /// </summary>
+        private void StartSystemTimePollingAfterConnection()
+        {
+            if (!IsSelectedControlAgentWebAgent) return;
+            _systemTimePollTimer?.Start();
+            _systemTimeQueryInFlight = false;
+            _manualSystemTimeQueryPending = false;
+            ConsoleLogHelper.State("SYSTEM TIME AUTO POLL", "Connected / initial query");
+            RequestSystemDateTimeAutomatically();
+        }
+
+        private void UpdateSystemTimePollingState()
+        {
+            if (_systemTimePollTimer == null) return;
+            if (_laTcpService != null && _laTcpService.IsConnected &&
+                IsSelectedControlAgentWebAgent)
+            {
+                _systemTimePollTimer.Start();
+            }
+            else
+            {
+                StopSystemTimePolling("profile/tab state changed");
+            }
+        }
+
+        private void StopSystemTimePolling(string reason)
+        {
+            if (_systemTimePollTimer?.IsEnabled == true)
+            {
+                _systemTimePollTimer.Stop();
+                ConsoleLogHelper.State("SYSTEM TIME AUTO POLL", "Stopped / " + reason);
+            }
+            _systemTimeQueryInFlight = false;
+            _manualSystemTimeQueryPending = false;
+        }
+
+        private void SystemTimePollTimer_Tick(object sender, EventArgs e)
+        {
+            UpdatePcDateTimePreview();
+            if (_manualSystemTimeQueryPending &&
+                DateTime.Now - _systemTimeQuerySentAt >= TimeSpan.FromSeconds(2))
+            {
+                _manualSystemTimeQueryPending = false;
+                _systemTimeQueryInFlight = false;
+                SystemDateTimeStatusText = "Timeout: 장비 시간 응답 없음";
+                ConsoleLogHelper.Warning(
+                    "SYSTEM TIME QUERY",
+                    "Manual query timeout after 2 seconds; automatic polling remains available");
+                return;
+            }
+
+            // XAML 기본 순서: CTRL=0, GPS=1, IMU/RPY=2, SYSTEM TIME=3.
+            if (SelectedCommunicationSettingsTabIndex != 3) return;
+            if (_systemTimeQueryInFlight)
+            {
+                if (DateTime.Now - _systemTimeQuerySentAt < TimeSpan.FromSeconds(2)) return;
+                _systemTimeQueryInFlight = false;
+                ConsoleLogHelper.Warning("SYSTEM TIME AUTO POLL", "Query timeout; retry enabled");
+            }
+            RequestSystemDateTimeAutomatically();
+        }
+
+        private void RequestSystemDateTimeAutomatically()
+        {
+            // 수동 조회 응답을 기다리는 동안에는 자동 요청을 끼워 넣지 않는다.
+            if (_manualSystemTimeQueryPending) return;
+            _isAutomaticSystemTimeQuery = true;
+            try { RequestSystemDateTime(); }
+            finally { _isAutomaticSystemTimeQuery = false; }
         }
 
         private void UpdatePcDateTimePreview()
