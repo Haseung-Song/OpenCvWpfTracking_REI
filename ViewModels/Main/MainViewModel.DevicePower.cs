@@ -69,10 +69,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _irPowerCommandPending ? "WAIT" : CurrentIrPowerText;
         public string CurrentEoPowerStatusColor => GetPowerStatusColor(EoPowerControlStatusText);
         public string CurrentIrPowerStatusColor => GetPowerStatusColor(IrPowerControlStatusText);
-        public bool IsEoPowerControlEnabled => IsOperationCommandEnabled &&
-            (EoPowerControlStatusText == "ON" || EoPowerControlStatusText == "OFF");
-        public bool IsIrPowerControlEnabled => IsOperationCommandEnabled &&
-            (IrPowerControlStatusText == "ON" || IrPowerControlStatusText == "OFF");
+        // V28_2: 영상 재연결/전원 응답 WAIT는 표시만 하고 전원 버튼을 잠그지 않는다.
+        public bool IsEoPowerControlEnabled => IsOperationCommandEnabled;
+        public bool IsIrPowerControlEnabled => IsOperationCommandEnabled;
 
         private static string GetPowerStatusColor(string value) =>
             value == "ON" ? "#69E39B" : value == "OFF" ? "#FF7B72" : "#FDE68A";
@@ -184,9 +183,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void SendDevicePower(byte deviceCode, bool turnOn, string deviceName)
         {
-            // UI 외 직접 호출에서도 WAIT/UNKNOWN 중 중복·반대 명령을 차단한다.
-            if (deviceCode == EoPowerDeviceCode ? !IsEoPowerControlEnabled : !IsIrPowerControlEnabled)
-                return;
             // 2026-10-06: 파노라마/AUTO SCAN/HOME/ZERO 동작 중 전원 명령 차단.
             if (!IsOperationCommandEnabled)
             {
