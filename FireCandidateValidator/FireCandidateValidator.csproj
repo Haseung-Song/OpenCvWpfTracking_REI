@@ -42,6 +42,8 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Xml" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
@@ -73,10 +75,12 @@
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
     <Compile Include="FireCandidateAnalyzer.cs" />
+    <Compile Include="..\Services\Video\StaticStructureFilter.cs"><Link>StaticStructureFilter.cs</Link></Compile>
     <Compile Include="SmokeCandidateAnalyzer.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="..\Services\Configuration\CsvExcelCompanion.cs"><Link>CsvExcelCompanion.cs</Link></Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

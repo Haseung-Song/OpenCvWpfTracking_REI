@@ -224,6 +224,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         box.Width,
                         box.Height);
                     box.DetectionEventId = existingTrack.Event.EventId;
+                    existingTrack.Event.UpdateZoneAssessment(AssessAiZone(result, box, resolvedDetectionType));
                     continue;
                 }
 
@@ -235,6 +236,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Math.Max(0, box.Width) * (double)Math.Max(0, box.Height),
                     "AI AGENT", "ACTIVE",
                     CapturePositionSnapshot("AI_EVENT"));
+                aiEvent.UpdateZoneAssessment(AssessAiZone(result, box, resolvedDetectionType));
                 if (_isAiCsvHistoryLoaded)
                 {
                     aiEvent.MarkLiveAfterCsvLoad();
@@ -521,6 +523,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             try
             {
                 IList<FireEventRecord> loaded = ReadFireEventCsv(dialog.FileName);
+                ValidateEventCsvKind(loaded,true);
                 AiDetectionEvents.Clear();
                 foreach (FireEventRecord item in
                         loaded.Where(item =>
@@ -565,7 +568,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error("AI EVENT", "Event CSV load failed", exception);
                 MessageBox.Show(
-                    "AI 이벤트 CSV 불러오기에 실패했습니다.\n" + exception.Message,
+                    exception is FormatException ? exception.Message : "CSV를 읽지 못했습니다.\n파일을 확인하세요.",
                     "CSV 불러오기 실패",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

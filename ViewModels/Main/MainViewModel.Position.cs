@@ -58,6 +58,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void SetPositionConnectionState(bool connected)
         {
+            System.Threading.Interlocked.Increment(ref _zoneEpoch);
             _positionSnapshotService.SetConnected(connected);
             QueuePositionStatusNotification();
         }

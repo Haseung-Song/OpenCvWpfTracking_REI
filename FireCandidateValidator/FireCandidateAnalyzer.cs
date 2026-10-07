@@ -1,3 +1,4 @@
+using OpenCvWpfTracking.Services.Video;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace FireCandidateValidator
     /// </summary>
     internal sealed class FireCandidateAnalyzer
     {
+        private readonly StaticStructureFilter _staticStructures = new StaticStructureFilter();
         private int _continuousCandidateFrames;
 
         // 2026-08-25: REI/MOE 검증 프로그램도 동일한 화재 후보 알고리즘과
@@ -312,6 +314,7 @@ namespace FireCandidateValidator
                     source.Width,
                     source.Height,
                     Math.Max(1, confirmationFrameCount));
+                candidates = new List<Rect>(_staticStructures.Filter(source, candidates, _staticStructures.Clock()));
             }
 
             if (candidates.Count > 0)
@@ -646,6 +649,7 @@ namespace FireCandidateValidator
         /// </summary>
         internal void Reset()
         {
+            _staticStructures.Reset();
             _continuousCandidateFrames = 0;
             _previousGray.Dispose();
             _previousCandidateMask.Dispose();

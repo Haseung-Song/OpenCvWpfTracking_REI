@@ -144,46 +144,23 @@ namespace OpenCvWpfTracking.Common
         }
 
         /// <summary>
-        /// RTSP 주소의 사용자 이름은 유지하고 비밀번호만 마스킹한다.
+        /// RTSP 주소의 사용자 이름과 비밀번호를 모두 마스킹한다.
         /// </summary>
-        public static string MaskRtspPassword(
-            string rtspAddress)
+        public static string MaskRtspPassword(string rtspAddress)
         {
-            if (string.IsNullOrWhiteSpace(rtspAddress))
-            {
-                return string.Empty;
-            }
-
-            int schemeEnd =
-                rtspAddress.IndexOf(
-                    "://",
-                    StringComparison.Ordinal);
-
-            int atIndex =
-                rtspAddress.IndexOf(
-                    '@',
-                    schemeEnd + 3);
-
-            int passwordSeparator =
-                rtspAddress.IndexOf(
-                    ':',
-                    schemeEnd + 3);
-
-            if (schemeEnd < 0 ||
-                atIndex < 0 ||
-                passwordSeparator < 0 ||
-                passwordSeparator > atIndex)
-            {
-                return rtspAddress;
-            }
-
-            return rtspAddress.Substring(
-                       0,
-                       passwordSeparator + 1) +
-                   "********" +
-                   rtspAddress.Substring(
-                       atIndex);
+            if (string.IsNullOrWhiteSpace(rtspAddress)) return string.Empty;
+            int scheme=rtspAddress.IndexOf("://",StringComparison.Ordinal);
+            if(scheme<0) return rtspAddress;
+            int authority=scheme+3, end=rtspAddress.IndexOfAny(new[]{'/','?','#'},authority);
+            if(end<0) end=rtspAddress.Length;
+            int at=rtspAddress.LastIndexOf('@',end-1,end-authority);
+            return at<authority ? rtspAddress : rtspAddress.Substring(0,authority)+"**:**"+rtspAddress.Substring(at);
         }
+
+        public static string MaskRtspInLog(string message) =>
+            System.Text.RegularExpressions.Regex.Replace(message ?? string.Empty,
+                @"rtsp://[^\s""'<>]+", m => MaskRtspPassword(m.Value),
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         /// <summary>
         /// 일반 실행 흐름 로그.
@@ -760,6 +737,7 @@ namespace OpenCvWpfTracking.Common
             string level,
             string message)
         {
+            message = MaskRtspInLog(message);
             switch (level)
             {
                 case "WARN":
@@ -968,7 +946,7 @@ namespace OpenCvWpfTracking.Common
             /// </summary>
             private void FlushPendingLine()
             {
-                string line = _pendingLine.ToString();
+                string line = MaskRtspInLog(_pendingLine.ToString());
                 _pendingLine.Clear();
 
                 string trimmed = line.Trim();

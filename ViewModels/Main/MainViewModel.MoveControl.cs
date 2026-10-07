@@ -391,6 +391,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             HomeZeroLockTitle =
                 "PAN ZERO";
 
+            InvalidateZoneCalibration();
+
             HomeZeroLockMessage =
                 "PAN MOTOR STABILIZING...";
 
@@ -511,6 +513,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 이 구간에는 HOME, 방향키, WASD, Zoom/Focus 입력이 차단된다.
             HomeZeroLockTitle =
                 "TILT ZERO";
+
+            InvalidateZoneCalibration();
 
             HomeZeroLockMessage =
                 "TILT MOTOR STABILIZING...";

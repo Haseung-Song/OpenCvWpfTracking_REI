@@ -6,27 +6,37 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using OpenCvWpfTracking.Services.Configuration;
+using System.Xml;
+using System.Xml.Linq;
+using System.Security.Cryptography;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
         private string PresetStoragePath =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "Presets.tsv");
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "Presets.csv");
 
         private void LoadPresetStorage()
         {
             try
             {
-                if (!File.Exists(PresetStoragePath))
+                string legacyPath=Path.ChangeExtension(PresetStoragePath,"tsv");
+                bool legacy=!File.Exists(PresetStoragePath);
+                string loadPath=legacy?legacyPath:PresetStoragePath;
+                if (!File.Exists(loadPath))
                 {
                     return;
                 }
 
                 _isLoadingPresetStorage = true;
-                foreach (string line in File.ReadAllLines(PresetStoragePath).Skip(1))
+                var rows=legacy ? File.ReadAllLines(loadPath).Select(line=>line.Split('\t')).ToList() :
+                    DeviceCatalog.Parse(File.ReadAllText(loadPath,Encoding.UTF8)).Select(row=>row.ToArray()).ToList();
+                var positions=ReadPresetPositions();
+                foreach (string[] p in rows.Skip(1))
                 {
-                    string[] p = line.Split('\t');
                     if (p.Length >= 8 && p[0] == "SETTINGS")
                     {
                         if (Enum.TryParse(p[3], out PresetScanOrderMode mode)) _presetScanOrderMode = mode;
@@ -58,6 +68,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         p,
                         10,
                         out PositionSnapshot positionSnapshot);
+                    string[] savedPosition;
+                    if(positionSnapshot==null && p.Length==12 && positions.TryGetValue(PresetRowHash(p),out savedPosition))
+                        PositionSnapshot.TryParseExportFields(savedPosition,0,out positionSnapshot);
 
                     PresetPointOption preset = new PresetPointOption(
                         number,
@@ -84,7 +97,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ReorderPresetCollections();
                 SelectedLaPresetPoint = LaPresetPoints.FirstOrDefault();
                 SelectedPresetPoint = PresetPoints.FirstOrDefault();
-                ConsoleLogHelper.State("PRESET STORAGE", "Loaded / PATH=" + PresetStoragePath);
+                ConsoleLogHelper.State("PRESET STORAGE", "Loaded / PATH=" + loadPath);
+                // Never overwrite or delete the legacy file. CSV wins on subsequent starts.
+                if(legacy || rows.FirstOrDefault()?.Length>12) { _isLoadingPresetStorage=false; SavePresetStorage(); }
+                else CsvExcelCompanion.Schedule(PresetStoragePath);
             }
             catch (Exception ex)
             {
@@ -114,23 +130,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 List<string> lines = new List<string>
                 {
                     "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" +
-                    "POSITION_CAPTURED_AT\tPOSITION_SOURCE\tPOSITION_PRESET_ID\tPOSITION_PAN\tPOSITION_TILT\tPOSITION_EO_ZOOM\tPOSITION_EO_FOCUS\tPOSITION_IR_ZOOM\tPOSITION_IR_FOCUS\t" +
-                    "POSITION_LATITUDE\tPOSITION_LONGITUDE\tPOSITION_ALTITUDE\tPOSITION_ROLL\tPOSITION_PITCH\tPOSITION_YAW\t" +
-                    "POSITION_PTZ_STATUS\tPOSITION_EO_LENS_STATUS\tPOSITION_IR_LENS_STATUS\tPOSITION_GPS_STATUS\tPOSITION_IMU_STATUS\t" +
-                    "POSITION_GPS_SPEED\tPOSITION_GPS_COURSE\tPOSITION_GPS_HDOP\tPOSITION_GPS_SATELLITES\tPOSITION_GPS_FIX",
-                    string.Join("\t", new[] { "SETTINGS", "0", "0", _presetScanOrderMode.ToString(), _laPresetScanSpeed.ToString(), _laPresetScanDelay.ToString(), _presetScanSpeed.ToString(), _presetScanDelay.ToString(), "-", "-" })
+                    "POSITION_CAPTURED_AT\tPOSITION_SOURCE",
+                    string.Join("\t", new[] { "SETTINGS", "0", "0", _presetScanOrderMode.ToString(), _laPresetScanSpeed.ToString(), _laPresetScanDelay.ToString(), _presetScanSpeed.ToString(), _presetScanDelay.ToString(), "-", "-", "", "" })
                 };
-                AppendPresetStorageLines(lines, "L", LaPresetPoints);
-                AppendPresetStorageLines(lines, "W", PresetPoints);
-                File.WriteAllLines(temporaryPath, lines);
+                var positions=new XElement("PresetPositions",new XAttribute("Version",1));
+                AppendPresetStorageLines(lines, "L", LaPresetPoints,positions);
+                AppendPresetStorageLines(lines, "W", PresetPoints,positions);
+                // Header and settings were constructed with tab delimiters; data rows are quoted CSV.
+                lines[0]=lines[0].Replace('\t',','); lines[1]=lines[1].Replace('\t',',');
+                File.WriteAllLines(temporaryPath, lines,new UTF8Encoding(true));
+                // Commit metadata first; its backup matches the old CSV if the second commit fails.
+                string positionPath=Path.Combine(directory,"PresetPositions.xml"),positionTemp=positionPath+".tmp";
+                new XDocument(positions).Save(positionTemp);
+                if(File.Exists(positionPath))File.Replace(positionTemp,positionPath,positionPath+".bak");else File.Move(positionTemp,positionPath);
                 if (File.Exists(PresetStoragePath))
                 {
-                    File.Replace(temporaryPath, PresetStoragePath, null);
+                    File.Replace(temporaryPath, PresetStoragePath, PresetStoragePath+".bak");
                 }
                 else
                 {
                     File.Move(temporaryPath, PresetStoragePath);
                 }
+                ConsoleLogHelper.State("PRESET STORAGE", "Saved CSV / PATH="+PresetStoragePath);
+                CsvExcelCompanion.Create(PresetStoragePath);
 
             }
             catch (Exception ex)
@@ -143,7 +165,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private static void AppendPresetStorageLines(
             ICollection<string> lines,
             string type,
-            IEnumerable<PresetPointOption> presets)
+            IEnumerable<PresetPointOption> presets, XElement positions)
         {
             foreach (PresetPointOption preset in presets.OrderBy(p => p.SavedOrder))
             {
@@ -165,10 +187,40 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 string[] positionFields = preset.PositionSnapshot?.ToExportFields() ??
                                           Enumerable.Repeat(string.Empty, PositionSnapshot.ExportFieldCount).ToArray();
-                fields.AddRange(positionFields.Select(SanitizePresetStorageField));
-                lines.Add(string.Join("\t", fields));
+                fields.AddRange(positionFields.Take(2).Select(SanitizePresetStorageField));
+                if(preset.PositionSnapshot!=null)positions.Add(new XElement("Preset",new XAttribute("Hash",PresetRowHash(fields)),positionFields.Select(v=>new XElement("Field",v??""))));
+                lines.Add(string.Join(",", fields.Select(value=>"\""+(value??string.Empty).Replace("\"","\"\"")+"\"")));
             }
 
+        }
+        private static string PresetRowHash(IEnumerable<string> fields)
+        {
+            string canonical=string.Join(",",fields.Take(12).Select(v=>"\""+(v??"").Replace("\"","\"\"")+"\""));
+            using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(canonical))).Replace("-","");
+        }
+        private Dictionary<string,string[]> ReadPresetPositions()
+        {
+            var result=new Dictionary<string,string[]>();string path=Path.Combine(Path.GetDirectoryName(PresetStoragePath),"PresetPositions.xml");
+            foreach(string candidate in new[]{path,path+".bak"})
+            {
+                if(!File.Exists(candidate))continue;
+                try
+                {
+                    if(new FileInfo(candidate).Length>4000000)throw new InvalidDataException("Preset metadata too large.");
+                    using(var reader=XmlReader.Create(candidate,new XmlReaderSettings{DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null}))
+                    {
+                        var data=XDocument.Load(reader);
+                        if(data.Root?.Name!="PresetPositions" || (string)data.Root.Attribute("Version")!="1")throw new InvalidDataException("Preset metadata version.");
+                        foreach(var item in data.Root.Elements("Preset"))
+                        {
+                            string hash=(string)item.Attribute("Hash");var values=item.Elements("Field").Select(e=>e.Value).ToArray();
+                            if(hash!=null && hash.Length==64 && values.Length==PositionSnapshot.ExportFieldCount && !result.ContainsKey(hash))result.Add(hash,values);
+                        }
+                    }
+                }
+                catch(Exception ex){ConsoleLogHelper.Error("PRESET POSITION","위치 메타데이터 읽기 실패 / 해당 위치 연동 보류",ex);}
+            }
+            return result;
         }
 
         private static string SanitizePresetStorageField(string value)

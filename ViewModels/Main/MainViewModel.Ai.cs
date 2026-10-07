@@ -893,7 +893,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             foreach (AiRtspInfo rtsp in rtspList)
             {
                 Console.WriteLine(
-                    $"[RTSP] [Index] {rtsp.Index}, [URL] {rtsp.Url}");
+                    $"[RTSP] [Index] {rtsp.Index}, [URL] {ConsoleLogHelper.MaskRtspPassword(rtsp.Url)}");
             }
 
             // [AI Detector Agent][RTSP] 조회 결과를 [UI Collection]에 반영

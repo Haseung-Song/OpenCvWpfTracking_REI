@@ -275,6 +275,30 @@ namespace OpenCvWpfTracking.Services.Video
         /// <returns>연결 및 [Decoder] 초기화 성공 여부</returns>
         public bool Open(string rtspUrl)
         {
+            if (OpenCore(rtspUrl) || !IsAuthenticationFailure) return IsOpened;
+            RtspAuthenticationRelay relay = null;
+            try
+            {
+                relay = new RtspAuthenticationRelay(rtspUrl);
+                string localAddress = relay.Start();
+                if (OpenCore(localAddress))
+                {
+                    _authenticationRelay = relay;
+                    ConsoleLogHelper.State("RTSP AUTH COMPAT", "Local MD5-compatible relay connected / TARGET=" + ConsoleLogHelper.MaskRtspPassword(rtspUrl));
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                ConsoleLogHelper.State("RTSP AUTH COMPAT", "Compatibility connection failed / original device settings retained");
+            }
+            relay?.Dispose();
+            return false;
+        }
+
+        private RtspAuthenticationRelay _authenticationRelay;
+        private bool OpenCore(string rtspUrl)
+        {
             Close();
             Interlocked.Exchange(ref _interruptRequested, 0);
             LastOpenErrorCode = 0;
@@ -914,6 +938,8 @@ namespace OpenCvWpfTracking.Services.Video
             // lock을 얻기 전에 먼저 Flag를 올려 현재 av_read_frame 호출을 중단시킨다.
             // 기존에는 ReadFrame의 5초 rw_timeout이 끝날 때까지 Close가 대기했다.
             Interlocked.Exchange(ref _interruptRequested, 1);
+            var relay = Interlocked.Exchange(ref _authenticationRelay, null);
+            relay?.Dispose();
 
             // [Close()] 중에는 [ReadFrame()] 못 들어오게
             lock (_syncLock)

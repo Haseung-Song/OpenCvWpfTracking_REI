@@ -17,6 +17,7 @@ namespace OpenCvWpfTracking.Services.Video
     /// </summary>
     internal sealed class ThermalFireDetectionService
     {
+        private readonly StaticStructureFilter _staticStructures = new StaticStructureFilter();
         // 2026-09-17 V25: 순간 IR 노이즈가 4프레임만으로 BBox가 되는 것을 막고,
         // 연기 검출처럼 동일 위치 Track의 시간 누적 증거를 확인한다(30fps 기준 약 0.4초).
         private const int ConfirmFrameCount = 12;
@@ -112,6 +113,7 @@ namespace OpenCvWpfTracking.Services.Video
         {
             _diagnosticWriter?.Flush();
             _diagnosticWriter?.Dispose();
+            if(_diagnosticWriter!=null && _diagnosticDirectory!=null)OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_diagnosticDirectory,"fire_candidates.csv"));
             _diagnosticWriter = null;
             _diagnosticDirectory = null;
             _diagnosticChannel = null;
@@ -478,6 +480,9 @@ namespace OpenCvWpfTracking.Services.Video
                     frame.Height,
                     out heldFireCandidateCount,
                     out suppressedStaticHotspotCount);
+                // V28 candidates remain unchanged for visible flame cores; only rigid non-flame structures are filtered.
+                persistentRects = _staticStructures.Filter(frame, persistentRects, _staticStructures.Clock());
+                suppressedStaticHotspotCount += _staticStructures.SuppressedCount;
 
                 DateTime continuityNow = DateTime.Now;
                 bool fireTrackCountChanged =
@@ -1388,6 +1393,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// </summary>
         private ThermalFireDetectionResult ResetDetectionState()
         {
+            _staticStructures.Reset();
             bool changed = _isFireCandidateDetected;
             _candidateFrameCount = 0;
             _clearFrameCount = 0;

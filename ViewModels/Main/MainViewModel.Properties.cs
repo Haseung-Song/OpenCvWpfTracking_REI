@@ -1589,6 +1589,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
+                if(BlockConnectedSettingChange(nameof(EoSourceAddress)))return;
                 _eoSourceAddress =
                     value;
 
@@ -1640,6 +1641,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
+                if(ReferenceEquals(_selectedEoRtspSource,value))return;
+                if(BlockConnectedSettingChange(nameof(SelectedEoRtspSource)))return;
                 _selectedEoRtspSource = value;
 
                 if (!value.IsDirectInput)
@@ -1672,6 +1675,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
+                if(BlockConnectedSettingChange(nameof(IrSourceAddress)))return;
                 _irSourceAddress =
                     value;
 
@@ -1700,6 +1704,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
+                if(ReferenceEquals(_selectedIrRtspSource,value))return;
+                if(BlockConnectedSettingChange(nameof(SelectedIrRtspSource)))return;
                 _selectedIrRtspSource = value;
 
                 if (!value.IsDirectInput)
@@ -1740,6 +1746,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
+                if(BlockConnectedSettingChange(nameof(ControlAgentIp)))return;
                 _controlControlAgentIp =
                     value;
 
@@ -1794,6 +1801,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
+                if(BlockConnectedSettingChange(nameof(ControlAgentPortText)))return;
                 _controlControlAgentPortText =
                     value;
 
@@ -2355,6 +2363,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// Control Agent TCP 연결 상태 표시 문자열
         /// </summary>
+        // WEB 프로필의 지도/저장 파노라마는 LA TCP의 생존 상태와 독립적이다.
+        // LA 프로필은 기존 연결 완료 시에만 표시하는 규칙을 유지한다.
+        public bool IsContextPanelsVisible => IsSelectedControlAgentWebAgent ||
+            string.Equals(ControlAgentConnectionStatusText, "Connected", StringComparison.Ordinal);
+
         public string ControlAgentConnectionStatusText
         {
             get =>
@@ -2373,6 +2386,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(DeviceControlConnectionStatusText));
+                OnPropertyChanged(nameof(IsContextPanelsVisible));
             }
 
         }
@@ -2501,10 +2515,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public string EoStatusText
         {
-            get => _eoStatusText;
+            get => _eoAlreadyConnectedNotice ? "[EO] Already Connected..." : _eoStatusText;
 
             private set
             {
+                _eoAlreadyConnectedNotice=false;
                 if (_eoStatusText ==
                     value)
                 {
@@ -2513,6 +2528,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _eoStatusText =
                     value;
+                if (value == "[EO] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("EO", true);
+                ZoneChannelChanged("EO");
 
                 /*
                  * 영상 화면 하단의 EO 상태 문자열 갱신
@@ -2546,10 +2563,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public string IrStatusText
         {
-            get => _irStatusText;
+            get => _irAlreadyConnectedNotice ? "[IR] Already Connected..." : _irStatusText;
 
             private set
             {
+                _irAlreadyConnectedNotice=false;
                 if (_irStatusText ==
                     value)
                 {
@@ -2558,6 +2576,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _irStatusText =
                     value;
+                if (value == "[IR] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("IR", true);
+                ZoneChannelChanged("IR");
 
                 /*
                  * 영상 화면 하단의 IR 상태 문자열 갱신
@@ -2604,7 +2624,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get
             {
                 return GetRtspConnectionStatusText(
-                    EoStatusText,
+                    _eoStatusText,
                     "[EO]");
             }
 
@@ -2642,7 +2662,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get
             {
                 return GetRtspConnectionStatusText(
-                    IrStatusText,
+                    _irStatusText,
                     "[IR]");
             }
 
@@ -2878,11 +2898,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     (_currentPowerStatus & 0x40) != 0;
 
                 bool isEoOn =
-                    EoStatusText ==
+                    _eoStatusText ==
                     "[EO] Connected";
 
                 bool isIrOn =
-                    IrStatusText ==
+                    _irStatusText ==
                     "[IR] Connected";
 
                 return
@@ -2934,7 +2954,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         : "UNKNOWN";
                 }
 
-                return GetLegacyCameraPowerText(EoStatusText, "EO");
+                return GetLegacyCameraPowerText(_eoStatusText, "EO");
             }
 
         }
@@ -2953,7 +2973,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         : "UNKNOWN";
                 }
 
-                return GetLegacyCameraPowerText(IrStatusText, "IR");
+                return GetLegacyCameraPowerText(_irStatusText, "IR");
             }
 
         }
@@ -2985,36 +3005,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 장비 주소를 UI에서 선택하도록 제공한다.
         /// </summary>
         public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; }
-            = new ObservableCollection<RtspSourceOption>
-            {
-                new RtspSourceOption(
-                    RooftopMr300EoDisplayName,
-                    RooftopMr300EoRtspAddress,
-                    CameraControlType.CtecCgi,
-                    RooftopMr300EoControlIp,
-                    RooftopMr300EoControlUserName,
-                    RooftopMr300EoControlPassword,
-                    RooftopMr300EoControlUseHttps),
-
-                // 2026-10-01: 옥상 MR500 주간 카메라.
-                new RtspSourceOption(
-                    RooftopMr500EoDisplayName,
-                    RooftopMr500EoRtspAddress),
-
-                // 2026-09-16: 기동형 LR1000 장비 리스트 ver3의 주간 RTSP.
-                new RtspSourceOption(
-                    Lr1000EoDisplayName,
-                    Lr1000EoRtspAddress),
-
-                new RtspSourceOption(
-                    ErWatcherEoDisplayName,
-                    ErWatcherEoRtspAddress),
-
-                new RtspSourceOption(
-                    "직접 입력",
-                    string.Empty,
-                    isDirectInput: true)
-            };
+            = new ObservableCollection<RtspSourceOption>(
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(e.EoLabel,e.EoAddress,e.EoControlType,e.ControlIp,e.ControlUser,e.ControlPassword,e.UseHttps)).Concat(new[] {new RtspSourceOption("직접 입력",string.Empty,isDirectInput:true)}));
 
         /// <summary>
         /// 통신 설정 탭의 [IR RTSP] 카메라 선택 목록
@@ -3023,31 +3015,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 선택된 Address가 IrSourceAddress에 반영된다.
         /// </summary>
         public ObservableCollection<RtspSourceOption> IrRtspSourceOptions { get; }
-            = new ObservableCollection<RtspSourceOption>
-            {
-                new RtspSourceOption(
-                    RooftopMr300IrDisplayName,
-                    RooftopMr300IrRtspAddress),
-
-                // 2026-10-01: 옥상 MR500 열상 카메라.
-                new RtspSourceOption(
-                    RooftopMr500IrDisplayName,
-                    RooftopMr500IrRtspAddress),
-
-                // 2026-09-16: 기동형 LR1000 장비 리스트 ver3의 열상 RTSP.
-                new RtspSourceOption(
-                    Lr1000IrDisplayName,
-                    Lr1000IrRtspAddress),
-
-                new RtspSourceOption(
-                    ErWatcherIrDisplayName,
-                    ErWatcherIrRtspAddress),
-
-                new RtspSourceOption(
-                    "직접 입력",
-                    string.Empty,
-                    isDirectInput: true)
-            };
+            = new ObservableCollection<RtspSourceOption>(
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(e.IrLabel,e.IrAddress)).Concat(new[] {new RtspSourceOption("직접 입력",string.Empty,isDirectInput:true)}));
 
         /// <summary>
         /// [EO] 화면에 표시할 [AI Detector] [Bounding Box] 목록

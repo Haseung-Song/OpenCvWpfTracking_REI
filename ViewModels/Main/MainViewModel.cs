@@ -99,8 +99,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 옥상 MR300 주간(EO) 카메라 RTSP 주소
         /// </summary>
-        private const string RooftopMr300EoRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.1.2:554/AVStream1_1";
+        private static string RooftopMr300EoRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").EoAddress;
 
         /// <summary>
         /// 옥상 MR300 주간(EO) 카메라 CTEC CGI 직접 제어 정보
@@ -108,14 +107,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// RTSP 영상 수신 주소와 별도로
         /// Zoom / Focus 명령을 카메라 CGI로 직접 송신할 때 사용한다.
         /// </summary>
-        private const string RooftopMr300EoControlIp =
-            "192.168.1.2";
+        private static string RooftopMr300EoControlIp => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").ControlIp;
 
-        private const string RooftopMr300EoControlUserName =
-            "root";
+        private static string RooftopMr300EoControlUserName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").ControlUser;
 
-        private const string RooftopMr300EoControlPassword =
-            "rmffhqjf1!";
+        private static string RooftopMr300EoControlPassword => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").ControlPassword;
 
         /// <summary>
         /// 옥상 MR300 주간(EO) 카메라 CGI 제어 HTTPS 사용 여부
@@ -152,20 +148,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 옥상 MR300 열상(IR) 카메라 RTSP 주소
         /// </summary>
-        private const string RooftopMr300IrRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.0.121:554/cam0_0";
+        private static string RooftopMr300IrRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").IrAddress;
 
         /// <summary>
         /// 옥상 MR500 주간(EO) 카메라 RTSP 주소
         /// </summary>
-        private const string RooftopMr500EoRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.0.110:554/AVStream1_1";
+        private static string RooftopMr500EoRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR500_MOE").EoAddress;
 
         /// <summary>
         /// 옥상 MR500 열상(IR) 카메라 RTSP 주소
         /// </summary>
-        private const string RooftopMr500IrRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.0.111:554/cam0_0";
+        private static string RooftopMr500IrRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR500_MOE").IrAddress;
 
         #endregion
 
@@ -2250,6 +2243,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeThermalFeatures();
             InitializeSmokeFeatures();
             InitializeFireEventFeatures();
+            InitializeZoneFeatures();
             LoadPresetStorage();
 
             ConsoleLogHelper.PrintSection(
@@ -2401,6 +2395,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             PropertyChanged?.Invoke(
                 this,
                 new PropertyChangedEventArgs(propertyName));
+            if (propertyName == nameof(SelectedControlAgentProfile) || propertyName == nameof(ControlAgentIp) ||
+                propertyName == nameof(ControlAgentPortText) || propertyName == nameof(EoSourceAddress) || propertyName == nameof(IrSourceAddress))
+            {
+                OnPropertyChanged(nameof(EoPowerControlStatusText)); OnPropertyChanged(nameof(IrPowerControlStatusText));
+                OnPropertyChanged(nameof(CurrentEoPowerStatusColor)); OnPropertyChanged(nameof(CurrentIrPowerStatusColor));
+            }
             if (propertyName == nameof(EoPowerControlStatusText) ||
                 propertyName == nameof(CurrentEoPowerText) || propertyName == nameof(IsOperationCommandEnabled))
                 OnPropertyChanged(nameof(IsEoPowerControlEnabled));
@@ -2408,7 +2408,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 propertyName == nameof(CurrentIrPowerText) || propertyName == nameof(IsOperationCommandEnabled))
                 OnPropertyChanged(nameof(IsIrPowerControlEnabled));
             if (propertyName == nameof(IsEoPowerControlEnabled) || propertyName == nameof(IsIrPowerControlEnabled))
+            {
+                if (propertyName == nameof(IsEoPowerControlEnabled))
+                {
+                    OnPropertyChanged(nameof(IsEoPowerOnEnabled)); OnPropertyChanged(nameof(IsEoPowerOffEnabled));
+                }
+                else
+                {
+                    OnPropertyChanged(nameof(IsIrPowerOnEnabled)); OnPropertyChanged(nameof(IsIrPowerOffEnabled));
+                }
                 System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+            }
         }
         #endregion
     }

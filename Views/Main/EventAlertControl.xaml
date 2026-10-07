@@ -124,6 +124,7 @@
         </Style>
 
         <Style TargetType="{x:Type DataGridRow}">
+            <Setter Property="ToolTip" Value="{Binding ZoneDetailText}"/>
             <Setter Property="Background" Value="#40474E"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="MinHeight" Value="27"/>
@@ -194,6 +195,7 @@
                         BorderThickness="1" CornerRadius="0,0,5,5" Padding="0,0,0,2">
                     <DataGrid x:Name="AiEventGrid" ItemsSource="{Binding AiDetectionEvents}"
                               Style="{StaticResource EventGridStyle}"
+                              MouseDoubleClick="ZoneEventDetail_MouseDoubleClick"
                               Sorting="EventGrid_Sorting"
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
@@ -290,6 +292,7 @@
                         BorderThickness="1" CornerRadius="0,0,5,5" Padding="0,0,0,2">
                     <DataGrid x:Name="FireEventGrid" ItemsSource="{Binding FireDetectionEvents}"
                               Style="{StaticResource EventGridStyle}"
+                              MouseDoubleClick="ZoneEventDetail_MouseDoubleClick"
                               Sorting="EventGrid_Sorting"
                               SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>

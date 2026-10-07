@@ -114,6 +114,7 @@
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Net.Http" />
@@ -134,9 +135,17 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Content Include="FFmpeg\*.dll">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Common\AppLogger.cs" />
     <Compile Include="Models\Main\MainViewTypes.cs" />
     <Compile Include="Models\Position\PositionSnapshot.cs" />
+    <Compile Include="Services\Position\FireSmokeZoneService.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.Zones.cs" />
+    <Compile Include="Views\Main\FireSmokeZoneWindow.cs" />
+    <Compile Include="Views\Main\ZoneOverlayView.cs" />
     <Compile Include="Services\Communication\MCB\McbMaintenanceCommandService.cs" />
     <Compile Include="Services\Control\HomePositionStabilityTracker.cs" />
     <Compile Include="Services\Control\FieldOfViewSyncService.cs" />
@@ -144,6 +153,15 @@
     <Compile Include="Services\Position\DevicePositionState.cs" />
     <Compile Include="Services\Position\PositionSnapshotService.cs" />
     <Compile Include="Services\Video\ThermalFireDetectionService.cs" />
+    <Compile Include="Services\Video\StaticStructureFilter.cs" />
+    <Compile Include="Services\Video\RtspAuthenticationRelay.cs" />
+    <Compile Include="Services\Position\ZoneViewProjection.cs" />
+    <Compile Include="Services\Position\ZoneImageRegistration.cs" />
+    <Compile Include="Services\Configuration\CsvExcelCompanion.cs" />
+    <Compile Include="Services\Configuration\DeviceCatalog.cs" />
+    <Content Include="Config\Devices.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Services\Video\SmokeDetectionService.cs" />
     <Compile Include="FireCandidateValidator\SmokeCandidateAnalyzer.cs">
       <Link>Services\Video\SmokeCandidateAnalyzer.cs</Link>

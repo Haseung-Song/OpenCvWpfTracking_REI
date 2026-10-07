@@ -28,6 +28,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             public Mat LatestFrame;
 
+            public OpenCvWpfTracking.Services.Position.ZoneFrameContext LatestZoneFrame;
+            public OpenCvWpfTracking.Services.Position.ZoneFrameContext ResultZoneFrame;
+
             public Mat ReusableFrame;
 
             public int WorkerRunning;
@@ -289,6 +292,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void Connect()
         {
+            if(IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _deviceConnectRequested,1,0)!=0) { ShowAlreadyConnected();return; }
             await _deviceConnectionLifecycleLock.WaitAsync();
             long session = Interlocked.Increment(ref _deviceSessionGeneration);
             try
@@ -304,11 +308,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error("DEVICE CONNECT", $"SESSION={session} / RESULT=FAULTED", ex);
             }
-            finally { _deviceConnectionLifecycleLock.Release(); }
+            finally { Interlocked.Exchange(ref _deviceConnectRequested,0);_deviceConnectionLifecycleLock.Release(); }
         }
 
         private async Task ConnectCoreAsync(long session)
         {
+            if(HasActiveDeviceSession) {ShowAlreadyConnected();return;}
             /*
              * TODO(COMMAND-NEXT):
              * 현재 XAML Command가 RelayCommand(Action)에 연결되어 있어 async void를 유지한다.
@@ -355,30 +360,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * Trim 처리된 검증 완료 주소를
              * 실제 영상 연결 주소로 다시 반영한다.
              */
-            EoSourceAddress =
-                eoRtspAddress;
-
-            IrSourceAddress =
-                irRtspAddress;
+            _normalizingConnectionEndpoints=true;
+            try { EoSourceAddress=eoRtspAddress;IrSourceAddress=irRtspAddress; }
+            finally { _normalizingConnectionEndpoints=false; }
 
             // 2026-09-08: 검증을 통과한 직접 입력/프리셋 주소를 다음 실행에 복원한다.
             SaveRtspCommunicationSettings();
-
-            if (IsAllVideoConnected())
-            {
-                // 2026-08-14: 이미 재생 중인 RTSP 프레임과 BBox를 절대 초기화하지 않는다.
-                EoStatusText =
-                    "Already Connected...";
-
-                IrStatusText =
-                    "Already Connected...";
-
-                Console.WriteLine(
-                    "[VIDEO] EO / IR Already Connected.");
-
-                ConsoleLogHelper.PrintLine();
-                return;
-            }
 
             // 2026-08-18: 한 채널만 연결된 상태에서 다시 연결해도
             // 정상 채널의 프레임과 CaptureLoop는 유지하고 실패 채널만 초기화한다.
@@ -968,6 +955,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 slot.ReusableFrame?.Dispose();
                 slot.ReusableFrame = null;
                 slot.ThermalResult = default(ThermalFireDetectionResult);
+                slot.LatestZoneFrame = null;
+                slot.ResultZoneFrame = null;
                 slot.SmokeResult = default(SmokeDetectionResult);
                 slot.ResultVersion = 0;
                 Interlocked.Exchange(ref slot.WorkerRunning, 0);
@@ -1053,15 +1042,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [VD] 로컬 테스트 영상은 현재 사용하지 않으므로
         /// 연결 상태 판단 대상에서 제외한다.
         /// </summary>
-        private bool IsAllVideoConnected()
-        {
-            // 2026-08-14: A decoder can briefly report a transitional state while
-            // its capture loop is still displaying frames. Treat two displayed
-            // streams as an active session so a duplicate click cannot cancel it.
-            return (_eoDecoder.IsOpened && _irDecoder.IsOpened) ||
-                   (_isEoFrameDisplayed && _isIrFrameDisplayed);
-        }
-
         /// <summary>
         /// 기존 [CancellationTokenSource] 정리 후
         /// 새 영상 루프 종료 토큰을 생성한다.
@@ -2278,17 +2258,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         streamName,
                         out ThermalFireDetectionResult thermalResult,
                         out SmokeDetectionResult smokeResult,
-                        out long latestVersion);
+                        out long latestVersion,
+                        out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame);
 
                     // 2026-10-06: 화재 후보 상태/경고는 IR뿐 아니라 원본 EO 영상에도 동일하게 반영한다.
-                    UpdateThermalFireCandidateState(streamName, thermalResult);
+                    UpdateThermalFireCandidateState(streamName, thermalResult, zoneFrame);
 
                     UpdateVisionBBoxEvents(
                         streamName,
                         smokeResult.IsInfraredSupport ? "IR SMOKE" : "SMOKE",
                         smokeResult.CandidateRects,
                         smokeResult.CandidateScores,
-                        smokeResult.IsInfraredSupport ? "IR SMOKE CANDIDATE" : "IMAGE PROCESSING");
+                        smokeResult.IsInfraredSupport ? "IR SMOKE CANDIDATE" : "IMAGE PROCESSING", zoneFrame);
                     UpdateFireSmokeDetectionOverlay(streamName, thermalResult, smokeResult);
                     displaySlot.LastOverlayVersion = latestVersion;
                 }
@@ -2329,10 +2310,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 throw;
             }
             Mat replacedFrame;
+            var zoneFrame = CaptureZoneFrame(streamName);
+            zoneFrame.Width = sourceFrame.Width;
+            zoneFrame.Height = sourceFrame.Height;
             lock (slot.Sync)
             {
                 replacedFrame = slot.LatestFrame;
                 slot.LatestFrame = detectionFrame;
+                slot.LatestZoneFrame = zoneFrame;
             }
             ReturnDetectionFrameBuffer(slot, replacedFrame);
 
@@ -2349,9 +2334,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 while (true)
                 {
                     Mat frame;
+                    OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame;
                     lock (slot.Sync)
                     {
                         frame = slot.LatestFrame;
+                        zoneFrame = slot.LatestZoneFrame;
                         slot.LatestFrame = null;
                     }
 
@@ -2383,6 +2370,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         {
                             slot.ThermalResult = thermalResult;
                             slot.SmokeResult = smokeResult;
+                            slot.ResultZoneFrame = zoneFrame;
                             slot.ResultVersion++;
                         }
                     }
@@ -2421,7 +2409,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string streamName,
             out ThermalFireDetectionResult thermalResult,
             out SmokeDetectionResult smokeResult,
-            out long resultVersion)
+            out long resultVersion,
+            out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame)
         {
             DetectionFrameSlot slot = GetDetectionSlot(streamName);
             lock (slot.Sync)
@@ -2429,6 +2418,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 thermalResult = slot.ThermalResult;
                 smokeResult = slot.SmokeResult;
                 resultVersion = slot.ResultVersion;
+                zoneFrame = slot.ResultZoneFrame;
             }
         }
 
@@ -2996,7 +2986,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             streamName,
                             out ThermalFireDetectionResult thermalResult,
                             out SmokeDetectionResult smokeResult,
-                            out long _);
+                            out long _,
+                            out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame);
 
                         /// <summary>
                         /// OpenCV Mat → WPF BitmapSource 변환
@@ -3097,7 +3088,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     }
 
                                     // 2026-10-06: 라이브 EO 원본 프레임에서도 화재 BBOX/경고 상태를 갱신한다.
-                                    UpdateThermalFireCandidateState(streamName, thermalResult);
+                                    UpdateThermalFireCandidateState(streamName, thermalResult, zoneFrame);
 
                                     UpdateVisionBBoxEvents(
                                         streamName,
@@ -3107,7 +3098,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                         smokeResult.CandidateScores,
                                         smokeResult.IsInfraredSupport
                                             ? "IR SMOKE CANDIDATE"
-                                            : "IMAGE PROCESSING");
+                                            : "IMAGE PROCESSING", zoneFrame);
 
                                     UpdateFireSmokeDetectionOverlay(streamName, thermalResult, smokeResult);
 

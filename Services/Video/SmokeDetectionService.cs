@@ -125,6 +125,7 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 _diagnosticWriter.Flush();
                 _diagnosticWriter.Dispose();
+                if(_diagnosticDirectory!=null)OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_diagnosticDirectory,"smoke_candidates.csv"));
                 _diagnosticWriter = null;
             }
 

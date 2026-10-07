@@ -16,6 +16,8 @@
         ResizeMode="CanResize"
         BorderThickness="0"
         BorderBrush="Transparent"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
         WindowStartupLocation="CenterScreen"
         Focusable="True"
         Loaded="Window_Loaded"
@@ -38,13 +40,38 @@
     -->
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="34"
-                            ResizeBorderThickness="8"
+                            ResizeBorderThickness="0"
                             CornerRadius="8"
                             GlassFrameThickness="0"
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <!-- V29_4: fixed-DIP grips remain outside the scaled video/control content. -->
+        <Style x:Key="WindowResizeGripStyle" TargetType="Border">
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Panel.ZIndex" Value="1000"/>
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Normal"/>
+                        <Condition Binding="{Binding ResizeMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="CanResize"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible"/>
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Normal"/>
+                        <Condition Binding="{Binding ResizeMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="CanResizeWithGrip"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible"/>
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style x:Key="MobileDeviceStatusStyle" TargetType="TextBlock">
             <Setter Property="Visibility" Value="Collapsed"/>
             <Style.Triggers>
@@ -54,39 +81,6 @@
             </Style.Triggers>
         </Style>
         <!-- 2026-09-17: 로컬 FIRE/SMOKE 분석 BBox. AI Agent BBox와 독립 표시한다. -->
-        <DataTemplate x:Key="FireSmokeDetectionBoxTemplate">
-            <Canvas Width="{Binding OverlayWidth}"
-                    Height="{Binding OverlayHeight}">
-                <Rectangle Canvas.Left="{Binding BoxOffsetX}"
-                           Canvas.Top="{Binding BoxOffsetY}"
-                           Width="{Binding Width}"
-                           Height="{Binding Height}"
-                           StrokeThickness="4">
-                    <Rectangle.Style>
-                        <Style TargetType="Rectangle">
-                            <Setter Property="Stroke" Value="#FFFF3B30"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding DetectionType}" Value="SMOKE">
-                                    <Setter Property="Stroke" Value="#FFFFA000"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Rectangle.Style>
-                </Rectangle>
-                <Border Background="#DD3A1010"
-                        BorderBrush="#FFFF3B30"
-                        BorderThickness="1"
-                        Width="{Binding LabelWidth}"
-                        Canvas.Left="{Binding LabelOffsetX}"
-                        Canvas.Top="{Binding LabelOffsetY}">
-                    <TextBlock Text="{Binding DisplayText}"
-                               Foreground="White"
-                               FontSize="16"
-                               FontWeight="Bold"
-                               Padding="5,1"/>
-                </Border>
-            </Canvas>
-        </DataTemplate>
 
         <!-- [EO / IR] 영상 중앙 십자선 공통 Template
 
@@ -545,8 +539,7 @@
             현재 표시되는 통신 설정 하위 탭을 사용 가능 폭 전체에 균등 배치한다.
 
             일반 장비는 기존 Header 크기를 유지하고,
-            GPS / IMU-RPY가 표시되는 기동형 장비에서는
-            총 5개 탭이 한 줄에 표시되므로 FontSize와 좌우 Padding만 축소한다.
+            GPS / IMU-RPY는 POSITION으로 통합하고 기동형도 최대 4개 탭을 표시한다.
         -->
         <Style x:Key="CommunicationSubTabItemStyle"
                TargetType="TabItem">
@@ -586,9 +579,11 @@
                                 CornerRadius="5,5,0,0"
                                 Padding="{TemplateBinding Padding}">
 
-                            <ContentPresenter ContentSource="Header"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+                                <ContentPresenter ContentSource="Header"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Viewbox>
 
                         </Border>
 
@@ -778,9 +773,9 @@
                                         Value="Visible"/>
 
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ControlAgentConnectionStatusText,
+                                    <DataTrigger Binding="{Binding IsContextPanelsVisible,
                                                          Mode=OneWay}"
-                                                 Value="Connected">
+                                                 Value="True">
                                         <Setter Property="Visibility"
                                                 Value="Collapsed"/>
                                     </DataTrigger>
@@ -808,9 +803,9 @@
                                         Value="Collapsed"/>
 
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ControlAgentConnectionStatusText,
+                                    <DataTrigger Binding="{Binding IsContextPanelsVisible,
                                                          Mode=OneWay}"
-                                                 Value="Connected">
+                                                 Value="True">
                                         <Setter Property="Visibility"
                                                 Value="Visible"/>
                                     </DataTrigger>
@@ -864,6 +859,7 @@
         탭과 메뉴가 화면 밖으로 잘리지 않는다.
     -->
     <Border x:Name="WindowFrameBorder"
+            UseLayoutRounding="True" SnapsToDevicePixels="True"
             Background="#2C313A"
             BorderBrush="Transparent"
             BorderThickness="0"
@@ -889,7 +885,7 @@
                     shell:WindowChrome.IsHitTestVisibleInChrome="True"
                     MouseLeftButtonDown="WindowTitleBar_MouseLeftButtonDown"
                     CornerRadius="7,7,0,0">
-                <Grid>
+                <Grid x:Name="TitleBarClockHost">
                     <TextBlock Text="[REI] EO/IR VIDEO MONITORING &amp; PTZF CONTROL VIEWER"
                                Margin="12,0,0,0"
                                Foreground="#D8E3EA"
@@ -897,11 +893,10 @@
                                FontWeight="Bold"
                                VerticalAlignment="Center"/>
 
-                    <!-- 2026-10-01: 우측 장비 제어 로고 중심축에 가깝게 시계를
-                         왼쪽으로 이동하여 최소화 버튼과 충분한 간격을 확보한다. -->
-                    <Border HorizontalAlignment="Right"
+                    <!-- Clock position follows the rendered logo center; compact windows trim text rather than overlap caption buttons. -->
+                    <Border x:Name="PcTitleBarClockBadge" HorizontalAlignment="Left"
                             VerticalAlignment="Center"
-                            Margin="0,0,225,0"
+                            Margin="0"
                             Padding="10,3"
                             Background="#33424B"
                             BorderBrush="#71808A"
@@ -913,10 +908,13 @@
                                    Foreground="#E5F3FA"
                                    FontSize="11"
                                    FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextAlignment="Center"
+                                   HorizontalAlignment="Stretch"
                                    VerticalAlignment="Center"/>
                     </Border>
 
-                    <StackPanel Orientation="Horizontal"
+                    <StackPanel x:Name="TitleBarWindowButtons" Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Width="48"
@@ -1054,87 +1052,14 @@
                                     <Canvas x:Name="EoFovValidationOverlay"
                                             Panel.ZIndex="55"
                                             IsHitTestVisible="False"/>
+                                    <local:ZoneOverlayView Items="{Binding EoZoneOverlay}" SourceWidth="{Binding EoVideoWidth}" SourceHeight="{Binding EoVideoHeight}" IsHitTestVisible="False"/>
                                 </Grid>
 
                                 <!-- [AI] [Bounding Box] [Overlay] -->
-                                <Viewbox Stretch="Uniform"
-                                         Visibility="Visible"
-                                         IsHitTestVisible="False">
-
-                                    <ItemsControl ItemsSource="{Binding EoDetectionBoxes}"
-                                                  Width="{Binding EoVideoWidth}"
-                                                  Height="{Binding EoVideoHeight}">
-
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <Canvas Width="{Binding Width,
-                                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        Height="{Binding Height,
-                                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        ClipToBounds="True"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-
-                                        <ItemsControl.ItemContainerStyle>
-                                            <Style TargetType="ContentPresenter">
-                                                <Setter Property="Canvas.Left"
-                                                        Value="{Binding OverlayLeft}"/>
-                                                <Setter Property="Canvas.Top"
-                                                        Value="{Binding OverlayTop}"/>
-                                            </Style>
-                                        </ItemsControl.ItemContainerStyle>
-
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <!-- [AI] [Bounding Box] 표시 영역 -->
-                                                <Canvas Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}">
-                                                    <!-- 2026-08-26: AI는 형광 라임 BBox와 AI 순번으로 FIRE와 구분한다. -->
-                                                    <Rectangle Canvas.Left="{Binding BoxOffsetX}"
-                                                                Canvas.Top="{Binding BoxOffsetY}"
-                                                                Width="{Binding RenderWidth}"
-                                                                Height="{Binding RenderHeight}"
-                                                                Stroke="#FF39FF14"
-                                                                StrokeThickness="4"/>
-                                                    <!-- [AI] 탐지 객체 이름 / 정확도 표시 -->
-                                                    <Border Background="#DD102A10"
-                                                             BorderBrush="#FF39FF14"
-                                                             BorderThickness="1"
-                                                             Width="{Binding LabelWidth}"
-                                                             Canvas.Left="{Binding LabelOffsetX}"
-                                                             Canvas.Top="{Binding LabelOffsetY}">
-                                                        <TextBlock Text="{Binding DisplayText}"
-                                                                    Foreground="#FF39FF14"
-                                                                    FontSize="16"
-                                                                   FontWeight="Bold"
-                                                                   Padding="5,1"/>
-                                                    </Border>
-                                                </Canvas>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-
-                                    </ItemsControl>
-
-                                </Viewbox>
+                                <local:ZoneOverlayView Items="{Binding EoDetectionBoxes}" SourceWidth="{Binding EoVideoWidth}" SourceHeight="{Binding EoVideoHeight}" IsHitTestVisible="False"/>
 
                                 <!-- [Local FIRE / SMOKE] Bounding Box Overlay -->
-                                <Viewbox Stretch="Uniform" IsHitTestVisible="False" Panel.ZIndex="20">
-                                    <ItemsControl ItemsSource="{Binding EoFireSmokeDetectionBoxes}"
-                                                  Width="{Binding EoVideoWidth}"
-                                                  Height="{Binding EoVideoHeight}"
-                                                  ItemTemplate="{StaticResource FireSmokeDetectionBoxTemplate}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemContainerStyle>
-                                            <Style TargetType="ContentPresenter">
-                                                <Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/>
-                                                <Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/>
-                                            </Style>
-                                        </ItemsControl.ItemContainerStyle>
-                                    </ItemsControl>
-                                </Viewbox>
+                                <local:ZoneOverlayView Items="{Binding EoFireSmokeDetectionBoxes}" SourceWidth="{Binding EoVideoWidth}" SourceHeight="{Binding EoVideoHeight}" IsHitTestVisible="False" Panel.ZIndex="20"/>
 
                                 <!-- 2026-09-18: 화재 발생을 BBox 외에도 즉시 인지할 수 있는 영상 경고창 -->
                                 <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -1208,15 +1133,12 @@
                                                     Value="Visible"/>
 
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding EoStatusText,
+                                                <!-- Connection notices must never cover a live stream. -->
+                                                <DataTrigger Binding="{Binding EoConnectionStatusText,
                                                                      Mode=OneWay}"
-                                                             Value="[EO] Connected">
+                                                             Value="Connected">
                                                     <Setter Property="Visibility"
                                                             Value="Collapsed"/>
-                                                </DataTrigger>
-                                                <!-- 2026-08-14: Keep video visible for duplicate connection requests. -->
-                                                <DataTrigger Binding="{Binding EoStatusText}" Value="Already Connected...">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -1277,6 +1199,7 @@
                                         <Image x:Name="IrCameraImageView"
                                                Source="{Binding IRCameraImage}"
                                                Stretch="Uniform"/>
+                                        <local:ZoneOverlayView Items="{Binding IrZoneOverlay}" SourceWidth="{Binding IrVideoWidth}" SourceHeight="{Binding IrVideoHeight}" IsHitTestVisible="False"/>
 
                                         <!-- 2026-09-21: SYNC 화각 검증 시 선택한 기준물 좌/우 경계를 표시한다. -->
                                         <Canvas x:Name="IrFovValidationOverlay"
@@ -1285,87 +1208,10 @@
                                     </Grid>
 
                                     <!-- [AI] [Bounding Box] [Overlay] -->
-                                    <Viewbox Stretch="Uniform"
-                                             IsHitTestVisible="False">
-
-                                        <ItemsControl ItemsSource="{Binding IrDetectionBoxes}"
-                                                      Width="{Binding IrVideoWidth}"
-                                                      Height="{Binding IrVideoHeight}">
-
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <Canvas Width="{Binding Width,
-                                                                    RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            Height="{Binding Height,
-                                                                    RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            ClipToBounds="True"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-
-                                            <ItemsControl.ItemContainerStyle>
-                                                <Style TargetType="ContentPresenter">
-                                                    <Setter Property="Canvas.Left"
-                                                            Value="{Binding OverlayLeft}"/>
-                                                    <Setter Property="Canvas.Top"
-                                                            Value="{Binding OverlayTop}"/>
-                                                </Style>
-                                            </ItemsControl.ItemContainerStyle>
-
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <!-- [AI] [Bounding Box] 표시 영역 -->
-                                                    <Canvas Width="{Binding OverlayWidth}" Height="{Binding OverlayHeight}">
-
-                                                        <!-- 2026-08-26: AI는 형광 라임 BBox와 AI 순번으로 FIRE와 구분한다. -->
-                                                        <Rectangle Canvas.Left="{Binding BoxOffsetX}"
-                                                                   Canvas.Top="{Binding BoxOffsetY}"
-                                                                   Width="{Binding RenderWidth}"
-                                                                   Height="{Binding RenderHeight}"
-                                                                   Stroke="#FF39FF14"
-                                                                   StrokeThickness="4"/>
-
-                                                        <!-- [AI] 탐지 객체 이름 / 정확도 표시 -->
-                                                        <Border Background="#DD102A10"
-                                                                BorderBrush="#FF39FF14"
-                                                                BorderThickness="1"
-                                                                Width="{Binding LabelWidth}"
-                                                                Canvas.Left="{Binding LabelOffsetX}"
-                                                                Canvas.Top="{Binding LabelOffsetY}">
-
-                                                            <TextBlock Text="{Binding DisplayText}"
-                                                                       Foreground="#FF39FF14"
-                                                                       FontSize="16"
-                                                                       FontWeight="Bold"
-                                                                       Padding="5,1"/>
-                                                        </Border>
-
-                                                    </Canvas>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-
-                                        </ItemsControl>
-
-                                    </Viewbox>
+                                    <local:ZoneOverlayView Items="{Binding IrDetectionBoxes}" SourceWidth="{Binding IrVideoWidth}" SourceHeight="{Binding IrVideoHeight}" IsHitTestVisible="False"/>
 
                                     <!-- [Local FIRE / SMOKE] Bounding Box Overlay -->
-                                    <Viewbox Stretch="Uniform" IsHitTestVisible="False" Panel.ZIndex="20">
-                                        <ItemsControl ItemsSource="{Binding IrFireSmokeDetectionBoxes}"
-                                                      Width="{Binding IrVideoWidth}"
-                                                      Height="{Binding IrVideoHeight}"
-                                                      ItemTemplate="{StaticResource FireSmokeDetectionBoxTemplate}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <Canvas Width="{Binding Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}" ClipToBounds="True"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemContainerStyle>
-                                                <Style TargetType="ContentPresenter">
-                                                    <Setter Property="Canvas.Left" Value="{Binding OverlayLeft}"/>
-                                                    <Setter Property="Canvas.Top" Value="{Binding OverlayTop}"/>
-                                                </Style>
-                                            </ItemsControl.ItemContainerStyle>
-                                        </ItemsControl>
-                                    </Viewbox>
+                                    <local:ZoneOverlayView Items="{Binding IrFireSmokeDetectionBoxes}" SourceWidth="{Binding IrVideoWidth}" SourceHeight="{Binding IrVideoHeight}" IsHitTestVisible="False" Panel.ZIndex="20"/>
 
                                     <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
                                             Margin="0,10,0,0" Padding="12,5" Background="#E6A61B1B"
@@ -1436,15 +1282,12 @@
                                                         Value="Visible"/>
 
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IrStatusText,
+                                                    <!-- Connection notices must never cover a live stream. -->
+                                                    <DataTrigger Binding="{Binding IrConnectionStatusText,
                                                                      Mode=OneWay}"
-                                                             Value="[IR] Connected">
+                                                             Value="Connected">
                                                         <Setter Property="Visibility"
                                                             Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                    <!-- 2026-08-14: Keep video visible for duplicate connection requests. -->
-                                                    <DataTrigger Binding="{Binding IrStatusText}" Value="Already Connected...">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -1730,9 +1573,9 @@
                                                     Value="Collapsed"/>
 
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding ControlAgentConnectionStatusText,
+                                                <DataTrigger Binding="{Binding IsContextPanelsVisible,
                                                                      Mode=OneWay}"
-                                                             Value="Connected">
+                                                             Value="True">
                                                     <Setter Property="Visibility"
                                                             Value="Visible"/>
                                                 </DataTrigger>
@@ -1800,7 +1643,7 @@
                                 -->
                                 <StackPanel Grid.Row="0"
                                             Margin="0,0,0,8">
-                                    <Image Source="/Images/Demo/TorussLogo.png"
+                                    <Image x:Name="DeviceBrandLogo" Source="/Images/Demo/TorussLogo.png"
                                            Height="58"
                                            Margin="0,0,0,10"
                                            HorizontalAlignment="Stretch"
@@ -2290,7 +2133,7 @@
                                                                                 <TextBlock Text="EO CAMERA" Foreground="#5EE7F7" FontWeight="Bold" FontSize="11"/>
                                                                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                                                     <Ellipse Width="8" Height="8" Fill="{Binding CurrentEoPowerStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
-                                                                                    <TextBlock Text="{Binding EoPowerControlStatusText, Mode=OneWay}" Foreground="{Binding CurrentEoPowerStatusColor, Mode=OneWay}" FontSize="11" FontWeight="Bold" Margin="5,0,0,0"/>
+                                                                                    <TextBlock Text="{Binding EoPowerControlStatusText, Mode=OneWay}" ToolTip="{Binding CameraPowerStateHelpText, Mode=OneWay}" Foreground="{Binding CurrentEoPowerStatusColor, Mode=OneWay}" FontSize="11" FontWeight="Bold" Margin="5,0,0,0"/>
                                                                                 </StackPanel>
                                                                             </Grid>
                                                                             <Grid Margin="0,4,0,10">
@@ -2301,11 +2144,11 @@
                                                                                 </Grid.ColumnDefinitions>
                                                                                 <Button Grid.Column="0" Content="POWER ON"
                                                                                         Height="28" Style="{StaticResource ConnectButtonStyle}"
-                                                                                        IsEnabled="{Binding IsEoPowerControlEnabled, Mode=OneWay}"
+                                                                                        IsEnabled="{Binding IsEoPowerOnEnabled, Mode=OneWay}"
                                                                                         Command="{Binding EoPowerOnCommand}"/>
                                                                                 <Button Grid.Column="2" Content="POWER OFF"
                                                                                         Height="28" Style="{StaticResource DisconnectButtonStyle}"
-                                                                                        IsEnabled="{Binding IsEoPowerControlEnabled, Mode=OneWay}"
+                                                                                        IsEnabled="{Binding IsEoPowerOffEnabled, Mode=OneWay}"
                                                                                         Command="{Binding EoPowerOffCommand}"/>
                                                                             </Grid>
                                                                             <Grid Margin="0,0,0,5">
@@ -2313,7 +2156,7 @@
                                                                                 <TextBlock Text="IR CAMERA" Foreground="#C4B5FD" FontWeight="Bold" FontSize="11"/>
                                                                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                                                     <Ellipse Width="8" Height="8" Fill="{Binding CurrentIrPowerStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
-                                                                                    <TextBlock Text="{Binding IrPowerControlStatusText, Mode=OneWay}" Foreground="{Binding CurrentIrPowerStatusColor, Mode=OneWay}" FontSize="11" FontWeight="Bold" Margin="5,0,0,0"/>
+                                                                                    <TextBlock Text="{Binding IrPowerControlStatusText, Mode=OneWay}" ToolTip="{Binding CameraPowerStateHelpText, Mode=OneWay}" Foreground="{Binding CurrentIrPowerStatusColor, Mode=OneWay}" FontSize="11" FontWeight="Bold" Margin="5,0,0,0"/>
                                                                                 </StackPanel>
                                                                             </Grid>
                                                                             <Grid Margin="0,4,0,0">
@@ -2324,11 +2167,11 @@
                                                                                 </Grid.ColumnDefinitions>
                                                                                 <Button Grid.Column="0" Content="POWER ON"
                                                                                         Height="28" Style="{StaticResource ConnectButtonStyle}"
-                                                                                        IsEnabled="{Binding IsIrPowerControlEnabled, Mode=OneWay}"
+                                                                                        IsEnabled="{Binding IsIrPowerOnEnabled, Mode=OneWay}"
                                                                                         Command="{Binding IrPowerOnCommand}"/>
                                                                                 <Button Grid.Column="2" Content="POWER OFF"
                                                                                         Height="28" Style="{StaticResource DisconnectButtonStyle}"
-                                                                                        IsEnabled="{Binding IsIrPowerControlEnabled, Mode=OneWay}"
+                                                                                        IsEnabled="{Binding IsIrPowerOffEnabled, Mode=OneWay}"
                                                                                         Command="{Binding IrPowerOffCommand}"/>
                                                                             </Grid>
                                                                         </StackPanel>
@@ -2338,7 +2181,7 @@
                                                             </TabItem>
 
                                                             <!-- 2026-10-02: WebAgent GPS 상태 및 공통 자동 전송 주파수 설정 -->
-                                                            <TabItem Header="GPS">
+                                                            <TabItem Header="POSITION">
                                                                 <TabItem.Style>
                                                                     <Style TargetType="TabItem"
                                                                            BasedOn="{StaticResource CommunicationSubTabItemStyle}">
@@ -2348,14 +2191,20 @@
                                                                                          Value="True">
                                                                                 <Setter Property="Visibility" Value="Visible"/>
                                                                             </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsImuRpyTabVisible}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
                                                                 </TabItem.Style>
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
-                                                                              Padding="0,8,8,14">
-                                                                    <StackPanel Margin="7"
+                                                                              CanContentScroll="False"
+                                                                              Padding="0">
+                                                                    <StackPanel Margin="8,18,20,32"
                                                                                 IsEnabled="{Binding IsEnvironmentStatusSelected}">
+                                                                        <StackPanel Visibility="{Binding IsGpsTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                        <TextBlock Text="1. GPS" Foreground="White" FontWeight="Bold" Margin="0,0,0,9"/>
                                                                         <Border Padding="8"
                                                                                 Background="#394148"
                                                                                 BorderBrush="#6F8996"
@@ -2516,29 +2365,10 @@
                                                                                            Margin="0,3,0,0"/>
                                                                             </StackPanel>
                                                                         </Border>
-                                                                    </StackPanel>
-                                                                </ScrollViewer>
-                                                            </TabItem>
-
-                                                            <!-- 2026-10-01: WebAgent Build 86 IMU RPY 설정 하위 탭 -->
-                                                            <TabItem Header="IMU / RPY">
-                                                                <TabItem.Style>
-                                                                    <Style TargetType="TabItem"
-                                                                           BasedOn="{StaticResource CommunicationSubTabItemStyle}">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsImuRpyTabVisible}"
-                                                                                         Value="True">
-                                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </TabItem.Style>
-                                                                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                              HorizontalScrollBarVisibility="Disabled"
-                                                                              Padding="0,8,8,14">
-                                                                    <StackPanel Margin="7"
-                                                                                IsEnabled="{Binding IsEnvironmentStatusSelected}">
+                                                                        </StackPanel>
+                                                                        <StackPanel Visibility="{Binding IsImuRpyTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                        <Border Height="1" Background="#6F8996" Margin="0,16,0,16"/>
+                                                                        <TextBlock Text="2. IMU / RPY" Foreground="White" FontWeight="Bold" Margin="0,0,0,9"/>
 
                                                                         <Border Padding="8"
                                                                                 Background="#394148"
@@ -2770,6 +2600,7 @@
                                                                                            Margin="0,6,0,0"/>
                                                                             </StackPanel>
                                                                         </Border>
+                                                                        </StackPanel>
                                                                     </StackPanel>
                                                                 </ScrollViewer>
                                                             </TabItem>
@@ -2884,7 +2715,8 @@
                                                             </TabItem>
 
                                                             <!-- AI Detector 연결 및 분석 설정 하위 탭 -->
-                                                            <TabItem Header="AI SETTING">
+                                                            <TabItem Header="AI / VP SETTING" Padding="2,4">
+                                                                <TabItem.HeaderTemplate><DataTemplate><TextBlock Text="{Binding}" FontSize="10" FontWeight="Bold"/></DataTemplate></TabItem.HeaderTemplate>
                                                                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
                                                                               CanContentScroll="False"
@@ -2938,7 +2770,7 @@
                                                                                 BorderThickness="1"
                                                                                 CornerRadius="4">
                                                                             <StackPanel>
-                                                                                <TextBlock Text="3. AI DETECTOR SETTING"
+                                                                                <TextBlock Text="1. AI DETECTOR SETTING"
                                                                                            Foreground="#A9D6E5"
                                                                                            FontWeight="Bold"
                                                                                            HorizontalAlignment="Center"
@@ -3160,7 +2992,7 @@
                                                                                 BorderThickness="1"
                                                                                 CornerRadius="4">
                                                                             <StackPanel>
-                                                                                <TextBlock Text="4. FIRE / SMOKE DETECTOR SETTING"
+                                                                                <TextBlock Text="2. FIRE / SMOKE DETECTOR SETTING"
                                                                                            Foreground="#A9D6E5"
                                                                                            FontWeight="Bold"
                                                                                            HorizontalAlignment="Center"
@@ -3432,6 +3264,24 @@
                                                                                     </StackPanel>
                                                                                 </Border>
 
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                        <Border Background="#495057" BorderBrush="#8197A5"
+                                                                                BorderThickness="1" CornerRadius="5"
+                                                                                Padding="8" Margin="0,10,0,12">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="3. FIRE / SMOKE ZONE SETTING"
+                                                                                           Foreground="#A9E2F3" FontWeight="Bold"
+                                                                                           HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                                                                <Button Content="FIRE / SMOKE 구역 설정"
+                                                                                        Height="30" Margin="0,0,0,10"
+                                                                                        Style="{StaticResource AiSettingButtonStyle}"
+                                                                                        Background="#3E515E" Click="FireSmokeZoneSettings_Click"/>
+                                                                                <TextBlock Text="{Binding ZoneStatusText, Mode=OneWay}"
+                                                                                           Foreground="#BBCDD9" FontSize="11"
+                                                                                           TextWrapping="Wrap" LineHeight="18" LineStackingStrategy="BlockLineHeight" Margin="0,0,0,10"/>
+                                                                                <CheckBox Content="등록 구역 표시" Foreground="#BBCDD9"
+                                                                                          Margin="0,0,0,4" IsChecked="{Binding ShowZoneOverlay, Mode=TwoWay}"/>
                                                                             </StackPanel>
                                                                         </Border>
                                                                     </StackPanel>
@@ -3804,28 +3654,6 @@
                                                             </Grid>
                                                         </Border>
 
-                                                        <!-- 위치 기반 기능 1차: 지도와 분리된 상태 유효성 및 최근 스냅샷 표시 -->
-                                                        <Border Background="#293138"
-                                                                BorderBrush="#607D8B"
-                                                                BorderThickness="1"
-                                                                CornerRadius="3"
-                                                                Padding="7,5"
-                                                                Margin="0,0,0,2">
-                                                            <StackPanel>
-                                                                <TextBlock Foreground="#8FD3FF"
-                                                                           FontSize="10"
-                                                                           FontWeight="Bold"
-                                                                           TextAlignment="Center"
-                                                                           Text="{Binding PositionStatusText, Mode=OneWay}"/>
-                                                                <TextBlock Foreground="#D0D7DE"
-                                                                           FontSize="9.5"
-                                                                           TextAlignment="Center"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           ToolTip="{Binding LastPositionSnapshotText, Mode=OneWay}"
-                                                                           Text="{Binding LastPositionSnapshotText, Mode=OneWay}"
-                                                                           Margin="0,3,0,0"/>
-                                                            </StackPanel>
-                                                        </Border>
                                                     </StackPanel>
                                                 </ScrollViewer>
                                             </Border>
@@ -6196,6 +6024,15 @@
                 </Grid>
             </Viewbox>
 
+            <!-- Windows WMSZ directions: every edge plus four corners, not scaled with the UI. -->
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="1" Width="8" HorizontalAlignment="Left" Cursor="SizeWE"/>
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="2" Width="8" HorizontalAlignment="Right" Cursor="SizeWE"/>
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="3" Height="8" VerticalAlignment="Top" Cursor="SizeNS"/>
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="6" Height="8" VerticalAlignment="Bottom" Cursor="SizeNS"/>
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="4" Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="SizeNWSE"/>
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="5" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="SizeNESW"/>
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="7" Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="SizeNESW"/>
+            <Border Grid.RowSpan="2" Style="{StaticResource WindowResizeGripStyle}" Tag="8" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE"/>
         </Grid>
     </Border>
 

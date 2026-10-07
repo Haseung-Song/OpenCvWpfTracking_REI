@@ -186,6 +186,11 @@ namespace OpenCvWpfTracking
         public MainWindow()
         {
             InitializeComponent();
+            SourceInitialized += (s,e) =>
+            {
+                var source=HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+                source?.AddHook(WindowResizeMessageHook);
+            };
 
             ApplyDefaultCommunicationTabOrder();
 
@@ -200,6 +205,7 @@ namespace OpenCvWpfTracking
             _pcTitleBarClockTimer.Tick += PcTitleBarClockTimer_Tick;
             UpdatePcTitleBarClock();
             _pcTitleBarClockTimer.Start();
+            LayoutUpdated += AlignPcClockWithLogo;
 
             LoadLatestGeneratedPanoramaOrKeepDefault();
         }
@@ -215,8 +221,8 @@ namespace OpenCvWpfTracking
             {
                 "CTRL / RTSP",
                 "SYSTEM TIME",
-                "IMU / RPY",
-                "AI SETTING"
+                "POSITION",
+                "AI / VP SETTING"
             };
 
             Dictionary<string, TabItem> tabs =
@@ -381,11 +387,43 @@ namespace OpenCvWpfTracking
             PcTitleBarClockText.Text = "PC TIME  " + DateTime.Now.ToString(
                 "yyyy-MM-dd HH:mm:ss",
                 CultureInfo.InvariantCulture);
+            if (PcTitleBarClockBadge != null) PcTitleBarClockBadge.ToolTip = PcTitleBarClockText.Text;
+        }
+
+        private void AlignPcClockWithLogo(object sender, EventArgs e)
+        {
+            if (!IsLoaded || DeviceBrandLogo.ActualWidth <= 0 || TitleBarWindowButtons.ActualWidth <= 0) return;
+            Point center = DeviceBrandLogo.TranslatePoint(new Point(DeviceBrandLogo.ActualWidth / 2, 0), TitleBarClockHost);
+            double buttonLeft = TitleBarWindowButtons.TranslatePoint(new Point(0,0),TitleBarClockHost).X;
+            Rect placement = ClockBadgePlacement(center.X, buttonLeft);
+            double width = placement.Width, left = placement.X;
+            if (Math.Abs(PcTitleBarClockBadge.Width - width) > .1 || double.IsNaN(PcTitleBarClockBadge.Width)) PcTitleBarClockBadge.Width = width;
+            if (Math.Abs(PcTitleBarClockBadge.Margin.Left - left) > .1) PcTitleBarClockBadge.Margin = new Thickness(left,0,0,0);
+        }
+
+        private static Rect ClockBadgePlacement(double center, double buttonLeft)
+        {
+            double width = Math.Max(1, Math.Min(210, 2 * Math.Max(0, buttonLeft - center - 6)));
+            return new Rect(center - width / 2, 0, width, 26);
         }
 
         /// <summary>
         /// FireDetectorTestProgram_Click 이벤트 처리 함수.
         /// </summary>
+        private FireSmokeZoneWindow _zoneWindow;
+        private void FireSmokeZoneSettings_Click(object sender, RoutedEventArgs e)
+        {
+            if (!(DataContext is MainViewModel vm)) return;
+            try
+            {
+                if (_zoneWindow != null) { if (_zoneWindow.WindowState == WindowState.Minimized) _zoneWindow.WindowState = WindowState.Normal; _zoneWindow.Activate(); return; }
+                _zoneWindow = new FireSmokeZoneWindow(vm) { Owner = this };
+                _zoneWindow.Closed += (s, args) => _zoneWindow = null;
+                _zoneWindow.Show();
+            }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, "FIRE / SMOKE 구역 설정", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        }
+
         private void FireDetectorTestProgram_Click(
             object sender,
             RoutedEventArgs e)
@@ -1014,6 +1052,45 @@ namespace OpenCvWpfTracking
 
         #region [Window Title Bar Events]
 
+        private bool _isNativeWindowSizing;
+        [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X,Y; }
+        [DllImport("user32.dll")] private static extern bool GetCursorPos(out NativePoint point);
+        [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd,out NativeRect rect);
+        [StructLayout(LayoutKind.Sequential)] private struct ResizeWindowPosition { public IntPtr Window, InsertAfter; public int X,Y,Width,Height; public uint Flags; }
+        [DllImport("user32.dll")] private static extern bool RedrawWindow(IntPtr hwnd,IntPtr updateRect,IntPtr updateRegion,uint flags);
+        // One native hit-test path replaces competing WPF/manual sizing loops.
+        private IntPtr WindowResizeMessageHook(IntPtr hwnd,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
+        {
+            if(message==0x0231) { _isNativeWindowSizing=true;_isWindowDragPending=false; }
+            if(message==0x0232) { _isNativeWindowSizing=false;_isWindowDragPending=false; RedrawWindow(hwnd,IntPtr.Zero,IntPtr.Zero,0x0185); ConsoleLogHelper.State("WINDOW RESIZE","종료 / 전체 화면 갱신"); }
+            // V29_6: do not blit the old scaled client surface into a differently sized window.
+            // Keep WPF/DWM rendering enabled; a full invalidation is needed only when sizing ends.
+            if(message==0x0046 && _isNativeWindowSizing && lParam!=IntPtr.Zero)
+            {
+                var position=(ResizeWindowPosition)Marshal.PtrToStructure(lParam,typeof(ResizeWindowPosition));
+                if((position.Flags & 0x0001)==0) { position.Flags |= 0x0100; Marshal.StructureToPtr(position,lParam,false); }
+            }
+            if(message!=0x0084 || _isMainWindowFullScreen || WindowState!=WindowState.Normal ||
+                (ResizeMode!=ResizeMode.CanResize && ResizeMode!=ResizeMode.CanResizeWithGrip))return IntPtr.Zero;
+            NativeRect rect;NativePoint point;
+            if(!GetWindowRect(hwnd,out rect) || !GetCursorPos(out point))return IntPtr.Zero;
+            var target=HwndSource.FromHwnd(hwnd)?.CompositionTarget;
+            double sx=target?.TransformToDevice.M11 ?? 1, sy=target?.TransformToDevice.M22 ?? 1;
+            int hit=ResizeHit(new Rect(rect.Left,rect.Top,rect.Right-rect.Left,rect.Bottom-rect.Top),new Point(point.X,point.Y),sx,sy);
+            if(hit==0)return IntPtr.Zero;
+            _isWindowDragPending=false;handled=true;return new IntPtr(hit);
+        }
+        private static int ResizeHit(Rect rect,Point p,double sx,double sy)
+        {
+            if(!rect.Contains(p))return 0;
+            bool left=p.X<rect.Left+8*sx,right=p.X>=rect.Right-8*sx,top=p.Y<rect.Top+8*sy,bottom=p.Y>=rect.Bottom-8*sy;
+            if(p.X<rect.Left+16*sx && p.Y<rect.Top+16*sy)return 13;
+            if(p.X>=rect.Right-16*sx && p.Y<rect.Top+16*sy)return 14;
+            if(p.X<rect.Left+16*sx && p.Y>=rect.Bottom-16*sy)return 16;
+            if(p.X>=rect.Right-16*sx && p.Y>=rect.Bottom-16*sy)return 17;
+            return left?10:right?11:top?12:bottom?15:0;
+        }
+
         /// <summary>
         /// WindowFrame_PreviewMouseLeftButtonDown 동작 수행 함수.
         /// </summary>
@@ -1021,7 +1098,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            if (e.ClickCount != 1 ||
+            if (_isNativeWindowSizing || e.ClickCount != 1 ||
                 IsInteractiveWindowElement(e.OriginalSource as DependencyObject))
             {
                 _isWindowDragPending = false;
@@ -1039,7 +1116,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseEventArgs e)
         {
-            if (!_isWindowDragPending ||
+            if (_isNativeWindowSizing || !_isWindowDragPending ||
                 e.LeftButton != MouseButtonState.Pressed)
             {
                 return;

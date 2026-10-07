@@ -14,12 +14,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string EoPresetName { get; }
         public string IrPresetName { get; }
         public bool IsDirectInput { get; }
+        public bool PositionSensors { get; }
         public ControlAgentType AgentType { get; }
 
         public ControlAgentProfileOption(string displayName, string ipAddress,
             string port, string eoPresetName, string irPresetName,
             bool isDirectInput = false,
-            ControlAgentType agentType = ControlAgentType.WebAgent)
+            ControlAgentType agentType = ControlAgentType.WebAgent, bool positionSensors = false)
         {
             DisplayName = displayName;
             IpAddress = ipAddress;
@@ -28,6 +29,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IrPresetName = irPresetName;
             IsDirectInput = isDirectInput;
             AgentType = agentType;
+            PositionSensors = positionSensors;
         }
 
     }
@@ -35,74 +37,69 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public partial class MainViewModel
     {
         // 2026-10-01: 운용 장비 명칭은 RTSP 주소 모음 기준으로 통일한다.
-        private const string RooftopMr300EoDisplayName =
-            "옥상 MR300(테스트) - 주간(EO)";
+        private static string RooftopMr300EoDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").EoLabel;
 
-        private const string RooftopMr300IrDisplayName =
-            "옥상 MR300(테스트) - 열상(IR)";
+        private static string RooftopMr300IrDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").IrLabel;
 
-        private const string RooftopMr500EoDisplayName =
-            "옥상 MR500(환경부) - 주간(EO)";
+        private static string RooftopMr500EoDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR500_MOE").EoLabel;
 
-        private const string RooftopMr500IrDisplayName =
-            "옥상 MR500(환경부) - 열상(IR)";
+        private static string RooftopMr500IrDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR500_MOE").IrLabel;
 
         // 2026-09-16: 기동형 LR1000 장비 리스트 ver3 기준 4층 장비 설정.
-        private const string Lr1000EoRtspAddress =
-            "rtsp://admin:rmffhqjf1!@192.168.2.155:554/trackID=1";
+        private static string Lr1000EoRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("LR1000_MOBILE").EoAddress;
 
-        private const string Lr1000IrRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.1.41/cam0_0";
+        private static string Lr1000IrRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("LR1000_MOBILE").IrAddress;
 
-        private const string Lr1000EoDisplayName =
-            "4층 LR1000(기동형) - 주간(EO)";
+        private static string Lr1000EoDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("LR1000_MOBILE").EoLabel;
 
-        private const string Lr1000IrDisplayName =
-            "4층 LR1000(기동형) - 열상(IR)";
+        private static string Lr1000IrDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("LR1000_MOBILE").IrLabel;
 
-        private const string ErWatcherEoRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.0.100:554/AVStream1_1";
+        private static string ErWatcherEoRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_ERWATCHER").EoAddress;
 
-        private const string ErWatcherIrRtspAddress =
-            "rtsp://root:rmffhqjf1!@192.168.0.101:554/cam0_0";
+        private static string ErWatcherIrRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_ERWATCHER").IrAddress;
 
-        private const string ErWatcherEoDisplayName =
-            "4층 MR300(ER-WATCHER) - 주간(EO)";
+        private static string ErWatcherEoDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_ERWATCHER").EoLabel;
 
-        private const string ErWatcherIrDisplayName =
-            "4층 MR300(ER-WATCHER) - 열상(IR)";
+        private static string ErWatcherIrDisplayName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_ERWATCHER").IrLabel;
 
         private bool _isLoadingRtspCommunicationSettings;
 
         private ControlAgentProfileOption _selectedControlAgentProfile;
 
         private int _selectedCommunicationSettingsTabIndex;
+        private int _deviceConnectRequested;
+        private bool _normalizingConnectionEndpoints;
+        private bool _eoAlreadyConnectedNotice, _irAlreadyConnectedNotice;
+        private bool HasActiveDeviceSession => _isVideoConnecting || _isEoFrameDisplayed || _isIrFrameDisplayed ||
+            _eoDecoder?.IsOpened==true || _irDecoder?.IsOpened==true || _laTcpService?.IsConnected==true ||
+            ControlAgentConnectionStatusText=="Connected" || ControlAgentConnectionStatusText=="Connecting" ||
+            (_controlAgentReconnectCts!=null && !_controlAgentReconnectCts.IsCancellationRequested) ||
+            (_cts!=null && !_cts.IsCancellationRequested);
+        private bool IsDeviceSettingsLocked => !_isLoadingRtspCommunicationSettings &&
+            (HasActiveDeviceSession || System.Threading.Volatile.Read(ref _deviceConnectRequested)!=0);
+        private void ShowAlreadyConnected()
+        {
+            // Overlay notice only: do not alter the real connection state or invalidate a live session.
+            _eoAlreadyConnectedNotice=_isEoFrameDisplayed || _eoDecoder?.IsOpened==true;
+            _irAlreadyConnectedNotice=_isIrFrameDisplayed || _irDecoder?.IsOpened==true;
+            OnPropertyChanged(nameof(EoStatusText));OnPropertyChanged(nameof(IrStatusText));
+            ConsoleLogHelper.State("DEVICE CONNECT","Already Connected / request blocked");
+        }
+        private bool BlockConnectedSettingChange(string property)
+        {
+            if(!IsDeviceSettingsLocked || _normalizingConnectionEndpoints)return false;
+            ShowAlreadyConnected();
+            if(App.Current?.Dispatcher!=null)App.Current.Dispatcher.BeginInvoke(new Action(()=>OnPropertyChanged(property)));
+            else OnPropertyChanged(property);
+            return true;
+        }
 
         public ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; } =
-            new ObservableCollection<ControlAgentProfileOption>
-            {
-                new ControlAgentProfileOption(
-                    "옥상 MR300(테스트) EO/IR",
-                    "127.0.0.1", "5001",
-                    RooftopMr300EoDisplayName, RooftopMr300IrDisplayName,
-                    agentType: ControlAgentType.LaAgent),
-                new ControlAgentProfileOption(
-                    "옥상 MR500(환경부) EO/IR",
-                    "192.168.20.161", "5005",
-                    RooftopMr500EoDisplayName, RooftopMr500IrDisplayName),
-                new ControlAgentProfileOption(
-                    "4층 LR1000(기동형) EO/IR",
-                    "192.168.20.163", "5005",
-                    Lr1000EoDisplayName, Lr1000IrDisplayName),
-                new ControlAgentProfileOption(
-                    "4층 MR300(ER-WATCHER) EO/IR",
-                    "192.168.20.168", "5005",
-                    ErWatcherEoDisplayName, ErWatcherIrDisplayName),
-                new ControlAgentProfileOption(
-                    "직접 입력",
-                    null, null, null, null,
-                    isDirectInput: true)
-            };
+            new ObservableCollection<ControlAgentProfileOption>(
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e =>
+                    new ControlAgentProfileOption(e.Label + " EO/IR",e.AgentIp,e.AgentPort,e.EoLabel,e.IrLabel,
+                        agentType:e.AgentType,positionSensors:e.PositionSensors)).Concat(new[] {
+                    new ControlAgentProfileOption("직접 입력",null,null,null,null,isDirectInput:true) }));
 
         public ControlAgentProfileOption SelectedControlAgentProfile
         {
@@ -114,11 +111,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
+                if(BlockConnectedSettingChange(nameof(SelectedControlAgentProfile)))return;
                 _selectedControlAgentProfile = value;
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
+                OnPropertyChanged(nameof(IsContextPanelsVisible));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(IsGpsTabVisible));        // 추가
                 OnPropertyChanged(nameof(DevicePowerFreshnessText));
@@ -151,6 +150,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ? EquipmentStatusMode.Rooftop
                         : EquipmentStatusMode.Environment;
                 ApplyControlAgentPanCoordinateMode(_selectedControlAgentProfile);
+                ApplyProfilePanTiltSpeedDefault(_selectedControlAgentProfile);
                 if (!_selectedControlAgentProfile.IsDirectInput)
                 {
                     ControlAgentIp = _selectedControlAgentProfile.IpAddress;
@@ -175,6 +175,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 string eoAddress = settings.SavedEoRtspUrl?.Trim();
                 string irAddress = settings.SavedIrRtspUrl?.Trim();
+                if (profileEoSource != null) eoAddress = profileEoSource.Address;
+                if (profileIrSource != null) irAddress = profileIrSource.Address;
 
                 MigrateLegacyRtspSettings(
                     settings.SavedEoRtspPreset,
@@ -218,6 +220,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
+                OnPropertyChanged(nameof(IsContextPanelsVisible));
                 OnPropertyChanged(nameof(IsGpsTabVisible));        // 추가
                 OnPropertyChanged(nameof(DevicePowerFreshnessText));
                 OnPropertyChanged(nameof(CurrentControlPowerText));
@@ -310,6 +313,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         }
 
+        private void ApplyProfilePanTiltSpeedDefault(ControlAgentProfileOption profile)
+        {
+            // MR500 환경부 프로필만 40. 기동/LA 장비와 줌 연동 감쇄는 유지한다.
+            var environmentDevice = OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR500_MOE");
+            byte speed = environmentDevice.Id == "MR500_MOE" && profile != null && !profile.IsDirectInput &&
+                string.Equals(profile.EoPresetName, environmentDevice.EoLabel, StringComparison.Ordinal)
+                ? (byte)40 : (byte)30;
+            PanTiltSpeedLevel = speed;
+            ConsoleLogHelper.State("PTZ SPEED", "Profile default=" + speed);
+        }
+
         private void ApplyControlAgentProfile(ControlAgentProfileOption profile)
         {
             // 2026-09-18: CONNECT 프로필이 LA/WEB 활성 모드의 유일한 결정점이다.
@@ -317,6 +331,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ? EquipmentStatusMode.Rooftop
                 : EquipmentStatusMode.Environment;
             ApplyControlAgentPanCoordinateMode(profile);
+            ApplyProfilePanTiltSpeedDefault(profile);
 
             // 2026-09-16: 직접 입력은 현재 IP/Port와 카메라 선택을 유지하고
             // Control Agent 입력란만 편집 가능하게 전환한다.
@@ -362,11 +377,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 연결 여부와 Build 지원 여부는 탭 내부에서 별도로 안내한다.
         /// </summary>
         public bool IsImuRpyTabVisible =>
-            ReferenceEquals(SelectedControlAgentProfile, ControlAgentProfiles[2]) ||
-            (IsControlAgentDirectInput && string.Equals(
-                ControlAgentIp?.Trim(),
-                "192.168.20.163",
-                StringComparison.OrdinalIgnoreCase));
+            SelectedControlAgentProfile.PositionSensors ||
+            (IsControlAgentDirectInput && OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Any(e =>
+                e.PositionSensors && string.Equals(e.AgentIp,ControlAgentIp?.Trim(),StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
         /// 2026-10-01: 시스템 시간 조회/설정은 WebAgent 프로필에서만 표시한다.
@@ -467,21 +480,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  savedDisplayName.IndexOf("환경부",
                      StringComparison.OrdinalIgnoreCase) >= 0))
             {
-                return ControlAgentProfiles[1];
+                return ControlAgentProfiles.FirstOrDefault(p=>p.DisplayName.IndexOf("MR500",StringComparison.OrdinalIgnoreCase)>=0) ?? ControlAgentProfiles.First();
             }
 
             if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
                 savedDisplayName.IndexOf("LR1000",
                     StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return ControlAgentProfiles[2];
+                return ControlAgentProfiles.FirstOrDefault(p=>p.DisplayName.IndexOf("LR1000",StringComparison.OrdinalIgnoreCase)>=0) ?? ControlAgentProfiles.First();
             }
 
             if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
                 savedDisplayName.IndexOf("ER-WATCHER",
                     StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return ControlAgentProfiles[3];
+                return ControlAgentProfiles.FirstOrDefault(p=>p.DisplayName.IndexOf("ER-WATCHER",StringComparison.OrdinalIgnoreCase)>=0) ?? ControlAgentProfiles.First();
             }
 
             if (string.Equals(savedDisplayName, "직접 입력",
@@ -505,14 +518,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ref string irAddress)
         {
             if (string.Equals(eoAddress,
-                    "rtsp://root:rmffhqjf1!@192.168.1.25:554/AVStream1_1",
+                    "rtsp://192.168.1.25:554/AVStream1_1",
                     StringComparison.OrdinalIgnoreCase))
             {
                 eoAddress = RooftopMr300EoRtspAddress;
             }
 
             if (string.Equals(irAddress,
-                    "rtsp://admin:Cg600ip100m@192.168.2.101:554/stream1",
+                    "rtsp://192.168.2.101:554/stream1",
                     StringComparison.OrdinalIgnoreCase))
             {
                 irAddress = RooftopMr300IrRtspAddress;

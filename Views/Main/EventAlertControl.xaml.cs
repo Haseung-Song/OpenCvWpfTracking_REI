@@ -43,6 +43,14 @@ namespace OpenCvWpfTracking
             DataContextChanged += EventAlertControl_DataContextChanged;
         }
 
+        private void ZoneEventDetail_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var row = ItemsControl.ContainerFromElement((DataGrid)sender, e.OriginalSource as DependencyObject) as DataGridRow;
+            if (!(row?.Item is FireEventRecord record)) return;
+            MessageBox.Show(Window.GetWindow(this), "EVENT " + record.EventId + " / " + record.Camera + " / " + record.DetectionType +
+                "\n\n" + record.ZoneDetailText, "FIRE / SMOKE 위치 구역", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         /// <summary>
         /// 2026-08-21: 두 이벤트 표의 가변 페이지 View를 최초 한 번만 연결한다.
         /// </summary>

@@ -3,6 +3,7 @@ using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.AI;
 using OpenCvWpfTracking.Models.Position;
 using OpenCvWpfTracking.Services.Video;
+using OpenCvWpfTracking.Services.Position;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -147,6 +148,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이벤트 최초 생성 순간의 위치 상태. ACTIVE 갱신과 카메라 이동으로 변경하지 않는다.
         /// </summary>
         public PositionSnapshot FirstPositionSnapshot { get; }
+
+        public ZoneAssessment FirstZoneAssessment { get; private set; }
+        public ZoneAssessment CurrentZoneAssessment { get; private set; }
+        public string ZoneDetailText => "위치 구역 판정 (안전 판정 아님)\n최초: " +
+            (FirstZoneAssessment?.Detail ?? "미확인 / 기존 기록 또는 TEST 입력") +
+            "\n\n현재: " + (CurrentZoneAssessment?.Detail ?? "미확인") +
+            "\n설정 버전: " + (CurrentZoneAssessment?.Revision ?? "--");
+        internal void UpdateZoneAssessment(ZoneAssessment assessment)
+        {
+            if (assessment == null) return;
+            if (FirstZoneAssessment != null && CurrentZoneAssessment != null && CurrentZoneAssessment.Level == assessment.Level &&
+                CurrentZoneAssessment.Zone == assessment.Zone && CurrentZoneAssessment.Reason == assessment.Reason &&
+                CurrentZoneAssessment.Revision == assessment.Revision && CurrentZoneAssessment.Context == assessment.Context) return;
+            if (FirstZoneAssessment == null) FirstZoneAssessment = assessment;
+            CurrentZoneAssessment = assessment;
+            OnPropertyChanged(nameof(ZoneDetailText));
+        }
+        internal void RestoreZoneAssessment(ZoneAssessment first, ZoneAssessment current)
+        {
+            FirstZoneAssessment = first; CurrentZoneAssessment = current;
+        }
 
         public string Status
         {
@@ -449,7 +471,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool isInfrared = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase);
             bool hasLocalFire =
-                isInfrared &&
                 thermalResult.CandidateRects != null &&
                 thermalResult.CandidateRects.Count > 0;
             bool hasLocalSmoke =
@@ -466,9 +487,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             target.Clear();
             int displayOrder = 1;
 
-            if (string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase))
-            {
-                AddVisionOverlayBoxes(
+            // EO VP fire now shares the detector path with IR; do not discard EO boxes.
+            AddVisionOverlayBoxes(
                     target,
                     thermalResult.CandidateRects,
                     thermalResult.CandidateScores,
@@ -476,7 +496,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     frameWidth,
                     frameHeight,
                     ref displayOrder);
-            }
 
             AddVisionOverlayBoxes(
                 target,
@@ -602,7 +621,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string detectionType,
             IList<CvRect> candidates,
             IList<double> candidateScores,
-            string detectionSource)
+            string detectionSource,
+            ZoneFrameContext zoneFrame = null)
         {
             DateTime now = DateTime.Now;
             IList<CvRect> safeCandidates = candidates ?? new List<CvRect>();
@@ -649,6 +669,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 match.Item2.LastSeen = now;
                 match.Item2.Matched = true;
                 match.Item2.Event.UpdateVisionSnapshot(score, candidate.Width, candidate.Height);
+                match.Item2.Event.UpdateZoneAssessment(AssessZone(camera, detectionType,
+                    candidate.Left, candidate.Top, candidate.Right, candidate.Bottom, zoneFrame));
                 matchedCandidateIndexes.Add(match.Item3);
             }
 
@@ -672,6 +694,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     detectionSource, "ACTIVE",
                     CapturePositionSnapshot(
                         "VISION_" + detectionType + "_EVENT"));
+                record.UpdateZoneAssessment(AssessZone(camera, detectionType,
+                    candidate.Left, candidate.Top, candidate.Right, candidate.Bottom, zoneFrame));
                 if (_isFireCsvHistoryLoaded)
                 {
                     record.MarkLiveAfterCsvLoad();
@@ -833,6 +857,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 IList<FireEventRecord> loaded =
                     ReadFireEventCsv(dialog.FileName);
+                ValidateEventCsvKind(loaded,false);
 
                 FireEvents.Clear();
 
@@ -882,7 +907,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ex);
 
                 MessageBox.Show(
-                    "화재 / 연기 이벤트 CSV 불러오기에 실패했습니다.\n" + ex.Message,
+                    ex is FormatException ? ex.Message : "CSV를 읽지 못했습니다.\n파일을 확인하세요.",
                     "FIRE / SMOKE EVENT",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -935,8 +960,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         directory,
                         "FireEvent_" + DateTime.Now.ToString("yyyyMMdd") + ".csv");
 
-                bool writeHeader =
-                    !File.Exists(path);
+                // Never append basic rows beneath an old extended-schema header.
+                string auditHeader = GetFireEventCsvHeader() + ",Transition";
+                if (File.Exists(path) && new FileInfo(path).Length > 0)
+                {
+                    using (var reader = new StreamReader(path, Encoding.UTF8))
+                        if (reader.ReadLine() != auditHeader)
+                            path = Path.Combine(directory, "FireEvent_" + DateTime.Now.ToString("yyyyMMdd") + "_V29_5.csv");
+                }
+                bool writeHeader = !File.Exists(path) || new FileInfo(path).Length == 0;
 
                 using (StreamWriter writer =
                        new StreamWriter(
@@ -953,6 +985,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ToFireEventCsvLine(fireEvent) +
                         "," + EscapeCsv(transition));
                 }
+                OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(path);
 
             }
             catch (Exception ex)
@@ -984,16 +1017,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
             }
+            OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Create(path);
 
         }
 
         private static string GetFireEventCsvHeader()
         {
-            return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,VisionScore,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status," +
-                   "PositionCapturedAt,PositionSource,PositionPresetId,PositionPan,PositionTilt,PositionEoZoom,PositionEoFocus,PositionIrZoom,PositionIrFocus," +
-                   "PositionLatitude,PositionLongitude,PositionAltitude,PositionRoll,PositionPitch,PositionYaw," +
-                   "PositionPtzStatus,PositionEoLensStatus,PositionIrLensStatus,PositionGpsStatus,PositionImuStatus," +
-                   "PositionGpsSpeed,PositionGpsCourse,PositionGpsHdop,PositionGpsSatellites,PositionGpsFix";
+            return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,VisionScore,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status";
         }
 
         private static string ToFireEventCsvLine(
@@ -1015,9 +1045,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 EscapeCsv(fireEvent.Status)
             };
 
-            string[] positionFields = fireEvent.FirstPositionSnapshot?.ToExportFields() ??
-                                      Enumerable.Repeat(string.Empty, PositionSnapshot.ExportFieldCount).ToArray();
-            fields.AddRange(positionFields.Select(EscapeCsv));
             return string.Join(",", fields);
         }
 
@@ -1091,9 +1118,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         fields[10],
                         fields[11],
                         firstPositionSnapshot));
+                if (fields.Count >= 47)
+                {
+                    var first = new ZoneAssessment { Level = fields[37], Zone = fields[38], Reason = fields[39], Revision = fields[40], Context = fields[41] };
+                    var current = new ZoneAssessment { Level = fields[42], Zone = fields[43], Reason = fields[44], Revision = fields[45], Context = fields[46] };
+                    if (!string.IsNullOrWhiteSpace(first.Level)) result[result.Count - 1].RestoreZoneAssessment(first, current);
+                }
             }
 
             return result;
+        }
+
+        // Reject wrong/mixed files before clearing history or active state. Never report a false 0-row success.
+        private static void ValidateEventCsvKind(IList<FireEventRecord> records,bool ai)
+        {
+            if(records.Count==0) throw new FormatException("이벤트 데이터가 없습니다.");
+            bool valid=records.All(item=>
+                (string.Equals(item.DetectionType,"AI",StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(item.DetectionSource,"AI AGENT",StringComparison.OrdinalIgnoreCase)) == ai &&
+                (ai || string.Equals(item.DetectionType,"FIRE",StringComparison.OrdinalIgnoreCase) || string.Equals(item.DetectionType,"SMOKE",StringComparison.OrdinalIgnoreCase)));
+            if(!valid) throw new FormatException(ai?"AI 이벤트 CSV만 선택하세요.":"FIRE/SMOKE CSV만 선택하세요.");
         }
 
         /// <summary>

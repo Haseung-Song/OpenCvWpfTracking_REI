@@ -2,6 +2,7 @@ using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Services.Communication;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -32,6 +33,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _irPowerCommandTargetOn;
         private DateTime _eoPowerCommandSentAt;
         private DateTime _irPowerCommandSentAt;
+        // V29_0: power is not RTSP connectivity. Preserve last evidence per target.
+        private readonly Dictionary<string, string[]> _lastCameraPower = new Dictionary<string, string[]>();
+        private string PowerTargetKey => SelectedControlAgentProfile.DisplayName + "|" + ControlAgentIp + "|" +
+            ControlAgentPortText + "|" + EoSourceAddress + "|" + IrSourceAddress;
+        private void RememberCameraPower(string camera, bool on)
+        {
+            lock (_lastCameraPower)
+            {
+                if (!_lastCameraPower.TryGetValue(PowerTargetKey, out string[] values))
+                    _lastCameraPower[PowerTargetKey] = values = new[] { "UNKNOWN", "UNKNOWN" };
+                values[camera == "IR" ? 1 : 0] = on ? "ON" : "OFF";
+            }
+        }
+        private string GetCameraPowerControlText(string camera)
+        {
+            if (_hasDevicePowerStatus && !_isDevicePowerStatusStale &&
+                _connectedControlAgentProfile == SelectedControlAgentProfile &&
+                _connectedControlAgentEndpoint == ControlAgentIp + ":" + ControlAgentPortText)
+                return camera == "IR" ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0) : ToOnOff((_currentScbPowerStatus & 0x01) != 0);
+            lock (_lastCameraPower)
+                return _lastCameraPower.TryGetValue(PowerTargetKey, out string[] values) ? values[camera == "IR" ? 1 : 0] : "UNKNOWN";
+        }
+        public string CameraPowerStateHelpText => "전원 상태와 영상 연결 상태는 다릅니다. 연결 해제는 POWER OFF가 아닙니다.\n" +
+            "통신 해제/응답 지연 시 마지막 확인 ON/OFF를 유지합니다. 장비에서 다시 상태를 받으면 갱신합니다.\n" +
+            "기존 장비는 영상 수신 및 명시적 전원 요청 결과를 참고합니다. 미확인 최초 상태는 UNKNOWN입니다.";
 
         public ICommand EoPowerOnCommand { get; private set; }
         public ICommand EoPowerOffCommand { get; private set; }
@@ -64,14 +90,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 : "UNKNOWN";
 
         public string EoPowerControlStatusText =>
-            _eoPowerCommandPending ? "WAIT" : CurrentEoPowerText;
+            _eoPowerCommandPending ? "WAIT" : GetCameraPowerControlText("EO");
         public string IrPowerControlStatusText =>
-            _irPowerCommandPending ? "WAIT" : CurrentIrPowerText;
+            _irPowerCommandPending ? "WAIT" : GetCameraPowerControlText("IR");
         public string CurrentEoPowerStatusColor => GetPowerStatusColor(EoPowerControlStatusText);
         public string CurrentIrPowerStatusColor => GetPowerStatusColor(IrPowerControlStatusText);
         // V28_2: 영상 재연결/전원 응답 WAIT는 표시만 하고 전원 버튼을 잠그지 않는다.
         public bool IsEoPowerControlEnabled => IsOperationCommandEnabled;
         public bool IsIrPowerControlEnabled => IsOperationCommandEnabled;
+        public bool IsEoPowerOnEnabled => IsEoPowerControlEnabled && EoPowerControlStatusText != "ON";
+        public bool IsEoPowerOffEnabled => IsEoPowerControlEnabled && EoPowerControlStatusText != "OFF";
+        public bool IsIrPowerOnEnabled => IsIrPowerControlEnabled && IrPowerControlStatusText != "ON";
+        public bool IsIrPowerOffEnabled => IsIrPowerControlEnabled && IrPowerControlStatusText != "OFF";
 
         private static string GetPowerStatusColor(string value) =>
             value == "ON" ? "#69E39B" : value == "OFF" ? "#FF7B72" : "#FDE68A";
@@ -101,13 +131,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void InitializeDevicePowerSettings()
         {
             EoPowerOnCommand = new RelayCommand(
-                () => SendDevicePower(EoPowerDeviceCode, true, "EO"), () => IsEoPowerControlEnabled);
+                () => SendDevicePower(EoPowerDeviceCode, true, "EO"), () => IsEoPowerOnEnabled);
             EoPowerOffCommand = new RelayCommand(
-                () => SendDevicePower(EoPowerDeviceCode, false, "EO"), () => IsEoPowerControlEnabled);
+                () => SendDevicePower(EoPowerDeviceCode, false, "EO"), () => IsEoPowerOffEnabled);
             IrPowerOnCommand = new RelayCommand(
-                () => SendDevicePower(IrPowerDeviceCode, true, "IR"), () => IsIrPowerControlEnabled);
+                () => SendDevicePower(IrPowerDeviceCode, true, "IR"), () => IsIrPowerOnEnabled);
             IrPowerOffCommand = new RelayCommand(
-                () => SendDevicePower(IrPowerDeviceCode, false, "IR"), () => IsIrPowerControlEnabled);
+                () => SendDevicePower(IrPowerDeviceCode, false, "IR"), () => IsIrPowerOffEnabled);
 
             _devicePowerFreshnessTimer = new DispatcherTimer(
                 DispatcherPriority.Background)
@@ -261,6 +291,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ApplyDevicePowerStatus(byte mcbStatus, byte scbStatus)
         {
+            string powerResponseSession = _connectionSessionId;
             bool shouldLog =
                 !_hasDevicePowerStatus ||
                 _currentMcbPowerStatus != mcbStatus ||
@@ -272,10 +303,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _hasDevicePowerStatus = true;
             _isDevicePowerStatusStale = false;
             // 주기 응답에 이전 상태가 담겨 있어도 요청 목표에 도달할 때까지 WAIT 유지.
-            if (IsGpsTabVisible && _eoPowerCommandPending &&
+            if (_eoPowerCommandPending &&
                 ((scbStatus & 0x01) != 0) == _eoPowerCommandTargetOn)
                 _eoPowerCommandPending = false;
-            if (IsGpsTabVisible && _irPowerCommandPending &&
+            if (_irPowerCommandPending &&
                 ((mcbStatus & 0x20) != 0) == _irPowerCommandTargetOn)
                 _irPowerCommandPending = false;
 
@@ -306,6 +337,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 DispatcherPriority.Background,
                 new Action(() =>
                 {
+                    if (powerResponseSession == _connectionSessionId && _connectedControlAgentProfile == SelectedControlAgentProfile &&
+                        _connectedControlAgentEndpoint == ControlAgentIp + ":" + ControlAgentPortText)
+                    {
+                        RememberCameraPower("EO", (scbStatus & 0x01) != 0);
+                        RememberCameraPower("IR", (mcbStatus & 0x20) != 0);
+                    }
                     OnPropertyChanged(nameof(DevicePowerStatusText));
                     OnPropertyChanged(nameof(DevicePowerFreshnessText));
                     OnPropertyChanged(nameof(DevicePowerDetailText));
@@ -374,16 +411,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             bool pendingChanged = false;
             if (_eoPowerCommandPending &&
-                ((!IsGpsTabVisible && CurrentEoPowerText == ToOnOff(_eoPowerCommandTargetOn)) ||
+                ((!IsGpsTabVisible && _eoPowerCommandTargetOn && _eoStatusText == "[EO] Connected") ||
                  DateTime.Now - _eoPowerCommandSentAt >= DevicePowerCommandTimeout))
             {
+                if (!IsGpsTabVisible && _eoPowerCommandTargetOn && CurrentEoPowerText == "ON")
+                    RememberCameraPower("EO", _eoPowerCommandTargetOn);
+                if (DateTime.Now - _eoPowerCommandSentAt >= DevicePowerCommandTimeout)
+                    ConsoleLogHelper.Warning("DEVICE POWER", "EO confirmation timeout / SESSION=" + _connectionSessionId + " / ENDPOINT=" + _connectedControlAgentEndpoint);
                 _eoPowerCommandPending = false;
                 pendingChanged = true;
             }
             if (_irPowerCommandPending &&
-                ((!IsGpsTabVisible && CurrentIrPowerText == ToOnOff(_irPowerCommandTargetOn)) ||
+                ((!IsGpsTabVisible && _irPowerCommandTargetOn && _irStatusText == "[IR] Connected") ||
                  DateTime.Now - _irPowerCommandSentAt >= DevicePowerCommandTimeout))
             {
+                if (!IsGpsTabVisible && _irPowerCommandTargetOn && CurrentIrPowerText == "ON")
+                    RememberCameraPower("IR", _irPowerCommandTargetOn);
+                if (DateTime.Now - _irPowerCommandSentAt >= DevicePowerCommandTimeout)
+                    ConsoleLogHelper.Warning("DEVICE POWER", "IR confirmation timeout / SESSION=" + _connectionSessionId + " / ENDPOINT=" + _connectedControlAgentEndpoint);
                 _irPowerCommandPending = false;
                 pendingChanged = true;
             }

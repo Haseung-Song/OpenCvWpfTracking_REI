@@ -1671,6 +1671,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         _currentCtecEoZoomPosition =
                             zoomPosition;
 
+                        if(_connectedEoCtecSource!=null)
+                        {
+                            _zoneCtecZoomAt = DateTimeOffset.Now;
+                            _zoneCtecZoomEpoch = _zoneEpoch;
+                            _zoneCtecZoomKey = ZoneKey("EO");
+                        }
+
                         OnPropertyChanged(
                             nameof(CurrentEoZoomText));
 

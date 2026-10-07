@@ -32,7 +32,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         // 2026-09-22 V25: 기존 FIRE 알고리즘은 유지하고 두 수동 Slider를
         // 현장 운용용 프리셋으로 묶는다. 0=SENSITIVE, 1=BALANCED, 2=STRICT.
         private int _fireSensitivityIndex = 1;
-        private int _fireDetectionSourceIndex = 0;
+        // Default to IR; EO/BOTH remain selectable for field performance tests.
+        private int _fireDetectionSourceIndex = 2;
 
         // 2026-08-14: 1=전체 화염 단일 BBox, 2=분리 화염별 BBox(기본값).
         private int _thermalFireBoxGroupingMode = 2;
@@ -567,7 +568,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void UpdateThermalFireCandidateState(
             string camera,
-            ThermalFireDetectionResult result)
+            ThermalFireDetectionResult result,
+            OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame = null)
         {
             bool isInfrared =
                 string.Equals(camera, "IR", System.StringComparison.OrdinalIgnoreCase);
@@ -593,7 +595,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             UpdateVisionBBoxEvents(
                 camera, "FIRE", result.CandidateRects,
                 result.CandidateScores,
-                "IMAGE PROCESSING");
+                "IMAGE PROCESSING", zoneFrame);
         }
 
     }

@@ -1722,6 +1722,7 @@ namespace FireCandidateValidator
             {
                 _smokeDiagnosticWriter.Flush();
                 _smokeDiagnosticWriter.Dispose();
+                if(_smokeDiagnosticDirectory!=null)OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_smokeDiagnosticDirectory,"smoke_candidates.csv"));
                 _smokeDiagnosticWriter = null;
             }
 
@@ -1867,6 +1868,7 @@ namespace FireCandidateValidator
             {
                 _fireDiagnosticWriter.Flush();
                 _fireDiagnosticWriter.Dispose();
+                if(_fireDiagnosticDirectory!=null)OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_fireDiagnosticDirectory,"fire_candidates.csv"));
                 _fireDiagnosticWriter = null;
             }
 
