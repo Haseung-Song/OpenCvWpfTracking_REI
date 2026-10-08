@@ -419,7 +419,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             out int port)
         {
             ipAddress =
-                ControlAgentIp?.Trim();
+                SessionControlIp?.Trim();
 
             port =
                 0;
@@ -438,7 +438,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             if (!int.TryParse(
-                    ControlAgentPortText?.Trim(),
+                    SessionControlPort?.Trim(),
                     out port))
             {
                 SetControlAgentConnectionStatus(
@@ -490,7 +490,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "#FFD166");
 
             string targetIp =
-                ControlAgentIp?.Trim();
+                SessionControlIp?.Trim();
 
             if (string.IsNullOrWhiteSpace(
                     targetIp))
@@ -503,7 +503,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             if (!int.TryParse(
-                    ControlAgentPortText?.Trim(),
+                    SessionControlPort?.Trim(),
                     out int targetPort) ||
                 targetPort < 1 ||
                 targetPort > 65535)

@@ -68,8 +68,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private int _selectedCommunicationSettingsTabIndex;
         private int _deviceConnectRequested;
-        private bool _normalizingConnectionEndpoints;
         private bool _eoAlreadyConnectedNotice, _irAlreadyConnectedNotice;
+        private ControlAgentProfileOption _requestedControlProfile;
+        private string _requestedControlIp, _requestedControlPort, _requestedEoAddress, _requestedIrAddress;
+        private string SessionControlIp => _requestedControlIp ?? ControlAgentIp;
+        private string SessionControlPort => _requestedControlPort ?? ControlAgentPortText;
+        private string SessionEoAddress => _requestedEoAddress ?? EoSourceAddress;
+        private string SessionIrAddress => _requestedIrAddress ?? IrSourceAddress;
+        private bool IsSelectedConnectionTarget =>
+            (_requestedControlProfile == null || _requestedControlProfile == SelectedControlAgentProfile) &&
+            SessionControlIp == ControlAgentIp && SessionControlPort == ControlAgentPortText &&
+            SessionEoAddress == EoSourceAddress && SessionIrAddress == IrSourceAddress;
         private bool HasActiveDeviceSession => _isVideoConnecting || _isEoFrameDisplayed || _isIrFrameDisplayed ||
             _eoDecoder?.IsOpened==true || _irDecoder?.IsOpened==true || _laTcpService?.IsConnected==true ||
             ControlAgentConnectionStatusText=="Connected" || ControlAgentConnectionStatusText=="Connecting" ||
@@ -87,11 +96,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
         private bool BlockConnectedSettingChange(string property)
         {
-            if(!IsDeviceSettingsLocked || _normalizingConnectionEndpoints)return false;
-            ShowAlreadyConnected();
-            if(App.Current?.Dispatcher!=null)App.Current.Dispatcher.BeginInvoke(new Action(()=>OnPropertyChanged(property)));
-            else OnPropertyChanged(property);
-            return true;
+            // V29_10: selection edits configure the NEXT connection, even during retries.
+            // ConnectCoreAsync still rejects duplicate connections and preserves live images.
+            return false;
         }
 
         public ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; } =
@@ -352,10 +359,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string.Equals(item.DisplayName, profile.IrPresetName,
                     StringComparison.OrdinalIgnoreCase));
 
-            SelectedEoRtspSource = eo;
-            SelectedIrRtspSource = ir;
-            SelectedAiEoRtspSource = eo;
-            SelectedAiIrRtspSource = ir;
+            bool wasLoading = _isLoadingRtspCommunicationSettings;
+            _isLoadingRtspCommunicationSettings = true;
+            try
+            {
+                SelectedEoRtspSource = eo;
+                SelectedIrRtspSource = ir;
+                SelectedAiEoRtspSource = eo;
+                SelectedAiIrRtspSource = ir;
+            }
+            finally { _isLoadingRtspCommunicationSettings = wasLoading; }
             SaveRtspCommunicationSettings();
         }
 
@@ -428,6 +441,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ApplyControlAgentPanCoordinateMode(ControlAgentProfileOption profile)
         {
+            profile = _requestedControlProfile ?? profile;
             // 프로토콜 변환만 Agent 좌표계에 맞추고 GUI는 항상 signed 좌표로 표시한다.
             _controlCommandService.UseUnsignedWebAgentPanCoordinates =
                 profile?.AgentType == ControlAgentType.WebAgent;

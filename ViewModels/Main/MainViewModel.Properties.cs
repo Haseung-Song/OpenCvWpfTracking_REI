@@ -2528,7 +2528,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _eoStatusText =
                     value;
-                if (value == "[EO] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("EO", true);
+                if (IsSelectedConnectionTarget && value == "[EO] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("EO", true);
                 ZoneChannelChanged("EO");
 
                 /*
@@ -2576,7 +2576,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _irStatusText =
                     value;
-                if (value == "[IR] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("IR", true);
+                if (IsSelectedConnectionTarget && value == "[IR] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("IR", true);
                 ZoneChannelChanged("IR");
 
                 /*

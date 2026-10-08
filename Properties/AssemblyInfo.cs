@@ -48,4 +48,4 @@ using System.Windows;
 //
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("29.9.0.0")]
-[assembly: AssemblyInformationalVersion("REI V29_9")]
+[assembly: AssemblyInformationalVersion("REI V29_10")]

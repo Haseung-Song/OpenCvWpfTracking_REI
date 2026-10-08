@@ -360,12 +360,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * Trim 처리된 검증 완료 주소를
              * 실제 영상 연결 주소로 다시 반영한다.
              */
-            _normalizingConnectionEndpoints=true;
-            try { EoSourceAddress=eoRtspAddress;IrSourceAddress=irRtspAddress; }
-            finally { _normalizingConnectionEndpoints=false; }
+            EoSourceAddress=eoRtspAddress;IrSourceAddress=irRtspAddress;
 
             // 2026-09-08: 검증을 통과한 직접 입력/프리셋 주소를 다음 실행에 복원한다.
             SaveRtspCommunicationSettings();
+
+            // Freeze retry endpoints. ComboBox changes only configure the next explicit connection.
+            _requestedControlProfile = SelectedControlAgentProfile;
+            _requestedControlIp = ControlAgentIp;
+            _requestedControlPort = ControlAgentPortText;
+            _requestedEoAddress = eoRtspAddress;
+            _requestedIrAddress = irRtspAddress;
 
             // 2026-08-18: 한 채널만 연결된 상태에서 다시 연결해도
             // 정상 채널의 프레임과 CaptureLoop는 유지하고 실패 채널만 초기화한다.
@@ -767,6 +772,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _connectedEoCtecSource =
                 null;
 
+            _requestedControlProfile = null;
+            _requestedControlIp = _requestedControlPort = _requestedEoAddress = _requestedIrAddress = null;
+
             _activeEoCtecSource =
                 null;
 
@@ -1094,7 +1102,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 (wasEoAlreadyOpen ||
                  await Task.Run(() =>
                      _eoDecoder.Open(
-                         EoSourceAddress)));
+                         SessionEoAddress)));
 
             if (!_isDeviceConnectionRequested ||
                 captureToken.IsCancellationRequested)
@@ -1129,7 +1137,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _eoCaptureTask = Task.Run(() =>
                         FFmpegCaptureLoop(
                             _eoDecoder,
-                            EoSourceAddress,
+                            SessionEoAddress,
                             "EO",
                             bitmap =>
                             {
@@ -1201,7 +1209,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 (wasIrAlreadyOpen ||
                  await Task.Run(() =>
                      _irDecoder.Open(
-                         IrSourceAddress)));
+                         SessionIrAddress)));
 
             if (!_isDeviceConnectionRequested ||
                 captureToken.IsCancellationRequested)
@@ -1230,7 +1238,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _irCaptureTask = Task.Run(() =>
                         FFmpegCaptureLoop(
                             _irDecoder,
-                            IrSourceAddress,
+                            SessionIrAddress,
                             "IR",
                             bitmap =>
                             {
@@ -1284,7 +1292,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 _ = ReconnectVideoAsync(
                     _eoDecoder,
-                    EoSourceAddress,
+                    SessionEoAddress,
                     "EO",
                     bitmap =>
                     {
@@ -1299,7 +1307,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 _ = ReconnectVideoAsync(
                     _irDecoder,
-                    IrSourceAddress,
+                    SessionIrAddress,
                     "IR",
                     bitmap =>
                     {
