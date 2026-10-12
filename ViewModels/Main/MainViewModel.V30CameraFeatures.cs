@@ -1,0 +1,209 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using OpenCvWpfTracking.Common;
+
+namespace OpenCvWpfTracking.ViewModels.Main
+{
+    public partial class MainViewModel
+    {
+        // 2026-10-12: common DIGITAL_ZOOM is BOOLEAN, never pretend it is a zoom-step API.
+        private readonly byte[] _digitalCaps = new byte[2];
+        // 2026-10-12 FIX7: estimate is driven only by successful local EO commands, never ON alone.
+        private readonly Services.Configuration.DigitalZoomEstimate _eoDigitalEstimate = new Services.Configuration.DigitalZoomEstimate();
+        private bool _eoDigitalEstimateSuppressed;
+        private long _digitalEstimateTimestamp=System.Diagnostics.Stopwatch.GetTimestamp();
+        private void TickDigitalEstimate()
+        {
+            long now=System.Diagnostics.Stopwatch.GetTimestamp();
+            double elapsed=(now-_digitalEstimateTimestamp)/(double)System.Diagnostics.Stopwatch.Frequency;
+            _digitalEstimateTimestamp=now;
+            var tuning=ControlTuningFor(false);
+            bool fresh=CameraFeatureTransportReady && IsLensFresh(false) && IsOperationCommandEnabled && !IsControlInputLocked;
+            bool atMaximum=GetCurrentPresetStandardZoom()>=1000;
+            // MR500 supplies optical position 1000 but no usable current digital ratio.
+            // Enter the configured estimate range at that boundary unless OFF was explicitly confirmed.
+            if(fresh && atMaximum && tuning.DigitalEstimateMaximum>1 && !_eoDigitalEstimateSuppressed && !_eoDigitalEstimate.Enabled)
+            {
+                _eoDigitalEstimate.Enable(true);
+                ConsoleLogHelper.State("D-ZOOM ESTIMATE","BOUNDARY ENABLED / OPTICAL=1000 / RANGE="+tuning.MaximumRatio+"~"+(tuning.MaximumRatio*tuning.DigitalEstimateMaximum)+" / DISPLAY ONLY / NOT TELEMETRY");
+            }
+            _eoDigitalEstimate.Advance(elapsed,fresh,atMaximum,tuning.DigitalEstimateMaximum,tuning.DigitalEstimateSeconds);
+            if(!CameraFeatureTransportReady)_eoDigitalEstimate.Enable(false);
+        }
+        private void SetDigitalEstimateDirection(int direction)
+        {
+            TickDigitalEstimate();_eoDigitalEstimate.Direction=direction;
+        }
+        private double EoDisplayZoomRatio => ControlTuningFor(false).Ratio(GetCurrentPresetStandardZoom()) *
+            (GetCurrentPresetStandardZoom()>=1000 && _eoDigitalEstimate.Enabled ? _eoDigitalEstimate.Factor : 1);
+        private bool IsEoDigitalEstimateVisible => _eoDigitalEstimate.Enabled && GetCurrentPresetStandardZoom()>=1000 && ControlTuningFor(false).DigitalEstimateMaximum>1;
+        private readonly bool[] _digitalCapsKnown = new bool[2];
+        private readonly int[] _digitalState = { -1, -1 };
+        private readonly int[] _digitalRequestedState = { -1, -1 };
+        private readonly bool[] _digitalTxFailed = new bool[2];
+        private readonly long[] _digitalStateTicks = new long[2];
+        private readonly long[] _digitalPendingTicks = new long[2];
+        private readonly long[] _digitalNextQueryTicks = new long[2];
+        private readonly long[] _videoCenterFrameTicks = new long[2];
+        private long _lastDigitalQueryTicks;
+        private Tuple<double,double,long> _videoCenterPose;
+        private bool _videoCenterBusy;
+        private long _lastCenterClickTicks;
+        private long _centerDeadlineTicks;
+        private int _centerMoveEpoch;
+        private bool CameraFeatureTransportReady => _isDeviceConnectionRequested && _laTcpService.IsConnected;
+        public bool CanSetEoDigitalZoom => CanSetDigitalZoom(0);
+        public bool CanSetIrDigitalZoom => CanSetDigitalZoom(1);
+        public string EoDigitalZoomStatusText => DigitalStatus(0);
+        public string IrDigitalZoomStatusText => DigitalStatus(1);
+        private bool CanSetDigitalZoom(int i) => CameraFeatureTransportReady && IsOperationCommandEnabled && !IsControlInputLocked &&
+            _digitalCapsKnown[i] && (_digitalCaps[i] & 5) == 5 && _digitalPendingTicks[i] == 0;
+        private string DigitalStatus(int i)
+        {
+            if (!CameraFeatureTransportReady) return "D-ZOOM · 미연결";
+            if(_digitalTxFailed[i])return "D-ZOOM · 요청 전송 실패";
+            if(_digitalState[i]>=0 && DateTime.UtcNow.Ticks-_digitalStateTicks[i]<=TimeSpan.FromSeconds(10).Ticks)
+                return "장비 "+(_digitalState[i]==0?"OFF":"ON")+" 확인"+
+                    (_digitalRequestedState[i]>=0 && _digitalRequestedState[i]!=_digitalState[i]?" · 요청 불일치":"");
+            if(_digitalRequestedState[i]>=0)
+                return (_digitalRequestedState[i]==0?"OFF":"ON")+" 요청 전송 · "+(_digitalPendingTicks[i]!=0?"응답 대기":"적용 미확인");
+            if(_digitalCapsKnown[i] && (_digitalCaps[i]&2)==0)return "D-ZOOM · 상태 조회 미지원";
+            return "D-ZOOM · 장비 상태 미수신";
+        }
+        private void NotifyDigitalZoom()
+        {
+            foreach (string n in new[]{nameof(CanSetEoDigitalZoom),nameof(CanSetIrDigitalZoom),nameof(EoDigitalZoomStatusText),nameof(IrDigitalZoomStatusText)}) OnPropertyChanged(n);
+        }
+        private void ResetDigitalZoomSession()
+        {
+            _eoDigitalEstimate.Enable(false);
+            _eoDigitalEstimateSuppressed=false;
+            for(int i=0;i<2;i++){_digitalCaps[i]=0;_digitalCapsKnown[i]=false;_digitalState[i]=-1;_digitalRequestedState[i]=-1;_digitalTxFailed[i]=false;_digitalStateTicks[i]=0;_digitalPendingTicks[i]=0;_digitalNextQueryTicks[i]=0;_videoCenterFrameTicks[i]=0;}
+            Interlocked.Exchange(ref _videoCenterPose,null); NotifyDigitalZoom();
+        }
+        public void QueryDigitalZoomSupport()
+        {
+            if (!CameraFeatureTransportReady || DateTime.UtcNow.Ticks-_lastDigitalQueryTicks < TimeSpan.FromSeconds(1).Ticks) return;
+            _lastDigitalQueryTicks=DateTime.UtcNow.Ticks;
+            for(byte i=0;i<2;i++) _controlCommandService.RequestCameraFeatureCapability(i);
+            ConsoleLogHelper.Command("DIGITAL ZOOM", "EO/IR support query / E7");
+        }
+        private void ApplyDigitalZoomCapability(byte[] p)
+        {
+            if(p.Length<13 || p[0]!=2 || p[1]>1 || p.Length<13+12*p[12]) return;
+            int i=p[1]; byte flags=0;
+            for(int o=13;o+12<=13+12*p[12];o+=12) if(p[o]==0x1D)
+            {
+                // BOOLEAN 0..1 only. Unknown future value types must not enable an unsafe control.
+                if(p[o+2]==0 && BitConverter.ToInt16(p,o+4)==0 && BitConverter.ToInt16(p,o+6)==1) flags=p[o+1];
+                break;
+            }
+            _digitalCaps[i]=flags;_digitalCapsKnown[i]=true;_digitalState[i]=-1;
+            // 2026-10-12 FIX4: distinguish writable-only cameras from missing state replies.
+            ConsoleLogHelper.State("DIGITAL ZOOM", "CAPABILITY / TARGET="+i+" / FLAGS=0x"+flags.ToString("X2")+
+                " / SUPPORTED="+((flags&1)!=0)+" / READABLE="+((flags&2)!=0)+" / SETTABLE="+((flags&4)!=0));
+            if((flags&3)==3) _controlCommandService.RequestCameraFeatureState((byte)i,0x1D);
+            _digitalNextQueryTicks[i]=DateTime.UtcNow.AddSeconds(5).Ticks;
+            NotifyDigitalZoom();
+        }
+        private void ApplyDigitalZoomState(byte[] p)
+        {
+            if(p.Length<18 || p[1]>1 || p[2]!=0x1D) return;
+            int i=p[1], value=BitConverter.ToInt16(p,4);
+            _digitalState[i]=(p[3]&3)==3 && (value==0 || value==1) ? value : -1;
+            if(i==0 && _digitalState[i]>=0){TickDigitalEstimate();_eoDigitalEstimateSuppressed=_digitalState[i]==0;_eoDigitalEstimate.Enable(_digitalState[i]==1);}
+            _digitalStateTicks[i]=DateTime.UtcNow.Ticks;_digitalPendingTicks[i]=0;NotifyDigitalZoom();
+        }
+        public bool SetDigitalZoom(bool ir,bool on)
+        {
+            int i=ir?1:0;
+            // FIX7: follow the other lens controls. Agent capability/status does not disable or reject
+            // the user's EO/IR request; the actual transport result remains visible in the log.
+            if(IsControlInputLocked || !IsOperationCommandEnabled)
+            {ConsoleLogHelper.Warning("DIGITAL ZOOM","Rejected / TARGET="+i+" / operation locked");return false;}
+            bool sent=_controlCommandService.SetCameraFeature(0x1D,(byte)i,(byte)(on?1:0));
+            _digitalTxFailed[i]=!sent;
+            _digitalRequestedState[i]=on?1:0;
+            if(sent){_digitalState[i]=-1;_digitalPendingTicks[i]=DateTime.UtcNow.Ticks;
+                if(i==0){TickDigitalEstimate();_eoDigitalEstimateSuppressed=!on;_eoDigitalEstimate.Enable(on);
+                    ConsoleLogHelper.State("D-ZOOM ESTIMATE","LOCAL REQUEST / ENABLED="+on+" / MAX="+ControlTuningFor(false).DigitalEstimateMaximum+" / SECONDS="+ControlTuningFor(false).DigitalEstimateSeconds+" / DISPLAY ONLY / NOT TELEMETRY");}}
+            ConsoleLogHelper.Command("DIGITAL ZOOM","TARGET="+i+" / REQUEST="+(on?"ON":"OFF")+" / TX="+sent+" / not a device ACK");
+            NotifyDigitalZoom();return sent;
+        }
+        private void TickDigitalZoom()
+        {
+            if(_centerDeadlineTicks!=0)
+            {
+                if(_centerMoveEpoch!=_inputEpoch || (!_activePanAbsoluteTarget.HasValue && !_activeTiltAbsoluteTarget.HasValue))_centerDeadlineTicks=0;
+                else if(DateTime.UtcNow.Ticks>=_centerDeadlineTicks)
+                {StopAllPtzfMove();ConsoleLogHelper.Warning("VIDEO CENTER","Arrival not confirmed within deadline; stop requested");}
+            }
+            if(!CameraFeatureTransportReady){if(_digitalCapsKnown[0]||_digitalCapsKnown[1])ResetDigitalZoomSession();return;}
+            for(byte i=0;i<2;i++) if(_digitalPendingTicks[i]!=0 && DateTime.UtcNow.Ticks-_digitalPendingTicks[i]>TimeSpan.FromSeconds(2).Ticks)
+            {
+                _digitalPendingTicks[i]=0;
+                if((_digitalCaps[i]&2)!=0)_controlCommandService.RequestCameraFeatureState(i,0x1D);
+                NotifyDigitalZoom();
+            }
+            for(byte i=0;i<2;i++) if((_digitalCaps[i]&3)==3 && _digitalPendingTicks[i]==0 && DateTime.UtcNow.Ticks>=_digitalNextQueryTicks[i])
+            {_digitalNextQueryTicks[i]=DateTime.UtcNow.AddSeconds(5).Ticks;_controlCommandService.RequestCameraFeatureState(i,0x1D);}
+            string signature=EoDigitalZoomStatusText+IrDigitalZoomStatusText+CanSetEoDigitalZoom+CanSetIrDigitalZoom;
+            if(signature!=_lastDigitalUiSignature){_lastDigitalUiSignature=signature;NotifyDigitalZoom();}
+        }
+        private string _lastDigitalUiSignature;
+        // 2026-10-12: pinhole-ray projection, not a timed jog. Provisional FOV needs field calibration.
+        public static Tuple<double,double> VideoCenterTarget(double pan,double tilt,double nx,double ny,double hfov,double aspect)
+        {
+            if(new[]{pan,tilt,nx,ny,hfov,aspect}.AnyInvalid() || Math.Abs(nx)>1 || Math.Abs(ny)>1 || hfov<=0 || hfov>=170 || aspect<=0 || Math.Abs(tilt)>85) return null;
+            double r=Math.PI/180, x=nx*Math.Tan(hfov*r/2), y=-ny*Math.Tan(hfov*r/2)/aspect;
+            double forward=Math.Cos(tilt*r)-y*Math.Sin(tilt*r), up=Math.Sin(tilt*r)+y*Math.Cos(tilt*r);
+            double dp=Math.Atan2(x,forward)/r, dt=Math.Atan2(up,Math.Sqrt(x*x+forward*forward))/r;
+            double targetPan=(pan+dp+540)%360-180;
+            return Tuple.Create(targetPan,dt);
+        }
+        public async Task<bool> CenterVideoPointAsync(bool ir,double nx,double ny,double aspect)
+        {
+            var pose=Volatile.Read(ref _videoCenterPose);long now=DateTime.UtcNow.Ticks;
+            string status=ir?IrStatusText:EoStatusText;
+            if(_videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue || !CameraFeatureTransportReady || IsControlInputLocked || !IsOperationCommandEnabled || _controlInputs.Count>0 ||
+                pose==null || now-pose.Item3>TimeSpan.FromSeconds(2).Ticks || !IsLensFresh(ir) ||
+                now-Interlocked.Read(ref _videoCenterFrameTicks[ir?1:0])>TimeSpan.FromSeconds(1).Ticks ||
+                status==null || !status.EndsWith("] Connected",StringComparison.Ordinal) || now-_lastCenterClickTicks<TimeSpan.FromMilliseconds(300).Ticks)
+            {ConsoleLogHelper.Warning("VIDEO CENTER","Rejected / stale video, pose/lens, lock, connection or active input / CAMERA="+(ir?"IR":"EO"));return false;}
+            var tuning=ControlTuningFor(ir);int zoom=ir?GetCurrentIrZoomStandardPosition():GetCurrentPresetStandardZoom();
+            // 2026-10-12 FIX5: click centering is independent of D-ZOOM capability/state.
+            // Optical-only projection is approximate when digital zoom is active; do not invent its magnification.
+            double hfov=2*Math.Atan(Math.Tan(tuning.WideHorizontalFov*Math.PI/360)/tuning.Ratio(zoom))*180/Math.PI;
+            var target=VideoCenterTarget(pose.Item1,pose.Item2,nx,ny,hfov,aspect);
+            if(target==null)return false;
+            double tilt=Clamp(target.Item2,CurrentMoveControlTiltMinimum,CurrentMoveControlTiltMaximum);
+            if(Math.Abs(nx)<.005 && Math.Abs(ny)<.005)return true;
+            _videoCenterBusy=true;_lastCenterClickTicks=now;int epoch=_inputEpoch;
+            try
+            {
+                SetActivePanTiltZoomSource(ir);
+                double speed=tuning.Speed(PanTiltSpeedLevel,zoom,IsFovSpeedEnabled);
+                if(!_controlCommandService.SetPanPositionSpeed(speed)||!_controlCommandService.SetTiltPositionSpeed(speed)||!_controlCommandService.SetPanShortestPathMode())return false;
+                await Task.Delay(IsEnvironmentStatusSelected?100:80);
+                if(epoch!=_inputEpoch || !CameraFeatureTransportReady || IsControlInputLocked || !IsOperationCommandEnabled || _controlInputs.Count>0)return false;
+                bool panSent=_controlCommandService.PanGoPosition(target.Item1);
+                await Task.Delay(IsEnvironmentStatusSelected?60:0);
+                if(epoch!=_inputEpoch || !CameraFeatureTransportReady || IsControlInputLocked || !IsOperationCommandEnabled || _controlInputs.Count>0){_controlCommandService.StopPanTiltPositionMove();return false;}
+                bool tiltSent=panSent && _controlCommandService.TiltGoPosition(tilt);
+                if(!tiltSent){_controlCommandService.StopPanTiltPositionMove();return false;}
+                _activePanAbsoluteTarget=target.Item1;_activeTiltAbsoluteTarget=tilt;_lastPanAbsoluteTarget=target.Item1;
+                double panDistance=Math.Abs((target.Item1-pose.Item1+540)%360-180), tiltDistance=Math.Abs(tilt-pose.Item2);
+                _centerMoveEpoch=epoch;_centerDeadlineTicks=DateTime.UtcNow.AddSeconds(Math.Min(120,Math.Max(5,2*Math.Max(panDistance,tiltDistance)/Math.Max(1,speed)+3))).Ticks;
+                ConsoleLogHelper.Command("VIDEO CENTER","SOURCE=VIDEO_CLICK / CAMERA="+(ir?"IR":"EO")+" / MODEL=OPTICAL_ONLY_APPROX / XY="+nx+","+ny+" / ESTIMATED_HFOV="+hfov+" / TARGET="+target.Item1+","+tilt+" / TX_ONLY, arrival not confirmed");return true;
+            }
+            catch(Exception ex){_controlCommandService.StopPanTiltPositionMove();ConsoleLogHelper.Warning("VIDEO CENTER",ex.GetType().Name);return false;}
+            finally{_videoCenterBusy=false;}
+        }
+    }
+    internal static class CameraNumberValidation
+    {
+        internal static bool AnyInvalid(this double[] numbers){foreach(double x in numbers)if(double.IsNaN(x)||double.IsInfinity(x))return true;return false;}
+    }
+}

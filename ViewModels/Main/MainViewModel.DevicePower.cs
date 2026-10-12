@@ -55,12 +55,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _connectedControlAgentProfile == SelectedControlAgentProfile &&
                 _connectedControlAgentEndpoint == ControlAgentIp + ":" + ControlAgentPortText)
                 return camera == "IR" ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0) : ToOnOff((_currentScbPowerStatus & 0x01) != 0);
-            lock (_lastCameraPower)
-                return _lastCameraPower.TryGetValue(PowerTargetKey, out string[] values) ? values[camera == "IR" ? 1 : 0] : "UNKNOWN";
+            // 2026-10-08 V30_0: stale historical power is not current evidence.
+            // RTSP loss cannot distinguish physical OFF from a network outage.
+            return "UNKNOWN";
         }
         public string CameraPowerStateHelpText => "전원 상태와 영상 연결 상태는 다릅니다. 연결 해제는 POWER OFF가 아닙니다.\n" +
-            "통신 해제/응답 지연 시 마지막 확인 ON/OFF를 유지합니다. 장비에서 다시 상태를 받으면 갱신합니다.\n" +
-            "기존 장비는 영상 수신 및 명시적 전원 요청 결과를 참고합니다. 미확인 최초 상태는 UNKNOWN입니다.";
+            "통신 해제/응답 지연 시 전원은 UNKNOWN입니다. 장비에서 다시 상태를 받으면 갱신합니다.\n" +
+            "비기동형은 영상 수신으로 ON만 확인합니다. 명시적 전원 응답이 없으면 OFF는 확정하지 않습니다.";
 
         public ICommand EoPowerOnCommand { get; private set; }
         public ICommand EoPowerOffCommand { get; private set; }
@@ -84,8 +85,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _isDevicePowerStatusStale ? "STALE" : "FRESH";
 
         public string DeviceControlConnectionStatusText =>
-            ToOnOff(string.Equals(ControlAgentConnectionStatusText, "Connected",
-                StringComparison.OrdinalIgnoreCase));
+            string.Equals(ControlAgentConnectionStatusText, "Connected", StringComparison.OrdinalIgnoreCase)
+                ? "Connected" : "Disconnected";
 
         public string CurrentGpsPowerText =>
             _hasDevicePowerStatus && !_isDevicePowerStatusStale

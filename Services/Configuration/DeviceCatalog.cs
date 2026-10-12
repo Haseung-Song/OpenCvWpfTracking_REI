@@ -41,8 +41,12 @@ namespace OpenCvWpfTracking.Services.Configuration
         {
             if(string.IsNullOrEmpty(url)) return "";
             if(string.IsNullOrEmpty(user) && string.IsNullOrEmpty(password)) return url;
-            var u=new UriBuilder(url) { UserName=user??"",Password=password??"" };
-            return u.Uri.AbsoluteUri;
+            // 2026-10-08 V30_0: complete URIs are not decoded/re-escaped.
+            var uri = new Uri(url, UriKind.Absolute);
+            if (!string.IsNullOrEmpty(uri.UserInfo)) return url;
+            int authority = url.IndexOf("://", StringComparison.Ordinal) + 3;
+            return url.Insert(authority, Uri.EscapeDataString(user ?? "") + ":" +
+                Uri.EscapeDataString(password ?? "") + "@");
         }
         public static List<DeviceEntry> Load(string path)
         {
@@ -64,8 +68,8 @@ namespace OpenCvWpfTracking.Services.Configuration
                 foreach(var index in new[]{5,8})
                 {
                     Uri uri;
-                    if(!Uri.TryCreate(row[index],UriKind.Absolute,out uri) || uri.Scheme!="rtsp" || string.IsNullOrWhiteSpace(uri.Host) || uri.UserInfo.Length>0)
-                        throw new FormatException("RTSP URL must exclude credentials; use separate Id/Pw columns.");
+                    if(!Uri.TryCreate(row[index],UriKind.Absolute,out uri) || uri.Scheme!="rtsp" || string.IsNullOrWhiteSpace(uri.Host) || !string.IsNullOrEmpty(uri.Fragment))
+                        throw new FormatException("Invalid RTSP URI. Escape credential # as %23.");
                 }
                 if(control==CameraControlType.CtecCgi && string.IsNullOrWhiteSpace(row[12])) throw new FormatException("Missing camera control host.");
                 result.Add(new DeviceEntry { Id=row[0],Name=row[1],AgentType=agent,AgentIp=row[3],AgentPort=row[4],

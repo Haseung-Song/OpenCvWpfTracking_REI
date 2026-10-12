@@ -70,6 +70,11 @@ namespace OpenCvWpfTracking
             IntPtr monitorHandle,
             ref NativeMonitorInfo monitorInfo);
 
+        [DllImport("user32.dll")]
+        private static extern uint GetDoubleClickTime();
+
+        internal static int VideoDoubleClickDelay => (int)Math.Max(1u,GetDoubleClickTime());
+
         private bool _isMainWindowFullScreen;
 
         private Rect _mainWindowRestoreBounds;
@@ -117,6 +122,10 @@ namespace OpenCvWpfTracking
         // 2026-09-29: 기존 더블클릭 분리 창 경로를 그대로 재사용하면서
         // EO/IR 메인 영상의 의도적인 Drag도 분리 창 열기로 인식한다.
         private bool _isVideoPopoutDragPending;
+
+        // A single click is delayed until Windows' double-click interval expires.
+        // The second press increments this token so fullscreen/popout gestures never send PT.
+        private int _videoCenterClickGeneration;
 
         private Point _videoPopoutDragStartPoint;
 
@@ -384,9 +393,10 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            PcTitleBarClockText.Text = "PC TIME  " + DateTime.Now.ToString(
+            string clockText = "PC TIME  " + DateTime.Now.ToString(
                 "yyyy-MM-dd HH:mm:ss",
                 CultureInfo.InvariantCulture);
+            if (PcTitleBarClockText.Text != clockText) PcTitleBarClockText.Text = clockText;
             if (PcTitleBarClockBadge != null) PcTitleBarClockBadge.ToolTip = PcTitleBarClockText.Text;
         }
 
@@ -397,14 +407,19 @@ namespace OpenCvWpfTracking
             double buttonLeft = TitleBarWindowButtons.TranslatePoint(new Point(0,0),TitleBarClockHost).X;
             Rect placement = ClockBadgePlacement(center.X, buttonLeft);
             double width = placement.Width, left = placement.X;
+            double titleWidth = Math.Max(1, left - 20);
+            if (Math.Abs(TitleBarProgramTitle.MaxWidth - titleWidth) > .1) TitleBarProgramTitle.MaxWidth = titleWidth;
             if (Math.Abs(PcTitleBarClockBadge.Width - width) > .1 || double.IsNaN(PcTitleBarClockBadge.Width)) PcTitleBarClockBadge.Width = width;
             if (Math.Abs(PcTitleBarClockBadge.Margin.Left - left) > .1) PcTitleBarClockBadge.Margin = new Thickness(left,0,0,0);
         }
 
         private static Rect ClockBadgePlacement(double center, double buttonLeft)
         {
-            double width = Math.Max(1, Math.Min(210, 2 * Math.Max(0, buttonLeft - center - 6)));
-            return new Rect(center - width / 2, 0, width, 26);
+            // 2026-10-08: scale the complete clock; avoid a one-pixel badge.
+            double width = Math.Max(1, Math.Min(210, Math.Max(110, 2 * (buttonLeft - center - 6))));
+            width = Math.Min(width, Math.Max(1, buttonLeft - 18));
+            double left = Math.Max(8, Math.Min(center - width / 2, buttonLeft - width - 6));
+            return new Rect(left, 0, width, 26);
         }
 
         /// <summary>
@@ -521,6 +536,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
+            ShutdownV30Ui();
             /*
              * 2026-08-26: Application.Current가 해제되기 전에 ViewModel의
              * AI 수신, 이벤트 Timer와 영상 연결을 먼저 종료한다.
@@ -606,6 +622,7 @@ namespace OpenCvWpfTracking
 
             _companyMapWindow.Owner =
                 this;
+            _companyMapWindow.DefaultViewReset += (resetSender,resetArgs) => mapControl.ResetDefaultView();
 
             _companyMapWindow.Closed +=
                 (closedSender, closedArgs) =>
@@ -643,6 +660,9 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            // 2026-10-12: ToggleButton inside Expander is not Button. Let every overlay control receive its click.
+            if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) != null || Ancestor<Expander>(e.OriginalSource as DependencyObject) != null)
+            { _isVideoPopoutDragPending = false; _isWindowDragPending = false; return; }
             // 2026-10-01: 화면 배치와 무관하게 사용자가 선택한 영상 채널을
             // PT 줌 감쇄 기준으로 사용한다. EO가 서브 화면이어도 동일하다.
             vm?.SetActivePanTiltZoomSource(false);
@@ -664,6 +684,7 @@ namespace OpenCvWpfTracking
 
             // 2026-09-29: 메인 영상 더블클릭 분리 기능은 제거한다.
             // 분리 창은 EO/IR 영상을 실제로 끌어낸 경우에만 생성한다.
+            _videoCenterClickGeneration++;
             _isVideoPopoutDragPending = false;
             e.Handled = true;
         }
@@ -675,6 +696,9 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            // 2026-10-12: preserve shortcut/jog interaction instead of starting a video tear-off drag.
+            if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) != null || Ancestor<Expander>(e.OriginalSource as DependencyObject) != null)
+            { _isVideoPopoutDragPending = false; _isWindowDragPending = false; return; }
             // 2026-10-01: IR이 메인/서브 어느 위치에 있어도 클릭 즉시 ACTIVE(IR)로 전환한다.
             vm?.SetActivePanTiltZoomSource(true);
 
@@ -693,6 +717,7 @@ namespace OpenCvWpfTracking
                 return;
             }
 
+            _videoCenterClickGeneration++;
             _isVideoPopoutDragPending = false;
             e.Handled = true;
         }
@@ -763,11 +788,28 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
-        private void VideoBorder_PreviewMouseLeftButtonUp(
+        private async void VideoBorder_PreviewMouseLeftButtonUp(
             object sender,
             MouseButtonEventArgs e)
         {
+            // 2026-10-12: a click (not a tear-off drag) centers the selected video point.
+            bool click=_isVideoPopoutDragPending;
             _isVideoPopoutDragPending = false;
+            if(!click || !vm.IsVideoClickCenterEnabled || _isFovValidationActive || e.ChangedButton!=MouseButton.Left || e.ClickCount>1)return;
+            Point current=e.GetPosition(this);
+            if(Math.Abs(current.X-_videoPopoutDragStartPoint.X)>=SystemParameters.MinimumHorizontalDragDistance ||
+               Math.Abs(current.Y-_videoPopoutDragStartPoint.Y)>=SystemParameters.MinimumVerticalDragDistance)return;
+            bool ir=_videoPopoutDragCameraType==VideoPopoutCameraType.Ir;
+            Image image=ir?IrCameraImageView:EoCameraImageView;
+            Point pixel;
+            if(!TryGetFovSourcePixel(image,e.GetPosition(image),out pixel))return;
+            var bitmap=image.Source as BitmapSource;
+            if(bitmap==null)return;
+            e.Handled=true;
+            int generation=++_videoCenterClickGeneration;
+            await Task.Delay(VideoDoubleClickDelay);
+            if(generation!=_videoCenterClickGeneration || !vm.IsVideoClickCenterEnabled)return;
+            await vm.CenterVideoPointAsync(ir,2*pixel.X/bitmap.PixelWidth-1,2*pixel.Y/bitmap.PixelHeight-1,bitmap.PixelWidth/(double)bitmap.PixelHeight);
         }
 
         /// <summary>
@@ -964,6 +1006,7 @@ namespace OpenCvWpfTracking
                 return;
             }
 
+            vm.ReleaseAllControlInputs("Main channel switch");
             _primaryVideoType =
                 cameraType;
 
@@ -1411,7 +1454,8 @@ namespace OpenCvWpfTracking
                 Top = topLeft.Y;
                 Width = Math.Max(1.0, bottomRight.X - topLeft.X);
                 Height = Math.Max(1.0, bottomRight.Y - topLeft.Y);
-                Topmost = true;
+                // 2026-10-08 V30_0: keep Windows task switching accessible.
+                Topmost = false;
 
                 UpdateWindowChromeState();
                 ConsoleLogHelper.Info(
@@ -1485,6 +1529,7 @@ namespace OpenCvWpfTracking
             object sender,
             RoutedEventArgs e)
         {
+            InitializeV30ControlUi();
             FitWindowToWorkingArea();
             UpdateWindowChromeState();
 
@@ -2162,6 +2207,12 @@ namespace OpenCvWpfTracking
             object sender,
             KeyEventArgs e)
         {
+            // 2026-10-08 V30_0: OS combinations and global hook are not duplicated.
+            if (e.Key == Key.System || Keyboard.Modifiers != ModifierKeys.None)
+            { vm.ReleaseControlOwner("main"); return; }
+            if (!IsTextBoxKeyboardFocus() && !IsControlInputKeyboardLocked() && !IsEventPageNavigationKey(e.Key) &&
+                vm.HandleControlKey("main", e.Key, true, _primaryVideoType == VideoPopoutCameraType.Ir, e.IsRepeat))
+            { e.Handled = true; return; }
             // 2026-09-16: ESC는 장비 제어 Lock보다 우선하여 메인 전체화면을 복원한다.
             if (e.Key == Key.Escape && _isMainWindowFullScreen)
             {
@@ -2291,6 +2342,7 @@ namespace OpenCvWpfTracking
             object sender,
             KeyEventArgs e)
         {
+            if (vm.HandleControlKey("main", e.Key, false, _primaryVideoType == VideoPopoutCameraType.Ir)) { e.Handled = true; return; }
             // HOME / ZERO 또는 AUTO SCAN 진행 중 KeyUp도 함께 소비한다.
             //
             // HOME 시작 전에 눌려 있던 방향키/WASD/Zoom/Focus 키가
@@ -2337,6 +2389,8 @@ namespace OpenCvWpfTracking
             object sender,
             EventArgs e)
         {
+            if (vm.IsGlobalControlEnabled) { vm.ReleaseControlOwner("main"); vm.ReleaseControlOwner("mouse"); vm.ReleaseControlOwner("video"); return; }
+            vm.ReleaseAllControlInputs("Window deactivated");
             StopActiveHoverLensMove();
             vm?.ResetAllKeyboardControlState();
         }
@@ -2533,7 +2587,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartPanLeftMove();
+            BeginMouseControl(sender, "PT", -1, 0); e.Handled = true;
         }
 
         /// <summary>
@@ -2543,7 +2597,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartPanRightMove();
+            BeginMouseControl(sender, "PT", 1, 0); e.Handled = true;
         }
 
         /// <summary>
@@ -2553,7 +2607,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartTiltUpMove();
+            BeginMouseControl(sender, "PT", 0, 1); e.Handled = true;
         }
 
         /// <summary>
@@ -2563,7 +2617,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartTiltDownMove();
+            BeginMouseControl(sender, "PT", 0, -1); e.Handled = true;
         }
 
         /// <summary>
@@ -2574,7 +2628,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartPanLeftTiltUpMove();
+            BeginMouseControl(sender, "PT", -1, 1); e.Handled = true;
         }
 
         /// <summary>
@@ -2585,7 +2639,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartPanRightTiltUpMove();
+            BeginMouseControl(sender, "PT", 1, 1); e.Handled = true;
         }
 
         /// <summary>
@@ -2596,7 +2650,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartPanLeftTiltDownMove();
+            BeginMouseControl(sender, "PT", -1, -1); e.Handled = true;
         }
 
         /// <summary>
@@ -2607,7 +2661,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartPanRightTiltDownMove();
+            BeginMouseControl(sender, "PT", 1, -1); e.Handled = true;
         }
 
         #endregion
@@ -2621,7 +2675,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartEoZoomInMove();
+            BeginMouseControl(sender, "EZ", 1, 0, false); e.Handled = true;
         }
 
         /// <summary>
@@ -2631,7 +2685,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartEoZoomOutMove();
+            BeginMouseControl(sender, "EZ", -1, 0, false); e.Handled = true;
         }
 
         /// <summary>
@@ -2641,7 +2695,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartEoFocusNearMove();
+            BeginMouseControl(sender, "EF", 1, 0, false); e.Handled = true;
         }
 
         /// <summary>
@@ -2651,7 +2705,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartEoFocusFarMove();
+            BeginMouseControl(sender, "EF", -1, 0, false); e.Handled = true;
         }
 
         /// <summary>
@@ -2678,7 +2732,7 @@ namespace OpenCvWpfTracking
             e.Handled =
                 true;
 
-            vm?.StartIrZoomInMove();
+            BeginMouseControl(sender, "IZ", 1, 0, true);
         }
 
         /// <summary>
@@ -2691,7 +2745,7 @@ namespace OpenCvWpfTracking
             e.Handled =
                 true;
 
-            vm?.StartIrZoomOutMove();
+            BeginMouseControl(sender, "IZ", -1, 0, true);
         }
 
         /// <summary>
@@ -2701,7 +2755,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartIrFocusNearMove();
+            BeginMouseControl(sender, "IF", 1, 0, true); e.Handled = true;
         }
 
         /// <summary>
@@ -2711,7 +2765,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            vm?.StartIrFocusFarMove();
+            BeginMouseControl(sender, "IF", -1, 0, true); e.Handled = true;
         }
 
         /// <summary>
@@ -2755,11 +2809,8 @@ namespace OpenCvWpfTracking
             object sender,
             MouseEventArgs e)
         {
-            // 버튼 이름이나 Visual Tree 판별에 의존하지 않는다.
-            // Pan/Tilt 조그가 활성 상태면 축별 STOP을 반드시 송신하고,
-            // 이어서 Zoom / Focus 등 다른 연속 제어의 STOP도 처리한다.
-            vm?.StopPanTiltContinuousMove();
-            vm?.StopContinuousMove();
+            // 2026-10-08 V30_0: release only this button, retain other owners.
+            if (e is MouseButtonEventArgs button && button.ChangedButton == MouseButton.Left) EndMouseControl(sender);
         }
 
         /// <summary>
@@ -2778,8 +2829,8 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            vm?.StopPanTiltContinuousMove();
-            vm?.StopContinuousMove();
+            // A captured button receives MouseUp even outside its bounds.
+            if (!(sender is UIElement element) || !element.IsMouseCaptured) EndMouseControl(sender);
         }
 
         /// <summary>

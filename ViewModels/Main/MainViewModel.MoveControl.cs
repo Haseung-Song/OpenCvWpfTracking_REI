@@ -3635,7 +3635,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이 Position을 EO와 IR에 동일하게 적용하여
         /// 두 렌즈의 기계적 Zoom 진행률을 맞춘다.
         /// </summary>
-        private static int ConvertEoZoomRatioToStandardPosition(
+        private int ConvertEoZoomRatioToStandardPosition(
             double eoZoomRatio)
         {
             double safeRatio =
@@ -3660,7 +3660,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 표준 Position 0 ~ 1000을
         /// EO 광학 배율 1.0 ~ 90.0으로 변환한다.
         /// </summary>
-        private static double ConvertStandardPositionToEoZoomRatio(
+        private double ConvertStandardPositionToEoZoomRatio(
             int standardPosition)
         {
             int safePosition =
@@ -3686,7 +3686,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 실제 장비 명령은 기존과 동일하게 Position 기준으로 보내며,
         /// 이 값은 UI 및 로그에 표시하는 예상 광학 배율이다.
         /// </summary>
-        private static double ConvertStandardPositionToIrZoomRatio(
+        private double ConvertStandardPositionToIrZoomRatio(
             int standardPosition)
         {
             int safePosition =
@@ -3699,10 +3699,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 safePosition /
                 (double)MoveControlPositionMaximum;
 
-            return MoveControlMinimumZoomRatio +
-                   normalized *
-                   (MoveControlIrMaximumZoomRatio -
-                    MoveControlMinimumZoomRatio);
+            return ControlTuningFor(true).Ratio(safePosition);
         }
 
         /// <summary>

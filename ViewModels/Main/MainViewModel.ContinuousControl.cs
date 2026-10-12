@@ -542,29 +542,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MoveControlPositionMaximum,
                     standardZoom));
 
-            double maximumZoomRatio = isInfrared
-                ? MoveControlIrMaximumZoomRatio
-                : MoveControlEoMaximumZoomRatio;
-
-            opticalZoomRatio =
-                MoveControlMinimumZoomRatio +
-                standardZoom / 1000.0 *
-                (maximumZoomRatio - MoveControlMinimumZoomRatio);
-
-            speedScale =
-                Math.Max(
-                    0.05,
-                    1.0 / Math.Sqrt(opticalZoomRatio));
-
-            int adaptiveSpeed =
-                (int)Math.Round(
-                    baseProtocolSpeed * speedScale);
-
-            return (byte)Math.Max(
-                1,
-                Math.Min(
-                    60,
-                    adaptiveSpeed));
+            // 2026-10-12: full-range attenuation; logs reflect the actual clamped protocol speed.
+            var tuning = ControlTuningFor(isInfrared);
+            opticalZoomRatio = tuning.Ratio(standardZoom);
+            byte speed = tuning.Speed(baseProtocolSpeed, standardZoom, IsFovSpeedEnabled);
+            speedScale = baseProtocolSpeed == 0 ? 0 : speed / (double)baseProtocolSpeed;
+            return speed;
         }
 
         /// <summary>
@@ -1039,7 +1022,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 그 외 EO 카메라 선택 시:
         /// - 기존 Control Agent 제어 유지
         /// </summary>
-        public async void StartEoZoomInMove()
+        public async void StartEoZoomInMove() => await StartEoZoomInMoveAsync();
+        private async Task StartEoZoomInMoveAsync()
         {
             // 2026-10-01: 사용자가 조작한 Lens 채널을 PT 감쇄 기준과 UI 표시에 즉시 반영한다.
             SetActivePanTiltZoomSource(false);
@@ -1103,6 +1087,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine(
                 $"[CONTROL] EO ZOOM TELE SEND RESULT : {result}");
+            SetDigitalEstimateDirection(result ? 1 : 0);
 
             ConsoleLogHelper.PrintLine();
 
@@ -1133,7 +1118,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 선택된 EO 프리셋에 따라
         /// CTEC CGI 직접 제어 또는 Control Agent 제어로 분기한다.
         /// </summary>
-        public async void StartEoZoomOutMove()
+        public async void StartEoZoomOutMove() => await StartEoZoomOutMoveAsync();
+        private async Task StartEoZoomOutMoveAsync()
         {
             SetActivePanTiltZoomSource(false);
             _ptzPerformanceScenario = "ZOOM_OUT";
@@ -1196,6 +1182,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine(
                 $"[CONTROL] EO ZOOM WIDE SEND RESULT : {result}");
+            SetDigitalEstimateDirection(result ? -1 : 0);
 
             ConsoleLogHelper.PrintLine();
 
@@ -1229,7 +1216,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 그 외 EO 선택 시:
         /// 기존 Control Agent Focus Near 명령을 유지한다.
         /// </summary>
-        public async void StartEoFocusNearMove()
+        public async void StartEoFocusNearMove() => await StartEoFocusNearMoveAsync();
+        private async Task StartEoFocusNearMoveAsync()
         {
             if (_currentMoveType !=
                 ContinuousMoveType.None)
@@ -1335,7 +1323,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 그 외 EO 선택 시:
         /// 기존 Control Agent Focus Far 명령을 유지한다.
         /// </summary>
-        public async void StartEoFocusFarMove()
+        public async void StartEoFocusFarMove() => await StartEoFocusFarMoveAsync();
+        private async Task StartEoFocusFarMoveAsync()
         {
             if (_currentMoveType !=
                 ContinuousMoveType.None)
@@ -1670,6 +1659,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         _currentCtecEoZoomPosition =
                             zoomPosition;
+                        if (zoomPosition <= CtecEoZoomPositionMax) MarkLensEvidence(false);
 
                         if(_connectedEoCtecSource!=null)
                         {
@@ -2290,6 +2280,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void StopAllPtzfMove()
         {
+            SetDigitalEstimateDirection(0);
+            // 2026-10-12: click-to-center uses absolute PT on LA as well as Web Agent.
+            if(_videoCenterBusy || _centerDeadlineTicks!=0)
+            { _controlCommandService.StopPanTiltPositionMove(); _centerDeadlineTicks=0; }
+            // 2026-10-08 V30_0: emergency stop invalidates queued/replay inputs.
+            _axisCtecSources.TryGetValue("EZ", out RtspSourceOption zoomStopSource);
+            _axisCtecSources.TryGetValue("EF", out RtspSourceOption focusStopSource);
+            ++_inputEpoch; _controlInputs.Clear(); _issuedControlAxes.Clear(); _axisCtecSources.Clear();
             ContinuousMoveType moveType =
                 _currentMoveType;
 
@@ -2344,6 +2342,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _controlCommandService.StopMove();
 
             bool ctecStopResult = true;
+            if (zoomStopSource != null) ctecStopResult &= await _ctecCameraCommandService.StopZoomAsync(zoomStopSource.ControlIp, zoomStopSource.ControlUserName, zoomStopSource.ControlPassword, zoomStopSource.UseHttps);
+            if (focusStopSource != null) ctecStopResult &= await _ctecCameraCommandService.StopFocusAsync(focusStopSource.ControlIp, focusStopSource.ControlUserName, focusStopSource.ControlPassword, focusStopSource.UseHttps);
 
             if (activeEoCtecSource != null)
             {
@@ -2382,7 +2382,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 옥상 MR300 EO Zoom / Focus는 CTEC CGI 전용 Stop 명령을 송신하고,
         /// 그 외 제어는 기존 Control Agent Stop 명령을 유지한다.
         /// </summary>
-        public async void StopContinuousMove()
+        public async void StopContinuousMove() => await StopContinuousMoveAsync();
+        private async Task StopContinuousMoveAsync(bool waitForStatus = true)
         {
             // HOME / ZERO 또는 AUTO SCAN 명령 이후 MouseUp/MouseLeave/Focus 이탈로
             // 공통 Stop이 뒤늦게 들어오면 진행 중인 동작이 중단될 수 있다.
@@ -2429,9 +2430,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _currentMoveType =
                 ContinuousMoveType.None;
 
-            _activePanTiltMoveDirection =
-                KeyboardPanTiltDirection.None;
-
             RtspSourceOption activeEoCtecSource =
                 _activeEoCtecSource;
 
@@ -2456,6 +2454,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 case ContinuousMoveType.EoZoom:
                     {
+                        SetDigitalEstimateDirection(0);
                         if (activeEoCtecSource !=
                             null)
                         {
@@ -2470,7 +2469,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             Console.WriteLine(
                                 $"[CONTROL] EO CTEC ZOOM STOP RESULT : {stopResult}");
 
-                            if (stopResult &&
+                            if (waitForStatus && stopResult &&
                                 _ctecCameraResponseService.IsConnected)
                             {
                                 await WaitForCtecEoPositionStableAsync(
@@ -2493,7 +2492,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 $"TYPE=GLOBAL_COMPAT / PACKET=FF 01 00 00 00 00 01 / " +
                                 $"REASON=WEB_AGENT_00_51_01_00_NOT_APPLIED / RESULT={stopResult}");
 
-                            if (stopResult)
+                            if (waitForStatus && stopResult)
                             {
                                 await WaitForControlAgentLensStatusAfterStopAsync(
                                     ContinuousMoveType.EoZoom);
@@ -2553,7 +2552,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             $"[{DateTime.Now:HH:mm:ss.fff}] " +
                             $"[FOCUS COMMAND] STOP RESULT={stopResult}");
 
-                        if (stopResult &&
+                        if (waitForStatus && stopResult &&
                             activeEoCtecSource != null &&
                             _ctecCameraResponseService.IsConnected)
                         {
@@ -2562,7 +2561,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 activeEoCtecSource,
                                 stopOperationGeneration);
                         }
-                        else if (stopResult &&
+                        else if (waitForStatus && stopResult &&
                                  activeEoCtecSource == null)
                         {
                             await WaitForControlAgentLensStatusAfterStopAsync(

@@ -1,0 +1,237 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
+using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Models.Main;
+using OpenCvWpfTracking.Services.Configuration;
+
+namespace OpenCvWpfTracking.ViewModels.Main
+{
+    public partial class MainViewModel
+    {
+        // 2026-10-08 V30_0: all input owners share one independent axis ledger.
+        private readonly Dictionary<string, Tuple<string, int, int>> _controlInputs = new Dictionary<string, Tuple<string, int, int>>();
+        private readonly Dictionary<string, Tuple<int, int>> _issuedControlAxes = new Dictionary<string, Tuple<int, int>>();
+        private readonly SemaphoreSlim _inputReconcile = new SemaphoreSlim(1, 1);
+        private bool _isFovSpeedEnabled = true, _isGlobalControlEnabled, _isVideoClickCenterEnabled = true;
+        private int _inputEpoch;
+        private long _eoLensReceivedTicks, _irLensReceivedTicks;
+        private DispatcherTimer _v30StatusTimer;
+        private string _lastZoomNotification, _lastPowerNotification;
+        private bool _replayControlInputs;
+        private readonly Dictionary<string, RtspSourceOption> _axisCtecSources = new Dictionary<string, RtspSourceOption>();
+
+        private LensControlTuning ControlTuningFor(bool ir)
+        {
+            var profile = _requestedControlProfile ?? SelectedControlAgentProfile;
+            var device = DeviceCatalog.Entries.FirstOrDefault(x => x.Label + " EO/IR" == profile?.DisplayName);
+            return ControlTuning.Get(device?.Id, ir);
+        }
+        public bool IsFovSpeedEnabled
+        {
+            get => _isFovSpeedEnabled;
+            set { if (_isFovSpeedEnabled == value) return; _isFovSpeedEnabled = value; OnPropertyChanged(); RefreshControlSpeed(); ConsoleLogHelper.State("FOV SPEED", value ? "GUI enabled / estimated ratio" : "GUI disabled / agent-side compensation may be used"); }
+        }
+        public bool IsGlobalControlEnabled
+        {
+            get => _isGlobalControlEnabled;
+            set { if (_isGlobalControlEnabled == value) return; ReleaseAllControlInputs("Global control changed"); _isGlobalControlEnabled = value; OnPropertyChanged(); OnPropertyChanged(nameof(GlobalControlStatusText)); }
+        }
+        public bool IsVideoClickCenterEnabled
+        {
+            get => _isVideoClickCenterEnabled;
+            set { if (_isVideoClickCenterEnabled == value) return; _isVideoClickCenterEnabled = value; OnPropertyChanged(); ConsoleLogHelper.State("VIDEO CLICK CENTER",value?"Enabled":"Disabled"); }
+        }
+        public string GlobalControlStatusText => IsGlobalControlEnabled ? "GLOBAL PTZF ON" : "GLOBAL PTZF OFF";
+        public double EoOpticalRatioMinimum => ControlTuningFor(false).MinimumRatio;
+        public double EoOpticalRatioMaximum => ControlTuningFor(false).MaximumRatio;
+        public string ZoomOpticalStandardText => $"EO {ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MaximumRatio:0.#} OPTICAL (임시 환산)";
+        public string ZoomOpticalRangeText => $"EO {ControlTuningFor(false).MinimumRatio:0.#}~{ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MinimumRatio:0.#}~{ControlTuningFor(true).MaximumRatio:0.#}x 동일 진행률";
+        public double EoSpeedExponent { get => ControlTuningFor(false).Exponent; set => SetExponent(false, value); }
+        public double IrSpeedExponent { get => ControlTuningFor(true).Exponent; set => SetExponent(true, value); }
+        public int EoMinimumSpeed { get => ControlTuningFor(false).MinimumSpeed; set => SetMinimum(false, value); }
+        public int IrMinimumSpeed { get => ControlTuningFor(true).MinimumSpeed; set => SetMinimum(true, value); }
+        private void SetExponent(bool ir, double value)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value < .1 || value > 4) return;
+            ControlTuningFor(ir).Exponent = value; OnPropertyChanged(ir ? nameof(IrSpeedExponent) : nameof(EoSpeedExponent)); RefreshControlSpeed();
+        }
+        private void SetMinimum(bool ir, int value)
+        {
+            if (value < 1 || value > 60) return;
+            ControlTuningFor(ir).MinimumSpeed = value; OnPropertyChanged(ir ? nameof(IrMinimumSpeed) : nameof(EoMinimumSpeed)); RefreshControlSpeed();
+        }
+        public void AdjustControlSpeed(int delta) => PanTiltSpeedLevel = (byte)Math.Max(1, Math.Min(60, PanTiltSpeedLevel + delta));
+        private void RefreshControlSpeed()
+        {
+            OnPropertyChanged(nameof(EffectivePanTiltSpeedLevel)); OnPropertyChanged(nameof(PanTiltSpeedDisplayText));
+            if (_issuedControlAxes.ContainsKey("PT")) { _replayControlInputs = true; ReconcileControlInputs(); }
+        }
+        private bool IsLensFresh(bool ir) => _isDeviceConnectionRequested && DateTime.UtcNow.Ticks - (ir ? Interlocked.Read(ref _irLensReceivedTicks) : Interlocked.Read(ref _eoLensReceivedTicks)) < TimeSpan.FromSeconds(3).Ticks;
+        public string EoZoomRatioOverlayText => IsLensFresh(false) ? "EO x" + EoDisplayZoomRatio.ToString("F1") + (IsEoDigitalEstimateVisible ? " (추정)" : " (환산)") : "EO 배율 미확인";
+        public string IrZoomRatioOverlayText => IsLensFresh(true) ? "IR x" + ControlTuningFor(true).Ratio(GetCurrentIrZoomStandardPosition()).ToString("F1") + " (환산)" : "IR 배율 미확인";
+        private string ZoomRatioStatus(bool ir) => (ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom()) + " / 1000 (" + (IsLensFresh(ir) ? "x" + (ir ? ControlTuningFor(true).Ratio(GetCurrentIrZoomStandardPosition()) : EoDisplayZoomRatio).ToString("F1") : "배율 미확인") + ")";
+        private string _lastOpticalSpeedSignature;
+        private void MarkLensEvidence(bool ir) { if (ir) Interlocked.Exchange(ref _irLensReceivedTicks, DateTime.UtcNow.Ticks); else Interlocked.Exchange(ref _eoLensReceivedTicks, DateTime.UtcNow.Ticks); }
+        public void InitializeV30Status()
+        {
+            if (_v30StatusTimer != null) return;
+            _v30StatusTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(250) };
+            _v30StatusTimer.Tick += (s, e) =>
+            {
+                TickDigitalZoom();
+                TickDigitalEstimate();
+                string zoom = EoZoomRatioOverlayText + IrZoomRatioOverlayText;
+                if (zoom != _lastZoomNotification)
+                {
+                    _lastZoomNotification = zoom;
+                    foreach (var name in new[] { nameof(EoZoomRatioOverlayText), nameof(IrZoomRatioOverlayText), nameof(RooftopEoZoomStatusText), nameof(RooftopIrZoomStatusText), nameof(EnvironmentEoZoomStatusText), nameof(EnvironmentIrZoomStatusText) }) OnPropertyChanged(name);
+                    // Display-only digital estimates must not trigger PT command replays.
+                    string optical=GetCurrentPresetStandardZoom()+"/"+GetCurrentIrZoomStandardPosition()+"/"+IsLensFresh(false)+"/"+IsLensFresh(true);
+                    if(optical!=_lastOpticalSpeedSignature){_lastOpticalSpeedSignature=optical;RefreshControlSpeed();}
+                }
+                string power = EoPowerControlStatusText + "/" + IrPowerControlStatusText;
+                if (power != _lastPowerNotification)
+                {
+                    _lastPowerNotification = power;
+                    foreach (var name in new[] { nameof(EoPowerControlStatusText), nameof(IrPowerControlStatusText), nameof(CurrentEoPowerStatusColor), nameof(CurrentIrPowerStatusColor), nameof(IsEoPowerOnEnabled), nameof(IsEoPowerOffEnabled), nameof(IsIrPowerOnEnabled), nameof(IsIrPowerOffEnabled) }) OnPropertyChanged(name);
+                    ConsoleLogHelper.State("POWER EVIDENCE", power + " / RTSP loss is not proof of OFF");
+                }
+                if ((!_isDeviceConnectionRequested || !_laTcpService.IsConnected) && _controlInputs.Count != 0) ReleaseAllControlInputs("Disconnected");
+            };
+            _v30StatusTimer.Start();
+        }
+        public void ShutdownV30Control() { _v30StatusTimer?.Stop(); ReleaseAllControlInputs("Shutdown"); }
+
+        public bool HandleControlKey(string owner, Key key, bool down, bool ir, bool repeat = false)
+        {
+            string token = owner + "/" + key;
+            if (!down) { if (_controlInputs.ContainsKey(token)) { ReleaseControlInput(token); return true; } return false; }
+            if (key == Key.Z || key == Key.C) { AdjustControlSpeed(key == Key.Z ? -1 : 1); return true; }
+            if (repeat) return key == Key.Left || key == Key.Right || key == Key.Up || key == Key.Down ||
+                key == Key.W || key == Key.S || key == Key.A || key == Key.D || key == Key.Z || key == Key.C;
+            switch (key)
+            {
+                case Key.Left: PressControlInput(token, "PT", -1, 0, ir); break;
+                case Key.Right: PressControlInput(token, "PT", 1, 0, ir); break;
+                case Key.Up: PressControlInput(token, "PT", 0, 1, ir); break;
+                case Key.Down: PressControlInput(token, "PT", 0, -1, ir); break;
+                case Key.W: PressControlInput(token, ir ? "IZ" : "EZ", 1, 0, ir); break;
+                case Key.S: PressControlInput(token, ir ? "IZ" : "EZ", -1, 0, ir); break;
+                case Key.A: PressControlInput(token, ir ? "IF" : "EF", ir ? -1 : 1, 0, ir); break;
+                case Key.D: PressControlInput(token, ir ? "IF" : "EF", ir ? 1 : -1, 0, ir); break;
+                default: return false;
+            }
+            return true;
+        }
+        public void PressControlInput(string token, string axis, int x, int y, bool ir)
+        {
+            // 2026-10-12: rejected GUI clicks must be diagnosable, not silently ignored.
+            string blocked = IsControlInputLocked ? "CONTROL_LOCK" : !IsOperationCommandEnabled ? "OPERATION_LOCK" : !_isDeviceConnectionRequested ? "NO_REQUESTED_CONNECTION" : !_laTcpService.IsConnected ? "TCP_DISCONNECTED" : null;
+            if (blocked != null) { ConsoleLogHelper.Warning("PTZF INPUT", "REJECTED / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / REASON=" + blocked); return; }
+            if (_controlInputs.ContainsKey(token)) return;
+            // 2026-10-12: manual input supersedes queued/active click-to-center absolute movement.
+            if (_videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue)
+            { ++_inputEpoch; _controlCommandService.StopPanTiltPositionMove(); ClearActivePanTiltAbsoluteMove(); }
+            SetActivePanTiltZoomSource(ir);
+            _controlInputs[token] = Tuple.Create(axis, x, y);
+            ConsoleLogHelper.Command("PTZF INPUT", "PRESS / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / X=" + x + " / Y=" + y);
+            ReconcileControlInputs();
+        }
+        public void ReleaseControlInput(string token) { if (_controlInputs.Remove(token)) { ConsoleLogHelper.Command("PTZF INPUT", "RELEASE / OWNER=" + token); ReconcileControlInputs(); } }
+        public void ReleaseControlOwner(string owner)
+        {
+            foreach (var token in _controlInputs.Keys.Where(x => x.StartsWith(owner + "/", StringComparison.Ordinal)).ToArray()) _controlInputs.Remove(token);
+            ReconcileControlInputs();
+        }
+        public void ReleaseAllControlInputs(string reason)
+        {
+            ++_inputEpoch; bool active = _controlInputs.Count != 0 || _issuedControlAxes.Count != 0 || _videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue;
+            _controlInputs.Clear(); _issuedControlAxes.Clear();
+            if (active) { StopAllPtzfMove(); ConsoleLogHelper.State("INPUT STOP", reason); }
+            else _axisCtecSources.Clear();
+        }
+        internal Dictionary<string, Tuple<int, int>> DesiredControlAxes()
+        {
+            var result = new Dictionary<string, Tuple<int, int>>();
+            foreach (var group in _controlInputs.Values.GroupBy(x => x.Item1))
+            {
+                int x = Math.Sign(group.Sum(v => v.Item2)), y = Math.Sign(group.Sum(v => v.Item3));
+                if (x != 0 || y != 0) result[group.Key] = Tuple.Create(x, y);
+            }
+            return result;
+        }
+        private async void ReconcileControlInputs()
+        {
+            await _inputReconcile.WaitAsync();
+            int epoch = _inputEpoch;
+            try
+            {
+                if (IsControlInputLocked || !_isDeviceConnectionRequested) { ReleaseAllControlInputs("Input not available"); return; }
+                var desired = DesiredControlAxes(); bool restore = _replayControlInputs; _replayControlInputs = false;
+                foreach (var axis in _issuedControlAxes.Keys.ToArray())
+                {
+                    if (desired.ContainsKey(axis) && desired[axis].Equals(_issuedControlAxes[axis])) continue;
+                    await StopControlAxis(axis);
+                    if (epoch != _inputEpoch) return;
+                    _issuedControlAxes.Remove(axis);
+                    // 2026-10-08: agent versions may reset other axes on a scoped
+                    // STOP too. Restore only currently held axes after every stop.
+                    restore = true;
+                }
+                foreach (var item in DesiredControlAxes())
+                {
+                    Tuple<int, int> previous;
+                    if (!restore && _issuedControlAxes.TryGetValue(item.Key, out previous) && previous.Equals(item.Value)) continue;
+                    if (epoch != _inputEpoch || IsControlInputLocked || !_isDeviceConnectionRequested) return;
+                    if (!DesiredControlAxes().TryGetValue(item.Key, out var heldNow) || !heldNow.Equals(item.Value)) continue;
+                    await StartControlAxis(item.Key, item.Value.Item1, item.Value.Item2);
+                    if (epoch != _inputEpoch) { StopAllPtzfMove(); return; }
+                    _issuedControlAxes[item.Key] = item.Value;
+                    if (!DesiredControlAxes().TryGetValue(item.Key, out heldNow) || !heldNow.Equals(item.Value))
+                    {
+                        await StopControlAxis(item.Key); _issuedControlAxes.Remove(item.Key);
+                        _replayControlInputs = true; ReconcileControlInputs(); continue;
+                    }
+                    ConsoleLogHelper.Command("PTZF INPUT", "AXIS=" + item.Key + " / X=" + item.Value.Item1 + " / Y=" + item.Value.Item2 + " / RESTORE=" + restore);
+                }
+            }
+            catch (Exception ex) { ReleaseAllControlInputs("Input failure"); ConsoleLogHelper.Warning("PTZF INPUT", ex.GetType().Name); }
+            finally { _inputReconcile.Release(); }
+        }
+        private async Task StartControlAxis(string axis, int x, int y)
+        {
+            switch (axis)
+            {
+                case "PT":
+                    if (x < 0 && y > 0) StartPanLeftTiltUpMove(); else if (x > 0 && y > 0) StartPanRightTiltUpMove();
+                    else if (x < 0 && y < 0) StartPanLeftTiltDownMove(); else if (x > 0 && y < 0) StartPanRightTiltDownMove();
+                    else if (x < 0) StartPanLeftMove(); else if (x > 0) StartPanRightMove(); else if (y > 0) StartTiltUpMove(); else if (y < 0) StartTiltDownMove(); break;
+                case "EZ": if (x > 0) await StartEoZoomInMoveAsync(); else await StartEoZoomOutMoveAsync(); _axisCtecSources[axis] = _activeEoCtecSource; break;
+                case "EF": _currentMoveType = ContinuousMoveType.None; if (x > 0) await StartEoFocusNearMoveAsync(); else await StartEoFocusFarMoveAsync(); _axisCtecSources[axis] = _activeEoCtecSource; break;
+                case "IZ": if (x > 0) StartIrZoomInMove(); else StartIrZoomOutMove(); break;
+                case "IF": if (x > 0) StartIrFocusNearMove(); else StartIrFocusFarMove(); break;
+            }
+        }
+        private async Task StopControlAxis(string axis)
+        {
+            switch (axis)
+            {
+                case "PT": StopPanTiltContinuousMove(); break;
+                case "IZ": StopIrZoomMove(); break;
+                case "IF": StopIrFocusMove(); break;
+                case "EZ":
+                case "EF":
+                    _axisCtecSources.TryGetValue(axis, out _activeEoCtecSource);
+                    _currentMoveType = axis == "EZ" ? ContinuousMoveType.EoZoom : ContinuousMoveType.EoFocus;
+                    // 2026-10-08: restore held axes before telemetry-settling waits.
+                    await StopContinuousMoveAsync(false); _axisCtecSources.Remove(axis); break;
+            }
+        }
+    }
+}

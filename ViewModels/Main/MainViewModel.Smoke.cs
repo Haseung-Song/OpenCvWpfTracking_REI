@@ -323,22 +323,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             TryRunAiUiAction(() =>
             {
-                if (enabled)
+                // 2026-10-08 V30_0: AI transport never changes user detector checks.
+                if (!enabled)
                 {
-                    IsThermalFireDetectionEnabled = true;
-                    IsSmokeDetectionEnabled = true;
-                    IsFireDiagnosticEnabled = true;
-                    IsSmokeDiagnosticEnabled = true;
-                    IsAutoTrackingEnabled = true;
-                }
-                else
-                {
-                    // 2026-09-02 V18: AI 연결 해제 시 영상처리 탐지기도
-                    // 함께 해제하는 기존 운용 연동을 복원한다.
-                    IsThermalFireDetectionEnabled = false;
-                    IsSmokeDetectionEnabled = false;
-                    IsFireDiagnosticEnabled = false;
-                    IsSmokeDiagnosticEnabled = false;
                     IsAutoTrackingEnabled = false;
                     ClearAiSmokeCandidateSnapshots();
                 }

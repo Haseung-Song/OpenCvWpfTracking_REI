@@ -476,6 +476,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void OnControlAgentConnectionClosed()
         {
+            // 2026-10-08: never replay held keys into a reconnected session.
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => { ReleaseAllControlInputs("Control TCP lost"); ResetDigitalZoomSession(); }));
             if (!_isDeviceConnectionRequested)
             {
                 SetControlAgentConnectionStatus(
@@ -1170,6 +1172,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _currentTilt =
                 tiltDegree;
+            // 2026-10-12: immutable received pose snapshot for guarded click-to-center.
+            Interlocked.Exchange(ref _videoCenterPose, Tuple.Create(panDegree, tiltDegree, DateTime.UtcNow.Ticks));
 
             // 이동이 완료된 축은 더 이상 Slider 변경 시 목표를 재송신하지 않는다.
             double? activePanTarget =
@@ -1211,6 +1215,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _currentTilt,
                 _currentEoZoom,
                 _currentEoFocus);
+            MarkLensEvidence(false);
 
             Interlocked.Increment(
                 ref _eoLensStatusVersion);
@@ -1376,6 +1381,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool focusChanged = true,
             bool powerChanged = true)
         {
+            // 2026-10-08 V30_0: reception evidence, not predicted target values.
             if (panChanged) Interlocked.Exchange(ref _eoPanNotificationDirty, 1);
             if (tiltChanged) Interlocked.Exchange(ref _eoTiltNotificationDirty, 1);
             if (zoomChanged) Interlocked.Exchange(ref _eoZoomNotificationDirty, 1);
@@ -1458,6 +1464,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// IR Zoom / IR Focus
         /// CURRENT STATUS UI 갱신
         /// </summary>
+        private string _lastIrUiStatusSignature;
         private void NotifyIrCurrentStatusChanged()
         {
             Dispatcher dispatcher =
@@ -1472,6 +1479,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             void Notify()
             {
+                // 2026-10-12: identical periodic telemetry must not repaint all IR/status bindings.
+                string signature = CurrentIrZoomText + "|" + CurrentIrFocusText + "|" + RooftopIrZoomStatusText + "|" +
+                    EnvironmentIrZoomStatusText + "|" + RooftopIrFocusStatusText + "|" + EnvironmentIrFocusStatusText + "|" + PanTiltSpeedDisplayText;
+                if (_lastIrUiStatusSignature == signature) return;
+                _lastIrUiStatusSignature = signature;
                 OnPropertyChanged(
                     nameof(CurrentIrZoomText));
 
@@ -1658,6 +1670,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             UpdatePositionIrLens(
                 _currentIrZoom,
                 _currentIrFocus);
+            MarkLensEvidence(true);
 
             Interlocked.Increment(
                 ref _irLensStatusVersion);

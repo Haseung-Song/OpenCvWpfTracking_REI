@@ -806,25 +806,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public string RooftopEoZoomStatusText =>
-            $"{GetCurrentPresetStandardZoom()} / 1000";
+            ZoomRatioStatus(false);
 
         public string RooftopEoFocusStatusText =>
             $"{GetCurrentPresetStandardFocus()} / 1000";
 
         public string RooftopIrZoomStatusText =>
-            $"{GetCurrentIrZoomStandardPosition()} / 1000";
+            ZoomRatioStatus(true);
 
         public string RooftopIrFocusStatusText =>
             $"{GetCurrentIrFocusStandardPosition()} / 1000";
 
         public string EnvironmentEoZoomStatusText =>
-            $"{GetCurrentPresetStandardZoom()} / 1000";
+            ZoomRatioStatus(false);
 
         public string EnvironmentEoFocusStatusText =>
             $"{GetCurrentPresetStandardFocus()} / 1000";
 
         public string EnvironmentIrZoomStatusText =>
-            $"{GetCurrentIrZoomStandardPosition()} / 1000";
+            ZoomRatioStatus(true);
 
         public string EnvironmentIrFocusStatusText =>
             $"{GetCurrentIrFocusStandardPosition()} / 1000";
@@ -2435,7 +2435,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 byte normalizedValue =
                     (byte)Math.Max(
-                        0,
+                        1,
                         Math.Min(
                             60,
                             (int)value));

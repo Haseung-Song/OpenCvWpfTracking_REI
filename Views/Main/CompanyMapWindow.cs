@@ -15,6 +15,7 @@ namespace OpenCvWpfTracking
         private readonly OpenStreetMapControl _mapControl;
 
         private readonly Border _loadingOverlay;
+        public event System.EventHandler DefaultViewReset;
 
         public CompanyMapWindow(
             double latitude,
@@ -185,12 +186,9 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            _mapControl.SetView(
-                OpenStreetMapControl.DefaultLatitude,
-                OpenStreetMapControl.DefaultLongitude,
-                System.Math.Max(
-                    OpenStreetMapControl.DefaultZoom,
-                    _mapControl.Zoom));
+            _mapControl.ResetDefaultView();
+            // 2026-10-12 FIX7: expanded map and owner's thumbnail share the explicit reset action.
+            DefaultViewReset?.Invoke(this,System.EventArgs.Empty);
 
             Log.Information(
                 "[MAP] Reset To GLOBAL SYSTEMS / CENTER=({Latitude:F6}, {Longitude:F6}) / ZOOM={Zoom}",

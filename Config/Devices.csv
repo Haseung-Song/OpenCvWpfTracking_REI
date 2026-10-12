@@ -2,4 +2,5 @@
 "MR300_TEST","MR300(테스트)","LaAgent","127.0.0.1","5001","rtsp://192.168.1.2:554/AVStream1_1","root","rmffhqjf1!","rtsp://192.168.0.121:554/cam0_0","root","rmffhqjf1!","CtecCgi","192.168.1.2","root","rmffhqjf1!","true","false"
 "MR500_MOE","MR500(환경부)","WebAgent","192.168.20.161","5005","rtsp://192.168.0.110:554/AVStream1_1","root","rmffhqjf1!","rtsp://192.168.0.111:554/cam0_0","root","rmffhqjf1!","ControlAgent","","","","false","false"
 "LR1000_MOBILE","LR1000(기동형)","WebAgent","192.168.20.163","5005","rtsp://192.168.2.155:554/trackID=1","admin","rmffhqjf1!","rtsp://192.168.1.41/cam0_0","root","rmffhqjf1!","ControlAgent","","","","false","true"
-"MR300_ERWATCHER","MR300(ER-WATCHER)","WebAgent","192.168.20.168","5005","rtsp://192.168.0.100:554/AVStream1_1","root","rmffhqjf1!","rtsp://192.168.0.101:554/cam0_0","root","rmffhqjf1!","ControlAgent","","","","false","false"
+"MR300_ERWATCHER","ER-WATCHER 1","WebAgent","192.168.20.168","5005","rtsp://192.168.0.100:554/AVStream1_1","root","rmffhqjf1!","rtsp://192.168.0.101:554/cam0_0","root","rmffhqjf1!","ControlAgent","","","","false","false"
+"ERWATCHER_2","ER-WATCHER 2","WebAgent","192.168.20.167","5005","rtsp://root:rmffhqjf1!@192.168.0.110:554/AVStream1_1","","","rtsp://root:%23i3system123@192.168.0.111:554/cam0_0","","","ControlAgent","","","","false","false"

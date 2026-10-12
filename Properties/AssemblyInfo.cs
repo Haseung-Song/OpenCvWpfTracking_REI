@@ -47,5 +47,5 @@ using System.Windows;
 //      수정 버전
 //
 [assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("29.9.0.0")]
-[assembly: AssemblyInformationalVersion("REI V29_10")]
+[assembly: AssemblyFileVersion("30.0.0.10")]
+[assembly: AssemblyInformationalVersion("REI V30_10 UI")]

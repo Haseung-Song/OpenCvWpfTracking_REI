@@ -9,6 +9,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>OpenCvWpfTracking</RootNamespace>
     <AssemblyName>OpenCvWpfTracking</AssemblyName>
+    <ApplicationIcon>Images\Demo\Toruss.ico</ApplicationIcon>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -63,6 +64,14 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Services\Configuration\ControlTuning.cs" />
+    <Compile Include="Services\Input\GlobalControlKeyboard.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.V30Control.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.V30CameraFeatures.cs" />
+    <Compile Include="Views\Main\MainWindow.V30Control.cs" />
+    <Compile Include="Views\Video\VideoShortcutGuide.cs" />
+    <Content Include="Config\ControlTuning.xml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Resource Include="Images\Demo\Toruss.ico" />
     <Reference Include="FFmpeg.AutoGen, Version=8.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\FFmpeg.AutoGen.8.1.0\lib\netstandard2.0\FFmpeg.AutoGen.dll</HintPath>
     </Reference>

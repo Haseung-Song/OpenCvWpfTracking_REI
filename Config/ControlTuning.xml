@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2026-10-12. Provisional ratios, not measured FOV. Exponent=1 gives linear full-range attenuation. -->
+<ControlTuning>
+  <Device Id="Default">
+    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="1" MinSpeed="1" WideHFov="65.24" />
+    <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="1" MinSpeed="1" WideHFov="24.5" />
+  </Device>
+  <!-- Display-only provisional 1..4x over 10 seconds of GUI zoom command at optical maximum.
+       Not a measured traversal time. Only the user's current MR500 EO profile is opted in. -->
+  <Device Id="MR500_MOE">
+    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="1" MinSpeed="1" WideHFov="65.24" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
+  </Device>
+</ControlTuning>

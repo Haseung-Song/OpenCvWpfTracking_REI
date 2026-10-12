@@ -26,7 +26,6 @@ namespace OpenCvWpfTracking
             base.OnRender(dc); if (Items == null || SourceWidth <= 0 || SourceHeight <= 0 || ActualWidth < 1 || ActualHeight < 1) return;
             double scale = Math.Min(ActualWidth / SourceWidth, ActualHeight / SourceHeight), ox = (ActualWidth - SourceWidth * scale) / 2, oy = (ActualHeight - SourceHeight * scale) / 2;
             dc.PushClip(new RectangleGeometry(new Rect(ox, oy, SourceWidth * scale, SourceHeight * scale)));
-            var occupiedLabels = new List<Rect>();
             foreach (var item in Items)
             {
                 var z = item as MainViewModel.ZoneOverlayBox;
@@ -50,45 +49,24 @@ namespace OpenCvWpfTracking
                 else { dc.DrawRectangle(null, new Pen(Brushes.Black, 4), r); dc.DrawRectangle(null, new Pen(color, 2), r); }
                 // Screen-DIP text and strokes avoid oversized labels when low-resolution IR is enlarged.
                 var text = new FormattedText(z.Name ?? "", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Malgun Gothic"), Math.Max(10,Math.Min(12,viewport.Width/45)), color, VisualTreeHelper.GetDpi(this).PixelsPerDip);
-                // Bound and wrap long names; reserve each label before placing the next one.
-                text.MaxTextWidth = Math.Max(1, Math.Min(260, viewport.Width - 8)); text.Trimming = TextTrimming.None;
-                var label = PlaceLabel(r, new Size(Math.Min(text.Width + 8, viewport.Width), text.Height + 4), viewport, occupiedLabels);
+                // V29_11: labels stay directly above their own BBOX, even when they overlap.
+                text.MaxTextWidth = Math.Max(1, viewport.Width - 8);
+                text.MaxLineCount = 1; text.Trimming = TextTrimming.CharacterEllipsis;
+                var label = LabelBounds(r, new Size(Math.Min(text.Width + 8, viewport.Width), text.Height + 4), viewport);
                 if (label.IsEmpty) continue;
-                occupiedLabels.Add(label);
-                if (!label.IntersectsWith(r) && Math.Abs(label.Bottom-r.Top)>8 && Math.Abs(label.Top-r.Bottom)>8)
-                    dc.DrawLine(new Pen(color, 1), new Point(r.Left+r.Width/2,r.Top), new Point(label.Left+label.Width/2,label.Bottom));
                 dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(190, 0, 0, 0)), null, label); dc.DrawText(text, new Point(label.X + 4, label.Y + 2));
             }
             dc.Pop();
         }
         internal static Rect PlaceLabel(Rect box, Size size, Rect viewport, IList<Rect> occupied)
         {
-            var preferred = LabelBounds(box, size, viewport);
-            double step = preferred.Height + 4;
-            // Deterministic lanes prevent nearby zones from painting text over one another.
-            for (int lane=0; lane<Math.Min(100,(int)(viewport.Height/Math.Max(1,step))+1); lane++)
-                for (int side=0; side<2; side++)
-                {
-                    double y=side==0 ? preferred.Top-lane*step : box.Bottom+3+lane*step;
-                    var candidate=new Rect(preferred.Left,y,preferred.Width,preferred.Height);
-                    if (!viewport.Contains(candidate) || candidate.IntersectsWith(box)) continue;
-                    bool collides=false;
-                    foreach(var other in occupied) { var padded=other; padded.Inflate(3,2); if(padded.IntersectsWith(candidate)){collides=true;break;} }
-                    if(!collides) return candidate;
-                }
-            // No exterior space: allow an edge label only if it does not overlap another label.
-            foreach(var other in occupied) if(other.IntersectsWith(preferred)) return Rect.Empty;
-            return preferred;
+            return LabelBounds(box, size, viewport);
         }
         internal static Rect LabelBounds(Rect box, Size size, Rect viewport)
         {
             double w=Math.Min(size.Width,viewport.Width),h=Math.Min(size.Height,viewport.Height);
             double x=Math.Max(viewport.Left,Math.Min(box.Left,viewport.Right-w));
-            if(box.Top-h-3>=viewport.Top)return new Rect(x,box.Top-h-3,w,h);
-            if(box.Bottom+h+3<=viewport.Bottom)return new Rect(x,box.Bottom+3,w,h);
-            if(box.Right+w+3<=viewport.Right)return new Rect(box.Right+3,Math.Min(box.Top,viewport.Bottom-h),w,h);
-            if(box.Left-w-3>=viewport.Left)return new Rect(box.Left-w-3,Math.Min(box.Top,viewport.Bottom-h),w,h);
-            // A region filling the viewport has no exterior space; keep the label legible at its edge.
+            // Only clamp to the frame edge; never move to separate collision-avoidance lanes.
             return new Rect(x,Math.Max(viewport.Top,Math.Min(box.Top-h-3,viewport.Bottom-h)),w,h);
         }
     }

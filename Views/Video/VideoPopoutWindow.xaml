@@ -1,7 +1,9 @@
 ﻿<Window x:Class="OpenCvWpfTracking.VideoPopoutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:OpenCvWpfTracking"
         Title="VIDEO VIEW"
+        Icon="/Images/Demo/Toruss.ico"
         Width="1280"
         Height="720"
         MinWidth="320"
@@ -33,12 +35,15 @@
         <Rectangle x:Name="CameraImage"
                    SnapsToDevicePixels="True"
                    UseLayoutRounding="True"/>
+        <!-- 2026-10-08 V30_0: identical direct-above BBOX labels on main/popout. -->
+        <local:ZoneOverlayView x:Name="PopoutAiOverlay" IsHitTestVisible="False" Panel.ZIndex="10"/>
+        <local:ZoneOverlayView x:Name="PopoutVisionOverlay" IsHitTestVisible="False" Panel.ZIndex="20"/>
 
         <!--
             2026-08-25: 메인창과 동일한 원본 영상 좌표계로 EO/IR AI BBox를 표시한다.
             카메라 전환 시 code-behind에서 ItemsSource와 원본 해상도 Binding을 함께 교체한다.
         -->
-        <Viewbox Stretch="Uniform"
+        <Viewbox Stretch="Uniform" Visibility="Collapsed"
                  IsHitTestVisible="False"
                  Panel.ZIndex="10">
             <ItemsControl x:Name="PopoutDetectionItems">
@@ -86,7 +91,7 @@
         </Viewbox>
 
         <!-- 2026-09-17: 메인 화면과 동일한 로컬 FIRE/SMOKE BBox를 분리 화면에도 표시한다. -->
-        <Viewbox Stretch="Uniform"
+        <Viewbox Stretch="Uniform" Visibility="Collapsed"
                  IsHitTestVisible="False"
                  Panel.ZIndex="20">
             <ItemsControl x:Name="PopoutFireSmokeDetectionItems">
@@ -177,6 +182,9 @@
             </Border>
         </StackPanel>
 
+        <TextBlock x:Name="ZoomRatioText" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                   Margin="10,0,0,8" Padding="5,2" Foreground="#5EE7F7" Background="#A0000000"
+                   FontSize="13" Panel.ZIndex="60" IsHitTestVisible="False"/>
         <!-- 중앙 십자선 -->
         <Grid Width="72"
               Height="72"
@@ -284,6 +292,7 @@
                            FontWeight="Bold"/>
 
                 <!-- 현재 선택된 영상의 렌즈 제어 단축키 -->
+                <TextBlock Margin="0,4,0,0" Text="Z : PT SPEED −    C : PT SPEED +" Foreground="#9FE870" FontSize="13"/>
                 <TextBlock Margin="0,4,0,0"
                            Text="W : ZOOM IN    S : ZOOM OUT    A : FOCUS NEAR    D : FOCUS FAR"
                            Foreground="White"

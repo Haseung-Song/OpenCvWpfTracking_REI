@@ -33,11 +33,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void InitializeWebAgentProtocolV18()
         {
             if (!IsEnvironmentStatusSelected) return;
+            ResetDigitalZoomSession();
             BeginWebAgentBuildCheck();
             _controlCommandService.RequestWebAgentIdentity();
             _controlCommandService.RequestLensCapabilityAndTelemetry(0x00);
             _controlCommandService.RequestLensCapabilityAndTelemetry(0x01);
             _controlCommandService.RequestCameraFeatureCapability(0x01);
+            _controlCommandService.RequestCameraFeatureCapability(0x00);
             _controlCommandService.RequestImuTelemetry();
             RequestGpsAutoTxRateAfterConnection();
             ConsoleLogHelper.State("WEB AGENT V1.8", "Identity, EO/IR lens, IR feature, IMU and GPS rate queries sent");
@@ -92,6 +94,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ParseWebAgentCapability(byte[] p)
         {
             if (p.Length < 13) return;
+            var digitalPayload = (byte[])p.Clone();
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => { if(CameraFeatureTransportReady) ApplyDigitalZoomCapability(digitalPayload); }));
             ConsoleLogHelper.State("WEB AGENT CAPABILITY", string.Format(
                 "SCHEMA={0} / TARGET=0x{1:X2} / LENS_FLAGS=0x{2:X4} / FEATURES={3}",
                 p[0], p[1], BitConverter.ToUInt16(p, 2), p[12]));
@@ -140,7 +144,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 깜빡이지 않도록 한다. 0x01이 끊긴 경우에만 0x28을 fallback한다.
                 if (!HasRecentLegacyEoLensStatus())
                 {
-                    if (zoomValid) _currentEoZoom = (short)zoom;
+                    if (zoomValid) { _currentEoZoom = (short)zoom; MarkLensEvidence(false); }
                     if (focusValid) _currentEoFocus = (short)focus;
                     if (zoomValid && focusValid)
                     {
@@ -156,7 +160,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             else if (target == 0x01)
             {
-                if (zoomValid) _currentIrZoom = zoom;
+                if (zoomValid) { _currentIrZoom = zoom; MarkLensEvidence(true); }
                 if (focusValid) _currentIrFocus = focus;
                 if (zoomValid && focusValid)
                 {
@@ -206,7 +210,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             long lastChangeTicks =
                 Interlocked.Read(ref _lastPanTiltValueChangeUtcTicks);
 
-            if (lastCommandTicks == 0 ||
+            if (lastCommandTicks == 0 || _activePanTiltMoveDirection == KeyboardPanTiltDirection.None ||
+                nowTicks - lastCommandTicks < TimeSpan.TicksPerSecond ||
                 nowTicks - lastCommandTicks > TimeSpan.TicksPerSecond * 3 ||
                 nowTicks - lastChangeTicks < TimeSpan.TicksPerSecond)
             {
@@ -300,6 +305,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             byte feature = p[2];
             byte flags = p[3];
             short value = BitConverter.ToInt16(p, 4);
+            if(feature==0x1D)
+            {
+                var digitalPayload=(byte[])p.Clone();
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(()=>{if(CameraFeatureTransportReady)ApplyDigitalZoomState(digitalPayload);}));
+            }
             ConsoleLogHelper.State("WEB AGENT FEATURE", string.Format(
                 "TARGET=0x{0:X2} / FEATURE=0x{1:X2} / FLAGS=0x{2:X2} / VALUE={3}", target, feature, flags, value));
             if (target != 0x01 || feature != 0x05 || (flags & 0x03) != 0x03) return;
@@ -327,6 +337,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (p.Length < 6) return;
             HandleGpsUnavailable(p);
+            if(p[2]==0x1D && p[3]==0xE9 && p[4]<2)
+            {
+                byte target=p[4];
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(()=>{_digitalPendingTicks[target]=0;_digitalState[target]=-1;_digitalCaps[target]=0;NotifyDigitalZoom();}));
+            }
             ConsoleLogHelper.Warning("WEB AGENT V1.8", string.Format(
                 "Request unavailable / STATUS={0} / REQUEST={1:X2}{2:X2}{3:X2}{4:X2}",
                 p[1], p[2], p[3], p[4], p[5]));

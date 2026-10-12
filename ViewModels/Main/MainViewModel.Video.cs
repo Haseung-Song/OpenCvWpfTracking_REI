@@ -642,6 +642,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public async void Disconnect()
         {
             _isDeviceConnectionRequested = false;
+            ResetDigitalZoomSession();
             _controlAgentReconnectCts?.Cancel();
             _videoReconnectCts?.Cancel();
 
@@ -834,6 +835,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _currentIrFocus =
                 0;
+            System.Threading.Interlocked.Exchange(ref _eoLensReceivedTicks, 0);
+            System.Threading.Interlocked.Exchange(ref _irLensReceivedTicks, 0);
 
             /// <summary>
             /// CONTROL AGENT TCP 연결에서 남아 있을 수 있는
@@ -1966,6 +1969,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ConfirmDisplayedVideoFrame(string streamName)
         {
             bool isEo = string.Equals(streamName, "EO", StringComparison.OrdinalIgnoreCase);
+            // 2026-10-12: click centering must not operate on an old/frozen displayed frame.
+            Interlocked.Exchange(ref _videoCenterFrameTicks[isEo?0:1],DateTime.UtcNow.Ticks);
             string connected = isEo ? "[EO] Connected" : "[IR] Connected";
             if ((isEo ? EoStatusText : IrStatusText) == connected) return;
             if (isEo) EoStatusText = connected;

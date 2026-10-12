@@ -62,11 +62,9 @@ namespace OpenCvWpfTracking
         /// IR Infra-LWZ-25-225-AF1:
         /// 같은 Position 진행률을 사용하여 1.0 ~ 9.0배로 적용한다.
         /// </summary>
-        private const double MoveControlZoomRatioMinimumInput =
-            1.0;
+        private double MoveControlZoomRatioMinimumInput => vm.EoOpticalRatioMinimum;
 
-        private const double MoveControlZoomRatioMaximumInput =
-            90.0;
+        private double MoveControlZoomRatioMaximumInput => vm.EoOpticalRatioMaximum;
 
         // 2026-10-01: IMU/RPY 설정값도 장비 허용 범위에서만 입력되도록 보정한다.
         private const double RpySignedMinimumInput = -180.0;

@@ -236,6 +236,12 @@ namespace OpenCvWpfTracking
             get { return _zoom; }
         }
 
+        // 2026-10-12 FIX7: reset center AND zoom, cancelling drag state that could overwrite the reset.
+        public void ResetDefaultView()
+        {
+            EndDrag();
+            SetView(DefaultLatitude,DefaultLongitude,DefaultZoom);
+        }
         public void SetView(
             double latitude,
             double longitude,

@@ -322,11 +322,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void ApplyProfilePanTiltSpeedDefault(ControlAgentProfileOption profile)
         {
-            // MR500 환경부 프로필만 40. 기동/LA 장비와 줌 연동 감쇄는 유지한다.
-            var environmentDevice = OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR500_MOE");
-            byte speed = environmentDevice.Id == "MR500_MOE" && profile != null && !profile.IsDirectInput &&
-                string.Equals(profile.EoPresetName, environmentDevice.EoLabel, StringComparison.Ordinal)
-                ? (byte)40 : (byte)30;
+            // 2026-10-08 V30_0: profile default only; telemetry never resets user speed.
+            byte speed = 40;
             PanTiltSpeedLevel = speed;
             ConsoleLogHelper.State("PTZ SPEED", "Profile default=" + speed);
         }
@@ -339,6 +336,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 : EquipmentStatusMode.Environment;
             ApplyControlAgentPanCoordinateMode(profile);
             ApplyProfilePanTiltSpeedDefault(profile);
+            foreach (var name in new[] { nameof(EoSpeedExponent), nameof(IrSpeedExponent), nameof(EoMinimumSpeed), nameof(IrMinimumSpeed), nameof(ZoomOpticalStandardText), nameof(ZoomOpticalRangeText), nameof(EoZoomRatioOverlayText), nameof(IrZoomRatioOverlayText) }) OnPropertyChanged(name);
 
             // 2026-09-16: 직접 입력은 현재 IP/Port와 카메라 선택을 유지하고
             // Control Agent 입력란만 편집 가능하게 전환한다.

@@ -846,7 +846,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이후 [Slider] 또는 [ComboBox] 등 [UI] 조작으로 값이 변경될 수 있으며,
         /// 실제 연속 이동 제어 시 해당 값을 사용한다.
         /// </summary>
-        private byte _panTiltSpeedLevel = 30;
+        // 2026-10-08 V30_0: common initial PT speed for every device.
+        private byte _panTiltSpeedLevel = 40;
 
         /// <summary>
         /// [ZOOM] 버튼 1회 클릭 시 이동할 값
@@ -936,8 +937,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// EO / IR 광학 Zoom 최소 배율
         /// </summary>
-        private const double MoveControlMinimumZoomRatio =
-            1.0;
+        private double MoveControlMinimumZoomRatio => ControlTuningFor(false).MinimumRatio;
 
         /// <summary>
         /// EO 카메라 XV-Z2090HC 최대 광학 배율
@@ -945,8 +945,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 6 ~ 540mm:
         /// 광학 90배
         /// </summary>
-        private const double MoveControlEoMaximumZoomRatio =
-            90.0;
+        private double MoveControlEoMaximumZoomRatio => ControlTuningFor(false).MaximumRatio;
 
         /// <summary>
         /// IR 카메라 Infra-LWZ-25-225-AF1 최대 광학 배율
@@ -954,8 +953,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 25 ~ 225mm:
         /// 광학 9배
         /// </summary>
-        private const double MoveControlIrMaximumZoomRatio =
-            9.0;
+        private double MoveControlIrMaximumZoomRatio => ControlTuningFor(true).MaximumRatio;
 
         /// <summary>
         /// LA / Pelco-D 기준 Pan 입력 허용 범위
