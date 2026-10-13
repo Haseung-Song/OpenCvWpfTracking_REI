@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -37,6 +38,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isApplicationShutdownRequested;
 
         private int _coalescedAiUiUpdateCount;
+        private int _aiDetectionGeneration;
 
         private bool _hasAppliedDefaultAiModelMapping;
 
@@ -380,8 +382,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool containsDisplayDetection =
                 result.Boxes.Any(box =>
                     box.NormalizedConfidence >= AiDisplayConfidenceThreshold);
+            int generation=Volatile.Read(ref _aiDetectionGeneration);
             QueueAiDetectionUiUpdate(result.RtspIndex, () =>
             {
+                // V31_4: queued results cannot resurrect alarms after Disconnect/reconnect.
+                if(generation!=Volatile.Read(ref _aiDetectionGeneration) || AiPowerStatusText!="ON" ||
+                    !(result.RtspIndex==0?_isEoFrameDisplayed:_isIrFrameDisplayed)) return;
                 // 2026-08-31: PTZ 이동·잔진동 프레임은 AI Agent가 SMOKE로
                 // 오인할 수 있으므로 파노라마 안정 구간에서만 신규 AI 결과를 반영한다.
                 if (IsPanoramaMotionDetectionSuppressed())
@@ -1503,8 +1509,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-08-25: AI 연결 전환 또는 해제 시 화면 BBox와 ACTIVE 이벤트 상태를
         /// UI Dispatcher에서 함께 정리하여 연결이 끊긴 뒤 이전 탐지 결과가 남지 않게 한다.
         /// </summary>
-        private void ClearAiDetectionState(string reason)
+        private void ClearAiDetectionState(string reason, bool writeAudit = true)
         {
+            Interlocked.Increment(ref _aiDetectionGeneration);
+            lock(_aiUiUpdateSync) { _pendingAiUiUpdates.Clear(); _pendingAiUiUpdateHasDetection.Clear(); }
             int eoBoxCount = 0;
             int irBoxCount = 0;
             int activeEventCount = 0;
@@ -1533,7 +1541,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     try
                     {
-                        AppendFireEventAudit(activeEvent, "CLEARED");
+                        if(writeAudit) AppendFireEventAudit(activeEvent, "CLEARED");
                     }
                     catch (Exception auditException)
                     {

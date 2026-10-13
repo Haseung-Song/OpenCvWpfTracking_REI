@@ -2201,11 +2201,16 @@
                                                                         </Style.Triggers>
                                                                     </Style>
                                                                 </TabItem.Style>
-                                                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                                <ScrollViewer x:Name="PositionScrollViewer" VerticalScrollBarVisibility="Auto"
                                                                               HorizontalScrollBarVisibility="Disabled"
                                                                               CanContentScroll="False"
+                                                                              HorizontalContentAlignment="Stretch"
+                                                                              VerticalContentAlignment="Top"
+                                                                              IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
                                                                               Padding="0">
-                                                                    <StackPanel Margin="8,18,20,32"
+                                                                    <!-- 2026-10-13 V31_4: physical scrolling includes symmetric in-content edge space. -->
+                                                                    <Border Padding="8,12,8,16" HorizontalAlignment="Stretch">
+                                                                    <StackPanel
                                                                                 IsEnabled="{Binding IsEnvironmentStatusSelected}">
                                                                         <StackPanel Visibility="{Binding IsGpsTabVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                                         <TextBlock Text="1. GPS" Foreground="White" FontWeight="Bold" Margin="0,0,0,9"/>
@@ -2606,6 +2611,7 @@
                                                                         </Border>
                                                                         </StackPanel>
                                                                     </StackPanel>
+                                                                    </Border>
                                                                 </ScrollViewer>
                                                             </TabItem>
 

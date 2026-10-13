@@ -30,7 +30,7 @@ namespace OpenCvWpfTracking.Services.Configuration
     // 2026-10-08 V30_0: provisional ratios, replaceable per-device calibration.
     public sealed class LensControlTuning
     {
-        public double MinimumRatio = 1, MaximumRatio = 90, Exponent = 1;
+        public double MinimumRatio = 1, MaximumRatio = 90, Exponent = 4;
         public int MinimumSpeed = 1;
         // 2026-10-12: provisional wide HFOV, configurable per device/channel for click centering.
         public double WideHorizontalFov = 65.24;

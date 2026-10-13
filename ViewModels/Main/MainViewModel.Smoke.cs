@@ -48,9 +48,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _isSmokeDetectionEnabled;
 
-        // 2026-09-18: 운용 기본값은 EO ONLY(1)로 고정한다.
-        // Default to IR; EO/BOTH remain selectable for field performance tests.
-        private int _smokeDetectionSourceIndex = 2;
+        // 2026-10-13 V31_4: default to EO ONLY(1); AUTO/IR remain selectable.
+        private int _smokeDetectionSourceIndex = 1;
 
         // 2026-09-02 V17: 원거리 탐지와 근거리 건물·산·수목 오탐의
         // 균형을 위해 SMOKE 콤보박스와 실제 내부 임계값은 BALANCED를 사용한다.
@@ -365,6 +364,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 _isSmokeDetectionEnabled = value;
+                System.Threading.Interlocked.Increment(ref _visionSettingsGeneration);
+                if (!value) ClearDisabledVisionEvents(false);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SmokePowerStatusText));
                 OnPropertyChanged(nameof(FireAlertStatusText));

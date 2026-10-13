@@ -28,6 +28,8 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// 실제 [TCP] [Client] 객체
         /// </summary>
         private TcpClient _tcpClient;
+        private readonly object _connectionSync = new object();
+        private long _connectionGeneration;
 
         /// <summary>
         /// [TCP] 송수신 [Stream]
@@ -45,7 +47,6 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// [TCP]는 [Packet] 단위로 들어오지 않으므로,
         /// 수신된 [byte[]]를 여기에 계속 누적한다.
         /// </summary>
-        private readonly List<byte> _receiveBuffer = new List<byte>();
 
         /// <summary>
         /// 누적 [Buffer]에서 완성 [Packet]을 분리하기 위한 [Parser]
@@ -81,9 +82,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// <summary>
         /// 현재 [TCP] 연결 상태
         /// </summary>
-        public bool IsConnected =>
-            _tcpClient != null &&
-            _tcpClient.Connected;
+        public bool IsConnected { get { lock(_connectionSync) return _tcpClient != null && _tcpClient.Connected && _networkStream != null; } }
 
         #endregion
 
@@ -99,15 +98,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public async Task<bool> ConnectAsync(string ip, int port)
         {
             TcpClient tcpClient = null;
+            long generation;
+            lock(_connectionSync) { if(IsConnected) return true; generation=++_connectionGeneration; }
 
             try
             {
-                if (IsConnected)
-                {
-                    Console.WriteLine("[AI TCP] Already Connected.");
-                    return true;
-                }
-
                 ConsoleLogHelper.PrintLine();
                 Console.WriteLine("[AI TCP] Connect Try...");
                 Console.WriteLine($"[AI TCP] Target : {ip}:{port}");
@@ -115,15 +110,21 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
                 tcpClient = new TcpClient();
 
-                await tcpClient.ConnectAsync(ip, port);
-
-                _tcpClient = tcpClient;
-                _networkStream = _tcpClient.GetStream();
-
-                _cts = new CancellationTokenSource();
-
-                // 수신 [Loop]는 [UI] 멈춤 방지를 위해 [Background Task]로 실행
-                _ = Task.Run(() => ReceiveLoopAsync(_cts.Token));
+                var connect=tcpClient.ConnectAsync(ip, port);
+                if(await Task.WhenAny(connect,Task.Delay(1500))!=connect)
+                {
+                    _=connect.ContinueWith(t=>{var observed=t.Exception;},TaskContinuationOptions.OnlyOnFaulted);
+                    tcpClient.Close();return false;
+                }
+                await connect;
+                lock(_connectionSync)
+                {
+                    if(generation!=_connectionGeneration) {tcpClient.Close();return false;}
+                    _tcpClient=tcpClient;_networkStream=tcpClient.GetStream();_cts=new CancellationTokenSource();
+                    // V31_4: capture this stream/token; an old worker never reads a new session's socket.
+                    var stream=_networkStream;var token=_cts.Token;
+                    _=Task.Run(()=>ReceiveLoopAsync(stream,token,generation));
+                }
 
                 Console.WriteLine("[AI TCP] Connect Success.");
                 ConsoleLogHelper.PrintLine();
@@ -263,18 +264,17 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// 3. [Parser]로 완성 [Packet] 분리
         /// 4. [PacketReceived] [Event] 발생
         /// </summary>
-        private async Task ReceiveLoopAsync(CancellationToken token)
+        private async Task ReceiveLoopAsync(NetworkStream stream,CancellationToken token,long generation)
         {
             byte[] buffer = new byte[4096];
+            var receiveBuffer=new List<byte>();
 
             try
             {
-                while (!token.IsCancellationRequested &&
-                       IsConnected &&
-                       _networkStream != null)
+                while (!token.IsCancellationRequested && generation==Interlocked.Read(ref _connectionGeneration))
                 {
                     int readSize =
-                        await _networkStream.ReadAsync(
+                        await stream.ReadAsync(
                             buffer,
                             0,
                             buffer.Length);
@@ -287,10 +287,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                     }
 
                     // 실제 수신된 [byte]만 누적 [Buffer]에 추가
-                    AppendReceiveBuffer(buffer, readSize);
+                    if(token.IsCancellationRequested || generation!=Interlocked.Read(ref _connectionGeneration)) break;
+                    for(int i=0;i<readSize;i++) receiveBuffer.Add(buffer[i]);
 
                     // 누적 [Buffer]에서 완성 [Packet] 분리
-                    List<byte[]> packets = _packetParser.ExtractPackets(_receiveBuffer);
+                    List<byte[]> packets = _packetParser.ExtractPackets(receiveBuffer);
 
                     foreach (byte[] packet in packets)
                     {
@@ -300,7 +301,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
                         // PrintHex("[AI TCP RECV]", packet);
 
-                        PacketReceived?.Invoke(packet, DateTime.Now);
+                        if(!token.IsCancellationRequested && generation==Interlocked.Read(ref _connectionGeneration)) PacketReceived?.Invoke(packet, DateTime.Now);
                     }
 
                 }
@@ -317,20 +318,12 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 ConsoleLogHelper.PrintLine();
                 Console.WriteLine("[AI TCP ERROR] Receive Failed : " + ex.Message);
             }
-            Disconnect();
+            lock(_connectionSync) if(generation==_connectionGeneration) Disconnect();
         }
 
         /// <summary>
         /// 수신된 [byte[]] 중 실제 [readSize]만큼만 누적 [Buffer]에 추가
         /// </summary>
-        private void AppendReceiveBuffer(byte[] buffer, int readSize)
-        {
-            for (int i = 0; i < readSize; i++)
-            {
-                _receiveBuffer.Add(buffer[i]);
-            }
-
-        }
 
         #endregion
 
@@ -404,6 +397,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// </summary>
         public void Disconnect()
         {
+            lock(_connectionSync)
+            {
+            ++_connectionGeneration;
             try
             {
                 _cts?.Cancel();
@@ -426,10 +422,10 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 _cts?.Dispose();
                 _cts = null;
 
-                _receiveBuffer.Clear();
 
                 ConsoleLogHelper.PrintLine();
                 Console.WriteLine("[AI TCP] Disconnected.");
+            }
             }
 
         }

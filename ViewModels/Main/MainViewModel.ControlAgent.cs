@@ -49,8 +49,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void SetControlAgentConnectionStatus(
             string statusText,
-            string statusColor)
+            string statusColor, CancellationToken token = default(CancellationToken))
         {
+            if(token.IsCancellationRequested) return;
+            var dispatcher=App.Current?.Dispatcher;
+            if(dispatcher!=null && !dispatcher.CheckAccess())
+            {
+                if(!dispatcher.HasShutdownStarted) dispatcher.Invoke(()=>SetControlAgentConnectionStatus(statusText,statusColor,token));
+                return;
+            }
             bool isConnected = string.Equals(
                 statusText,
                 "Connected",
@@ -543,8 +550,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _controlAgentReconnectCts =
                 new CancellationTokenSource();
 
-            CancellationToken token =
-                _controlAgentReconnectCts.Token;
+            CancellationTokenSource reconnectCts = _controlAgentReconnectCts;
+            CancellationToken token = reconnectCts.Token;
 
             _ = Task.Run(async () =>
             {
@@ -564,7 +571,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         SetControlAgentConnectionStatus(
                             "Reconnecting",
-                            "#FFD166");
+                            "#FFD166", token);
 
                         Console.WriteLine(
                             $"[CONTROL AGENT] Reconnect Try " +
@@ -576,11 +583,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 ipAddress,
                                 port);
 
+                        // V31_4: canceled reconnects must not restore Connected or clear a newer session.
+                        if (token.IsCancellationRequested || !_isDeviceConnectionRequested) return;
+
                         if (connected)
                         {
                             SetControlAgentConnectionStatus(
                                 "Connected",
-                                "#55D187");
+                                "#55D187", token);
 
                             Console.WriteLine(
                                 "[CONTROL AGENT] Reconnect Success");
@@ -596,15 +606,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 catch (OperationCanceledException)
                 {
-                    SetControlAgentConnectionStatus(
-                        "Disconnected",
-                        "#FF6B6B");
+                    // The explicit Disconnect/new session owns the current UI state.
                 }
                 catch (Exception ex)
                 {
+                    if(token.IsCancellationRequested) return;
                     SetControlAgentConnectionStatus(
                         "Disconnected",
-                        "#FF6B6B");
+                        "#FF6B6B", token);
 
                     Console.WriteLine(
                         "[CONTROL AGENT] Reconnect Exception : " +
@@ -612,12 +621,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 finally
                 {
-                    if (_controlAgentReconnectCts != null &&
-                        _controlAgentReconnectCts.Token == token)
-                    {
-                        _controlAgentReconnectCts.Dispose();
-                        _controlAgentReconnectCts = null;
-                    }
+                    if (ReferenceEquals(Interlocked.CompareExchange(ref _controlAgentReconnectCts,null,reconnectCts),reconnectCts)) reconnectCts.Dispose();
 
                 }
 

@@ -138,6 +138,10 @@ namespace OpenCvWpfTracking.Services.Communication
                     SEND_TIMEOUT_MS
                 };
 
+            // V31_4: Disconnect invalidates in-flight connects, not only active receive loops.
+            long connectGeneration;
+            lock (_socketLock) connectGeneration = ++_sessionGeneration;
+
             try
             {
                 Task connectTask =
@@ -178,6 +182,12 @@ namespace OpenCvWpfTracking.Services.Communication
                 CancellationToken receiveToken;
                 lock (_socketLock)
                 {
+                    if (connectGeneration != _sessionGeneration)
+                    {
+                        newClient.Close();
+                        newClient.Dispose();
+                        return false;
+                    }
                     CleanupSocketInternal();
 
                     sessionGeneration = ++_sessionGeneration;
@@ -195,10 +205,8 @@ namespace OpenCvWpfTracking.Services.Communication
 
                     _isManualDisconnect =
                         false;
+                    _receiveLoopTask = Task.Run(() => ReceiveLoopAsync(receiveToken, sessionGeneration));
                 }
-
-                _receiveLoopTask = Task.Run(() =>
-                    ReceiveLoopAsync(receiveToken, sessionGeneration));
 
                 ConsoleLogHelper.StateSection(
                     "TCP",
@@ -363,6 +371,8 @@ namespace OpenCvWpfTracking.Services.Communication
 
                         break;
                     }
+
+                    if(token.IsCancellationRequested || sessionGeneration!=Interlocked.Read(ref _sessionGeneration)) break;
 
                     byte[] receivedData =
                         CopyReceivedData(

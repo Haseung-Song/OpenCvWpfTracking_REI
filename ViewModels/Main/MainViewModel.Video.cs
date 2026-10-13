@@ -42,6 +42,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public SmokeDetectionResult SmokeResult;
 
             public long ResultVersion;
+            public int SettingsGeneration;
 
         }
 
@@ -272,6 +273,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly SemaphoreSlim _deviceConnectionLifecycleLock = new SemaphoreSlim(1, 1);
 
         private long _deviceSessionGeneration;
+        private int _deviceDisconnectRequested;
 
         private Task _eoCaptureTask = Task.CompletedTask;
 
@@ -292,7 +294,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void Connect()
         {
-            if(IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _deviceConnectRequested,1,0)!=0) { ShowAlreadyConnected();return; }
+            if(Volatile.Read(ref _deviceDisconnectRequested)!=0 || IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _deviceConnectRequested,1,0)!=0) { ShowAlreadyConnected();return; }
             await _deviceConnectionLifecycleLock.WaitAsync();
             long session = Interlocked.Increment(ref _deviceSessionGeneration);
             try
@@ -495,8 +497,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _cts == null ||
                     _cts.IsCancellationRequested)
                 {
-                    _eoDecoder.Close();
-                    _irDecoder.Close();
+                    await Task.WhenAll(Task.Run(() => _eoDecoder.Close()), Task.Run(() => _irDecoder.Close()));
                     return;
                 }
 
@@ -641,6 +642,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void Disconnect()
         {
+            // V31_4: ignore duplicate teardown requests and invalidate callbacks immediately.
+            if (Interlocked.CompareExchange(ref _deviceDisconnectRequested, 1, 0) != 0) return;
+            Interlocked.Increment(ref _deviceSessionGeneration);
             _isDeviceConnectionRequested = false;
             ResetDigitalZoomSession();
             _controlAgentReconnectCts?.Cancel();
@@ -677,7 +681,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error("DEVICE DISCONNECT", $"SESSION={session} / RESULT=FAULTED", ex);
             }
-            finally { _deviceConnectionLifecycleLock.Release(); }
+            finally { Interlocked.Exchange(ref _deviceDisconnectRequested,0); _deviceConnectionLifecycleLock.Release(); }
         }
 
         private async Task DisconnectCoreAsync(long session)
@@ -1105,7 +1109,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 (wasEoAlreadyOpen ||
                  await Task.Run(() =>
                      _eoDecoder.Open(
-                         SessionEoAddress)));
+                         SessionEoAddress, captureToken)));
 
             if (!_isDeviceConnectionRequested ||
                 captureToken.IsCancellationRequested)
@@ -1212,7 +1216,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 (wasIrAlreadyOpen ||
                  await Task.Run(() =>
                      _irDecoder.Open(
-                         SessionIrAddress)));
+                         SessionIrAddress, captureToken)));
 
             if (!_isDeviceConnectionRequested ||
                 captureToken.IsCancellationRequested)
@@ -1336,6 +1340,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Action<BitmapSource> setImageAction,
             CancellationToken token)
         {
+            long session = Interlocked.Read(ref _deviceSessionGeneration);
             const int reconnectDelayMs =
                 5000;
 
@@ -1349,6 +1354,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 0;
 
             while (_isDeviceConnectionRequested &&
+                   session == Interlocked.Read(ref _deviceSessionGeneration) &&
                    !token.IsCancellationRequested &&
                    !decoder.IsOpened &&
                    reconnectStopwatch.Elapsed < maximumReconnectDuration)
@@ -1357,6 +1363,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 App.Current.Dispatcher.Invoke(() =>
                 {
+                    if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
                     if (streamName == "EO")
                     {
                         EoStatusText =
@@ -1376,12 +1383,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 bool connected =
                     await Task.Run(() =>
                         decoder.Open(
-                            sourceAddress));
+                            sourceAddress, token));
+
+                if (token.IsCancellationRequested || !_isDeviceConnectionRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
 
                 if (connected)
                 {
                     App.Current.Dispatcher.Invoke(() =>
                     {
+                        if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
                         if (streamName == "EO")
                         {
                             EoVideoWidth = decoder.VideoWidth;
@@ -1432,6 +1442,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     App.Current.Dispatcher.Invoke(() =>
                     {
+                        if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
                         if (streamName == "EO") EoStatusText = "[EO] RTSP 인증 실패 (401)";
                         else IrStatusText = "[IR] RTSP 인증 실패 (401)";
                     });
@@ -1453,6 +1464,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             reconnectStopwatch.Stop();
 
             if (!_isDeviceConnectionRequested ||
+                session != Interlocked.Read(ref _deviceSessionGeneration) ||
                 token.IsCancellationRequested ||
                 decoder.IsOpened)
             {
@@ -1464,6 +1476,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             App.Current.Dispatcher.Invoke(() =>
             {
+                if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
                 if (streamName == "EO")
                 {
                     EoStatusText =
@@ -2360,6 +2373,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         return;
                     }
 
+                    int settingsGeneration=Volatile.Read(ref _visionSettingsGeneration);
                     Stopwatch stopwatch = Stopwatch.StartNew();
                     try
                     {
@@ -2381,6 +2395,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         lock (slot.Sync)
                         {
+                            if(settingsGeneration!=Volatile.Read(ref _visionSettingsGeneration)) continue;
+                            slot.SettingsGeneration=settingsGeneration;
                             slot.ThermalResult = thermalResult;
                             slot.SmokeResult = smokeResult;
                             slot.ResultZoneFrame = zoneFrame;
@@ -2430,6 +2446,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 thermalResult = slot.ThermalResult;
                 smokeResult = slot.SmokeResult;
+                if(slot.SettingsGeneration!=Volatile.Read(ref _visionSettingsGeneration))
+                { thermalResult=default(ThermalFireDetectionResult); smokeResult=default(SmokeDetectionResult); }
                 resultVersion = slot.ResultVersion;
                 zoneFrame = slot.ResultZoneFrame;
             }
@@ -2995,6 +3013,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         // 2026-09-16: 탐지 결과는 별도 최신 프레임 Worker가 갱신한다.
                         // 표시 경로는 탐지 완료를 기다리지 않는다.
+                        int overlaySettingsGeneration=Volatile.Read(ref _visionSettingsGeneration);
                         GetLatestDetectionResult(
                             streamName,
                             out ThermalFireDetectionResult thermalResult,
@@ -3101,6 +3120,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     }
 
                                     // 2026-10-06: 라이브 EO 원본 프레임에서도 화재 BBOX/경고 상태를 갱신한다.
+                                    if(overlaySettingsGeneration!=Volatile.Read(ref _visionSettingsGeneration)) return;
                                     UpdateThermalFireCandidateState(streamName, thermalResult, zoneFrame);
 
                                     UpdateVisionBBoxEvents(
@@ -3197,12 +3217,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     streamName + " VIDEO",
                     "Runtime frame stall recovery started");
 
+                CancellationToken reconnectToken;
+                try { reconnectToken=_videoReconnectCts.Token; }
+                catch(ObjectDisposedException) { return; }
+                catch(NullReferenceException) { return; }
                 _ = ReconnectVideoAsync(
                     decoder,
                     sourceAddress,
                     streamName,
                     setImageAction,
-                    _videoReconnectCts.Token);
+                    reconnectToken);
             }
         }
 

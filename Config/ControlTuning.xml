@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 2026-10-12. Provisional ratios, not measured FOV. Exponent=1 gives linear full-range attenuation. -->
+<!-- 2026-10-13 V31_4. Default exponent 4 / minimum speed 1. Maximum zoom reaches the protocol floor. -->
 <ControlTuning>
   <Device Id="Default">
-    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="1" MinSpeed="1" WideHFov="65.24" />
-    <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="1" MinSpeed="1" WideHFov="24.5" />
+    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="4" MinSpeed="1" WideHFov="65.24" />
+    <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="4" MinSpeed="1" WideHFov="24.5" />
   </Device>
   <!-- V31: relative EO optical curve uses measured EO/IR matching anchors.
        Digital 1..4x is command-time ESTIMATION (10s provisional), not telemetry.
        Applied to click projection too; field verification/calibration is required. -->
   <Device Id="MR500_MOE">
-    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="1" MinSpeed="1" WideHFov="65.24" UseMeasuredSyncAnchors="true" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
-    <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="1" MinSpeed="1" WideHFov="24.5" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
+    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="4" MinSpeed="1" WideHFov="65.24" UseMeasuredSyncAnchors="true" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
+    <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="4" MinSpeed="1" WideHFov="24.5" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
   </Device>
 </ControlTuning>

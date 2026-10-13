@@ -220,6 +220,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 _isThermalFireDetectionEnabled = value;
+                System.Threading.Interlocked.Increment(ref _visionSettingsGeneration);
+                if (!value) ClearDisabledVisionEvents(true);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(FirePowerStatusText));
                 OnPropertyChanged(nameof(FireAlertStatusText));
@@ -571,6 +573,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ThermalFireDetectionResult result,
             OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame = null)
         {
+            if(!IsThermalFireDetectionEnabled) result=default(ThermalFireDetectionResult);
             bool isInfrared =
                 string.Equals(camera, "IR", System.StringComparison.OrdinalIgnoreCase);
             bool previousState = isInfrared

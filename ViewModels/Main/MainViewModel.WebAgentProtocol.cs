@@ -340,7 +340,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if(p[2]==0x1D && p[3]==0xE9 && p[4]<2)
             {
                 byte target=p[4];
-                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(()=>{_digitalPendingTicks[target]=0;_digitalState[target]=-1;_digitalCaps[target]=0;NotifyDigitalZoom();}));
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(()=>{if(CameraFeatureTransportReady)ApplyDigitalZoomUnavailable(target);}));
             }
             ConsoleLogHelper.Warning("WEB AGENT V1.8", string.Format(
                 "Request unavailable / STATUS={0} / REQUEST={1:X2}{2:X2}{3:X2}{4:X2}",

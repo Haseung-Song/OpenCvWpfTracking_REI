@@ -75,7 +75,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>유효 범위의 채널별 감속 지수를 반영하고 현재 PT 속도를 갱신한다.</summary>
         private void SetExponent(bool ir, double value)
         {
-            if (double.IsNaN(value) || double.IsInfinity(value) || value < .1 || value > 4) return;
+            if (double.IsNaN(value) || double.IsInfinity(value) || value < 1 || value > 4) return;
             ControlTuningFor(ir).Exponent = value; OnPropertyChanged(ir ? nameof(IrSpeedExponent) : nameof(EoSpeedExponent)); RefreshControlSpeed();
         }
         /// <summary>채널별 최소 PT 속도를 1~60 범위에서 갱신한다.</summary>
@@ -106,6 +106,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _v30StatusTimer.Tick += (s, e) =>
             {
                 TickDigitalZoom();
+                if(AiPowerStatusText=="ON" && !_aiDetectorClientService.IsConnected)
+                { AiPowerStatusText="OFF"; ClearAiDetectionState("AI transport lost"); SetFireSmokeDetectorsForAiConnection(false,"AI transport lost"); }
                 TickDigitalEstimate();
                 string zoom = EoZoomRatioOverlayText + IrZoomRatioOverlayText;
                 if (zoom != _lastZoomNotification)

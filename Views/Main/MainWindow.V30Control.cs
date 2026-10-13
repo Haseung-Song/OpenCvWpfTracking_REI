@@ -46,18 +46,7 @@ namespace OpenCvWpfTracking
                     fov.Content = "화각 비례 감속";
                     fov.Margin = new Thickness(0, 0, 10, 0);
                     fov.SetBinding(ToggleButton.IsCheckedProperty, new Binding("IsFovSpeedEnabled") { Mode = BindingMode.TwoWay }); options.Children.Add(fov);
-                    var row = new WrapPanel { Margin = new Thickness(0, 4, 0, 4) };
-                    foreach (var channel in new[] { "Eo", "Ir" })
-                    {
-                        row.Children.Add(new TextBlock { Text = channel.ToUpper() + " 강도", Foreground = channel == "Eo" ? Brushes.Cyan : Brushes.Plum, VerticalAlignment = VerticalAlignment.Center });
-                        row.Children.Add(TuningEditor(channel + "SpeedExponent", 42));
-                        row.Children.Add(new TextBlock { Text = "최소", Foreground = Brushes.LightGray, VerticalAlignment = VerticalAlignment.Center });
-                        row.Children.Add(TuningEditor(channel + "MinimumSpeed", 32));
-                    }
-                    // 2026-10-13 V31_1: click-to-center toggle and attenuation share the existing option row.
-                    // 2026-10-08 V30_0 hotfix: keep everyday controls horizontal; tuning expands only on demand.
-                    var advanced = new Expander { Header = "감속 설정", IsExpanded = false, Content = row, Foreground = Brushes.LightSkyBlue, Margin = new Thickness(8, 0, 0, 0) };
-                    options.Children.Add(advanced);
+                    options.Children.Add(CreateFovTuningEditor());
                     panel.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(68, 79, 88)), BorderBrush = new SolidColorBrush(Color.FromRgb(126, 148, 161)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 3, 5, 3), Child = options });
                     Grid.SetRow(panel, outer.RowDefinitions.Count - 1); outer.Children.Add(panel);
                 }
@@ -106,9 +95,30 @@ namespace OpenCvWpfTracking
             vm.SetActivePanTiltZoomSource(ir);
         }
         /// <summary>지정 조정값에 양방향 바인딩된 실행 중 설정 입력란을 만든다.</summary>
-        private TextBox TuningEditor(string path, double width)
+        /// <summary>기존 보더 높이 안에서 채널별 감속 입력과 오른쪽 적용 버튼을 배치한다.</summary>
+        private static Expander CreateFovTuningEditor()
         {
-            var box = new TextBox { Width = width, Margin = new Thickness(4, 0, 8, 0), Padding = new Thickness(2, 0, 2, 0), Background = new SolidColorBrush(Color.FromRgb(47, 61, 73)), Foreground = Brushes.White, CaretBrush = Brushes.White, BorderBrush = Brushes.LightSlateGray, ToolTip = "Config/ControlTuning.xml에서 장비별 영구 설정 가능. 이 입력은 실행 중 조정." };
+            var row=new StackPanel { Orientation=Orientation.Horizontal, Margin=new Thickness(0,4,0,4) };
+            foreach(var channel in new[]{"Eo","Ir"})
+            {
+                row.Children.Add(new TextBlock {Text=channel.ToUpper()+" 강도",FontSize=10,Foreground=channel=="Eo"?Brushes.Cyan:Brushes.Plum,VerticalAlignment=VerticalAlignment.Center});
+                row.Children.Add(TuningEditor(channel+"SpeedExponent",32));
+                row.Children.Add(new TextBlock {Text="최소",FontSize=10,Foreground=Brushes.LightGray,VerticalAlignment=VerticalAlignment.Center});
+                row.Children.Add(TuningEditor(channel+"MinimumSpeed",28));
+            }
+            var grid=new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star)});
+            grid.ColumnDefinitions.Add(new ColumnDefinition {Width=GridLength.Auto});
+            grid.Children.Add(new Viewbox {Child=row,Stretch=Stretch.Uniform,StretchDirection=StretchDirection.DownOnly,HorizontalAlignment=HorizontalAlignment.Left});
+            var apply=new Button {Content="적용",Width=42,Height=24,FontSize=10,Margin=new Thickness(4,0,0,0),ToolTip="EO/IR 입력값 적용. 실행 중 설정이며 재실행 기본값은 ControlTuning.xml입니다."};
+            apply.Click+=(s,e)=>{foreach(var box in row.Children.OfType<TextBox>())box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();Keyboard.Focus(apply);};
+            Grid.SetColumn(apply,1);grid.Children.Add(apply);
+            return new Expander {Header="감속 설정 · 강도 1~4 / 최소 1~60",Content=grid,Foreground=Brushes.LightSkyBlue,Margin=new Thickness(8,0,0,0),
+                ToolTip="강도가 클수록 중간 줌부터 더 감속합니다. 최대 줌은 최소 속도에 도달하며 1 미만 전송은 지원하지 않습니다."};
+        }
+        private static TextBox TuningEditor(string path, double width)
+        {
+            var box = new TextBox { Width = width, FontSize=10, Margin = new Thickness(3, 0, 6, 0), Padding = new Thickness(2, 0, 2, 0), Background = new SolidColorBrush(Color.FromRgb(47, 61, 73)), Foreground = Brushes.White, CaretBrush = Brushes.White, BorderBrush = Brushes.LightSlateGray, ToolTip = path.EndsWith("Exponent")?"강도 1~4 · 클수록 감속. 최대 줌은 최소 속도 적용.":"최소 속도 1~60 · 낮을수록 느림. 실행 중 조정." };
             box.SetBinding(TextBox.TextProperty, new Binding(path) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus, ValidatesOnExceptions = true });
             return box;
         }
@@ -222,6 +232,9 @@ namespace OpenCvWpfTracking
                     var button=new Button{Content=on?"D-ZOOM ON":"D-ZOOM OFF",Width=85,Height=32,Margin=new Thickness(5),Focusable=false,Style=(Style)FindResource(ir?"IrControlButtonStyle":"EoControlButtonStyle"),ToolTip="디지털 줌 ON/OFF 요청. 전송 성공과 장비 상태 확인은 아래 문구로 구분합니다."};
                     // FIX7: keep EO/IR controls enabled during normal operation. Agent capability/status
                     // remains diagnostic evidence and no longer greys out these buttons.
+                    // 2026-10-13 V31_3: IR DIGITAL_ZOOM is usable only with writable support.
+                    // Other IR lens buttons and EO's writable-only request flow stay unchanged.
+                    if(ir)button.SetBinding(IsEnabledProperty,new Binding("CanSetIrDigitalZoom"));
                     button.Click+=(s,e)=>vm.SetDigitalZoom(ir,on);
                     row.Children.Add(button);
                 }

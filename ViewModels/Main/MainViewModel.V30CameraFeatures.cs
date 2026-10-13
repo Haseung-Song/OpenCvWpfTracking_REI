@@ -13,8 +13,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         // V31: EO/IR estimates follow successful local zoom commands; ON alone never implies 4x.
         private readonly Services.Configuration.DigitalZoomEstimate _eoDigitalEstimate = new Services.Configuration.DigitalZoomEstimate();
         private readonly Services.Configuration.DigitalZoomEstimate _irDigitalEstimate = new Services.Configuration.DigitalZoomEstimate();
-        private bool _eoDigitalEstimateSuppressed;
-        private bool _irDigitalEstimateSuppressed;
         private long _digitalEstimateTimestamp=System.Diagnostics.Stopwatch.GetTimestamp();
         /// <summary>단조 시계의 경과 시간을 계산해 EO/IR 디지털 추정 모델을 함께 갱신한다.</summary>
         private void TickDigitalEstimate()
@@ -25,20 +23,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             AdvanceDigitalEstimate(false, elapsed);
             AdvanceDigitalEstimate(true, elapsed);
         }
-        /// <summary>채널별 연결·상태 신선도·광학 끝점·OFF 억제 조건으로 추정값을 갱신한다.</summary>
+        /// <summary>명시적으로 활성화한 추정값만 연결·상태 신선도·광학 끝점 조건으로 갱신한다.</summary>
         private void AdvanceDigitalEstimate(bool ir, double elapsed)
         {
             var estimate=ir?_irDigitalEstimate:_eoDigitalEstimate;
             var tuning=ControlTuningFor(ir);
             bool fresh=CameraFeatureTransportReady && IsLensFresh(ir) && IsOperationCommandEnabled && !IsControlInputLocked;
             bool atMaximum=(ir?GetCurrentIrZoomStandardPosition():GetCurrentPresetStandardZoom())>=1000;
-            // MR500 supplies optical position 1000 but no usable current digital ratio.
-            // Enter the configured estimate range at that boundary unless OFF was explicitly confirmed.
-            if(fresh && atMaximum && tuning.DigitalEstimateMaximum>1 && !(ir?_irDigitalEstimateSuppressed:_eoDigitalEstimateSuppressed) && !estimate.Enabled)
-            {
-                estimate.Enable(true);
-                ConsoleLogHelper.State("D-ZOOM ESTIMATE","CAMERA="+(ir?"IR":"EO")+" / BOUNDARY ENABLED / OPTICAL=1000 / RANGE="+tuning.MaximumRatio+"~"+(tuning.MaximumRatio*tuning.DigitalEstimateMaximum)+" / ESTIMATED / NOT TELEMETRY");
-            }
+            // 2026-10-13 V31_3: optical position 1000 is NOT evidence of digital ON.
+            // Only a successfully sent ON request or valid device ON state may enable this model.
             estimate.Advance(elapsed,fresh,atMaximum,tuning.DigitalEstimateMaximum,tuning.DigitalEstimateSeconds);
             if(!CameraFeatureTransportReady)estimate.Enable(false);
         }
@@ -78,6 +71,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private string DigitalStatus(int i)
         {
             if (!CameraFeatureTransportReady) return "D-ZOOM · 미연결";
+            if(i==1 && _digitalCapsKnown[i] && (_digitalCaps[i]&5)!=5)return "D-ZOOM · IR 설정 미지원";
+            if(i==1 && !_digitalCapsKnown[i])return "D-ZOOM · IR 지원 조회 중";
             if(_digitalTxFailed[i])return "D-ZOOM · 요청 전송 실패";
             if(_digitalState[i]>=0 && DateTime.UtcNow.Ticks-_digitalStateTicks[i]<=TimeSpan.FromSeconds(10).Ticks)
                 return "장비 "+(_digitalState[i]==0?"OFF":"ON")+" 확인"+
@@ -103,8 +98,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             _eoDigitalEstimate.Enable(false);
             _irDigitalEstimate.Enable(false);
-            _eoDigitalEstimateSuppressed=false;
-            _irDigitalEstimateSuppressed=false;
             for(int i=0;i<2;i++){_digitalCaps[i]=0;_digitalCapsKnown[i]=false;_digitalState[i]=-1;_digitalRequestedState[i]=-1;_digitalTxFailed[i]=false;_digitalStateTicks[i]=0;_digitalPendingTicks[i]=0;_digitalNextQueryTicks[i]=0;_videoCenterFrameTicks[i]=0;}
             Interlocked.Exchange(ref _videoCenterPose,null); NotifyDigitalZoom();
         }
@@ -128,6 +121,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 break;
             }
             _digitalCaps[i]=flags;_digitalCapsKnown[i]=true;_digitalState[i]=-1;
+            // V31_3: an IR camera reporting no writable DIGITAL_ZOOM must not simulate it.
+            if(i==1 && (flags&5)!=5){_irDigitalEstimate.Enable(false);_digitalRequestedState[i]=-1;_digitalPendingTicks[i]=0;}
             // 2026-10-12 FIX4: distinguish writable-only cameras from missing state replies.
             ConsoleLogHelper.State("DIGITAL ZOOM", "CAPABILITY / TARGET="+i+" / FLAGS=0x"+flags.ToString("X2")+
                 " / SUPPORTED="+((flags&1)!=0)+" / READABLE="+((flags&2)!=0)+" / SETTABLE="+((flags&4)!=0));
@@ -142,27 +137,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int i=p[1], value=BitConverter.ToInt16(p,4);
             _digitalState[i]=(p[3]&3)==3 && (value==0 || value==1) ? value : -1;
             if(_digitalState[i]>=0){TickDigitalEstimate();
-                if(i==0)_eoDigitalEstimateSuppressed=_digitalState[i]==0;else _irDigitalEstimateSuppressed=_digitalState[i]==0;
-                (i==0?_eoDigitalEstimate:_irDigitalEstimate).Enable(_digitalState[i]==1);}
+                (i==0?_eoDigitalEstimate:_irDigitalEstimate).Enable(_digitalState[i]==1 && (i==0 || (_digitalCapsKnown[i] && (_digitalCaps[i]&5)==5)));}
             _digitalStateTicks[i]=DateTime.UtcNow.Ticks;_digitalPendingTicks[i]=0;NotifyDigitalZoom();
         }
         /// <summary>운용 잠금 검증 후 BOOLEAN 명령을 송신한다. 송신 성공을 장비 적용 확인으로 취급하지 않는다.</summary>
         public bool SetDigitalZoom(bool ir,bool on)
         {
             int i=ir?1:0;
-            // FIX7: follow the other lens controls. Agent capability/status does not disable or reject
-            // the user's EO/IR request; the actual transport result remains visible in the log.
+            // EO keeps the FIX7 write-only workflow; IR additionally requires supported capability below.
+            // The actual transport result remains distinct from device application confirmation.
             if(IsControlInputLocked || !IsOperationCommandEnabled)
             {ConsoleLogHelper.Warning("DIGITAL ZOOM","Rejected / TARGET="+i+" / operation locked");return false;}
+            // V31_3: keep EO's writable-only workflow; IR requires explicit set capability.
+            if(ir && !CanSetIrDigitalZoom)
+            {ConsoleLogHelper.Warning("DIGITAL ZOOM","Rejected / TARGET=1 / IR capability, connection or pending request");return false;}
             bool sent=_controlCommandService.SetCameraFeature(0x1D,(byte)i,(byte)(on?1:0));
             _digitalTxFailed[i]=!sent;
             _digitalRequestedState[i]=on?1:0;
             if(sent){_digitalState[i]=-1;_digitalPendingTicks[i]=DateTime.UtcNow.Ticks;
-                TickDigitalEstimate();if(i==0)_eoDigitalEstimateSuppressed=!on;else _irDigitalEstimateSuppressed=!on;
+                TickDigitalEstimate();
                 (i==0?_eoDigitalEstimate:_irDigitalEstimate).Enable(on);
                 ConsoleLogHelper.State("D-ZOOM ESTIMATE","CAMERA="+(ir?"IR":"EO")+" / LOCAL REQUEST / ENABLED="+on+" / MAX="+ControlTuningFor(ir).DigitalEstimateMaximum+" / SECONDS="+ControlTuningFor(ir).DigitalEstimateSeconds+" / ESTIMATED / NOT TELEMETRY");}
             ConsoleLogHelper.Command("DIGITAL ZOOM","TARGET="+i+" / REQUEST="+(on?"ON":"OFF")+" / TX="+sent+" / not a device ACK");
             NotifyDigitalZoom();return sent;
+        }
+        /// <summary>DIGITAL_ZOOM 거절 응답 시 요청·추정을 해제하고 IR 설정 버튼을 비활성화한다.</summary>
+        private void ApplyDigitalZoomUnavailable(int target)
+        {
+            TickDigitalEstimate();
+            _digitalPendingTicks[target]=0;_digitalState[target]=-1;
+            _digitalRequestedState[target]=-1;_digitalCaps[target]=0;_digitalCapsKnown[target]=true;
+            (target==0?_eoDigitalEstimate:_irDigitalEstimate).Enable(false);
+            ConsoleLogHelper.Warning("D-ZOOM ESTIMATE","CAMERA="+(target==0?"EO":"IR")+" / DEVICE REJECTED / ESTIMATE RESET");
+            NotifyDigitalZoom();
         }
         /// <summary>클릭 이동 기한, D-ZOOM 응답 대기 및 주기 조회를 기존 간격으로 감시한다.</summary>
         private void TickDigitalZoom()

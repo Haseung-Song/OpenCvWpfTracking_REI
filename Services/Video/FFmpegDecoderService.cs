@@ -134,6 +134,7 @@ namespace OpenCvWpfTracking.Services.Video
         private readonly AVIOInterruptCB_callback _interruptCallback;
 
         private int _interruptRequested;
+        private CancellationToken _openCancellationToken;
 
         // 2026-09-18: PTZ 이동 중 증가하는 압축량과 FFmpeg 단계별 지연을
         // WPF 표시 지연과 같은 1초 구간에서 비교하기 위한 lock-free 누적값이다.
@@ -249,7 +250,7 @@ namespace OpenCvWpfTracking.Services.Video
 
         private int InterruptCallback(void* opaque)
         {
-            return Volatile.Read(ref _interruptRequested) != 0
+            return Volatile.Read(ref _interruptRequested) != 0 || _openCancellationToken.IsCancellationRequested
                 ? 1
                 : 0;
         }
@@ -273,7 +274,22 @@ namespace OpenCvWpfTracking.Services.Video
         /// </summary>
         /// <param name="rtspUrl">[RTSP] 주소</param>
         /// <returns>연결 및 [Decoder] 초기화 성공 여부</returns>
-        public bool Open(string rtspUrl)
+        public bool Open(string rtspUrl, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // 2026-10-13 V31_4: Open/Read/Close share one native lifetime lock.
+            // A canceled session stays interrupted even when OpenCore resets the close flag.
+            lock (_syncLock)
+            {
+                _openCancellationToken = cancellationToken;
+                if (cancellationToken.IsCancellationRequested) return false;
+                bool opened = OpenWithAuthenticationFallback(rtspUrl);
+                if (!cancellationToken.IsCancellationRequested) return opened;
+                Close();
+                return false;
+            }
+        }
+
+        private bool OpenWithAuthenticationFallback(string rtspUrl)
         {
             if (OpenCore(rtspUrl) || !IsAuthenticationFailure) return IsOpened;
             RtspAuthenticationRelay relay = null;

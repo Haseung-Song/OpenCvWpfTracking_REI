@@ -457,6 +457,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ThermalFireDetectionResult thermalResult,
             SmokeDetectionResult smokeResult)
         {
+            if(!IsThermalFireDetectionEnabled) thermalResult=default(ThermalFireDetectionResult);
+            if(!IsSmokeDetectionEnabled) smokeResult=default(SmokeDetectionResult);
             ObservableCollection<VisionDetectionBox> target =
                 string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
                     ? IrFireSmokeDetectionBoxes
@@ -520,6 +522,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(isInfrared
                 ? nameof(IsIrSmokeWarningVisible)
                 : nameof(IsEoSmokeWarningVisible));
+        }
+
+        private int _visionSettingsGeneration;
+        /// <summary>검출 OFF는 해당 종류의 ACTIVE만 해제한다. 이력과 다른 검출 종류는 보존한다.</summary>
+        private void ClearDisabledVisionEvents(bool fire, bool writeAudit = true)
+        {
+            string kind=fire?"FIRE":"SMOKE";
+            DateTime now=DateTime.Now;
+            foreach(var track in _activeVisionBBoxEvents.Where(x=>x.DetectionType.IndexOf(kind,StringComparison.OrdinalIgnoreCase)>=0).ToList())
+            { track.Event.MarkCleared(now); if(writeAudit) AppendFireEventAudit(track.Event,"CLEARED"); _activeVisionBBoxEvents.Remove(track); }
+            foreach(var record in _activeTestFireEvents.Where(x=>x.DetectionType.IndexOf(kind,StringComparison.OrdinalIgnoreCase)>=0).ToList())
+            { record.MarkCleared(now); if(writeAudit) AppendFireEventAudit(record,"CLEARED"); _activeTestFireEvents.Remove(record); }
+            foreach(var boxes in new[]{EoFireSmokeDetectionBoxes,IrFireSmokeDetectionBoxes})
+                for(int i=boxes.Count-1;i>=0;i--) if(boxes[i].DetectionType.IndexOf(kind,StringComparison.OrdinalIgnoreCase)>=0) boxes.RemoveAt(i);
+            if(fire) { _isEoFireCandidateDetected=false; _isIrFireCandidateDetected=false; }
+            SetLocalFireSmokeDetectionState(0,fire?false:_hasEoLocalFireDetection,fire?_hasEoLocalSmokeDetection:false);
+            SetLocalFireSmokeDetectionState(1,fire?false:_hasIrLocalFireDetection,fire?_hasIrLocalSmokeDetection:false);
+            RefreshActiveFireCount(); NotifyFireEventSummaryChanged();
+            ConsoleLogHelper.State("VISION BBOX EVENT","ACTION=CLEAR / TYPE="+kind+" / REASON=DETECTOR_DISABLED / HISTORY_RETAINED");
         }
 
         private static void SuppressLocalBoxesOverlappingAi(
@@ -625,7 +646,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ZoneFrameContext zoneFrame = null)
         {
             DateTime now = DateTime.Now;
-            IList<CvRect> safeCandidates = candidates ?? new List<CvRect>();
+            bool enabled=detectionType.IndexOf("SMOKE",StringComparison.OrdinalIgnoreCase)>=0 ? IsSmokeDetectionEnabled : IsThermalFireDetectionEnabled;
+            IList<CvRect> safeCandidates = enabled ? candidates ?? new List<CvRect>() : new List<CvRect>();
             foreach (VisionBBoxEventTrack track in _activeVisionBBoxEvents.Where(
                 item => item.Camera == camera && item.DetectionType == detectionType))
             {
