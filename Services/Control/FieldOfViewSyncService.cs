@@ -10,6 +10,29 @@ namespace OpenCvWpfTracking.Services.Control
     {
         public const double AllowedErrorPercent = 10.0;
 
+        // V31: EO motor position is not a linear optical magnification. Use the
+        // measured EO/IR matching anchors and the IR 1..9 optical model. The
+        // unmatched wide endpoint and EO-only 90x endpoint remain explicit.
+        /// <summary>EO/IR 실측 매칭표와 IR 선형 모델을 사용해 EO 광학 배율을 구간 보간한다.</summary>
+        public static double EstimateEoOpticalRatio(int position, double eoWide, double irWide, double maximum)
+        {
+            int p = Math.Max(0, Math.Min(1000, position));
+            double scale = Math.Tan(eoWide * Math.PI / 360) / Math.Tan(irWide * Math.PI / 360);
+            int previousPosition = 0;
+            double previousRatio = 1;
+            for (int i = 1; i < CalibratedEoPositions.Length; i++)
+            {
+                double ratio = Math.Max(previousRatio, Math.Min(maximum,
+                    scale * (1 + 8 * CalibratedIrPositions[i] / 1000.0)));
+                int nextPosition = CalibratedEoPositions[i];
+                if (p <= nextPosition)
+                    return previousRatio + (ratio - previousRatio) * (p - previousPosition) / (nextPosition - previousPosition);
+                previousPosition = nextPosition;
+                previousRatio = ratio;
+            }
+            return previousRatio + (maximum - previousRatio) * (p - previousPosition) / (1000 - previousPosition);
+        }
+
         private static readonly short[] CalibratedEoPositions =
         {
             0, 399, 443, 492, 536, 588, 636, 693, 765, 834, 940
@@ -35,6 +58,7 @@ namespace OpenCvWpfTracking.Services.Control
 
         private const double IrSensorWidthMm = 10.88;
 
+        /// <summary>0~10 레벨의 실측 위치와 양 채널 예상 화각을 묶어 반환한다.</summary>
         public ZoomFovTarget CreateTarget(int level)
         {
             int safeLevel = Math.Max(0, Math.Min(10, level));
@@ -46,11 +70,13 @@ namespace OpenCvWpfTracking.Services.Control
             return new ZoomFovTarget(safeLevel, eoPosition, irPosition, eoHfov, irHfov);
         }
 
+        /// <summary>EO 표준 위치를 기존 초점거리 모델의 수평 화각으로 환산한다.</summary>
         public double GetEoHfov(short normalizedPosition)
         {
             return PositionToHfov(normalizedPosition, EoMinFocalMm, EoMaxFocalMm, EoSensorWidthMm);
         }
 
+        /// <summary>IR 표준 위치를 기존 초점거리 모델의 수평 화각으로 환산한다.</summary>
         public double GetIrHfov(short normalizedPosition)
         {
             return PositionToHfov(normalizedPosition, IrMinFocalMm, IrMaxFocalMm, IrSensorWidthMm);
@@ -93,12 +119,14 @@ namespace OpenCvWpfTracking.Services.Control
             return CalibratedEoPositions[CalibratedEoPositions.Length - 1];
         }
 
+        /// <summary>두 번째 화각을 기준으로 상대 오차율을 계산하고 분모의 0을 방지한다.</summary>
         public static double GetErrorPercent(double firstHfov, double secondHfov)
         {
             double reference = Math.Max(0.0001, secondHfov);
             return Math.Abs(firstHfov - secondHfov) / reference * 100.0;
         }
 
+        /// <summary>위치를 0~1000으로 제한해 초점거리와 센서 폭으로 수평 화각을 계산한다.</summary>
         private static double PositionToHfov(short position, double minFocal, double maxFocal, double sensorWidth)
         {
             double ratio = Math.Max(0.0, Math.Min(1.0, position / 1000.0));
@@ -106,6 +134,7 @@ namespace OpenCvWpfTracking.Services.Control
             return 2.0 * Math.Atan(sensorWidth / (2.0 * focal)) * 180.0 / Math.PI;
         }
 
+        /// <summary>초점거리 모델의 화각을 표준 위치로 역산한다. 공개 API와 별개인 기존 보조 함수이다.</summary>
         private static short HfovToPosition(double hfov, double minFocal, double maxFocal, double sensorWidth)
         {
             double radians = Math.Max(0.0001, hfov) * Math.PI / 180.0;

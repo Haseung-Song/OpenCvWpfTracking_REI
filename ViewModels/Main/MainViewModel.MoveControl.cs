@@ -3644,16 +3644,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MoveControlMinimumZoomRatio,
                     MoveControlEoMaximumZoomRatio);
 
-            double normalized =
-                (safeRatio -
-                 MoveControlMinimumZoomRatio) /
-                (MoveControlEoMaximumZoomRatio -
-                 MoveControlMinimumZoomRatio);
-
-            return (int)Math.Round(
-                normalized *
-                MoveControlPositionMaximum,
-                MidpointRounding.AwayFromZero);
+            return ControlTuningFor(false).Position(safeRatio);
         }
 
         /// <summary>
@@ -3669,14 +3660,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MoveControlPositionMinimum,
                     MoveControlPositionMaximum);
 
-            double normalized =
-                safePosition /
-                (double)MoveControlPositionMaximum;
-
-            return MoveControlMinimumZoomRatio +
-                   normalized *
-                   (MoveControlEoMaximumZoomRatio -
-                    MoveControlMinimumZoomRatio);
+            return ControlTuningFor(false).Ratio(safePosition);
         }
 
         /// <summary>
@@ -3694,10 +3678,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     standardPosition,
                     MoveControlPositionMinimum,
                     MoveControlPositionMaximum);
-
-            double normalized =
-                safePosition /
-                (double)MoveControlPositionMaximum;
 
             return ControlTuningFor(true).Ratio(safePosition);
         }

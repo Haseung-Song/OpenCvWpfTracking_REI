@@ -21,12 +21,14 @@ namespace OpenCvWpfTracking.Services.Video
         private readonly CancellationTokenSource _stop = new CancellationTokenSource();
         private int _disposed;
         public int Md5Selections;
+        /// <summary>401 재접속용 루프백 릴레이를 준비한다. 인증 정보는 기록하지 않는다.</summary>
         public RtspAuthenticationRelay(string address)
         {
             _target=new Uri(address);
             if(_target.Scheme!="rtsp") throw new ArgumentException("Only plain RTSP supported.");
             _listener=new TcpListener(IPAddress.Loopback,0);
         }
+        /// <summary>단일 클라이언트 수신을 시작하고 FFmpeg가 접속할 루프백 주소를 반환한다.</summary>
         public string Start()
         {
             _listener.Start(1);
@@ -34,6 +36,7 @@ namespace OpenCvWpfTracking.Services.Video
             _=Task.Run(Run);
             return new UriBuilder(_target){Host="127.0.0.1",Port=port}.Uri.AbsoluteUri;
         }
+        /// <summary>요청과 응답을 양방향 중계하고 어느 쪽이든 종료되면 연결을 함께 정리한다.</summary>
         private async Task Run()
         {
             try
@@ -53,20 +56,24 @@ namespace OpenCvWpfTracking.Services.Video
                 var incoming=ForwardResponses(remote,local);
                 await Task.WhenAny(outgoing,incoming).ConfigureAwait(false);
                 Dispose();
+                // Connection disposal cancels pending IO; observe both tasks without teardown log floods.
                 try {await Task.WhenAll(outgoing,incoming).ConfigureAwait(false);} catch(Exception) {}
             }
             catch(IOException) {} catch(SocketException) {} catch(ObjectDisposedException) {} catch(OperationCanceledException) {}
             finally {Dispose();}
         }
+        /// <summary>RTP/RTCP 바이트는 그대로 전달하고 RTSP 401 인증 헤더만 선별한다.</summary>
         private async Task ForwardResponses(NetworkStream input,NetworkStream output)
         {
-            byte[] one=new byte[1], block=new byte[65536];
+            // 2026-10-13 V31_1: reuse the header per connection, never across concurrent relays.
+            // All four bytes are overwritten and each write is awaited before the next read.
+            byte[] one=new byte[1], block=new byte[65536], header=new byte[4];
             while(!_stop.IsCancellationRequested)
             {
                 if(await input.ReadAsync(one,0,1,_stop.Token).ConfigureAwait(false)==0)return;
                 if(one[0]==(byte)'$')
                 {
-                    byte[] header=new byte[4];header[0]=one[0];
+                    header[0]=one[0];
                     await ReadExact(input,header,1,3).ConfigureAwait(false);
                     await output.WriteAsync(header,0,4,_stop.Token).ConfigureAwait(false);
                     await CopyCount(input,output,(header[2]<<8)|header[3],block).ConfigureAwait(false);
@@ -95,6 +102,7 @@ namespace OpenCvWpfTracking.Services.Video
                 }
             }
         }
+        /// <summary>401 응답에 호환 MD5 Digest가 있을 때만 지원하지 않는 인증 후보를 제외한다.</summary>
         internal static string SelectMd5Challenge(string header)
         {
             if(!header.StartsWith("RTSP/1.0 401",StringComparison.Ordinal))return header;
@@ -110,6 +118,7 @@ namespace OpenCvWpfTracking.Services.Video
             if(!auth.Any(supported) || !auth.Any(l=>!supported(l)))return header;
             return string.Join("\r\n",lines.Where(l=>!l.StartsWith("WWW-Authenticate:",StringComparison.OrdinalIgnoreCase) || supported(l)));
         }
+        /// <summary>지정 바이트 수를 읽으며 조기 연결 종료는 상위 연결 정리 경로로 전달한다.</summary>
         private async Task ReadExact(NetworkStream input,byte[] buffer,int offset,int count)
         {
             while(count>0)
@@ -119,6 +128,7 @@ namespace OpenCvWpfTracking.Services.Video
                 offset+=read;count-=read;
             }
         }
+        /// <summary>공유 작업 버퍼로 지정 길이의 본문/미디어를 순차 전송한다.</summary>
         private async Task CopyCount(NetworkStream input,NetworkStream output,int count,byte[] block)
         {
             while(count>0)
@@ -128,6 +138,7 @@ namespace OpenCvWpfTracking.Services.Video
                 await output.WriteAsync(block,0,read,_stop.Token).ConfigureAwait(false);count-=read;
             }
         }
+        /// <summary>중복 호출을 허용하면서 취소 및 양쪽 소켓 종료를 한 번만 수행한다.</summary>
         public void Dispose()
         {
             if(Interlocked.Exchange(ref _disposed,1)!=0)return;

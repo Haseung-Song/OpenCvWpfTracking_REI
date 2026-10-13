@@ -2211,7 +2211,7 @@ namespace OpenCvWpfTracking
             if (e.Key == Key.System || Keyboard.Modifiers != ModifierKeys.None)
             { vm.ReleaseControlOwner("main"); return; }
             if (!IsTextBoxKeyboardFocus() && !IsControlInputKeyboardLocked() && !IsEventPageNavigationKey(e.Key) &&
-                vm.HandleControlKey("main", e.Key, true, _primaryVideoType == VideoPopoutCameraType.Ir, e.IsRepeat))
+                vm.HandleControlKey("main", e.Key, true, GetHoveredCameraType() == VideoPopoutCameraType.Ir, e.IsRepeat))
             { e.Handled = true; return; }
             // 2026-09-16: ESC는 장비 제어 Lock보다 우선하여 메인 전체화면을 복원한다.
             if (e.Key == Key.Escape && _isMainWindowFullScreen)

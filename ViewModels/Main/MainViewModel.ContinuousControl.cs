@@ -1767,6 +1767,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
 
             bool result = _controlCommandService.StartIrZoomTele();
+            SetDigitalEstimateDirection(result ? 1 : 0, true);
             BeginEnvironmentIrManualEstimate(
                 ContinuousMoveType.IrZoom,
                 +1,
@@ -1788,6 +1789,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
 
             bool result = _controlCommandService.StartIrZoomWide();
+            SetDigitalEstimateDirection(result ? -1 : 0, true);
             BeginEnvironmentIrManualEstimate(
                 ContinuousMoveType.IrZoom,
                 -1,
@@ -1808,6 +1810,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
 
             bool result = _controlCommandService.StopIrZoom();
+            SetDigitalEstimateDirection(0, true);
             CompleteEnvironmentIrManualEstimate(
                 ContinuousMoveType.IrZoom,
                 result);
@@ -2281,6 +2284,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public async void StopAllPtzfMove()
         {
             SetDigitalEstimateDirection(0);
+            SetDigitalEstimateDirection(0, true);
             // 2026-10-12: click-to-center uses absolute PT on LA as well as Web Agent.
             if(_videoCenterBusy || _centerDeadlineTicks!=0)
             { _controlCommandService.StopPanTiltPositionMove(); _centerDeadlineTicks=0; }

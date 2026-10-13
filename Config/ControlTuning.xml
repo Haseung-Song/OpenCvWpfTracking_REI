@@ -5,9 +5,11 @@
     <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="1" MinSpeed="1" WideHFov="65.24" />
     <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="1" MinSpeed="1" WideHFov="24.5" />
   </Device>
-  <!-- Display-only provisional 1..4x over 10 seconds of GUI zoom command at optical maximum.
-       Not a measured traversal time. Only the user's current MR500 EO profile is opted in. -->
+  <!-- V31: relative EO optical curve uses measured EO/IR matching anchors.
+       Digital 1..4x is command-time ESTIMATION (10s provisional), not telemetry.
+       Applied to click projection too; field verification/calibration is required. -->
   <Device Id="MR500_MOE">
-    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="1" MinSpeed="1" WideHFov="65.24" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
+    <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="1" MinSpeed="1" WideHFov="65.24" UseMeasuredSyncAnchors="true" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
+    <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="1" MinSpeed="1" WideHFov="24.5" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
   </Device>
 </ControlTuning>

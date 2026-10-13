@@ -763,8 +763,8 @@ namespace OpenCvWpfTracking
             object sender,
             EventArgs e)
         {
-            if (_viewModel.IsGlobalControlEnabled) return;
             _viewModel.ReleaseControlOwner("popout");
+            if (_viewModel.IsGlobalControlEnabled) return;
             /// <summary>
             /// Alt + Tab 또는 다른 창 클릭으로 KeyUp이 누락될 수 있으므로
             /// 렌즈 이동과 Keyboard Pan / Tilt 상태를 모두 정리한다.

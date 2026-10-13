@@ -288,9 +288,10 @@ namespace OpenCvWpfTracking.Services.Video
                     return true;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                ConsoleLogHelper.State("RTSP AUTH COMPAT", "Compatibility connection failed / original device settings retained");
+                // 2026-10-13 V31_1: diagnostic code only; exception messages may contain credentials.
+                ConsoleLogHelper.State("RTSP AUTH COMPAT", "Compatibility connection failed / original device settings retained / " + ex.GetType().Name + " / HRESULT=0x" + ex.HResult.ToString("X8"));
             }
             relay?.Dispose();
             return false;

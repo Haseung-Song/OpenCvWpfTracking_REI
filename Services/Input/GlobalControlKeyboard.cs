@@ -19,6 +19,7 @@ namespace OpenCvWpfTracking.Services.Input
         private readonly DispatcherTimer _watchdog;
         private IntPtr _hook;
         public event Action<Key, bool> KeyChanged;
+        /// <summary>비차단 키보드 훅과 키 놓침 복구용 100ms 감시를 시작한다.</summary>
         public GlobalControlKeyboard(Dispatcher dispatcher)
         {
             _dispatcher = dispatcher; _callback = Hook;
@@ -28,6 +29,8 @@ namespace OpenCvWpfTracking.Services.Input
             _watchdog = new DispatcherTimer(DispatcherPriority.Input, dispatcher) { Interval = TimeSpan.FromMilliseconds(100) };
             _watchdog.Tick += (s, e) =>
             {
+                // 2026-10-13 V31_1: idle ticks need no snapshot; held-key iteration still uses a copy.
+                if (_held.Count == 0) return;
                 foreach (int vk in new List<int>(_held))
                     if ((GetAsyncKeyState(vk) & 0x8000) == 0) { _held.Remove(vk); KeyChanged?.Invoke(KeyInterop.KeyFromVirtualKey(vk), false); }
             };
@@ -35,12 +38,14 @@ namespace OpenCvWpfTracking.Services.Input
         }
         private static bool Supported(Key key) => key == Key.Left || key == Key.Right || key == Key.Up || key == Key.Down ||
             key == Key.W || key == Key.S || key == Key.A || key == Key.D || key == Key.R || key == Key.T || key == Key.Z || key == Key.C;
+        /// <summary>훅 처리 실패를 기록하고 다른 프로그램으로 키 이벤트를 항상 전달한다.</summary>
         private IntPtr Hook(int code, IntPtr message, IntPtr data)
         {
             try { HandleHook(code, message, data); }
-            catch (Exception ex) { ConsoleLogHelper.Warning("GLOBAL INPUT", "Hook callback failed / " + ex.GetType().Name); }
+            catch (Exception ex) { ConsoleLogHelper.Warning("GLOBAL INPUT", "Hook callback failed / " + ex.GetType().Name + " / HRESULT=0x" + ex.HResult.ToString("X8")); }
             return CallNextHookEx(_hook, code, message, data);
         }
+        /// <summary>주입 키와 시스템 조합을 제외하고 누름/해제를 추적한다. Z/C 반복은 유지한다.</summary>
         private void HandleHook(int code, IntPtr message, IntPtr data)
         {
             if (code >= 0 && _hook != IntPtr.Zero)
@@ -67,11 +72,13 @@ namespace OpenCvWpfTracking.Services.Input
                 }
             }
         }
+        /// <summary>종료 중이 아닌 UI Dispatcher에 키 상태 전달을 예약한다.</summary>
         private void Dispatch(int vk, bool down)
         {
             if (!_dispatcher.HasShutdownStarted) _dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
             { if (_hook != IntPtr.Zero) KeyChanged?.Invoke(KeyInterop.KeyFromVirtualKey(vk), down); }));
         }
+        /// <summary>감시와 네이티브 훅을 해제하고 보유 키 및 구독자를 정리한다.</summary>
         public void Dispose()
         {
             _watchdog.Stop();

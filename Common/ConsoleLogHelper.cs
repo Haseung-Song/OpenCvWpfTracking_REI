@@ -11,15 +11,16 @@ namespace OpenCvWpfTracking.Common
     /// <summary>
     /// Debug Console 공통 로그 Helper.
     ///
-    /// 현재 단계에서는 Serilog 같은 외부 로깅 패키지에 의존하지 않고
-    /// CMD 창에서 실행 순서, Thread, 성공/실패 원인을 빠르게 확인한다.
-    /// 이후 Serilog를 적용할 때 이 클래스의 내부 구현만 교체하면
-    /// ViewModel과 Service의 호출부는 그대로 유지할 수 있다.
+    /// Console과 Serilog에 실행 흐름 및 성공/실패 정보를 전달한다.
+    /// 출력 실패가 장비 제어를 중단하지 않도록 기존 안전 출력 경로를 유지한다.
     /// </summary>
     public static class ConsoleLogHelper
     {
         private static readonly object ConsoleLock =
             new object();
+
+        // 2026-10-13 V31_1: IndexOfAny reads this immutable boundary table without per-log allocation.
+        private static readonly char[] RtspAuthorityBoundaries = { '/', '?', '#' };
 
         /// <summary>
         /// 연속 로그의 시각적 그룹을 구분하기 위한 마지막 Category.
@@ -49,11 +50,6 @@ namespace OpenCvWpfTracking.Common
         public static long TotalWriteCount =>
             Interlocked.Read(ref _totalWriteCount);
 
-        /*
-         * TODO(LOGGING-NEXT):
-         * Serilog 적용 시 ViewModel 호출부를 직접 수정하지 말고
-         * 이 Helper 내부를 ILogger Adapter로 교체한다.
-         */
         /// <summary>
         /// Console 로그 구분선.
         /// </summary>
@@ -151,12 +147,13 @@ namespace OpenCvWpfTracking.Common
             if (string.IsNullOrWhiteSpace(rtspAddress)) return string.Empty;
             int scheme=rtspAddress.IndexOf("://",StringComparison.Ordinal);
             if(scheme<0) return rtspAddress;
-            int authority=scheme+3, end=rtspAddress.IndexOfAny(new[]{'/','?','#'},authority);
+            int authority=scheme+3, end=rtspAddress.IndexOfAny(RtspAuthorityBoundaries,authority);
             if(end<0) end=rtspAddress.Length;
             int at=rtspAddress.LastIndexOf('@',end-1,end-authority);
             return at<authority ? rtspAddress : rtspAddress.Substring(0,authority)+"**:**"+rtspAddress.Substring(at);
         }
 
+        /// <summary>로그 본문에 포함된 RTSP 주소의 인증 정보를 마스킹한다.</summary>
         public static string MaskRtspInLog(string message) =>
             System.Text.RegularExpressions.Regex.Replace(message ?? string.Empty,
                 @"rtsp://[^\s""'<>]+", m => MaskRtspPassword(m.Value),

@@ -19,6 +19,7 @@ namespace OpenCvWpfTracking
         private bool _showVideoJog, _v30UiInitialized;
         private readonly List<Grid> _videoJogOverlays = new List<Grid>();
         // 2026-10-08 V30_0: UI additions use existing border colors and typography.
+        /// <summary>기존 영상/장비 제어 UI에 옵션과 상태 표시를 한 번만 연결한다.</summary>
         private void InitializeV30ControlUi()
         {
             // 2026-10-12: Loaded can run again when a visual is reattached. Never duplicate controls/handlers.
@@ -53,8 +54,7 @@ namespace OpenCvWpfTracking
                         row.Children.Add(new TextBlock { Text = "최소", Foreground = Brushes.LightGray, VerticalAlignment = VerticalAlignment.Center });
                         row.Children.Add(TuningEditor(channel + "MinimumSpeed", 32));
                     }
-                    // 2026-10-12: user requested only attenuation controls here. No global/direction checkbox.
-                    // 2026-10-12: user explicitly withdrew click-to-move. No checkbox or click movement handler.
+                    // 2026-10-13 V31_1: click-to-center toggle and attenuation share the existing option row.
                     // 2026-10-08 V30_0 hotfix: keep everyday controls horizontal; tuning expands only on demand.
                     var advanced = new Expander { Header = "감속 설정", IsExpanded = false, Content = row, Foreground = Brushes.LightSkyBlue, Margin = new Thickness(8, 0, 0, 0) };
                     options.Children.Add(advanced);
@@ -63,6 +63,12 @@ namespace OpenCvWpfTracking
                 }
             }
             AddVideoControls(EoVideoBorder, false); AddVideoControls(IrVideoBorder, true);
+            // V31: hovering either embedded video selects its PTZF channel;
+            // leaving both returns to the large primary video, never the last lens.
+            EoVideoBorder.MouseEnter += (s,e) => UpdateVideoControlRoute();
+            IrVideoBorder.MouseEnter += (s,e) => UpdateVideoControlRoute();
+            EoVideoBorder.MouseLeave += (s,e) => Dispatcher.BeginInvoke(new Action(UpdateVideoControlRoute));
+            IrVideoBorder.MouseLeave += (s,e) => Dispatcher.BeginInvoke(new Action(UpdateVideoControlRoute));
             SetVideoJogVisible(vm.IsVideoClickCenterEnabled);
             AddDigitalZoomControls();
             FitLensCards();
@@ -72,6 +78,7 @@ namespace OpenCvWpfTracking
             AlignConnectionStatusRows();
             CompactCommunicationCard();
         }
+        /// <summary>CTRL/RTSP 카드의 과도한 여백만 줄여 기존 연결/전원 항목이 함께 보이게 한다.</summary>
         private void CompactCommunicationCard()
         {
             // 2026-10-08 V30_0 hotfix: show TCP, RTSP and both power rows together.
@@ -87,12 +94,25 @@ namespace OpenCvWpfTracking
                     separator.Margin=new Thickness(margin.Left,10,margin.Right,8);
             }
         }
+        private bool? _lastVideoControlRoute;
+        /// <summary>활성 창의 영상 영역에 따라 PTZF 채널을 선택하고 채널 전환 시 누름 입력을 정지한다.</summary>
+        private void UpdateVideoControlRoute()
+        {
+            if (!IsActive) return;
+            bool ir = GetHoveredCameraType() == VideoPopoutCameraType.Ir;
+            if (_lastVideoControlRoute.HasValue && _lastVideoControlRoute.Value != ir)
+                vm.ReleaseAllControlInputs("Video focus channel changed");
+            _lastVideoControlRoute = ir;
+            vm.SetActivePanTiltZoomSource(ir);
+        }
+        /// <summary>지정 조정값에 양방향 바인딩된 실행 중 설정 입력란을 만든다.</summary>
         private TextBox TuningEditor(string path, double width)
         {
             var box = new TextBox { Width = width, Margin = new Thickness(4, 0, 8, 0), Padding = new Thickness(2, 0, 2, 0), Background = new SolidColorBrush(Color.FromRgb(47, 61, 73)), Foreground = Brushes.White, CaretBrush = Brushes.White, BorderBrush = Brushes.LightSlateGray, ToolTip = "Config/ControlTuning.xml에서 장비별 영구 설정 가능. 이 입력은 실행 중 조정." };
             box.SetBinding(TextBox.TextProperty, new Binding(path) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus, ValidatesOnExceptions = true });
             return box;
         }
+        /// <summary>클릭 이동 표시 및 전역 입력 옵션 변경을 UI와 키보드 훅에 반영한다.</summary>
         private void V30PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == "IsVideoClickCenterEnabled")
@@ -120,6 +140,7 @@ namespace OpenCvWpfTracking
             }
             catch (Exception ex) { vm.IsGlobalControlEnabled = false; ConsoleLogHelper.Warning("GLOBAL INPUT", "Hook failed / " + ex.GetType().Name); }
         }
+        /// <summary>텍스트 입력의 Enter/Escape에서 값을 반영하고 제어 창으로 키보드 포커스를 돌린다.</summary>
         private void InputConfirmKey(object sender, KeyEventArgs e)
         {
             if (Keyboard.FocusedElement is TextBox box && (e.Key == Key.Enter || e.Key == Key.Escape))
@@ -127,6 +148,7 @@ namespace OpenCvWpfTracking
                 box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource(); Keyboard.Focus(this); e.Handled = true;
             }
         }
+        /// <summary>입력/선택 컨트롤 외부를 클릭했을 때만 텍스트 편집을 마치고 제어 포커스를 복원한다.</summary>
         private void ReturnControlFocus(object sender, MouseButtonEventArgs e)
         {
             // 2026-10-08 V30_0 hotfix: popup items live in a separate visual tree.
@@ -142,6 +164,7 @@ namespace OpenCvWpfTracking
             if (Keyboard.FocusedElement is TextBoxBase box) (box as TextBox)?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
             Keyboard.Focus(this);
         }
+        /// <summary>클릭 이동 방향 안내를 함께 표시/숨기고 해제 시 영상 소유 입력을 정지한다.</summary>
         private void SetVideoJogVisible(bool visible)
         {
             _showVideoJog = visible;
@@ -153,6 +176,7 @@ namespace OpenCvWpfTracking
             }
             if (!visible) vm.ReleaseControlOwner("video");
         }
+        /// <summary>채널별 배율·단축키 도움말·방향 입력 안내를 기존 영상 보더에 추가한다.</summary>
         private void AddVideoControls(Border border, bool ir)
         {
             if (!(border?.Child is Grid grid)) return;
@@ -349,6 +373,7 @@ namespace OpenCvWpfTracking
             foreach (var banner in banners) { grid.Children.Remove(banner); banner.Margin = new Thickness(0, 0, 0, 5); panel.Children.Add(banner); }
             Panel.SetZIndex(panel, 40); grid.Children.Add(panel);
         }
+        /// <summary>연결 상태 요약의 첫 데이터 열을 맞추고 기존 상태/색상 바인딩을 보존한다.</summary>
         private void AlignConnectionStatusRows()
         {
             var summary=LogicalDescendants<TextBlock>(Content as DependencyObject).FirstOrDefault(t=>t.Text=="4. DEVICE CONNECTION STATUS");
@@ -361,7 +386,7 @@ namespace OpenCvWpfTracking
                     summaryCard.BorderBrush=(Brush)new BrushConverter().ConvertFromString("#95A5B0");
                 }
             }
-            foreach (var label in Descendants<TextBlock>(Content as DependencyObject).Where(t => new[] { "CONTROL", "CAMERA", "DETECT" }.Contains(t.Text)).ToArray())
+            foreach (var label in Descendants<TextBlock>(Content as DependencyObject).Where(t => t.Text == "CONTROL" || t.Text == "CAMERA" || t.Text == "DETECT").ToArray())
             {
                 var grid = label.Parent as Grid; if (grid == null || grid.ColumnDefinitions.Count != 4) continue;
                 grid.ColumnDefinitions.Clear();
@@ -391,17 +416,14 @@ namespace OpenCvWpfTracking
                 }
             }
         }
-        private void AddShortcutHelp()
-        {
-            foreach (var title in Descendants<TextBlock>(Content as DependencyObject).Where(t => t.Text.Contains("W : ZOOM") || t.Text.Contains("W/S")).ToArray())
-                if (!title.Text.Contains("Z :")) title.Text += "\nZ : PT SPEED −    C : PT SPEED +";
-        }
+        /// <summary>전역 훅과 속성 구독을 정리하고 상태 타이머 및 제어 입력을 종료한다.</summary>
         private void ShutdownV30Ui()
         {
             _globalKeyboard?.Dispose(); _globalKeyboard = null; vm.PropertyChanged -= V30PropertyChanged; vm.ShutdownV30Control();
         }
         private string MouseControlToken(object sender) => "mouse/" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sender);
         private readonly HashSet<UIElement> _captureOwners = new HashSet<UIElement>();
+        /// <summary>마우스 캡처와 해제 보호를 연결한 뒤 소유자별 PTZF 누름 입력을 등록한다.</summary>
         private void BeginMouseControl(object sender, string axis, int x, int y, bool? ir = null)
         {
             var element = sender as UIElement;
@@ -412,6 +434,7 @@ namespace OpenCvWpfTracking
             }
             vm.PressControlInput(MouseControlToken(sender), axis, x, y, ir ?? (_primaryVideoType == VideoPopoutCameraType.Ir));
         }
+        /// <summary>해당 마우스 입력 토큰을 해제하고 마우스 캡처를 반환한다.</summary>
         private void EndMouseControl(object sender)
         {
             vm.ReleaseControlInput(MouseControlToken(sender));
