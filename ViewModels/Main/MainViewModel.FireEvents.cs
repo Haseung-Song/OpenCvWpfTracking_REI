@@ -939,7 +939,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 상태 전환을 문서 폴더의 날짜별 감사 CSV에도 즉시 추가한다.
+        /// 상태 전환을 날짜별 감사 CSV에 추가한다. XLSX 생성기의 읽기와 파일별로 직렬화한다.
         /// </summary>
         private static void AppendFireEventAudit(
             FireEventRecord fireEvent,
@@ -960,30 +960,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         directory,
                         "FireEvent_" + DateTime.Now.ToString("yyyyMMdd") + ".csv");
 
-                // Never append basic rows beneath an old extended-schema header.
-                string auditHeader = GetFireEventCsvHeader() + ",Transition";
-                if (File.Exists(path) && new FileInfo(path).Length > 0)
+                // 2026-10-13 V31_2: protect schema/header checks and append from our XLSX reader.
+                // Lock the normal daily path first, then the legacy-schema fallback if needed.
+                lock (OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.GetCsvFileLock(path))
                 {
-                    using (var reader = new StreamReader(path, Encoding.UTF8))
-                        if (reader.ReadLine() != auditHeader)
-                            path = Path.Combine(directory, "FireEvent_" + DateTime.Now.ToString("yyyyMMdd") + "_V29_5.csv");
-                }
-                bool writeHeader = !File.Exists(path) || new FileInfo(path).Length == 0;
-
-                using (StreamWriter writer =
-                       new StreamWriter(
-                           path,
-                           true,
-                           new UTF8Encoding(true)))
-                {
-                    if (writeHeader)
+                    // Never append basic rows beneath an old extended-schema header.
+                    string auditHeader = GetFireEventCsvHeader() + ",Transition";
+                    if (File.Exists(path) && new FileInfo(path).Length > 0)
                     {
-                        writer.WriteLine(GetFireEventCsvHeader() + ",Transition");
+                        using (var reader = new StreamReader(path, Encoding.UTF8))
+                            if (reader.ReadLine() != auditHeader)
+                                path = Path.Combine(directory, "FireEvent_" + DateTime.Now.ToString("yyyyMMdd") + "_V29_5.csv");
                     }
+                    lock (OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.GetCsvFileLock(path))
+                    {
+                        bool writeHeader = !File.Exists(path) || new FileInfo(path).Length == 0;
+                        using (StreamWriter writer = new StreamWriter(path, true, new UTF8Encoding(true)))
+                        {
+                            if (writeHeader) writer.WriteLine(auditHeader);
 
-                    writer.WriteLine(
-                        ToFireEventCsvLine(fireEvent) +
-                        "," + EscapeCsv(transition));
+                            writer.WriteLine(ToFireEventCsvLine(fireEvent) + "," + EscapeCsv(transition));
+                        }
+                    }
                 }
                 OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(path);
 
@@ -991,8 +989,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             catch (Exception ex)
             {
                 ConsoleLogHelper.Error(
-                    "FIRE EVENT",
-                    "Automatic event audit append failed",
+                    "CSV AUDIT",
+                    "Automatic FIRE/SMOKE event audit CSV append failed; in-memory event remains",
                     ex);
             }
 
@@ -1002,6 +1000,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string path,
             IEnumerable<FireEventRecord> events)
         {
+            // Manual export may target the same CSV as an in-flight companion snapshot.
+            lock (OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.GetCsvFileLock(path))
             using (StreamWriter writer =
                    new StreamWriter(
                        path,

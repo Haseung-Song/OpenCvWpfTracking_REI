@@ -263,6 +263,9 @@ namespace OpenCvWpfTracking.Common
 
         private static string GetFriendlyCause(string message, Exception exception)
         {
+            // 2026-10-13 V31_2: sharing/byte-range locks are not AI or network failures.
+            if (exception is IOException && ((exception.HResult & 0xFFFF) == 32 || (exception.HResult & 0xFFFF) == 33))
+                return "다른 작업 또는 프로그램이 파일을 잠그고 있습니다";
             string value = ((message ?? string.Empty) + " " + (exception?.Message ?? string.Empty)).ToUpperInvariant();
             if (value.Contains("TIMEOUT")) return "장비 응답 시간이 초과되었습니다";
             if (value.Contains("DISCONNECT") || value.Contains("CONNECTION")) return "장비 또는 영상 연결이 끊겼습니다";
@@ -278,6 +281,7 @@ namespace OpenCvWpfTracking.Common
         private static string GetRecommendedAction(string category)
         {
             string value = (category ?? string.Empty).ToUpperInvariant();
+            if (value == "CSV AUDIT") return "CSV를 연 프로그램·중복 Viewer를 닫고 저장 경로·권한을 확인. 실패한 감사 행은 자동 복구되지 않으므로 화면 목록을 CSV로 저장";
             if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY")) return "카메라 전원·RTSP 주소·네트워크 상태를 확인 후 재연결";
             if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT")) return "Agent IP/Port와 장비 전원을 확인 후 CONNECT 재시도";
             if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE")) return "장비 연결과 현재 상태값 수신 여부를 확인 후 STOP→재시도";

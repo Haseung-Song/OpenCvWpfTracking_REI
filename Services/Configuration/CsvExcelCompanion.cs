@@ -16,6 +16,19 @@ namespace OpenCvWpfTracking.Services.Configuration
         private const string Ns="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
         private static readonly object Sync=new object();
         private static readonly Dictionary<string,DateTime> Pending=new Dictionary<string,DateTime>(StringComparer.OrdinalIgnoreCase);
+        // 2026-10-13 V31_2: a reader using FileShare.Read blocks the audit appender.
+        // Keep one stable gate per full CSV path; never hold it while building the XLSX ZIP.
+        private static readonly Dictionary<string,object> CsvFileLocks=new Dictionary<string,object>(StringComparer.OrdinalIgnoreCase);
+        internal static object GetCsvFileLock(string path)
+        {
+            string key=Path.GetFullPath(path);
+            lock(Sync)
+            {
+                object gate;
+                if(!CsvFileLocks.TryGetValue(key,out gate))CsvFileLocks[key]=gate=new object();
+                return gate;
+            }
+        }
         private static readonly Timer Worker=new Timer(Drain,null,2000,2000);
         private static int Busy;
         public static void Schedule(string path)
@@ -41,9 +54,14 @@ namespace OpenCvWpfTracking.Services.Configuration
             {
                 if(!File.Exists(csvPath))return false;
                 if(new FileInfo(csvPath).Length>128000000)throw new InvalidDataException("Excel companion exceeds size limit; CSV retained.");
-                List<List<string>> rows;
-                using(var stream=new FileStream(csvPath,FileMode.Open,FileAccess.Read,FileShare.Read))
-                using(var reader=new StreamReader(stream,Encoding.UTF8,true))rows=Parse(reader.ReadToEnd());
+                string snapshot;
+                lock(GetCsvFileLock(csvPath))
+                {
+                    using(var stream=new FileStream(csvPath,FileMode.Open,FileAccess.Read,FileShare.Read))
+                    using(var reader=new StreamReader(stream,Encoding.UTF8,true))snapshot=reader.ReadToEnd();
+                }
+                // Parsing and Excel compression must not delay the UI audit writer.
+                List<List<string>> rows=Parse(snapshot);
                 if(rows.Count==0 || rows.Count>1048576 || rows.Any(r=>r.Count>16384))throw new InvalidDataException("Excel row/column limit; CSV retained.");
                 string destination=Path.ChangeExtension(csvPath,"xlsx");temp=destination+"."+Guid.NewGuid().ToString("N")+".tmp";
                 using(var file=File.Create(temp))using(var zip=new ZipArchive(file,ZipArchiveMode.Create))
