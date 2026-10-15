@@ -400,7 +400,7 @@
                                 BorderBrush="#95A5B0"
                                 BorderThickness="1,1,1,0"
                                 CornerRadius="5,5,0,0"
-                                Padding="8,8">
+                                Padding="4,8">
 
                             <ContentPresenter ContentSource="Header"
                                               HorizontalAlignment="Center"
@@ -474,7 +474,7 @@
                             <!-- 상단 탭 Header를 전체 너비 기준 동일 비율로 배치 -->
                             <UniformGrid Grid.Row="0"
                                          Rows="1"
-                                         Columns="3"
+                                         Columns="4"
                                          IsItemsHost="True"
                                          HorizontalAlignment="Stretch"
                                          KeyboardNavigation.TabIndex="1"/>
@@ -1067,8 +1067,8 @@
 
                                 <!-- 2026-09-18: 화재 발생을 BBox 외에도 즉시 인지할 수 있는 영상 경고창 -->
                                 <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
-                                        Margin="0,14,0,0" Padding="18,7" Background="#E6A61B1B"
-                                        BorderBrush="#FFFF6262" BorderThickness="2" IsHitTestVisible="False">
+                                        Margin="0,14,0,0" Padding="18,7" Background="#E6652D2A"
+                                        BorderBrush="#FFFF3B30" BorderThickness="2" IsHitTestVisible="False">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Visibility" Value="Visible"/>
@@ -1079,13 +1079,13 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock Text="⚠ FIRE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                    <TextBlock Text="⚠ FIRE DETECTED / EO" Foreground="#FF3B30" FontSize="18" FontWeight="Bold"/>
                                 </Border>
 
                                 <!-- 2026-09-21: AI 오버레이와 독립된 로컬 SMOKE 경고 -->
                                 <Border Panel.ZIndex="41" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Margin="0,14,14,0" Padding="18,7" Background="#E68A4B00"
-                                        BorderBrush="#FFFFB300" BorderThickness="2" IsHitTestVisible="False">
+                                        Margin="0,14,14,0" Padding="18,7" Background="#E6595645"
+                                        BorderBrush="#FFD8D0AB" BorderThickness="2" IsHitTestVisible="False">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Visibility" Value="Visible"/>
@@ -1096,7 +1096,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock Text="⚠ SMOKE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                    <TextBlock Text="⚠ SMOKE DETECTED / EO" Foreground="#D8D0AB" FontSize="18" FontWeight="Bold"/>
                                 </Border>
 
                                 <!-- [EO] 영상 중앙 십자선 [Overlay]
@@ -1158,7 +1158,7 @@
                                 <TextBlock Text="{Binding EoStatusText}"
                                            Panel.ZIndex="100"
                                            Margin="0,0,8,2"
-                                           Foreground="#5EE7F7"
+                                           Foreground="#C9E987"
                                            FontSize="15.5"
                                            FontWeight="Bold"
                                            HorizontalAlignment="Right"
@@ -1218,8 +1218,8 @@
                                     <local:ZoneOverlayView Items="{Binding IrFireSmokeDetectionBoxes}" SourceWidth="{Binding IrVideoWidth}" SourceHeight="{Binding IrVideoHeight}" IsHitTestVisible="False" Panel.ZIndex="20"/>
 
                                     <Border Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Top"
-                                            Margin="0,10,0,0" Padding="12,5" Background="#E6A61B1B"
-                                            BorderBrush="#FFFF6262" BorderThickness="2" IsHitTestVisible="False">
+                                            Margin="0,10,0,0" Padding="12,5" Background="#E6652D2A"
+                                            BorderBrush="#FFFF3B30" BorderThickness="2" IsHitTestVisible="False">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Visibility" Value="Visible"/>
@@ -1230,12 +1230,12 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
-                                        <TextBlock Text="⚠ FIRE DETECTED / IR" Foreground="White" FontSize="14" FontWeight="Bold"/>
+                                        <TextBlock Text="⚠ FIRE DETECTED / IR" Foreground="#FF3B30" FontSize="14" FontWeight="Bold"/>
                                     </Border>
 
                                     <Border Panel.ZIndex="41" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                            Margin="0,10,10,0" Padding="12,5" Background="#E68A4B00"
-                                            BorderBrush="#FFFFB300" BorderThickness="2" IsHitTestVisible="False">
+                                            Margin="0,10,10,0" Padding="12,5" Background="#E6595645"
+                                            BorderBrush="#FFD8D0AB" BorderThickness="2" IsHitTestVisible="False">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Visibility" Value="Visible"/>
@@ -1246,7 +1246,7 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
-                                        <TextBlock Text="⚠ SMOKE DETECTED / IR" Foreground="White" FontSize="14" FontWeight="Bold"/>
+                                        <TextBlock Text="⚠ SMOKE DETECTED / IR" Foreground="#D8D0AB" FontSize="14" FontWeight="Bold"/>
                                     </Border>
 
                                     <!-- [IR] 영상 중앙 십자선 [Overlay]
@@ -1307,7 +1307,7 @@
                                     <TextBlock Text="{Binding IrStatusText}"
                                                Panel.ZIndex="100"
                                                Margin="0,0,8,2"
-                                               Foreground="#C6E77B"
+                                               Foreground="#C4AFF3"
                                                FontSize="13"
                                                FontWeight="Bold"
                                                HorizontalAlignment="Right"
@@ -1447,7 +1447,7 @@
                                                        FontWeight="Bold"
                                                        HorizontalAlignment="Center"
                                                        TextAlignment="Center">
-                                                <Run Text="CONTROL:" Foreground="#6CB6FF"/><Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="EO:" Foreground="#5EE7F7"/><Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="IR:" Foreground="#C6E77B"/><Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="AI:" Foreground="#39FF14"/><Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
+                                                <Run Text="CONTROL:" Foreground="#6CB6FF"/><Run Text="{Binding CurrentControlPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="EO:" Foreground="#C9E987"/><Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="IR:" Foreground="#C4AFF3"/><Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#9FE870"/><Run Text=" / " Foreground="#D0D7DE"/><Run Text="AI:" Foreground="#39FF14"/><Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/>
                                             </TextBlock>
                                         </Grid>
                                     </Border>
@@ -1740,7 +1740,7 @@
                                                          Height="5"
                                                          Margin="3"
                                                          VerticalAlignment="Center"
-                                                         Foreground="#5EE7F7"
+                                                         Foreground="#C9E987"
                                                          Background="#2F3942"
                                                          IsHitTestVisible="False"/>
                                         </Border>
@@ -1767,7 +1767,7 @@
                                             ItemContainerStyle="{StaticResource TopRightPanelTabItemStyle}">
 
                                     <!-- Control Agent 통신 연결 설정 -->
-                                    <TabItem Header="통신 설정">
+                                    <TabItem Header="통신 제어" FontSize="11">
                                         <Grid Margin="5">
                                             <Grid.RowDefinitions>
                                                 <!-- 통신 설정 하위 탭 영역 -->
@@ -2134,7 +2134,7 @@
                                                                                        Margin="0,0,0,8"/>
                                                                             <Grid Margin="0,0,0,5">
                                                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                                                <TextBlock Text="EO CAMERA" Foreground="#5EE7F7" FontWeight="Bold" FontSize="11"/>
+                                                                                <TextBlock Text="EO CAMERA" Foreground="#C9E987" FontWeight="Bold" FontSize="11"/>
                                                                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                                                     <Ellipse Width="8" Height="8" Fill="{Binding CurrentEoPowerStatusColor, Mode=OneWay}" VerticalAlignment="Center"/>
                                                                                     <TextBlock Text="{Binding EoPowerControlStatusText, Mode=OneWay}" ToolTip="{Binding CameraPowerStateHelpText, Mode=OneWay}" Foreground="{Binding CurrentEoPowerStatusColor, Mode=OneWay}" FontSize="11" FontWeight="Bold" Margin="5,0,0,0"/>
@@ -2254,17 +2254,17 @@
 
                                                                                 <Expander IsExpanded="False"
                                                                                           Margin="0,7,0,0"
-                                                                                          Foreground="#5EE7F7">
+                                                                                          Foreground="#C9E987">
                                                                                     <Expander.Header>
                                                                                         <TextBlock Text="GPS / IMU 방위각 안내"
-                                                                                                   Foreground="#5EE7F7"
+                                                                                                   Foreground="#C9E987"
                                                                                                    FontSize="10"
                                                                                                    FontWeight="Bold"/>
                                                                                     </Expander.Header>
                                                                                     <Border Margin="0,5,0,1"
                                                                                             Padding="7"
                                                                                             Background="#30383E"
-                                                                                            BorderBrush="#5EE7F7"
+                                                                                            BorderBrush="#C9E987"
                                                                                             BorderThickness="1"
                                                                                             CornerRadius="3">
                                                                                         <StackPanel>
@@ -2391,17 +2391,17 @@
                                                                                            HorizontalAlignment="Center"/>
                                                                                 <Expander IsExpanded="False"
                                                                                           Margin="0,7,0,0"
-                                                                                          Foreground="#5EE7F7">
+                                                                                          Foreground="#C9E987">
                                                                                     <Expander.Header>
                                                                                         <TextBlock Text="RPY RAW / OFFSET 안내"
-                                                                                                   Foreground="#5EE7F7"
+                                                                                                   Foreground="#C9E987"
                                                                                                    FontSize="10"
                                                                                                    FontWeight="Bold"/>
                                                                                     </Expander.Header>
                                                                                     <Border Margin="0,5,0,1"
                                                                                             Padding="7"
                                                                                             Background="#30383E"
-                                                                                            BorderBrush="#5EE7F7"
+                                                                                            BorderBrush="#C9E987"
                                                                                             BorderThickness="1"
                                                                                             CornerRadius="3">
                                                                                         <StackPanel>
@@ -2781,7 +2781,7 @@
                                                                                 CornerRadius="4">
                                                                             <StackPanel>
                                                                                 <TextBlock Text="1. AI DETECTOR SETTING"
-                                                                                           Foreground="#A9D6E5"
+                                                                                           Foreground="#39FF14"
                                                                                            FontWeight="Bold"
                                                                                            HorizontalAlignment="Center"
                                                                                            Margin="0,0,0,10"/>
@@ -3048,7 +3048,7 @@
                                                                                         Click="FireDetectorTestProgram_Click"/>
 
                                                                                 <CheckBox Content="FIRE DETECTOR"
-                                                                                          Foreground="#FF8A80"
+                                                                                          Foreground="#FF3B30"
                                                                                           FontWeight="Bold"
                                                                                           IsChecked="{Binding IsThermalFireDetectionEnabled,
                                                                                                   Mode=TwoWay}"
@@ -3164,7 +3164,7 @@
                                                                                 -->
                                                                                 <Separator Margin="0,10,0,8"/>
                                                                                 <CheckBox Content="SMOKE DETECTOR"
-                                                                                          Foreground="#66FFFF"
+                                                                                          Foreground="#D8D0AB"
                                                                                           FontWeight="Bold"
                                                                                           IsChecked="{Binding IsSmokeDetectionEnabled,
                                                                                                   Mode=TwoWay}"
@@ -3310,7 +3310,7 @@
                                                     CornerRadius="5"
                                                     Padding="8">
                                                 <StackPanel>
-                                                    <TextBlock Text="4. DEVICE CONNECTION STATUS"
+                                                    <TextBlock Text="DEVICE CONNECTION STATUS"
                                                                Foreground="White"
                                                                FontWeight="Bold"
                                                                HorizontalAlignment="Center"
@@ -3326,18 +3326,18 @@
                                                     </Border>
                                                     <Border Background="#40464D" BorderBrush="#76818B" BorderThickness="1" Padding="7" Margin="0,0,0,5">
                                                         <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="68"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                            <TextBlock Text="CAMERA" Foreground="#5EE7F7" FontWeight="Bold" FontSize="10" VerticalAlignment="Center"/>
-                                                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="EO "/><Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
-                                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="IR "/><Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
+                                                            <TextBlock Text="CAMERA" Foreground="#C9E987" FontWeight="Bold" FontSize="10" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="EO " Foreground="#C9E987"/><Run Text="{Binding CurrentEoPowerText, Mode=OneWay}" Foreground="#C9E987"/></TextBlock>
+                                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="IR " Foreground="#C4AFF3"/><Run Text="{Binding CurrentIrPowerText, Mode=OneWay}" Foreground="#C4AFF3"/></TextBlock>
                                                             <TextBlock Style="{StaticResource MobileDeviceStatusStyle}" Grid.Column="3" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="GPS "/><Run Text="{Binding CurrentGpsPowerText, Mode=OneWay}" Foreground="#FDE68A"/></TextBlock>
                                                         </Grid>
                                                     </Border>
                                                     <Border Background="#40464D" BorderBrush="#76818B" BorderThickness="1" Padding="7">
                                                         <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="68"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                             <TextBlock Text="DETECT" Foreground="#FFB86C" FontWeight="Bold" FontSize="10" VerticalAlignment="Center"/>
-                                                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="AI "/><Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#9FE870"/></TextBlock>
-                                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="FIRE "/><Run Text="{Binding FirePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/></TextBlock>
-                                                            <TextBlock Grid.Column="3" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="SMOKE "/><Run Text="{Binding SmokePowerStatusText, Mode=OneWay}" Foreground="#9FE870"/></TextBlock>
+                                                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="AI " Foreground="#39FF14"/><Run Text="{Binding AiPowerStatusText, Mode=OneWay}" Foreground="#39FF14"/></TextBlock>
+                                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="FIRE " Foreground="#FF3B30"/><Run Text="{Binding FirePowerStatusText, Mode=OneWay}" Foreground="#FF3B30"/></TextBlock>
+                                                            <TextBlock Grid.Column="3" Margin="8,0,0,0" FontSize="10" FontWeight="Bold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"><Run Text="SMOKE " Foreground="#D8D0AB"/><Run Text="{Binding SmokePowerStatusText, Mode=OneWay}" Foreground="#D8D0AB"/></TextBlock>
                                                         </Grid>
                                                     </Border>
                                                 </StackPanel>
@@ -3354,7 +3354,7 @@
 
                                         Position 기반 이동 제어는 AI 설정 영역에서 제거하고
                                     PTZF 탭의 PAN / TILT CONTROL 아래에 통합한다. -->
-                                    <TabItem Header="운용 제어">
+                                    <TabItem Header="운용 제어" FontSize="11">
                                         <Grid Margin="5">
                                             <Grid.RowDefinitions>
                                                 <!-- 장비별 CURRENT STATUS 고정 표시 영역 -->
@@ -3730,12 +3730,8 @@
                                                                                 <Setter Property="Background"
                                                                                         Value="#4A4F55"/>
                                                                                 <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding IsCrosshairVisible}"
-                                                                                                 Value="True">
-                                                                                        <Setter Property="Background"
-                                                                                                Value="{Binding CrosshairBrush}"/>
-                                                                                        <Setter Property="BorderBrush"
-                                                                                                Value="{Binding CrosshairBrush}"/>
+                                                                                    <DataTrigger Binding="{Binding IsCrosshairVisible}" Value="True">
+                                                                                        <Setter Property="Background" Value="#FF3B30"/>
                                                                                     </DataTrigger>
                                                                                     <Trigger Property="IsMouseOver"
                                                                                              Value="True">
@@ -5256,17 +5252,17 @@
 
                                                                     <Expander IsExpanded="False"
                                                                               Margin="0,0,0,7"
-                                                                              Foreground="#5EE7F7">
+                                                                              Foreground="#C9E987">
                                                                         <Expander.Header>
                                                                             <TextBlock Text="FOV 역산 계산 안내"
-                                                                                       Foreground="#5EE7F7"
+                                                                                       Foreground="#C9E987"
                                                                                        FontSize="10"
                                                                                        FontWeight="Bold"/>
                                                                         </Expander.Header>
                                                                         <Border Margin="0,5,0,1"
                                                                                 Padding="7"
                                                                                 Background="#30383E"
-                                                                                BorderBrush="#5EE7F7"
+                                                                                BorderBrush="#C9E987"
                                                                                 BorderThickness="1"
                                                                                 CornerRadius="3">
                                                                             <StackPanel>
@@ -5465,11 +5461,16 @@
                                             </TabControl>
                                         </Grid>
                                     </TabItem>
+                                    <!-- 2026-10-14 V31_5: 동일 보더 안에 EO/IR 특수기능을 세로 배치한다. -->
+                                    <TabItem x:Name="SpecialControlTab" Header="특수 제어" FontSize="11">
+                                        <local:CameraSpecialControl/>
+                                    </TabItem>
                                     <!-- 화재 탐지 상태와 이벤트 이력을 실시간으로 확인하는 탭 -->
-                                    <TabItem>
+                                    <TabItem x:Name="EventAlertTab" FontSize="11" PreviewMouseLeftButtonDown="EventAlertTabItem_PreviewMouseLeftButtonDown">
                                         <TabItem.Header>
                                             <TextBlock Text="{Binding EventAlertHeaderText}"
                                                        Foreground="{Binding EventAlertHeaderBrush}"
+                                                       FontSize="11"
                                                        FontWeight="Bold"/>
                                         </TabItem.Header>
 

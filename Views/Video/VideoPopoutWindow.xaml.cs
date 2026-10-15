@@ -130,12 +130,17 @@ namespace OpenCvWpfTracking
                 _viewModel;
 
             ConfigureCameraBinding();
+            Func<double> aspect=()=>VideoShortcutGuide.SourceAspect(CameraImage,_cameraType==VideoPopoutCameraType.Ir?1.25:16.0/9);
+            VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content,EoAlarmPanel,CameraImage,aspect);
+            VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content,IrAlarmPanel,CameraImage,aspect);
+            VideoShortcutGuide.AttachVideoLabelPositions((Grid)Content,CameraImage,ZoomRatioHost,CameraStatusText,aspect);
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             MouseMove += VideoPointerMove;
             MouseLeftButtonUp += VideoPointerUp;
             MouseLeave += (s,e) => _centerClickPending=false;
             // 2026-10-12 FIX6: the same non-interactive direction hints as the main video.
-            _directionHints=new Grid { IsHitTestVisible=false,Visibility=_viewModel.IsVideoClickCenterEnabled?Visibility.Visible:Visibility.Collapsed };
+            _directionHints=new Grid { IsHitTestVisible=false };
+            VideoShortcutGuide.BindJogVisibility(_directionHints,_cameraType==VideoPopoutCameraType.Ir);
             Panel.SetZIndex(_directionHints,70);
             string[] symbols={"◀","▶","▲","▼"};
             for(int i=0;i<4;i++) _directionHints.Children.Add(new TextBlock {
@@ -151,7 +156,7 @@ namespace OpenCvWpfTracking
             if(e.PropertyName!="IsVideoClickCenterEnabled")return;
             _centerClickGeneration++;
             _centerClickPending=false;
-            if(_directionHints!=null)_directionHints.Visibility=_viewModel.IsVideoClickCenterEnabled?Visibility.Visible:Visibility.Collapsed;
+            if(_directionHints!=null)VideoShortcutGuide.BindJogVisibility(_directionHints,_cameraType==VideoPopoutCameraType.Ir);
         }
 
         #endregion
@@ -312,6 +317,12 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            // V31_6: 배율 표시 버튼은 영상 PTZF 대상 선택·중심 이동 입력으로 취급하지 않는다.
+            if (ZoomRatioToggleButton.IsMouseOver)
+            {
+                _centerClickPending=false;
+                return;
+            }
             // 2026-10-01: 분리 창도 실제 제어 가능한 영상 화면이므로
             // 클릭한 EO/IR 채널을 메인 창과 같은 PT 감쇄 기준으로 동기화한다.
             _viewModel.SetActivePanTiltZoomSource(
@@ -467,6 +478,9 @@ namespace OpenCvWpfTracking
 
             CameraInfoScaleTransform.ScaleX = scale;
             CameraInfoScaleTransform.ScaleY = scale;
+            if(ZoomRatioScaleTransform!=null)
+            {ZoomRatioScaleTransform.ScaleX=VideoShortcutGuide.LabelScale(CameraImage.ActualWidth,CameraImage.ActualHeight);ZoomRatioScaleTransform.ScaleY=ZoomRatioScaleTransform.ScaleX;}
+            if(CameraStatusText!=null){double labelScale=VideoShortcutGuide.LabelScale(CameraImage.ActualWidth,CameraImage.ActualHeight);CameraStatusText.LayoutTransform=new ScaleTransform(labelScale,labelScale);}
         }
 
         private void ApplyViewportAspectRatio()
@@ -920,11 +934,7 @@ namespace OpenCvWpfTracking
                 cameraTitle =
                     "EO CAMERA / SHORTCUT CONTROL";
 
-                statusColor =
-                    Color.FromRgb(
-                        0x5E,
-                        0xE7,
-                        0xF7);
+                statusColor = ((SolidColorBrush)LegacyVideoIntegration.ChannelBrush(false)).Color;
 
                 // EO 팝업은 메인 EO 영상 영역과 동일한 비율을 사용한다.
                 Width =
@@ -965,11 +975,7 @@ namespace OpenCvWpfTracking
                 cameraTitle =
                     "IR CAMERA / SHORTCUT CONTROL";
 
-                statusColor =
-                    Color.FromRgb(
-                        0xC6,
-                        0xE7,
-                        0x7B);
+                statusColor = ((SolidColorBrush)LegacyVideoIntegration.ChannelBrush(true)).Color;
 
                 //
                 // IR 영상은 EO보다 좁은 센서 종횡비를 사용한다.
@@ -1004,13 +1010,12 @@ namespace OpenCvWpfTracking
                     Mode = BindingMode.OneWay
                 });
 
-            CameraStatusText.Foreground =
-                new SolidColorBrush(
-                    statusColor);
+            CameraStatusText.Foreground = LegacyVideoIntegration.ChannelBrush(_cameraType==VideoPopoutCameraType.Ir);
             // 2026-09-17: 저해상도 IR/BW 팔레트에서 상태 문구가 영상에 묻히지 않도록
             // IR은 작게 표시하고 두 채널 모두 검정 외곽 그림자로 명암 대비를 확보한다.
-            CameraStatusText.FontSize =
-                _cameraType == VideoPopoutCameraType.Ir ? 14.0 : 16.0;
+            CameraStatusText.FontSize = 14;
+            CameraStatusText.Background=null;
+            CameraStatusText.Padding=new Thickness(4,1,4,1);
             CameraStatusText.Effect =
                 new DropShadowEffect
                 {
@@ -1117,6 +1122,10 @@ namespace OpenCvWpfTracking
             ZoomRatioText.SetBinding(System.Windows.Controls.TextBlock.TextProperty, new Binding(
                 _cameraType == VideoPopoutCameraType.Ir ? "IrZoomRatioOverlayText" : "EoZoomRatioOverlayText") { Source = _viewModel });
             VideoShortcutGuide.BindRatioVisibility(ZoomRatioText,_cameraType == VideoPopoutCameraType.Ir);
+            VideoShortcutGuide.BindRatioToggleVisibility(ZoomRatioToggleButton,_cameraType == VideoPopoutCameraType.Ir);
+            ZoomRatioToggleButton.Template = VideoShortcutGuide.RatioToggleTemplate();
+            ZoomRatioToggleButton.Foreground = LegacyVideoIntegration.ChannelBrush(_cameraType==VideoPopoutCameraType.Ir);
+            ZoomRatioText.Foreground = LegacyVideoIntegration.ChannelBrush(_cameraType==VideoPopoutCameraType.Ir);
             foreach (var overlay in new[] { PopoutAiOverlay, PopoutVisionOverlay })
             {
                 overlay.SetBinding(ZoneOverlayView.SourceWidthProperty, new Binding(videoWidthPropertyName) { Source = _viewModel });

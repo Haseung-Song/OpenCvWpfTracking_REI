@@ -63,8 +63,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 사용자가 [AI CONNECT]를 누른 경우에만 UI의 IP / Port로 1회 연결하고,
         /// 연결 성공 뒤 RTSP / 모델 / Mapping 정보를 순서대로 적용 및 조회한다.
         /// </summary>
+        private int _aiManualConnectionGeneration;
         private async Task ConnectAiAgentFromSettingAsync()
         {
+            int generation=Interlocked.Increment(ref _aiManualConnectionGeneration);
             AiPowerStatusText = "OFF";
             AiSettingStatusText = "[AI] Connecting...";
             SetFireSmokeDetectorsForAiConnection(false, "AI connect initialization");
@@ -77,13 +79,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 과거 Auto Reconnect가 실행된 상태가 남아 있더라도
                  * 버튼 기반 수동 연결 정책과 충돌하지 않도록 먼저 종료한다.
                  */
-                _aiDetectorClientService.StopAutoReconnect();
-                _aiDetectorClientService.Disconnect();
+                // 2026-10-15 V31_13: attempt socket cleanup even if reconnect cancellation fails.
+                try{_aiDetectorClientService.StopAutoReconnect();}
+                finally{_aiDetectorClientService.Disconnect();}
 
                 bool connected =
                     await _aiDetectorClientService.ConnectAsync(
                         AiControlAgentIp,
                         AiAgentPort);
+                if(generation!=Volatile.Read(ref _aiManualConnectionGeneration))return;
 
                 if (!connected)
                 {
@@ -93,21 +97,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 AiPowerStatusText = "ON";
                 AiSettingStatusText = "[AI] Connected";
-                // 2026-08-31: 실제 TCP 연결 성공 시 FIRE/SMOKE 분석을 함께 활성화한다.
+                // CONNECT changes AI transport only; VP remains under its own checkboxes.
                 SetFireSmokeDetectorsForAiConnection(true, "AI connected");
 
                 if (!await RequestAiDetectorRtspAddressSetAsync())
                 {
+                    if(generation!=Volatile.Read(ref _aiManualConnectionGeneration))return;
                     AiSettingStatusText = "[AI] RTSP Apply Failed";
                     return;
                 }
 
                 await Task.Delay(300);
+                if(generation!=Volatile.Read(ref _aiManualConnectionGeneration))return;
 
                 if (!await RequestAiDetectorInfoAsync() ||
                     !await RequestAiDetectorRtspAddressAsync() ||
                     !await RequestAiDetectorOnnxListAsync())
                 {
+                    if(generation!=Volatile.Read(ref _aiManualConnectionGeneration))return;
                     AiSettingStatusText = "[AI] Initial Setting Incomplete";
                     return;
                 }
@@ -115,18 +122,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 2026-08-31: ONNX 목록 응답이 UI 기본 선택에 반영된 뒤 Mapping을
                 // 전송해야 EO/IR 모두 Real-Time Smoke 모델로 실제 Agent에 적용된다.
                 await WaitForInitialAiModelSelectionAsync();
+                if(generation!=Volatile.Read(ref _aiManualConnectionGeneration))return;
 
                 if (!await RequestAiDetectorMappingSetAsync() ||
                     !await RequestAiDetectorMappingAsync())
                 {
+                    if(generation!=Volatile.Read(ref _aiManualConnectionGeneration))return;
                     AiSettingStatusText = "[AI] Initial Setting Incomplete";
                     return;
                 }
 
-                AiSettingStatusText = "[AI] Connect / Setting Complete";
+                if(generation==Volatile.Read(ref _aiManualConnectionGeneration))AiSettingStatusText = "[AI] Connect / Setting Complete";
             }
             catch (Exception ex)
             {
+                if(generation!=Volatile.Read(ref _aiManualConnectionGeneration))return;
                 AiPowerStatusText = "OFF";
                 AiSettingStatusText = "[AI] Connect / Setting Incomplete";
                 SetFireSmokeDetectorsForAiConnection(false, "AI connect exception");
@@ -175,6 +185,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void DisconnectAiAgent()
         {
+            Interlocked.Increment(ref _aiManualConnectionGeneration);
+            // All-off is a user operation, not merely a transport state change.
+            // Do this before socket cleanup, even when the AI socket is already disconnected.
+            TryRunAiUiAction(()=>{
+                IsThermalFireDetectionEnabled=false;
+                IsSmokeDetectionEnabled=false;
+                IsFireDiagnosticEnabled=false;
+                IsSmokeDiagnosticEnabled=false;
+                IsAutoTrackingEnabled=false;
+                ClearDisabledVisionEvents(true);
+                ClearDisabledVisionEvents(false);
+            },"AI/VP manual disconnect all-off");
             AiPowerStatusText = "OFF";
             AiSettingStatusText = "[AI] Disconnecting...";
 

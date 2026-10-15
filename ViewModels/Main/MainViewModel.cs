@@ -1416,21 +1416,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             false;
 
         /// <summary>
-        /// 중앙 십자선의 현재 표시 색상.
-        /// 최초 색상은 기존 적색이며, 사용자가 십자선을 다시 켤 때마다
-        /// 적색 -> 주황 -> 황색 -> 녹색 -> 청록 -> 청색 -> 보라 순으로 변경한다.
+        /// EO / IR 및 분리창에 공통 적용하는 고정 적색 십자선.
         /// </summary>
-        private Brush _crosshairBrush =
+        private readonly Brush _crosshairBrush =
             new SolidColorBrush(
                 Color.FromArgb(
                     0xFF,
                     0xFF,
                     0x3B,
                     0x30));
-
-        private int _crosshairColorIndex;
-
-        private bool _hasCrosshairBeenDisplayed;
 
         #endregion
 
@@ -1578,20 +1572,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// <summary>
             /// [EO / IR] 중앙 십자선 표시 상태 전환
             ///
-            /// 버튼을 눌러 숨긴 뒤 다시 표시할 때마다
-            /// EO / IR 영상의 십자선 색상을 7가지 색상으로 순환한다.
+            /// 색상은 빨간색으로 고정하고 표시 여부만 전환한다.
             /// </summary>
             ToggleCrosshairCommand =
                 new RelayCommand(() =>
                 {
-                    if (!IsCrosshairVisible &&
-                        _hasCrosshairBeenDisplayed)
-                    {
-                        AdvanceCrosshairColor();
-                    }
-
                     IsCrosshairVisible =
                         !IsCrosshairVisible;
+                    // 2026-10-15 V31_13: record user toggles only; fixed red, no color-cycle state.
+                    ConsoleLogHelper.Command("DISPLAY OVERLAY",CrosshairButtonText+" / fixed RED");
                 });
 
             /// <summary>

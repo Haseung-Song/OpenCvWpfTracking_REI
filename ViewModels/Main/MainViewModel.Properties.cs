@@ -629,6 +629,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 사용자가 이전에 다른 하위 탭을 보았더라도 AI/FIRE 최신 발생 탭이 즉시 표시된다.
                 if (value == 2)
                 {
+                    QuerySpecialFeatureSupport();
+                }
+                if (value == 3)
+                {
                     OnPropertyChanged(
                         nameof(SelectedEventAlertTabIndex));
                 }
@@ -2269,12 +2273,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _isCrosshairVisible =
                     value;
 
-                if (value)
-                {
-                    _hasCrosshairBeenDisplayed =
-                        true;
-                }
-
                 OnPropertyChanged();
                 OnPropertyChanged(
                     nameof(CrosshairButtonText));
@@ -2290,71 +2288,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public string CrosshairButtonText =>
             IsCrosshairVisible
-                ? $"CROSSHAIR : ENABLED ({CrosshairColorName})"
+                ? "CROSSHAIR : ENABLED"
                 : "CROSSHAIR : DISABLED";
 
         /// <summary>
         /// EO / IR 메인 화면과 영상 분리 창에 공통 적용되는 십자선 색상.
         /// </summary>
-        public Brush CrosshairBrush
-        {
-            get =>
-                _crosshairBrush;
-
-            private set
-            {
-                _crosshairBrush =
-                    value;
-
-                OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(CrosshairButtonText));
-            }
-
-        }
-
-        public string CrosshairColorName
-        {
-            get
-            {
-                string[] colorNames =
-                {
-                    "RED",
-                    "ORANGE",
-                    "YELLOW",
-                    "GREEN",
-                    "CYAN",
-                    "BLUE",
-                    "PURPLE"
-                };
-                return colorNames[_crosshairColorIndex];
-            }
-
-        }
-
-        /// <summary>
-        /// 십자선을 다시 활성화할 때 사용할 다음 색상으로 전환한다.
-        /// </summary>
-        private void AdvanceCrosshairColor()
-        {
-            _crosshairColorIndex =
-                (_crosshairColorIndex + 1) % 7;
-
-            Color[] colors =
-            {
-                Color.FromRgb(0xFF, 0x3B, 0x30),
-                Color.FromRgb(0xFF, 0x95, 0x00),
-                Color.FromRgb(0xFF, 0xD6, 0x0A),
-                Color.FromRgb(0x34, 0xC7, 0x59),
-                Color.FromRgb(0x32, 0xAD, 0xE6),
-                Color.FromRgb(0x00, 0x7A, 0xFF),
-                Color.FromRgb(0xAF, 0x52, 0xDE)
-            };
-
-            CrosshairBrush =
-                new SolidColorBrush(
-                    colors[_crosshairColorIndex]);
-        }
+        public Brush CrosshairBrush => _crosshairBrush;
 
         #endregion
 

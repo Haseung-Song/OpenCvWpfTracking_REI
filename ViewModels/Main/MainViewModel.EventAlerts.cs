@@ -119,7 +119,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public Brush AiAlertHeaderBrush =>
             ActiveAiCount > 0
-                ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
+                ? LegacyVideoIntegration.EventBrush("AI")
                 : new SolidColorBrush(Color.FromRgb(208, 215, 222));
 
         /// <summary>
@@ -535,8 +535,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                        item.DetectionType,
                                        "AI",
                                        StringComparison.OrdinalIgnoreCase))
-                               .OrderByDescending(item => item.EventId))
+                               .OrderByDescending(item => item.EventId).Take(MaximumEventHistoryCount))
                 {
+                    item.MarkImportedFromCsv();
                     AiDetectionEvents.Add(item);
                 }
 

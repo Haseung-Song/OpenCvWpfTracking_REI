@@ -1546,11 +1546,16 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [IR] 열영상 카메라 [Zoom] 위치 제어 명령
         /// 
-        /// 위치 값은 [화각 * 100] 후
-        /// [Data1 / Data2]에 [Big Endian] 방식으로 설정
+        /// 프로토콜 위치 0~1000 (0=Wide, 1000=Tele).
+        /// Data1/Data2는 uint16 Big Endian이다. 화각×100 값이 아니다.
         /// </summary>
         public bool IrZoomGoPosition(short zoom)
         {
+            if (zoom > 1000)
+                zoom = 1000;
+            else if (zoom < 0)
+                zoom = 0;
+
             byte data1 = (byte)((zoom >> 8) & 0xFF);
             byte data2 = (byte)(zoom & 0xFF);
 

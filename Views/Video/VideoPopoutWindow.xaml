@@ -1,4 +1,4 @@
-﻿<Window x:Class="OpenCvWpfTracking.VideoPopoutWindow"
+<Window x:Class="OpenCvWpfTracking.VideoPopoutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:OpenCvWpfTracking"
@@ -144,19 +144,19 @@
                     VerticalAlignment="Top"
                     Margin="0,14,0,0"
                     IsHitTestVisible="False">
-            <Border Padding="18,7" Background="#E6A61B1B"
-                    BorderBrush="#FFFF6262" BorderThickness="2">
+            <Border Padding="18,7" Background="#E6652D2A"
+                    BorderBrush="#FFFF3B30" BorderThickness="2">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
                     <Style.Triggers><DataTrigger Binding="{Binding IsEoFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                 </Style></Border.Style>
-                <TextBlock Text="⚠ FIRE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text="⚠ FIRE DETECTED / EO" Foreground="#FF3B30" FontSize="18" FontWeight="Bold"/>
             </Border>
-            <Border Margin="0,6,0,0" Padding="18,7" Background="#E68A4B00"
-                    BorderBrush="#FFFFB300" BorderThickness="2">
+            <Border Margin="0,6,0,0" Padding="18,7" Background="#E6595645"
+                    BorderBrush="#FFD8D0AB" BorderThickness="2">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
                     <Style.Triggers><DataTrigger Binding="{Binding IsEoSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                 </Style></Border.Style>
-                <TextBlock Text="⚠ SMOKE DETECTED / EO" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text="⚠ SMOKE DETECTED / EO" Foreground="#D8D0AB" FontSize="18" FontWeight="Bold"/>
             </Border>
         </StackPanel>
 
@@ -166,27 +166,46 @@
                     VerticalAlignment="Top"
                     Margin="0,14,0,0"
                     IsHitTestVisible="False">
-            <Border Padding="18,7" Background="#E6A61B1B"
-                    BorderBrush="#FFFF6262" BorderThickness="2">
+            <Border Padding="18,7" Background="#E6652D2A"
+                    BorderBrush="#FFFF3B30" BorderThickness="2">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
                     <Style.Triggers><DataTrigger Binding="{Binding IsIrFireWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                 </Style></Border.Style>
-                <TextBlock Text="⚠ FIRE DETECTED / IR" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text="⚠ FIRE DETECTED / IR" Foreground="#FF3B30" FontSize="18" FontWeight="Bold"/>
             </Border>
-            <Border Margin="0,6,0,0" Padding="18,7" Background="#E68A4B00"
-                    BorderBrush="#FFFFB300" BorderThickness="2">
+            <Border Margin="0,6,0,0" Padding="18,7" Background="#E6595645"
+                    BorderBrush="#FFD8D0AB" BorderThickness="2">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/>
                     <Style.Triggers><DataTrigger Binding="{Binding IsIrSmokeWarningVisible}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                 </Style></Border.Style>
-                <TextBlock Text="⚠ SMOKE DETECTED / IR" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text="⚠ SMOKE DETECTED / IR" Foreground="#D8D0AB" FontSize="18" FontWeight="Bold"/>
             </Border>
         </StackPanel>
 
-        <TextBlock x:Name="ZoomRatioText" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                   Margin="10,0,0,8" Padding="5,2" Foreground="#5EE7F7" Background="#A0000000"
-                   FontSize="13" Panel.ZIndex="60" IsHitTestVisible="False"/>
+        <StackPanel x:Name="ZoomRatioHost" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                    Margin="8,0,0,6" Panel.ZIndex="60">
+            <StackPanel.LayoutTransform><ScaleTransform x:Name="ZoomRatioScaleTransform"/></StackPanel.LayoutTransform>
+            <ToggleButton x:Name="ZoomRatioToggleButton" Content="배율" Width="36" Height="22"
+                          IsChecked="{Binding IsZoomRatioOverlayVisible, Mode=TwoWay}"
+                          ToolTip="EO/IR 메인·서브·분리 영상의 배율 표시/숨기기"
+                          BorderBrush="#53616D" BorderThickness="1" FontSize="11" FontWeight="Bold">
+                <ToggleButton.Style>
+                    <Style TargetType="ToggleButton">
+                        <Setter Property="Background" Value="#E11B2229"/>
+                        <Setter Property="Foreground" Value="Gainsboro"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True"><Setter Property="Background" Value="#EC26333F"/></Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ToggleButton.Style>
+            </ToggleButton>
+            <TextBlock x:Name="ZoomRatioText" Margin="3,0,0,0" Padding="5,1" VerticalAlignment="Center"
+                       Foreground="Gainsboro" FontSize="14" FontWeight="SemiBold" IsHitTestVisible="False">
+                <TextBlock.Effect><DropShadowEffect Color="Black" BlurRadius="1" ShadowDepth="1" Opacity="1"/></TextBlock.Effect>
+            </TextBlock>
+        </StackPanel>
         <!-- 중앙 십자선 -->
-        <Grid Width="72"
+        <Grid x:Name="CalibratedCrosshair" Width="72"
               Height="72"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
@@ -266,14 +285,14 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Background="#B21D232A"
-                BorderBrush="#5EE7F7"
+                BorderBrush="#C9E987"
                 BorderThickness="1"
                 CornerRadius="3">
 
             <StackPanel>
 
                 <TextBlock x:Name="CameraTitleText"
-                           Foreground="#5EE7F7"
+                           Foreground="#C9E987"
                            FontSize="18"
                            FontWeight="Bold"/>
 
@@ -408,7 +427,7 @@
                 FontWeight="Bold"
                 Foreground="White"
                 Background="#B21D232A"
-                BorderBrush="#5EE7F7"
+                BorderBrush="#C9E987"
                 BorderThickness="1"
                 ToolTip="단축키 안내 표시하기"
                 Click="CameraInfoToggleButton_Click"/>

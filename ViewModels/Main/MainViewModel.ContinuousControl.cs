@@ -1660,6 +1660,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         _currentCtecEoZoomPosition =
                             zoomPosition;
                         if (zoomPosition <= CtecEoZoomPositionMax) MarkLensEvidence(false);
+                        MarkPresetLensEvidence(false,zoomPosition<=CtecEoZoomPositionMax,false);
 
                         if(_connectedEoCtecSource!=null)
                         {
@@ -1696,6 +1697,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         _currentCtecEoFocusPosition =
                             focusPosition;
+                        MarkPresetLensEvidence(false,false,focusPosition<=CtecEoFocusPositionMax);
 
                         OnPropertyChanged(
                             nameof(CurrentEoFocusText));

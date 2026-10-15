@@ -13,6 +13,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Media;
 
 namespace OpenCvWpfTracking
 {
@@ -398,11 +399,11 @@ namespace OpenCvWpfTracking
         {
             private const double DefaultHeaderHeight = 30.0;
 
-            /*
-             * 2026-08-26: 파노라마 운용 Overlay 표시 여부로 표 높이가 변해도
-             * 전체 페이지 수가 1/15와 1/13 사이에서 바뀌지 않도록 고정한다.
-             */
             private const int FixedPageSize = 22;
+
+            private const double MinimumRowHeight = 27.0;
+
+            private const double GridBottomReserve = 3.0;
 
             private readonly DataGrid _grid;
 
@@ -429,6 +430,7 @@ namespace OpenCvWpfTracking
             private int _pageSize = FixedPageSize;
 
             private double _lastAvailableHeight = -1.0;
+            private ScrollContentPresenter _rowsViewport;
 
             private EventRecordComparer _activeComparer =
                 new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
@@ -480,6 +482,8 @@ namespace OpenCvWpfTracking
                 }
 
                 _grid.SizeChanged += OnGridSizeChanged;
+                // 2026-10-15: scrolling the surrounding panel can resize the rows viewport after SizeChanged.
+                _grid.LayoutUpdated += (sender,args)=>{if(UpdatePageSize())QueueRefresh();};
                 QueueRefresh();
             }
 
@@ -599,12 +603,12 @@ namespace OpenCvWpfTracking
                     _orderedItems.Sort(_activeComparer);
                 }
 
-                // 2026-08-26: 정렬 결과 기준으로 각 페이지에 1~22 행 번호를 다시 부여한다.
+                // 현재 화면에 실제로 들어가는 페이지 크기를 기준으로 행 번호를 매긴다.
                 for (int index = 0; index < _orderedItems.Count; index++)
                 {
                     if (_orderedItems[index] is FireEventRecord eventRecord)
                     {
-                        eventRecord.DisplayIndex = (index % FixedPageSize) + 1;
+                        eventRecord.DisplayIndex = (index % _pageSize) + 1;
                     }
 
                 }
@@ -612,33 +616,43 @@ namespace OpenCvWpfTracking
             }
 
             /// <summary>
-            /// 2026-08-26: 표의 실제 높이에 맞춰 행 높이만 조정하고 페이지당 22행은 유지한다.
-            /// 촬영 Overlay로 우측 패널 높이가 바뀌어도 전체 페이지 수는 변하지 않는다.
+            /// 실제 표 높이에 들어가는 행 수만 한 페이지에 표시한다.
+            /// 최소 행 높이를 침범하면 마지막 행이 보더 아래로 잘리므로
+            /// 작은 화면에서는 페이지 크기를 줄여 스크롤 없이 표시한다.
             /// </summary>
             private bool UpdatePageSize()
             {
                 double headerHeight = IsFinitePositive(_grid.ColumnHeaderHeight)
                     ? _grid.ColumnHeaderHeight
                     : DefaultHeaderHeight;
-                double availableHeight = Math.Max(0.0, _grid.ActualHeight - headerHeight);
-                if (availableHeight > 0.0)
+                var viewport=_rowsViewport??(_rowsViewport=FindRowsViewport(_grid));
+                double availableHeight = Math.Max(0.0,
+                    (viewport!=null&&viewport.ActualHeight>0?viewport.ActualHeight:_grid.ActualHeight-headerHeight)-GridBottomReserve);
+                if (availableHeight <= 0.0)
                 {
-                    _grid.RowHeight = availableHeight / FixedPageSize;
+                    return false;
                 }
+
+                int fittingPageSize = Math.Max(
+                    1,
+                    Math.Min(FixedPageSize,
+                        (int)Math.Floor(availableHeight / MinimumRowHeight)));
+                double fittedHeight=Math.Max(MinimumRowHeight,availableHeight/fittingPageSize);
+                if(Math.Abs(_grid.RowHeight-fittedHeight)>.01||double.IsNaN(_grid.RowHeight))_grid.RowHeight=fittedHeight;
 
                 bool layoutChanged =
                     Math.Abs(_lastAvailableHeight - availableHeight) >= 1.0;
 
                 _lastAvailableHeight = availableHeight;
 
-                if (_pageSize == FixedPageSize)
+                if (_pageSize == fittingPageSize)
                 {
                     if (layoutChanged)
                     {
                         ConsoleLogHelper.State(
                             "EVENT UI",
-                            "Fixed event page capacity retained / ROWS=" +
-                            FixedPageSize +
+                            "Fitting event page capacity retained / ROWS=" +
+                            _pageSize +
                             " / HEIGHT=" +
                             _grid.ActualHeight.ToString("F0"));
                     }
@@ -646,11 +660,11 @@ namespace OpenCvWpfTracking
                     return false;
                 }
 
-                _pageSize = FixedPageSize;
+                _pageSize = fittingPageSize;
                 _pageIndex = Math.Max(0, Math.Min(PageCount - 1, _pageIndex));
                 ConsoleLogHelper.State(
                     "EVENT UI",
-                    "Fixed event page capacity restored / ROWS=" + _pageSize +
+                    "Fitting event page capacity updated / ROWS=" + _pageSize +
                     " / HEIGHT=" + _grid.ActualHeight.ToString("F0"));
                 return true;
             }
@@ -662,6 +676,12 @@ namespace OpenCvWpfTracking
                     QueueRefresh();
                 }
 
+            }
+            private static ScrollContentPresenter FindRowsViewport(DependencyObject root)
+            {
+                if(root is ScrollContentPresenter presenter)return presenter;
+                for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++){var found=FindRowsViewport(VisualTreeHelper.GetChild(root,i));if(found!=null)return found;}
+                return null;
             }
 
             private void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)

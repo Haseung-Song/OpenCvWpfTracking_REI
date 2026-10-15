@@ -1154,8 +1154,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task<bool> MoveLaPresetPointDirectAsync(
             PresetPointOption preset,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool scanTiming = false)
         {
+            if (preset == null) return false;
+            int storedValue;
+            if(!TryPresetLensValue(preset.EoZoomText,out storedValue) || !TryPresetLensValue(preset.EoFocusText,out storedValue) ||
+               !TryPresetLensValue(preset.IrZoomText,out storedValue) || !TryPresetLensValue(preset.IrFocusText,out storedValue))
+            {ConsoleLogHelper.Warning("PRESET LENS","Missing stored lens value; re-register preset");return false;}
             if (preset == null)
             {
                 return false;
@@ -1294,17 +1300,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     preset.IrFocusText,
                     GetCurrentIrFocusStandardPosition());
 
-            bool zoomResult =
-                await MoveLaPresetZoomDirectAsync(
-                    eoZoom,
-                    irZoom,
-                    cancellationToken);
-
-            bool focusResult =
-                await MoveLaPresetFocusDirectAsync(
-                    eoFocus,
-                    irFocus,
-                    cancellationToken);
+            bool lensResult = await RestorePresetLensWithinDelayAsync(
+                eoZoom, eoFocus, irZoom, irFocus, LaPresetScanDelay, scanTiming, cancellationToken);
 
             bool result =
                 speedResult &&
@@ -1312,8 +1309,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 panResult &&
                 tiltResult &&
                 panTiltSettled &&
-                zoomResult &&
-                focusResult;
+                lensResult;
 
             Console.WriteLine();
             Console.WriteLine(
@@ -1324,7 +1320,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"SPEED={moveSpeed}deg/s:{speedResult} / " +
                 $"P={panResult} / T={tiltResult} / " +
                 $"PT_SETTLED={panTiltSettled} / " +
-                $"Z={zoomResult} / F={focusResult} / " +
+                $"LENS={lensResult} / " +
                 $"RESULT={result}");
 
             ConsoleLogHelper.PrintLine();
@@ -1671,6 +1667,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool IsPresetEoZoomAtTarget(
             int standardTarget)
         {
+            if (!HasFreshPresetLens(false,true)) return false;
             if (SelectedEquipmentStatusMode !=
                     EquipmentStatusMode.Environment &&
                 _connectedEoCtecSource != null)
@@ -1696,6 +1693,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool IsPresetEoFocusAtTarget(
             int standardTarget)
         {
+            if (!HasFreshPresetLens(false,false)) return false;
             if (SelectedEquipmentStatusMode !=
                     EquipmentStatusMode.Environment &&
                 _connectedEoCtecSource != null)
@@ -1722,6 +1720,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool IsLaPresetPointAlreadyAtTarget(
             PresetPointOption preset)
         {
+            if (!HasFreshPresetLens(true,true) || !HasFreshPresetLens(true,false)) return false;
             int eoZoom =
                 ParsePresetPosition(
                     preset.EoZoomText,
@@ -1769,7 +1768,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private async Task<bool> MoveLaPresetZoomDirectAsync(
             int eoStandardPosition,
             int irPosition,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            int eoTolerance = LensSyncTargetTolerance,
+            int irTolerance = 1)
         {
             int safeEoPosition =
                 Clamp(
@@ -1784,13 +1785,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     MoveControlPositionMaximum);
 
             bool eoAlreadyAtTarget =
-                IsPresetEoZoomAtTarget(
-                    safeEoPosition);
+                HasFreshPresetLens(false,true) && Math.Abs(GetCurrentPresetStandardZoom()-safeEoPosition)<=eoTolerance;
 
             bool irAlreadyAtTarget =
-                Math.Abs(
+                HasFreshPresetLens(true,true) && Math.Abs(
                     GetCurrentIrZoomStandardPosition() -
-                    safeIrPosition) <= 1;
+                    safeIrPosition) <= irTolerance;
 
             if (eoAlreadyAtTarget &&
                 irAlreadyAtTarget)
@@ -1808,21 +1808,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             cancellationToken
                 .ThrowIfCancellationRequested();
 
-            bool irResult =
-                irAlreadyAtTarget ||
-                _webAgentZoomControlService
-                    .SetIrZoomPosition(
-                        (short)safeIrPosition);
-
-            if (!irAlreadyAtTarget &&
-                irResult &&
-                SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
-            {
-                ApplyEnvironmentIrCommandedPosition(
-                    safeIrPosition,
-                    null,
-                    "ENVIRONMENT PRESET ZOOM");
-            }
+            // V31_8: 환경부 IR은 0x29 절대위치를 우선 송신하고 실제 피드백으로 검증한다.
+            // 확인된 무이동일 때만 0x31 경로를 사용하며 목표값으로 UI 현재값을 덮어쓰지 않는다.
+            int irRawTarget=ConvertIrZoomStandardToStatusPosition(safeIrPosition);
+            Task<bool> irMoveTask=irAlreadyAtTarget ? Task.FromResult(true) :
+                RestorePresetIrZoomAsync(irRawTarget,safeIrPosition,Math.Max(IrZoomTargetTolerance,irTolerance),cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            long eoCommandTicks=DateTime.UtcNow.Ticks;
 
             bool eoResult;
 
@@ -1866,6 +1858,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             }
 
+            bool irResult=await irMoveTask;
+            cancellationToken.ThrowIfCancellationRequested();
+            if(eoResult && !eoAlreadyAtTarget && (IsEnvironmentStatusSelected || _connectedEoCtecSource==null))
+                eoResult=await WaitPresetEoLensTargetAsync(safeEoPosition,true,eoCommandTicks,cancellationToken,eoTolerance);
+            ConsoleLogHelper.State("PRESET LENS","ZOOM / EO_TARGET="+safeEoPosition+" / IR_STANDARD_TARGET="+safeIrPosition+
+                " / IR_RAW_TARGET="+irRawTarget+" / IR_ACTUAL="+_currentIrZoom+" / EO_RESULT="+eoResult+" / IR_RESULT="+irResult);
             Console.WriteLine(
                 "[PRESET 1 / WPF DIRECT] ZOOM " +
                 $"/ EO={safeEoPosition}:{eoResult} " +
@@ -1881,7 +1879,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private async Task<bool> MoveLaPresetFocusDirectAsync(
             int eoStandardPosition,
             int irStandardPosition,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            int eoTolerance = LensSyncTargetTolerance,
+            int irTolerance = IrFocusSyncTolerance)
         {
             int safeEoPosition =
                 Clamp(
@@ -1900,14 +1900,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     safeIrStandardPosition);
 
             bool eoAlreadyAtTarget =
-                IsPresetEoFocusAtTarget(
-                    safeEoPosition);
+                HasFreshPresetLens(false,false) && Math.Abs(GetCurrentPresetStandardFocus()-safeEoPosition)<=eoTolerance;
 
             bool irAlreadyAtTarget =
-                Math.Abs(
+                HasFreshPresetLens(true,false) && Math.Abs(
                     GetCurrentIrFocusStandardPosition() -
                     safeIrStandardPosition) <=
-                IrFocusSyncTolerance;
+                irTolerance;
 
             if (eoAlreadyAtTarget &&
                 irAlreadyAtTarget)
@@ -1931,21 +1930,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 irMoveTask = Task.FromResult(true);
             }
-            else if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment &&
-                     Interlocked.Read(ref _irLensStatusVersion) == 0)
+            else if (!await EnsurePresetIrLensFeedbackAsync(false,cancellationToken))
             {
-                irMoveTask = MoveEnvironmentIrFocusWithoutFeedbackAsync(
-                    safeIrStandardPosition,
-                    cancellationToken);
+                irMoveTask = Task.FromResult(false);
             }
             else
             {
                 irMoveTask = MoveIrFocusToPositionAsync(
                     irRawTargetPosition,
-                    cancellationToken);
+                    cancellationToken,
+                    Math.Max(1, Math.Max(
+                        Math.Abs(ConvertIrFocusStandardToStatusPosition(Clamp(safeIrStandardPosition+irTolerance,0,1000))-irRawTargetPosition),
+                        Math.Abs(ConvertIrFocusStandardToStatusPosition(Clamp(safeIrStandardPosition-irTolerance,0,1000))-irRawTargetPosition))));
             }
 
             bool eoResult;
+            long eoCommandTicks=DateTime.UtcNow.Ticks;
 
             if (eoAlreadyAtTarget)
             {
@@ -1989,6 +1989,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool irResult =
                 await irMoveTask;
+
+            irResult=irResult && HasFreshPresetLens(true,false) &&
+                Math.Abs(GetCurrentIrFocusStandardPosition()-safeIrStandardPosition)<=irTolerance;
+            cancellationToken.ThrowIfCancellationRequested();
+            if(eoResult && !eoAlreadyAtTarget && (IsEnvironmentStatusSelected || _connectedEoCtecSource==null))
+                eoResult=await WaitPresetEoLensTargetAsync(safeEoPosition,false,eoCommandTicks,cancellationToken,eoTolerance);
+            ConsoleLogHelper.State("PRESET LENS","FOCUS / EO_TARGET="+safeEoPosition+" / IR_STANDARD_TARGET="+safeIrStandardPosition+
+                " / IR_ACTUAL="+GetCurrentIrFocusStandardPosition()+" / EO_RESULT="+eoResult+" / IR_RESULT="+irResult);
 
             Console.WriteLine(
                 "[PRESET 1 / WPF DIRECT] FOCUS " +
@@ -2320,18 +2328,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         LaPresetCommandStatusText =
                             $"SCAN MOVING P{point.Number:00}";
 
+                        var pointTimer=Stopwatch.StartNew();
                         bool moveResult =
                             await MoveLaPresetPointDirectAsync(
                                 point,
-                                scanCts.Token);
+                                scanCts.Token,
+                                true);
 
                         Console.WriteLine(
                             "[PRESET 1 / WPF DIRECT SCAN] " +
                             $"P{point.Number:00} MOVE RESULT={moveResult}");
 
-                        await WaitAfterPresetMoveAsync(
-                            LaPresetScanDelay,
-                            scanCts.Token);
+                        int minimumDwellMs=Math.Max(1,Math.Min(60,LaPresetScanDelay))*1000;
+                        if(pointTimer.ElapsedMilliseconds<minimumDwellMs)
+                            await Task.Delay(minimumDwellMs-(int)pointTimer.ElapsedMilliseconds,scanCts.Token);
+
                     }
 
                 }
@@ -2731,8 +2742,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            PresetPointOption preset=SelectedPresetPoint;
             int presetNumber =
-                SelectedPresetPoint.Number;
+                preset.Number;
 
             int moveSpeed =
                 Math.Max(
@@ -2780,6 +2792,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool panTiltSettled =
                 false;
+            bool lensRestored=false;
 
             try
             {
@@ -2787,7 +2800,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     moveResult &&
                     await EnsurePresetPanTiltTargetAsync(
                         "PRESET W",
-                        SelectedPresetPoint,
+                        preset,
                         () =>
                             ApplyPresetPositionSpeed(
                                 moveSpeed) &&
@@ -2795,9 +2808,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 .MoveToPresetPoint(
                                     (byte)presetNumber),
                         CalculatePresetPanTiltSettleTimeoutMs(
-                            SelectedPresetPoint,
+                            preset,
                             moveSpeed),
                         moveCts.Token);
+                if(panTiltSettled)lensRestored=await RestoreStoredPresetLensAsync(preset,moveCts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -2833,7 +2847,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             PresetCommandStatusText =
                 moveResult &&
-                panTiltSettled
+                panTiltSettled && lensRestored
                     ? $"P{presetNumber:00} GOTO PRESET COMPLETED"
                     : $"P{presetNumber:00} GOTO PRESET INCOMPLETE";
         }
@@ -3006,8 +3020,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 $"P{preset.Number:00}");
                         }
 
+                        var lensTimer=Stopwatch.StartNew();
+                        bool lensRestored=panTiltSettled && await RestoreStoredPresetLensAsync(preset,cancellationToken,true);
                         PresetCommandStatusText =
-                            panTiltSettled
+                            panTiltSettled && lensRestored
                                 ? $"P{preset.Number:00} GOTO COMPLETED"
                                 : $"P{preset.Number:00} GOTO INCOMPLETE";
 
@@ -3018,9 +3034,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                     60,
                                     PresetScanDelay));
 
-                        await WaitAfterPresetMoveAsync(
-                            delaySeconds,
-                            cancellationToken);
+                        int remainingDelayMs=delaySeconds*1000-(int)lensTimer.ElapsedMilliseconds;
+                        if(remainingDelayMs>0)
+                            await Task.Delay(remainingDelayMs,cancellationToken);
                     }
 
                 }
@@ -3381,9 +3397,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 2026-09-18: LENS 비례 Zoom도 SYNC와 동일하게 EO Absolute 명령과
-        /// IR Tele/Wide/Stop + Function 0x07 피드백 폐루프를 동시에 사용한다.
-        /// 실장비에서 적용되지 않은 IR 0x29 Absolute 경로는 사용하지 않는다.
+        /// 환경부 비례 Zoom은 EO 0x37과 IR 0x29 절대위치를 우선 송신한다.
+        /// IR은 실제 렌즈 피드백으로 확인하며, 무이동이 확인된 때만 0x31로 대체한다.
         /// </summary>
         private async Task ApplyEnvironmentProportionalZoomAsync(
             int standardPosition,

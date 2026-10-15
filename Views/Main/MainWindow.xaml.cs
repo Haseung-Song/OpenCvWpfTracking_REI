@@ -1319,10 +1319,7 @@ namespace OpenCvWpfTracking
             TabItem selectedTab = tabControl?.SelectedItem as TabItem;
             if (!ReferenceEquals(e.Source, sender) ||
                 selectedTab == null ||
-                !string.Equals(
-                    selectedTab.Header?.ToString(),
-                    "이벤트 알림",
-                    StringComparison.Ordinal))
+                !ReferenceEquals(selectedTab, EventAlertTab))
             {
                 return;
             }
@@ -1339,6 +1336,9 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            // 2026-10-15 V31_13: only the outer header click may select the latest event.
+            // Nested AI/FIRE tab clicks tunnel through this handler and must remain manual.
+            if(!ReferenceEquals(FindVisualAncestor<TabItem>(e.OriginalSource as DependencyObject),sender))return;
             Dispatcher.BeginInvoke(
                 new Action(() => EventAlertPanel?.SelectLatestEventTab()),
                 DispatcherPriority.DataBind);

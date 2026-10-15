@@ -25,6 +25,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public sealed class FireEventRecord : INotifyPropertyChanged
     {
+        public Brush EventAccentBrush=>LegacyVideoIntegration.EventBrush(DetectionType);
+        public Brush EventActiveBackground=>LegacyVideoIntegration.EventBackground(DetectionType);
         private string _status;
 
         private DateTime? _clearedTime;
@@ -32,6 +34,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _displayIndex;
 
         private bool _isLiveAfterCsvLoad;
+        private bool _isImportedFromCsv;
+        public bool IsImportedFromCsv=>_isImportedFromCsv;
+        internal void MarkImportedFromCsv(){_isImportedFromCsv=true;OnPropertyChanged(nameof(IsImportedFromCsv));}
 
         private int _objectCount;
 
@@ -346,7 +351,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2,200건을 초과하면 신규 이벤트는 유지하고 가장 오래된 이벤트부터 제거한다.
         /// AI/FIRE 이벤트 목록에 동일한 보존 정책을 적용한다.
         /// </summary>
-        private const int MaximumEventHistoryCount = 22 * 100;
+        // 2026-10-15 V31_13: retain up to 9,999 records per AI / FIRE-SMOKE list.
+        private const int MaximumEventHistoryCount = 9999;
 
         private int _nextFireEventId = 1;
 
@@ -424,7 +430,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public Brush FireAlertHeaderBrush =>
             ActiveFireCount > 0
                 // 2026-08-27: FIRE와 흰색 SMOKE를 함께 나타내는 밝은 코럴 색상이다.
-                ? new SolidColorBrush(Color.FromRgb(255, 143, 163))
+                ? LegacyVideoIntegration.EventBrush(FireDetectionEvents.Any(e=>e.Status=="ACTIVE"&&e.DetectionType=="FIRE")?"FIRE":"SMOKE")
                 : new SolidColorBrush(Color.FromRgb(208, 215, 222));
 
         /// <summary>
@@ -887,8 +893,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                          loaded.Where(item =>
                              string.Equals(item.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase) ||
                              string.Equals(item.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase))
-                               .OrderByDescending(item => item.EventId))
+                               .OrderByDescending(item => item.EventId).Take(MaximumEventHistoryCount))
                 {
+                    fireEvent.MarkImportedFromCsv();
                     FireEvents.Add(fireEvent);
                 }
 

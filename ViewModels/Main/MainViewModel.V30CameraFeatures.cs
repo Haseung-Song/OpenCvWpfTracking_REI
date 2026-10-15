@@ -96,6 +96,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>연결 세션의 capability·응답·요청·추정 및 클릭 증거를 초기화한다.</summary>
         private void ResetDigitalZoomSession()
         {
+            ResetSpecialFeatureSession();
+            ResetPresetLensEvidence();
             _eoDigitalEstimate.Enable(false);
             _irDigitalEstimate.Enable(false);
             for(int i=0;i<2;i++){_digitalCaps[i]=0;_digitalCapsKnown[i]=false;_digitalState[i]=-1;_digitalRequestedState[i]=-1;_digitalTxFailed[i]=false;_digitalStateTicks[i]=0;_digitalPendingTicks[i]=0;_digitalNextQueryTicks[i]=0;_videoCenterFrameTicks[i]=0;}

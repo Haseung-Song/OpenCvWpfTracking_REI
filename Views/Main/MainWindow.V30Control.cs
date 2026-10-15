@@ -16,7 +16,7 @@ namespace OpenCvWpfTracking
     public partial class MainWindow
     {
         private GlobalControlKeyboard _globalKeyboard;
-        private bool _showVideoJog, _v30UiInitialized;
+        private bool _v30UiInitialized;
         private readonly List<Grid> _videoJogOverlays = new List<Grid>();
         // 2026-10-08 V30_0: UI additions use existing border colors and typography.
         /// <summary>기존 영상/장비 제어 UI에 옵션과 상태 표시를 한 번만 연결한다.</summary>
@@ -177,12 +177,9 @@ namespace OpenCvWpfTracking
         /// <summary>클릭 이동 방향 안내를 함께 표시/숨기고 해제 시 영상 소유 입력을 정지한다.</summary>
         private void SetVideoJogVisible(bool visible)
         {
-            _showVideoJog = visible;
             foreach (var overlay in _videoJogOverlays)
             {
-                var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-                overlay.Visibility = visibility;
-                foreach (var hint in overlay.Children.OfType<TextBlock>()) hint.Visibility = visibility;
+                VideoShortcutGuide.BindJogVisibility(overlay,(bool)overlay.Tag);
             }
             if (!visible) vm.ReleaseControlOwner("video");
         }
@@ -190,13 +187,34 @@ namespace OpenCvWpfTracking
         private void AddVideoControls(Border border, bool ir)
         {
             if (!(border?.Child is Grid grid)) return;
-            var ratio = new TextBlock { Margin = new Thickness(10, 0, 0, 8), Padding = new Thickness(5, 2, 5, 2),
-                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom,
-                Foreground = ir ? Brushes.YellowGreen : Brushes.Cyan, Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)), FontSize = 13, IsHitTestVisible = false };
-            ratio.SetBinding(TextBlock.TextProperty, new Binding(ir ? "IrZoomRatioOverlayText" : "EoZoomRatioOverlayText")); Panel.SetZIndex(ratio, 60); grid.Children.Add(ratio);
+            var ratioHost=new StackPanel { Orientation=Orientation.Horizontal, Margin=new Thickness(8,0,0,6),
+                HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Bottom };
+            ratioHost.Children.Add(VideoShortcutGuide.CreateRatioToggle(ir));
+            var ratio = new TextBlock { Margin = new Thickness(3, 0, 0, 0), Padding = new Thickness(5, 1, 5, 1),
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = LegacyVideoIntegration.ChannelBrush(ir), FontSize = 14, FontWeight=FontWeights.SemiBold, IsHitTestVisible = false,
+                Effect=new System.Windows.Media.Effects.DropShadowEffect{Color=Colors.Black,BlurRadius=1,ShadowDepth=1,Opacity=1} };
+            ratio.SetBinding(TextBlock.TextProperty, new Binding(ir ? "IrZoomRatioOverlayText" : "EoZoomRatioOverlayText")); ratioHost.Children.Add(ratio);
             VideoShortcutGuide.BindRatioVisibility(ratio,ir);
+            var ratioScale=new ScaleTransform();ratioHost.LayoutTransform=ratioScale;
+            Action updateRatioScale=()=>{double scale=VideoShortcutGuide.LabelScale(border.ActualWidth,border.ActualHeight);ratioScale.ScaleX=scale;ratioScale.ScaleY=scale;};
+            border.SizeChanged+=(s,e)=>updateRatioScale();ratioHost.Loaded+=(s,e)=>updateRatioScale();
+            SizeChanged+=(s,e)=>updateRatioScale();updateRatioScale();
+            var connection=grid.Children.OfType<TextBlock>().FirstOrDefault(t=>BindingOperations.GetBinding(t,TextBlock.TextProperty)?.Path?.Path==(ir?"IrStatusText":"EoStatusText"));
+            if(connection!=null)
+            {
+                connection.Foreground=LegacyVideoIntegration.ChannelBrush(ir);connection.FontSize=14;
+                connection.Background=null;connection.Padding=new Thickness(4,1,4,1);
+                connection.Effect=new System.Windows.Media.Effects.DropShadowEffect{Color=Colors.Black,BlurRadius=1,ShadowDepth=1,Opacity=1};
+                var statusScale=new ScaleTransform();connection.LayoutTransform=statusScale;
+                Action updateStatus=()=>{double scale=VideoShortcutGuide.LabelScale(border.ActualWidth,border.ActualHeight);statusScale.ScaleX=scale;statusScale.ScaleY=scale;};
+                border.SizeChanged+=(s,e)=>updateStatus();connection.Loaded+=(s,e)=>updateStatus();updateStatus();
+            }
+            Panel.SetZIndex(ratioHost, 60); grid.Children.Add(ratioHost);
+            var video=ir?IrCameraImageView:EoCameraImageView;
+            VideoShortcutGuide.AttachVideoLabelPositions(grid,video,ratioHost,connection,()=>VideoShortcutGuide.SourceAspect(video,ir?1.25:16.0/9));
             var help = new Expander { Name = ir ? "IrVideoShortcutHelp" : "EoVideoShortcutHelp", IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top, Foreground = (Brush)new BrushConverter().ConvertFromString(ir?"#C6E77B":"#5EE7F7"), Margin = new Thickness(14), Template=VideoShortcutGuide.MainGuideTemplate(),
+                VerticalAlignment = VerticalAlignment.Top, Foreground = LegacyVideoIntegration.ChannelBrush(ir), Margin = new Thickness(14), Template=VideoShortcutGuide.MainGuideTemplate(),
                 Content = VideoShortcutGuide.CreateContent(ir) };
             var helpScale=new ScaleTransform();help.LayoutTransform=helpScale;
             Action updateHelpScale=()=>{double scale=VideoShortcutGuide.Scale(border.ActualWidth,border.ActualHeight);helpScale.ScaleX=scale;helpScale.ScaleY=scale;};
@@ -204,7 +222,8 @@ namespace OpenCvWpfTracking
             help.Loaded+=(s,e)=>updateHelpScale();help.Expanded+=(s,e)=>updateHelpScale();
             SizeChanged+=(s,e)=>updateHelpScale();updateHelpScale();
             Panel.SetZIndex(help, 65); grid.Children.Add(help);
-            var overlay = new Grid { Visibility = Visibility.Collapsed, Background = null }; Panel.SetZIndex(overlay, 70);
+            var overlay = new Grid { Tag=ir, Background = null }; Panel.SetZIndex(overlay, 70);
+            VideoShortcutGuide.BindJogVisibility(overlay,ir);
             string[] symbols = { "◀", "▶", "▲", "▼" }; int[] xs = { -1, 1, 0, 0 }, ys = { 0, 0, 1, -1 };
             for (int i = 0; i < 4; i++)
             {
@@ -385,14 +404,16 @@ namespace OpenCvWpfTracking
             var panel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 12, 0, 0), IsHitTestVisible = false };
             foreach (var banner in banners) { grid.Children.Remove(banner); banner.Margin = new Thickness(0, 0, 0, 5); panel.Children.Add(banner); }
             Panel.SetZIndex(panel, 40); grid.Children.Add(panel);
+            var video=ReferenceEquals(border,IrVideoBorder)?IrCameraImageView:EoCameraImageView;
+            VideoShortcutGuide.AttachVideoAlarmPositions(grid,panel,video,()=>VideoShortcutGuide.SourceAspect(video,ReferenceEquals(border,IrVideoBorder)?1.25:16.0/9));
         }
         /// <summary>연결 상태 요약의 첫 데이터 열을 맞추고 기존 상태/색상 바인딩을 보존한다.</summary>
         private void AlignConnectionStatusRows()
         {
-            var summary=LogicalDescendants<TextBlock>(Content as DependencyObject).FirstOrDefault(t=>t.Text=="4. DEVICE CONNECTION STATUS");
+            var summary=LogicalDescendants<TextBlock>(Content as DependencyObject).FirstOrDefault(t=>t.Text=="DEVICE CONNECTION STATUS");
             if(summary!=null)
             {
-                summary.HorizontalAlignment=HorizontalAlignment.Left;
+                summary.HorizontalAlignment=HorizontalAlignment.Center;
                 if(summary.Parent is StackPanel summaryPanel && summaryPanel.Parent is Border summaryCard)
                 {
                     summaryCard.Background=(Brush)new BrushConverter().ConvertFromString("#495057");
@@ -417,6 +438,8 @@ namespace OpenCvWpfTracking
                         var binding = BindingOperations.GetBinding(pair.Run, System.Windows.Documents.Run.TextProperty); if (binding != null) item.SetBinding(TextBlock.TextProperty, binding);
                         var foregroundBinding=BindingOperations.GetBinding(pair.Run,System.Windows.Documents.TextElement.ForegroundProperty);
                         if(foregroundBinding!=null)item.SetBinding(TextBlock.ForegroundProperty,foregroundBinding);
+                        if(pair.Index==1&&binding!=null&&new[]{"CurrentEoPowerText","CurrentIrPowerText","AiPowerStatusText","FirePowerStatusText","SmokePowerStatusText"}.Contains(binding.Path?.Path))
+                            item.SetBinding(TextBlock.ForegroundProperty,new Binding(binding.Path.Path){Mode=BindingMode.OneWay,Converter=new DeviceOnOffBrushConverter()});
                         Grid.SetColumn(item, pair.Index); cell.Children.Add(item);
                     }
                     cell.Style = null;

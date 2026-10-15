@@ -30,8 +30,8 @@ namespace OpenCvWpfTracking
             {
                 var z = item as MainViewModel.ZoneOverlayBox;
                 bool registeredZone = z != null;
-                if (item is AiDetectionBox ai) z = new MainViewModel.ZoneOverlayBox { Left=ai.Left, Top=ai.Top, Width=ai.Width, Height=ai.Height, Name=ai.DisplayText, Color="#39FF14" };
-                else if (item is VisionDetectionBox vp) z = new MainViewModel.ZoneOverlayBox { Left=vp.Left, Top=vp.Top, Width=vp.Width, Height=vp.Height, Name=vp.DisplayText, Color=vp.DetectionType=="SMOKE"?"#FFA000":"#FF3B30" };
+                if (item is AiDetectionBox ai) z = new MainViewModel.ZoneOverlayBox { Left=ai.Left, Top=ai.Top, Width=ai.Width, Height=ai.Height, Name=ai.DisplayText, Color=LegacyVideoIntegration.AiColor };
+                else if (item is VisionDetectionBox vp) z = new MainViewModel.ZoneOverlayBox { Left=vp.Left, Top=vp.Top, Width=vp.Width, Height=vp.Height, Name=vp.DisplayText, Color=vp.DetectionType=="SMOKE"?LegacyVideoIntegration.SmokeColor:LegacyVideoIntegration.FireColor };
                 if (z == null) continue;
                 var color = (Brush)new BrushConverter().ConvertFromString(registeredZone ? "#C8A2FF" : z.Color);
                 var viewport = new Rect(ox, oy, SourceWidth * scale, SourceHeight * scale);

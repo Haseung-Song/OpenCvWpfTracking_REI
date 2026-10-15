@@ -1220,6 +1220,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _currentEoZoom,
                 _currentEoFocus);
             MarkLensEvidence(false);
+            MarkPresetLensEvidence(false,zoomRaw>=0 && zoomRaw<=1000,focusRaw>=0 && focusRaw<=1000);
 
             Interlocked.Increment(
                 ref _eoLensStatusVersion);
@@ -1551,6 +1552,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int? focusPosition,
             string reason)
         {
+            // V31_5: 실제 상태가 이미 수신되는 장비의 현재값을 명령값으로 덮어쓰지 않는다.
+            if (Interlocked.Read(ref _irLensStatusVersion)>0) return;
             if (zoomPosition.HasValue)
             {
                 _currentIrZoom =
@@ -1675,6 +1678,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _currentIrZoom,
                 _currentIrFocus);
             MarkLensEvidence(true);
+            MarkPresetLensEvidence(true,true,true);
 
             Interlocked.Increment(
                 ref _irLensStatusVersion);

@@ -1,0 +1,85 @@
+<UserControl x:Class="OpenCvWpfTracking.CameraSpecialControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="#E4ECF2" FontSize="11" HorizontalContentAlignment="Stretch">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
+        <Style x:Key="FeatureButton" TargetType="Button">
+            <Setter Property="Background" Value="#315363"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#7E94A1"/>
+            <Setter Property="Padding" Value="3,4"/>
+            <Setter Property="MinHeight" Value="27"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Padding="{TemplateBinding Padding}" CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ButtonBorder" Property="Opacity" Value="0.4"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#426C80"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#243F4D"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="FeatureRow">
+            <Border BorderBrush="#71838E" BorderThickness="0,0,0,1" Padding="0,6,0,6">
+                <StackPanel>
+                    <Grid ToolTip="{Binding ProtocolLabel}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="104"/>
+                            <ColumnDefinition Width="*" MinWidth="62"/>
+                            <ColumnDefinition Width="41"/>
+                            <ColumnDefinition Width="37"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="SemiBold"/>
+                        <Grid Grid.Column="1" Margin="0,0,4,0" IsEnabled="{Binding CanEdit}">
+                            <TextBox Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" Padding="4,2" MinHeight="27"
+                                     Visibility="{Binding IsNumeric, Converter={StaticResource BoolVisibility}}" ToolTip="입력 후보값입니다. 현재 장비값은 아래 상태 문구를 확인하세요."/>
+                            <ComboBox ItemsSource="{Binding Options}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedOption}" MinHeight="27"
+                                      Visibility="{Binding HasOptions, Converter={StaticResource BoolVisibility}}" VerticalContentAlignment="Center" FontSize="11"/>
+                            <UniformGrid Columns="2" Visibility="{Binding IsBoolean, Converter={StaticResource BoolVisibility}}">
+                                <Button Content="OFF" Command="{Binding OffCommand}" IsEnabled="{Binding CanOff}" Style="{StaticResource FeatureButton}" Margin="0,0,2,0"/>
+                                <Button Content="ON" Command="{Binding OnCommand}" IsEnabled="{Binding CanOn}" Style="{StaticResource FeatureButton}"/>
+                            </UniformGrid>
+                        </Grid>
+                        <Button Grid.Column="2" Content="{Binding ApplyLabel}" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanEdit}" Margin="0,0,3,0">
+                            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource FeatureButton}"><Style.Triggers><DataTrigger Binding="{Binding IsBoolean}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                        </Button>
+                        <Button Grid.Column="3" Content="조회" Command="{Binding QueryCommand}" IsEnabled="{Binding CanQuery}" Style="{StaticResource FeatureButton}" ToolTip="이 기능의 장비 현재 상태를 조회합니다."/>
+                    </Grid>
+                    <TextBlock Text="{Binding RangeText}" Foreground="#A9BDC9" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                    <TextBlock Text="{Binding StatusText}" Foreground="#8DD6EF" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+    <Grid Margin="5">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Border BorderBrush="#95A5B0" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,6" Background="#495158">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,4">
+                    <Button DockPanel.Dock="Right" Content="지원 조회" Command="{Binding RefreshSpecialFeaturesCommand}" IsEnabled="{Binding CanRefreshSpecialFeatures}" Style="{StaticResource FeatureButton}" Padding="7,3"/>
+                    <TextBlock Text="CAMERA SPECIAL CONTROL" FontWeight="Bold" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                </DockPanel>
+                <TextBlock Text="{Binding SpecialFeatureSummary}" TextWrapping="Wrap" Foreground="#8DD6EF" FontSize="10"/>
+                <TextBlock Text="미지원 기능은 비활성화됩니다. 송신 성공은 적용 확인이 아닙니다." TextWrapping="Wrap" Foreground="#B9C7D1" FontSize="10" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False" Padding="0" BorderBrush="#95A5B0" BorderThickness="1">
+            <StackPanel Margin="7,12,7,24">
+                <Expander Header="EO 카메라 특수 기능" IsExpanded="True" Foreground="#69DCEE" FontWeight="Bold" HorizontalContentAlignment="Stretch">
+                    <ItemsControl ItemsSource="{Binding EoSpecialFeatures}" ItemTemplate="{StaticResource FeatureRow}" FontWeight="Normal" Foreground="#E4ECF2"/>
+                </Expander>
+                <Expander Header="IR 카메라 특수 기능" IsExpanded="True" Foreground="#CFBAEC" FontWeight="Bold" Margin="0,10,0,0" HorizontalContentAlignment="Stretch">
+                    <ItemsControl ItemsSource="{Binding IrSpecialFeatures}" ItemTemplate="{StaticResource FeatureRow}" FontWeight="Normal" Foreground="#E4ECF2"/>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -19,6 +19,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly Dictionary<string, Tuple<int, int>> _issuedControlAxes = new Dictionary<string, Tuple<int, int>>();
         private readonly SemaphoreSlim _inputReconcile = new SemaphoreSlim(1, 1);
         private bool _isFovSpeedEnabled = true, _isGlobalControlEnabled, _isVideoClickCenterEnabled = true;
+        private bool _isZoomRatioOverlayVisible = true;
         private int _inputEpoch;
         private long _eoLensReceivedTicks, _irLensReceivedTicks;
         private DispatcherTimer _v30StatusTimer;
@@ -63,6 +64,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _isVideoClickCenterEnabled;
             set { if (_isVideoClickCenterEnabled == value) return; _isVideoClickCenterEnabled = value; OnPropertyChanged(); ConsoleLogHelper.State("VIDEO CLICK CENTER",value?"Enabled":"Disabled"); }
         }
+        /// <summary>2026-10-14 V31_6: 모든 EO/IR 메인·서브·분리 영상의 배율 배지만 표시/숨긴다. 제어값은 바꾸지 않는다.</summary>
+        public bool IsZoomRatioOverlayVisible
+        {
+            get => _isZoomRatioOverlayVisible;
+            set { if (_isZoomRatioOverlayVisible == value) return; _isZoomRatioOverlayVisible = value; OnPropertyChanged(); }
+        }
         public string GlobalControlStatusText => IsGlobalControlEnabled ? "GLOBAL PTZF ON" : "GLOBAL PTZF OFF";
         public double EoOpticalRatioMinimum => ControlTuningFor(false).MinimumRatio;
         public double EoOpticalRatioMaximum => ControlTuningFor(false).MaximumRatio;
@@ -93,8 +100,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (_issuedControlAxes.ContainsKey("PT")) { _replayControlInputs = true; ReconcileControlInputs(); }
         }
         private bool IsLensFresh(bool ir) => _isDeviceConnectionRequested && DateTime.UtcNow.Ticks - (ir ? Interlocked.Read(ref _irLensReceivedTicks) : Interlocked.Read(ref _eoLensReceivedTicks)) < TimeSpan.FromSeconds(3).Ticks;
-        public string EoZoomRatioOverlayText => IsLensFresh(false) ? "EO x" + EoDisplayZoomRatio.ToString("F1") + (IsEoDigitalEstimateVisible ? " (추정)" : " (환산)") : "EO 배율 미확인";
-        public string IrZoomRatioOverlayText => IsLensFresh(true) ? "IR x" + IrDisplayZoomRatio.ToString("F1") + (IsIrDigitalEstimateVisible ? " (추정)" : " (환산)") : "IR 배율 미확인";
+        public string EoZoomRatioOverlayText => IsLensFresh(false) ? "EO x" + EoDisplayZoomRatio.ToString("F1") : "EO —";
+        public string IrZoomRatioOverlayText => IsLensFresh(true) ? "IR x" + IrDisplayZoomRatio.ToString("F1") : "IR —";
         private string ZoomRatioStatus(bool ir) => (ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom()) + " / 1000 (" + (IsLensFresh(ir) ? "x" + (ir ? IrDisplayZoomRatio : EoDisplayZoomRatio).ToString("F1") : "배율 미확인") + ")";
         private string _lastOpticalSpeedSignature;
         private void MarkLensEvidence(bool ir) { if (ir) Interlocked.Exchange(ref _irLensReceivedTicks, DateTime.UtcNow.Ticks); else Interlocked.Exchange(ref _eoLensReceivedTicks, DateTime.UtcNow.Ticks); }
@@ -106,6 +113,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _v30StatusTimer.Tick += (s, e) =>
             {
                 TickDigitalZoom();
+                TickSpecialFeatures();
                 if(AiPowerStatusText=="ON" && !_aiDetectorClientService.IsConnected)
                 { AiPowerStatusText="OFF"; ClearAiDetectionState("AI transport lost"); SetFireSmokeDetectorsForAiConnection(false,"AI transport lost"); }
                 TickDigitalEstimate();

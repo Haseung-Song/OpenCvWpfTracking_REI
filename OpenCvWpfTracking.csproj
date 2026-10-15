@@ -64,6 +64,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Services\Communication\WebAgent\CameraFeatureProtocol.cs" />
+    <Compile Include="Models\Main\CameraSpecialFeatureRow.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.SpecialFeatures.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.PresetLens.cs" />
+    <Compile Include="Views\Main\CameraSpecialControl.xaml.cs"><DependentUpon>CameraSpecialControl.xaml</DependentUpon></Compile>
+    <Page Include="Views\Main\CameraSpecialControl.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
     <Compile Include="Services\Configuration\ControlTuning.cs" />
     <Compile Include="Services\Input\GlobalControlKeyboard.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.V30Control.cs" />
@@ -71,7 +77,8 @@
     <Compile Include="Views\Main\MainWindow.V30Control.cs" />
     <Compile Include="Views\Video\VideoShortcutGuide.cs" />
     <Content Include="Config\ControlTuning.xml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
-    <Content Include="V31_4_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Compile Include="Views\Video\LegacyVideoIntegration.cs" />
+    <Content Include="V31_13_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Resource Include="Images\Demo\Toruss.ico" />
     <Reference Include="FFmpeg.AutoGen, Version=8.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\FFmpeg.AutoGen.8.1.0\lib\netstandard2.0\FFmpeg.AutoGen.dll</HintPath>

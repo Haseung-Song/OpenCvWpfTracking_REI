@@ -130,15 +130,16 @@
             <Setter Property="MinHeight" Value="27"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Status}" Value="ACTIVE">
-                    <Setter Property="Background" Value="#8B2E2E"/>
+                    <Setter Property="Background" Value="{Binding EventActiveBackground}"/>
+                    <Setter Property="Foreground" Value="{Binding EventAccentBrush}"/>
                     <Setter Property="FontWeight" Value="Bold"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="CLEARED">
                     <Setter Property="Background" Value="#3F5550"/>
                     <Setter Property="Foreground" Value="#D0D7DE"/>
                 </DataTrigger>
-                <!-- 2026-08-26: CSV 불러오기 이후 수신된 신규 행은 밝은 청록색으로 구분한다. -->
-                <DataTrigger Binding="{Binding IsLiveAfterCsvLoad}" Value="True">
+                <!-- 2026-10-15: loaded history is blue; live ACTIVE/CLEARED keep their own status colors. -->
+                <DataTrigger Binding="{Binding IsImportedFromCsv}" Value="True">
                     <Setter Property="Background" Value="#176B87"/>
                     <Setter Property="Foreground" Value="White"/>
                     <Setter Property="FontWeight" Value="Bold"/>
@@ -168,7 +169,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="AI DETECTION" Foreground="#8FD3FF"
+                            <TextBlock Text="AI DETECTION" Foreground="#55EE32"
                                        FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding AiAlertStatusText}" Foreground="{Binding AiAlertHeaderBrush}"
                                        FontSize="10" FontWeight="Bold" Margin="0,3,0,0"
@@ -266,7 +267,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="FIRE / SMOKE" Foreground="#FFB4A2"
+                            <TextBlock Text="FIRE / SMOKE" Foreground="#FF8178"
                                        FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding FireAlertStatusText}"
                                        Foreground="{Binding FireAlertHeaderBrush}"

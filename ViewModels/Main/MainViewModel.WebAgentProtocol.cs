@@ -94,6 +94,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ParseWebAgentCapability(byte[] p)
         {
             if (p.Length < 13) return;
+            DispatchSpecialFeaturePacket(p, ApplySpecialFeatureCapability);
             var digitalPayload = (byte[])p.Clone();
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => { if(CameraFeatureTransportReady) ApplyDigitalZoomCapability(digitalPayload); }));
             ConsoleLogHelper.State("WEB AGENT CAPABILITY", string.Format(
@@ -146,6 +147,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     if (zoomValid) { _currentEoZoom = (short)zoom; MarkLensEvidence(false); }
                     if (focusValid) _currentEoFocus = (short)focus;
+                    MarkPresetLensEvidence(false,zoomValid,focusValid);
                     if (zoomValid && focusValid)
                     {
                         UpdatePositionEoLens(_currentEoZoom, _currentEoFocus);
@@ -162,6 +164,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (zoomValid) { _currentIrZoom = zoom; MarkLensEvidence(true); }
                 if (focusValid) _currentIrFocus = focus;
+                MarkPresetLensEvidence(true,zoomValid,focusValid);
                 if (zoomValid && focusValid)
                 {
                     UpdatePositionIrLens(_currentIrZoom, _currentIrFocus);
@@ -301,6 +304,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ParseWebAgentFeatureState(byte[] p)
         {
             if (p.Length < 18) return;
+            DispatchSpecialFeaturePacket(p, ApplySpecialFeatureState);
             byte target = p[1];
             byte feature = p[2];
             byte flags = p[3];
@@ -336,6 +340,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ParseWebAgentUnavailable(byte[] p)
         {
             if (p.Length < 6) return;
+            DispatchSpecialFeaturePacket(p, ApplySpecialFeatureUnavailable);
             HandleGpsUnavailable(p);
             if(p[2]==0x1D && p[3]==0xE9 && p[4]<2)
             {
