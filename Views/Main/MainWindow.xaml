@@ -2391,17 +2391,17 @@
                                                                                            HorizontalAlignment="Center"/>
                                                                                 <Expander IsExpanded="False"
                                                                                           Margin="0,7,0,0"
-                                                                                          Foreground="#C9E987">
+                                                                                          Foreground="#A5D5EA">
                                                                                     <Expander.Header>
                                                                                         <TextBlock Text="RPY RAW / OFFSET 안내"
-                                                                                                   Foreground="#C9E987"
+                                                                                                   Foreground="#A5D5EA"
                                                                                                    FontSize="10"
                                                                                                    FontWeight="Bold"/>
                                                                                     </Expander.Header>
                                                                                     <Border Margin="0,5,0,1"
                                                                                             Padding="7"
                                                                                             Background="#30383E"
-                                                                                            BorderBrush="#C9E987"
+                                                                                            BorderBrush="#A5D5EA"
                                                                                             BorderThickness="1"
                                                                                             CornerRadius="3">
                                                                                         <StackPanel>
@@ -3700,61 +3700,7 @@
                                                             <Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/>
                                                         </ScrollViewer.Resources>
                                                         <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="2,0,2,0">
-                                                            <!-- [EO / IR] 영상 Overlay 표시 제어 -->
-                                                            <Border Margin="0,2,3,0"
-                                                                    Background="#5F666D"
-                                                                    BorderBrush="#95A5B0"
-                                                                    BorderThickness="1.5"
-                                                                    Padding="12">
-
-                                                                <StackPanel>
-
-                                                                    <!-- 제목 -->
-                                                                    <TextBlock Text="DISPLAY OVERLAY"
-                                                                               HorizontalAlignment="Center"
-                                                                               Foreground="White"
-                                                                               FontWeight="Bold"
-                                                                               Margin="0,0,0,8"/>
-
-                                                                    <!-- EO / IR 중앙 십자선 활성화 / 비활성화 Toggle 버튼 -->
-                                                                    <Button Content="{Binding CrosshairButtonText}"
-                                                                            Command="{Binding ToggleCrosshairCommand}"
-                                                                            Height="34"
-                                                                            Foreground="White"
-                                                                            FontWeight="Bold"
-                                                                            BorderThickness="1"
-                                                                            BorderBrush="#95A5B0"
-                                                                            Cursor="Hand">
-                                                                        <Button.Style>
-                                                                            <Style TargetType="Button">
-                                                                                <Setter Property="Background"
-                                                                                        Value="#4A4F55"/>
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding IsCrosshairVisible}" Value="True">
-                                                                                        <Setter Property="Background" Value="#FF3B30"/>
-                                                                                    </DataTrigger>
-                                                                                    <Trigger Property="IsMouseOver"
-                                                                                             Value="True">
-                                                                                        <Setter Property="Opacity"
-                                                                                                Value="0.85"/>
-                                                                                    </Trigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </Button.Style>
-                                                                    </Button>
-
-                                                                    <!-- 기능 안내 -->
-                                                                    <TextBlock Text="※ EO / IR 화면의 중앙 기준점을 동시에 표시하거나 숨깁니다."
-                                                                               Foreground="#D0D7DE"
-                                                                               FontSize="10"
-                                                                               TextWrapping="Wrap"
-                                                                               HorizontalAlignment="Center"
-                                                                               TextAlignment="Center"
-                                                                               Margin="0,7,0,0"/>
-
-                                                                </StackPanel>
-
-                                                            </Border>
+                                                            <!-- V32_0: 십자선 표시/설정은 상단 장비 제어 체크박스로 통합. -->
                                                             <!-- [PAN] / [TILT] 제어 -->
                                                             <Border Grid.Row="2"
                                                                     Margin="0,5,5,7"

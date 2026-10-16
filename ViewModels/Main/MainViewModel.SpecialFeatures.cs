@@ -17,15 +17,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private ICommand _refreshSpecialFeaturesCommand;
         private int _specialFeatureEpoch;
         private bool _specialWasReady;
+        private string _specialTargetKey;
         private long _lastSpecialCapabilityQuery;
         private byte _specialCapabilityReceived;
         private long _specialCapabilityDeadline;
         private string _specialFeatureSummary;
         public ObservableCollection<CameraSpecialFeatureRow> EoSpecialFeatures {get{EnsureSpecialFeatures();return _eoSpecialFeatures;}}
         public ObservableCollection<CameraSpecialFeatureRow> IrSpecialFeatures {get{EnsureSpecialFeatures();return _irSpecialFeatures;}}
-        private bool SpecialFeatureReady => CameraFeatureTransportReady && IsEnvironmentStatusSelected && IsSelectedControlAgentWebAgent;
+        // 2026-10-16 V32_0: LA/WEB share camera feature packets; RTSP alone is not a control connection.
+        private bool SpecialFeatureReady => CameraFeatureTransportReady && IsSelectedConnectionTarget;
+        private string SpecialFeatureAgentName => IsSelectedControlAgentWebAgent ? "WEB AGENT" : "LA AGENT";
+        private string SpecialFeatureTargetKey => _connectionSessionId+"|"+SelectedControlAgentProfile.DisplayName+"|"+ControlAgentIp+"|"+ControlAgentPortText;
         public bool CanRefreshSpecialFeatures => SpecialFeatureReady && DateTime.UtcNow.Ticks-_lastSpecialCapabilityQuery>=TimeSpan.FromSeconds(2).Ticks;
-        public string SpecialFeatureSummary => !SpecialFeatureReady?"WEB AGENT 연결 후 지원 조회가 가능합니다.":_specialFeatureSummary??"지원 미조회 · 조회 후 사용하세요.";
+        public string SpecialFeatureSummary => SpecialFeatureAgentName+" · "+(!SpecialFeatureReady?"선택 장비 연결 후 지원 조회가 가능합니다.":_specialFeatureSummary??"지원 미조회 · 조회 후 사용하세요.");
         public ICommand RefreshSpecialFeaturesCommand => _refreshSpecialFeaturesCommand??(_refreshSpecialFeaturesCommand=new RelayCommand(QuerySpecialFeatureSupport,()=>CanRefreshSpecialFeatures));
         private IEnumerable<CameraSpecialFeatureRow> SpecialFeatureRows => _eoSpecialFeatures.Concat(_irSpecialFeatures);
 
@@ -39,7 +43,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     if((definition.Targets&(1<<target))!=0)
                     {
                         var row=new CameraSpecialFeatureRow(definition,target,()=>SpecialFeatureReady,
-                            ()=>IsOperationCommandEnabled && !IsControlInputLocked,SendSpecialFeature,QuerySpecialFeatureState);
+                            ()=>IsOperationCommandEnabled && !IsControlInputLocked,SendSpecialFeature,QuerySpecialFeatureState,
+                            ()=>SpecialFeatureAgentName+" 연결 필요");
                         (target==0?_eoSpecialFeatures:_irSpecialFeatures).Add(row);
                     }
         }
@@ -64,9 +69,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>UI 큐에 넣기 전에 세션을 캡처하고 연결 변경 후 도착한 callback을 버린다.</summary>
         private void DispatchSpecialFeaturePacket(byte[] p,Action<byte[]> apply)
         {
-            int epoch=_specialFeatureEpoch;string session=_connectionSessionId;var copy=(byte[])p.Clone();
+            int epoch=_specialFeatureEpoch;string session=_connectionSessionId,target=SpecialFeatureTargetKey;var copy=(byte[])p.Clone();
             Application.Current?.Dispatcher.BeginInvoke(new Action(()=>
-            {if(epoch==_specialFeatureEpoch && session==_connectionSessionId && SpecialFeatureReady)apply(copy);}));
+            {if(epoch==_specialFeatureEpoch && session==_connectionSessionId && target==SpecialFeatureTargetKey && SpecialFeatureReady)apply(copy);}));
         }
         private void ApplySpecialFeatureCapability(byte[] p)
         {
@@ -127,7 +132,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void TickSpecialFeatures()
         {
             bool ready=SpecialFeatureReady;
-            if(ready!=_specialWasReady){_specialWasReady=ready;ResetSpecialFeatureSession();if(ready)QuerySpecialFeatureSupport();}
+            string targetKey=SpecialFeatureTargetKey;
+            if(ready!=_specialWasReady || targetKey!=_specialTargetKey)
+            {_specialWasReady=ready;_specialTargetKey=targetKey;ResetSpecialFeatureSession();if(ready)QuerySpecialFeatureSupport();}
             if(_eoSpecialFeatures==null)return;
             if(_specialCapabilityDeadline!=0 && DateTime.UtcNow.Ticks>=_specialCapabilityDeadline)
             {

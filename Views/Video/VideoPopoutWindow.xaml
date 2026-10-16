@@ -427,7 +427,7 @@
                 FontWeight="Bold"
                 Foreground="White"
                 Background="#B21D232A"
-                BorderBrush="#C9E987"
+                BorderBrush="#A5D5EA"
                 BorderThickness="1"
                 ToolTip="단축키 안내 표시하기"
                 Click="CameraInfoToggleButton_Click"/>

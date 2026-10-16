@@ -847,7 +847,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 실제 연속 이동 제어 시 해당 값을 사용한다.
         /// </summary>
         // 2026-10-08 V30_0: common initial PT speed for every device.
-        private byte _panTiltSpeedLevel = 40;
+        private byte _panTiltSpeedLevel = 30;
 
         /// <summary>
         /// [ZOOM] 버튼 1회 클릭 시 이동할 값
@@ -1416,9 +1416,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             false;
 
         /// <summary>
-        /// EO / IR 및 분리창에 공통 적용하는 고정 적색 십자선.
+        /// 중앙 십자선의 현재 표시 색상.
+        /// 최초 색상은 기존 적색이며, 사용자가 십자선을 다시 켤 때마다
+        /// 적색 -> 주황 -> 황색 -> 녹색 -> 청록 -> 청색 -> 보라 순으로 변경한다.
         /// </summary>
-        private readonly Brush _crosshairBrush =
+        private Brush _crosshairBrush =
             new SolidColorBrush(
                 Color.FromArgb(
                     0xFF,
@@ -1572,14 +1574,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// <summary>
             /// [EO / IR] 중앙 십자선 표시 상태 전환
             ///
-            /// 색상은 빨간색으로 고정하고 표시 여부만 전환한다.
+            /// 버튼을 눌러 숨긴 뒤 다시 표시할 때마다
+            /// EO / IR 영상의 십자선 색상을 7가지 색상으로 순환한다.
             /// </summary>
             ToggleCrosshairCommand =
                 new RelayCommand(() =>
                 {
                     IsCrosshairVisible =
                         !IsCrosshairVisible;
-                    // 2026-10-15 V31_13: record user toggles only; fixed red, no color-cycle state.
+                    // 2026-10-15: inherit V31_13 fixed-red visibility behavior.
                     ConsoleLogHelper.Command("DISPLAY OVERLAY",CrosshairButtonText+" / fixed RED");
                 });
 

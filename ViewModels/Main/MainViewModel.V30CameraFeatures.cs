@@ -225,7 +225,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // Preserve the known wide-angle reference. Scale tangent space, not
             // degrees or elapsed PT time. Digital scale remains explicitly estimated.
             double hfov=2*Math.Atan(Math.Tan(tuning.WideHorizontalFov*Math.PI/360)/effectiveRatio)*180/Math.PI;
-            var target=VideoCenterTarget(pose.Item1,pose.Item2,nx,ny,hfov,aspect);
+            var opticalCenter=GetOpticalCenter(ir);
+            nx-=2*(opticalCenter.X-.5);ny-=2*(opticalCenter.Y-.5);
+            // Preserve the same ray when an off-center principal point puts an
+            // edge click outside the original [-1,1] normalized range.
+            double rayScale=Math.Max(1,Math.Max(Math.Abs(nx),Math.Abs(ny)));
+            double projectionFov=2*Math.Atan(Math.Tan(hfov*Math.PI/360)*rayScale)*180/Math.PI;
+            var target=VideoCenterTarget(pose.Item1,pose.Item2,nx/rayScale,ny/rayScale,projectionFov,aspect);
             if(target==null)return false;
             double tilt=Clamp(target.Item2,CurrentMoveControlTiltMinimum,CurrentMoveControlTiltMaximum);
             if(Math.Abs(nx)<.005 && Math.Abs(ny)<.005)return true;

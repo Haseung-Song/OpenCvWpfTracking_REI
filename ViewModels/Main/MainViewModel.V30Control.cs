@@ -138,7 +138,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _v30StatusTimer.Start();
         }
         /// <summary>상태 타이머를 중지하고 종료 시 남은 제어 입력을 해제한다.</summary>
-        public void ShutdownV30Control() { _v30StatusTimer?.Stop(); ReleaseAllControlInputs("Shutdown"); }
+        public void ShutdownV30Control() { StopRoute(); _v30StatusTimer?.Stop(); ReleaseAllControlInputs("Shutdown"); }
 
         /// <summary>입력 소유자/채널별 키를 축 명령으로 변환하고 키 해제 및 반복을 처리한다.</summary>
         public bool HandleControlKey(string owner, Key key, bool down, bool ir, bool repeat = false)

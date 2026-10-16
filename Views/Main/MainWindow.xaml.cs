@@ -217,6 +217,7 @@ namespace OpenCvWpfTracking
             LayoutUpdated += AlignPcClockWithLogo;
 
             LoadLatestGeneratedPanoramaOrKeepDefault();
+            // 2026-10-16 V32_0: panorama additions are backed up; retain original panorama UI.
         }
 
         private void ApplyDefaultCommunicationTabOrder()
@@ -660,6 +661,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            if(InlineOpticalCalibration.IsActive(EoCameraImageView)||InlineOpticalCalibration.IsSettingsHit(EoCameraImageView,e.OriginalSource as DependencyObject)){_isVideoPopoutDragPending=false;_isWindowDragPending=false;return;}
             // 2026-10-12: ToggleButton inside Expander is not Button. Let every overlay control receive its click.
             if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) != null || Ancestor<Expander>(e.OriginalSource as DependencyObject) != null)
             { _isVideoPopoutDragPending = false; _isWindowDragPending = false; return; }
@@ -696,6 +698,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            if(InlineOpticalCalibration.IsActive(IrCameraImageView)||InlineOpticalCalibration.IsSettingsHit(IrCameraImageView,e.OriginalSource as DependencyObject)){_isVideoPopoutDragPending=false;_isWindowDragPending=false;return;}
             // 2026-10-12: preserve shortcut/jog interaction instead of starting a video tear-off drag.
             if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) != null || Ancestor<Expander>(e.OriginalSource as DependencyObject) != null)
             { _isVideoPopoutDragPending = false; _isWindowDragPending = false; return; }
@@ -808,7 +811,7 @@ namespace OpenCvWpfTracking
             e.Handled=true;
             int generation=++_videoCenterClickGeneration;
             await Task.Delay(VideoDoubleClickDelay);
-            if(generation!=_videoCenterClickGeneration || !vm.IsVideoClickCenterEnabled)return;
+            if(generation!=_videoCenterClickGeneration || !vm.IsVideoClickCenterEnabled || InlineOpticalCalibration.IsActive(image))return;
             await vm.CenterVideoPointAsync(ir,2*pixel.X/bitmap.PixelWidth-1,2*pixel.Y/bitmap.PixelHeight-1,bitmap.PixelWidth/(double)bitmap.PixelHeight);
         }
 
@@ -1336,8 +1339,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
-            // 2026-10-15 V31_13: only the outer header click may select the latest event.
-            // Nested AI/FIRE tab clicks tunnel through this handler and must remain manual.
+            // 2026-10-16 V32: preserve V31_13 manual nested-tab selection.
             if(!ReferenceEquals(FindVisualAncestor<TabItem>(e.OriginalSource as DependencyObject),sender))return;
             Dispatcher.BeginInvoke(
                 new Action(() => EventAlertPanel?.SelectLatestEventTab()),

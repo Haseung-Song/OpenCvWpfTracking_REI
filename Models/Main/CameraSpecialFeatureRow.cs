@@ -21,6 +21,7 @@ namespace OpenCvWpfTracking.Models.Main
     {
         private readonly Func<bool> _ready;
         private readonly Func<bool> _unlocked;
+        private readonly Func<string> _connectionHint;
         private readonly Action<CameraSpecialFeatureRow,int> _send;
         private readonly Action<CameraSpecialFeatureRow> _query;
         private string _input="50",_message,_lastSignature;
@@ -61,7 +62,7 @@ namespace OpenCvWpfTracking.Models.Main
         {
             get
             {
-                if(!_ready())return "WEB AGENT 연결 필요";
+                if(!_ready())return _connectionHint();
                 if(!CapabilityKnown)return _message??"지원 미조회";
                 if(Capability==null || (Capability.Flags&1)==0)return _message??"장비 미지원";
                 if(Capability.ValueType!=Definition.ValueType)return "값 형식 불일치 · 제어 차단";
@@ -74,9 +75,10 @@ namespace OpenCvWpfTracking.Models.Main
         }
         public event PropertyChangedEventHandler PropertyChanged;
         public CameraSpecialFeatureRow(CameraFeatureDefinition definition,byte target,Func<bool> ready,Func<bool> unlocked,
-            Action<CameraSpecialFeatureRow,int> send,Action<CameraSpecialFeatureRow> query)
+            Action<CameraSpecialFeatureRow,int> send,Action<CameraSpecialFeatureRow> query,Func<string> connectionHint=null)
         {
             Definition=definition;Target=target;_ready=ready;_unlocked=unlocked;_send=send;_query=query;
+            _connectionHint=connectionHint??(()=>"AGENT 연결 필요");
             ApplyCommand=new RelayCommand(ApplyInput,()=>CanEdit);
             OffCommand=new RelayCommand(()=>Apply(0),()=>CanOff);
             OnCommand=new RelayCommand(()=>Apply(1),()=>CanOn);

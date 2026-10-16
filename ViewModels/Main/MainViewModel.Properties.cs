@@ -675,6 +675,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IsOperationCommandEnabled;
 
         public bool IsPresetScanControlLocked =>
+            IsRouteRunning ||
             IsLaPresetScanRunning ||
             IsPresetScanRunning;
 
@@ -2413,6 +2414,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     return 0;
                 }
+
+                // V32_0: disconnected EO/IR show the configured default, not cached lens attenuation.
+                // Connected movement keeps the existing zoom-dependent speed safety calculation.
+                if (!_isDeviceConnectionRequested) return baseProtocolSpeed;
 
                 return ApplyZoomAdaptivePanTiltSpeed(
                     baseProtocolSpeed,

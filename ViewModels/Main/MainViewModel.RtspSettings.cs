@@ -323,7 +323,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ApplyProfilePanTiltSpeedDefault(ControlAgentProfileOption profile)
         {
             // 2026-10-08 V30_0: profile default only; telemetry never resets user speed.
-            byte speed = 40;
+            byte speed = 30;
             PanTiltSpeedLevel = speed;
             ConsoleLogHelper.State("PTZ SPEED", "Profile default=" + speed);
         }

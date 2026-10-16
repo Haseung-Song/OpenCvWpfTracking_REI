@@ -77,8 +77,16 @@
     <Compile Include="Views\Main\MainWindow.V30Control.cs" />
     <Compile Include="Views\Video\VideoShortcutGuide.cs" />
     <Content Include="Config\ControlTuning.xml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Compile Include="Services\Control\OpticalCenterCalibration.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.OpticalCenter.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.ScanTraversal.cs" />
+    <Compile Include="Views\Video\InlineOpticalCalibration.cs" />
+    <Compile Include="Models\Main\ScanRoute.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.Routes.cs" />
     <Compile Include="Views\Video\LegacyVideoIntegration.cs" />
-    <Content Include="V31_13_최종_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Compile Include="Views\Video\PanoramaLinkedView.cs" />
+    <Compile Include="Views\Main\MainWindow.LegacyFeatures.cs" />
+    <Content Include="V32_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Resource Include="Images\Demo\Toruss.ico" />
     <Reference Include="FFmpeg.AutoGen, Version=8.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\FFmpeg.AutoGen.8.1.0\lib\netstandard2.0\FFmpeg.AutoGen.dll</HintPath>

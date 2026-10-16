@@ -87,6 +87,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task MoveHomePositionAsync()
         {
+            InvalidatePanoramaReference();
             ConsoleLogHelper.Command(
                 "HOME / ZERO",
                 "HOME POSITION requested");
@@ -372,6 +373,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task SetPanZeroAsync()
         {
+            InvalidatePanoramaReference();
             ConsoleLogHelper.Command(
                 "HOME / ZERO",
                 "PAN ZERO requested");
@@ -492,6 +494,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task SetTiltZeroAsync()
         {
+            InvalidatePanoramaReference();
             ConsoleLogHelper.Command(
                 "HOME / ZERO",
                 "TILT ZERO requested");
@@ -1155,7 +1158,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private async Task<bool> MoveLaPresetPointDirectAsync(
             PresetPointOption preset,
             CancellationToken cancellationToken,
-            bool scanTiming = false)
+            bool scanTiming = false,int? routeSpeed=null,int? routeDelay=null,bool? onlyIr=null)
         {
             if (preset == null) return false;
             int storedValue;
@@ -1175,7 +1178,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     1,
                     Math.Min(
                         60,
-                        LaPresetScanSpeed));
+                        routeSpeed??LaPresetScanSpeed));
 
             int settleTimeoutMs =
                 CalculatePresetPanTiltSettleTimeoutMs(
@@ -1301,7 +1304,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     GetCurrentIrFocusStandardPosition());
 
             bool lensResult = await RestorePresetLensWithinDelayAsync(
-                eoZoom, eoFocus, irZoom, irFocus, LaPresetScanDelay, scanTiming, cancellationToken);
+                eoZoom, eoFocus, irZoom, irFocus, routeDelay??LaPresetScanDelay, scanTiming, cancellationToken,onlyIr);
 
             bool result =
                 speedResult &&
@@ -1770,7 +1773,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int irPosition,
             CancellationToken cancellationToken,
             int eoTolerance = LensSyncTargetTolerance,
-            int irTolerance = 1)
+            int irTolerance = 1,bool? onlyIr=null)
         {
             int safeEoPosition =
                 Clamp(
@@ -1791,6 +1794,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 HasFreshPresetLens(true,true) && Math.Abs(
                     GetCurrentIrZoomStandardPosition() -
                     safeIrPosition) <= irTolerance;
+            if(onlyIr==true)eoAlreadyAtTarget=true;if(onlyIr==false)irAlreadyAtTarget=true;
 
             if (eoAlreadyAtTarget &&
                 irAlreadyAtTarget)
@@ -1881,7 +1885,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int irStandardPosition,
             CancellationToken cancellationToken,
             int eoTolerance = LensSyncTargetTolerance,
-            int irTolerance = IrFocusSyncTolerance)
+            int irTolerance = IrFocusSyncTolerance,bool? onlyIr=null)
         {
             int safeEoPosition =
                 Clamp(
@@ -1907,6 +1911,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     GetCurrentIrFocusStandardPosition() -
                     safeIrStandardPosition) <=
                 irTolerance;
+            if(onlyIr==true)eoAlreadyAtTarget=true;if(onlyIr==false)irAlreadyAtTarget=true;
 
             if (eoAlreadyAtTarget &&
                 irAlreadyAtTarget)
@@ -1990,7 +1995,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool irResult =
                 await irMoveTask;
 
-            irResult=irResult && HasFreshPresetLens(true,false) &&
+            irResult=onlyIr==false || irResult && HasFreshPresetLens(true,false) &&
                 Math.Abs(GetCurrentIrFocusStandardPosition()-safeIrStandardPosition)<=irTolerance;
             cancellationToken.ThrowIfCancellationRequested();
             if(eoResult && !eoAlreadyAtTarget && (IsEnvironmentStatusSelected || _connectedEoCtecSource==null))

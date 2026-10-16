@@ -444,6 +444,14 @@ namespace OpenCvWpfTracking
                 RepeatButton nextButton)
             {
                 _grid = grid ?? throw new ArgumentNullException(nameof(grid));
+                // 2026-10-16 V32_0: pagination owns vertical navigation. Hidden logical
+                // scrolling must not expose a further blank row after the final fitted row.
+                ScrollViewer.SetCanContentScroll(_grid,false);
+                _grid.EnableRowVirtualization=false; // At most 22 rows are rendered per page.
+                _grid.PreviewMouseWheel+=(sender,args)=>args.Handled=true;
+                _grid.AddHandler(ScrollViewer.ScrollChangedEvent,new ScrollChangedEventHandler((sender,args)=>{
+                    if(args.VerticalOffset>0&&args.OriginalSource is ScrollViewer viewer)viewer.ScrollToVerticalOffset(0);
+                }));
                 _totalText = totalText ?? throw new ArgumentNullException(nameof(totalText));
                 _selectedText = selectedText ?? throw new ArgumentNullException(nameof(selectedText));
                 _pageText = pageText ?? throw new ArgumentNullException(nameof(pageText));

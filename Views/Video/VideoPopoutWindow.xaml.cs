@@ -130,6 +130,7 @@ namespace OpenCvWpfTracking
                 _viewModel;
 
             ConfigureCameraBinding();
+            LegacyVideoIntegration.Attach(CalibratedCrosshair,CameraImage,_viewModel,()=>_cameraType==VideoPopoutCameraType.Ir);
             Func<double> aspect=()=>VideoShortcutGuide.SourceAspect(CameraImage,_cameraType==VideoPopoutCameraType.Ir?1.25:16.0/9);
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content,EoAlarmPanel,CameraImage,aspect);
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content,IrAlarmPanel,CameraImage,aspect);
@@ -317,6 +318,7 @@ namespace OpenCvWpfTracking
             object sender,
             MouseButtonEventArgs e)
         {
+            if(InlineOpticalCalibration.IsActive(CameraImage)||InlineOpticalCalibration.IsSettingsHit(CameraImage,e.OriginalSource as DependencyObject)){_centerClickPending=false;return;}
             // V31_6: 배율 표시 버튼은 영상 PTZF 대상 선택·중심 이동 입력으로 취급하지 않는다.
             if (ZoomRatioToggleButton.IsMouseOver)
             {

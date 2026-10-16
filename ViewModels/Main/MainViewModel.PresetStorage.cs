@@ -277,6 +277,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     .ThenBy(p => p.SavedOrder)
                     .ToArray();
 
+            if(IsPresetPanOrderMode)result=result.OrderBy(p=>NormalizeToSignedAngle(p.Pan)).ThenBy(p=>p.Tilt).ToArray();
+            if(IsPresetPingPong && result.Length>2)result=result.Concat(result.Reverse().Skip(1).Take(result.Length-2)).ToArray();
             ConsoleLogHelper.State(
                 "PRESET SCAN ORDER",
                 "MODE=" + _presetScanOrderMode +

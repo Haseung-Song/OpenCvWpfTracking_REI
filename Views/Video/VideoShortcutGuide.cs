@@ -32,7 +32,7 @@ namespace OpenCvWpfTracking
             Point b=video.TranslatePoint(new Point((video.ActualWidth+width)/2,(video.ActualHeight+height)/2),host);
             return new Rect(a,b);
         }
-        private static void WatchOverlayLayout(FrameworkElement host,Action update)
+        internal static void WatchOverlayLayout(FrameworkElement host,Action update)
         {
             bool reported=false;
             EventHandler handler=(s,e)=>{try{update();}catch(Exception error){if(!reported){reported=true;ConsoleLogHelper.Error("VIDEO UI / CONTENT RECT","Overlay update skipped; video unchanged",error);}}};

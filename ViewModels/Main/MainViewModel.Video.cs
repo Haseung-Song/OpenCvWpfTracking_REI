@@ -686,6 +686,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private async Task DisconnectCoreAsync(long session)
         {
+            StopRoute();
             ConsoleLogHelper.Command(
                 "DEVICE CONNECT",
                 "Disconnect requested");

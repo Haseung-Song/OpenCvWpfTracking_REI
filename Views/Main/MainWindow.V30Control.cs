@@ -47,6 +47,7 @@ namespace OpenCvWpfTracking
                     fov.Margin = new Thickness(0, 0, 10, 0);
                     fov.SetBinding(ToggleButton.IsCheckedProperty, new Binding("IsFovSpeedEnabled") { Mode = BindingMode.TwoWay }); options.Children.Add(fov);
                     options.Children.Add(CreateFovTuningEditor());
+                    // V32_0: crosshair tools live above each video's ratio button, not in the equipment column.
                     panel.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(68, 79, 88)), BorderBrush = new SolidColorBrush(Color.FromRgb(126, 148, 161)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 3, 5, 3), Child = options });
                     Grid.SetRow(panel, outer.RowDefinitions.Count - 1); outer.Children.Add(panel);
                 }
@@ -213,6 +214,8 @@ namespace OpenCvWpfTracking
             Panel.SetZIndex(ratioHost, 60); grid.Children.Add(ratioHost);
             var video=ir?IrCameraImageView:EoCameraImageView;
             VideoShortcutGuide.AttachVideoLabelPositions(grid,video,ratioHost,connection,()=>VideoShortcutGuide.SourceAspect(video,ir?1.25:16.0/9));
+            var marker=LogicalDescendants<Control>(grid).FirstOrDefault(c=>c.Template==FindResource("CenterCrosshairTemplate"));
+            if(marker!=null)LegacyVideoIntegration.Attach(marker,ir?IrCameraImageView:EoCameraImageView,vm,()=>ir);
             var help = new Expander { Name = ir ? "IrVideoShortcutHelp" : "EoVideoShortcutHelp", IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top, Foreground = LegacyVideoIntegration.ChannelBrush(ir), Margin = new Thickness(14), Template=VideoShortcutGuide.MainGuideTemplate(),
                 Content = VideoShortcutGuide.CreateContent(ir) };

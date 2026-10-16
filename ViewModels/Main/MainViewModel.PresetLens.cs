@@ -16,15 +16,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         // Preset-only budget: correction and dwell share the configured delay.
         // PAN/TILT travel remains outside this budget. Normal lens controls keep their tolerances.
         private async Task<bool> RestorePresetLensWithinDelayAsync(
-            int ez,int ef,int iz,int iff,int delaySeconds,bool waitRemaining,CancellationToken token)
+            int ez,int ef,int iz,int iff,int delaySeconds,bool waitRemaining,CancellationToken token,bool? onlyIr=null)
         {
             int budgetMs=Math.Max(1,Math.Min(60,delaySeconds))*1000;
             var timer=Stopwatch.StartNew();
             bool zoom=await RunPresetLensStageAsync(true,Math.Max(1,budgetMs/2),
-                ct=>MoveLaPresetZoomDirectAsync(ez,iz,ct,PresetEoLensTolerance,PresetIrLensTolerance),token);
+                ct=>MoveLaPresetZoomDirectAsync(ez,iz,ct,PresetEoLensTolerance,PresetIrLensTolerance,onlyIr),token);
             token.ThrowIfCancellationRequested();
             bool focus=await RunPresetLensStageAsync(false,Math.Max(1,budgetMs-(int)timer.ElapsedMilliseconds),
-                ct=>MoveLaPresetFocusDirectAsync(ef,iff,ct,PresetEoLensTolerance,PresetIrLensTolerance),token);
+                ct=>MoveLaPresetFocusDirectAsync(ef,iff,ct,PresetEoLensTolerance,PresetIrLensTolerance,onlyIr),token);
             long correctionMs=timer.ElapsedMilliseconds;
             ConsoleLogHelper.State("PRESET LENS BUDGET",
                 "BUDGET_MS="+budgetMs+" / CORRECTION_MS="+correctionMs+" / ZOOM="+zoom+" / FOCUS="+focus+
