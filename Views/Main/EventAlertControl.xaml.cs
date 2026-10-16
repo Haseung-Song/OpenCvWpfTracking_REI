@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.ViewModels.Main;
 using System;
 using System.Collections;
@@ -15,6 +15,8 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using System.Windows.Media;
 
+// 2026-10-16: 이벤트 하위 탭과 실제 뷰포트 기준 페이지 표시.
+// 코드 정비: 한국어 설명과 함수 간격·region을 정리하며 기존 운용 흐름은 유지한다.
 namespace OpenCvWpfTracking
 {
     /// <summary>
@@ -23,19 +25,12 @@ namespace OpenCvWpfTracking
     public partial class EventAlertControl : UserControl
     {
         private EventPageController _aiPager;
-
         private EventPageController _firePager;
-
         private MainViewModel _subscribedViewModel;
-
         private DispatcherOperation _pendingEventTabSelection;
-
         private int _pendingEventTabIndex = -1;
-
         private bool _hadActiveAiEvent;
-
         private bool _hadActiveFireEvent;
-
         public EventAlertControl()
         {
             InitializeComponent();
@@ -44,12 +39,15 @@ namespace OpenCvWpfTracking
             DataContextChanged += EventAlertControl_DataContextChanged;
         }
 
+        /// <summary>
+        /// 선택한 구역 이벤트의 상세 화면을 연다.
+        /// </summary>
         private void ZoneEventDetail_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             var row = ItemsControl.ContainerFromElement((DataGrid)sender, e.OriginalSource as DependencyObject) as DataGridRow;
-            if (!(row?.Item is FireEventRecord record)) return;
-            MessageBox.Show(Window.GetWindow(this), "EVENT " + record.EventId + " / " + record.Camera + " / " + record.DetectionType +
-                "\n\n" + record.ZoneDetailText, "FIRE / SMOKE 위치 구역", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (!(row?.Item is FireEventRecord record))
+                return;
+            MessageBox.Show(Window.GetWindow(this), "EVENT " + record.EventId + " / " + record.Camera + " / " + record.DetectionType + "\n\n" + record.ZoneDetailText, "FIRE / SMOKE 위치 구역", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         /// <summary>
@@ -59,16 +57,11 @@ namespace OpenCvWpfTracking
         {
             if (_aiPager == null)
             {
-                _aiPager = new EventPageController(
-                    AiEventGrid, AiTotalText, AiSelectedText,
-                    AiPageText, AiPreviousButton, AiNextButton);
-                _firePager = new EventPageController(
-                    FireEventGrid, FireTotalText, FireSelectedText,
-                    FirePageText, FirePreviousButton, FireNextButton);
+                _aiPager = new EventPageController(AiEventGrid, AiTotalText, AiSelectedText, AiPageText, AiPreviousButton, AiNextButton);
+                _firePager = new EventPageController(FireEventGrid, FireTotalText, FireSelectedText, FirePageText, FirePreviousButton, FireNextButton);
             }
 
             SubscribeEventCollections(DataContext as MainViewModel);
-
             // 2026-08-24: 최초 표시와 상위 이벤트 알림 탭 진입 시에만 최신 이벤트 탭을 선택한다.
             // 행 추가마다 재선택하지 않아 사용자가 이후 AI/FIRE 하위 탭을 자유롭게 전환할 수 있다.
             SelectLatestEventTab();
@@ -78,22 +71,25 @@ namespace OpenCvWpfTracking
         /// 2026-08-24: Control 재로드 및 DataContext 교체 시 이벤트 컬렉션 구독을 안전하게 갱신한다.
         /// 새 이벤트 Add만 자동 탭 선택 대상으로 사용하며 삭제·초기화 Reset은 제외한다.
         /// </summary>
-        private void EventAlertControl_DataContextChanged(
-            object sender,
-            DependencyPropertyChangedEventArgs e)
+        private void EventAlertControl_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (IsLoaded)
             {
                 SubscribeEventCollections(e.NewValue as MainViewModel);
             }
-
         }
 
+        /// <summary>
+        /// 이벤트 화면을 분리할 때 등록한 수신 구독을 해제한다.
+        /// </summary>
         private void EventAlertControl_Unloaded(object sender, RoutedEventArgs e)
         {
             SubscribeEventCollections(null);
         }
 
+        /// <summary>
+        /// 현재 ViewModel의 이벤트 목록 변경을 구독한다.
+        /// </summary>
         private void SubscribeEventCollections(MainViewModel viewModel)
         {
             if (ReferenceEquals(_subscribedViewModel, viewModel))
@@ -103,57 +99,49 @@ namespace OpenCvWpfTracking
 
             if (_subscribedViewModel != null)
             {
-                _subscribedViewModel.PropertyChanged -=
-                    SubscribedViewModel_PropertyChanged;
-                _subscribedViewModel.AiDetectionEvents.CollectionChanged -=
-                    AiDetectionEvents_CollectionChanged;
-                _subscribedViewModel.FireDetectionEvents.CollectionChanged -=
-                    FireDetectionEvents_CollectionChanged;
+                _subscribedViewModel.PropertyChanged -= SubscribedViewModel_PropertyChanged;
+                _subscribedViewModel.AiDetectionEvents.CollectionChanged -= AiDetectionEvents_CollectionChanged;
+                _subscribedViewModel.FireDetectionEvents.CollectionChanged -= FireDetectionEvents_CollectionChanged;
             }
 
             _subscribedViewModel = viewModel;
-
             if (_subscribedViewModel != null)
             {
                 _hadActiveAiEvent = _subscribedViewModel.ActiveAiCount > 0;
                 _hadActiveFireEvent = _subscribedViewModel.ActiveFireCount > 0;
-                _subscribedViewModel.PropertyChanged +=
-                    SubscribedViewModel_PropertyChanged;
-                _subscribedViewModel.AiDetectionEvents.CollectionChanged +=
-                    AiDetectionEvents_CollectionChanged;
-                _subscribedViewModel.FireDetectionEvents.CollectionChanged +=
-                    FireDetectionEvents_CollectionChanged;
+                _subscribedViewModel.PropertyChanged += SubscribedViewModel_PropertyChanged;
+                _subscribedViewModel.AiDetectionEvents.CollectionChanged += AiDetectionEvents_CollectionChanged;
+                _subscribedViewModel.FireDetectionEvents.CollectionChanged += FireDetectionEvents_CollectionChanged;
             }
             else
             {
                 _hadActiveAiEvent = false;
                 _hadActiveFireEvent = false;
             }
-
         }
 
         /// <summary>
         /// Active 개수가 이미 1 이상인 상태에서도 새 BBox 이벤트가 추가되면
         /// 실제 이벤트 종류의 하위 탭으로 즉시 전환한다.
         /// </summary>
-        private void AiDetectionEvents_CollectionChanged(
-            object sender,
-            NotifyCollectionChangedEventArgs e)
+        private void AiDetectionEvents_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            // 2026-09-17: 하이브리드 이벤트마다 탭을 강제로 전환하면 UI가 깜빡이므로
-            // 패널을 여는 시점의 최신 이벤트 선택만 유지한다.
+        // 2026-09-17: 하이브리드 이벤트마다 탭을 강제로 전환하면 UI가 깜빡이므로
+        // 패널을 여는 시점의 최신 이벤트 선택만 유지한다.
         }
 
-        private void FireDetectionEvents_CollectionChanged(
-            object sender,
-            NotifyCollectionChangedEventArgs e)
+        /// <summary>
+        /// 탐지 목록 변경에 따른 화면 선택과 요약을 갱신한다.
+        /// </summary>
+        private void FireDetectionEvents_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            // 2026-09-17: 빈번한 자동 탭 전환 방지.
+        // 2026-09-17: 빈번한 자동 탭 전환 방지.
         }
 
-        private void SubscribedViewModel_PropertyChanged(
-            object sender,
-            PropertyChangedEventArgs e)
+        /// <summary>
+        /// 이벤트 화면과 관련된 ViewModel 속성 변경을 반영한다.
+        /// </summary>
+        private void SubscribedViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             MainViewModel viewModel = sender as MainViewModel;
             if (viewModel == null)
@@ -171,7 +159,6 @@ namespace OpenCvWpfTracking
                 bool hasActiveFireEvent = viewModel.ActiveFireCount > 0;
                 _hadActiveFireEvent = hasActiveFireEvent;
             }
-
         }
 
         /// <summary>
@@ -181,22 +168,22 @@ namespace OpenCvWpfTracking
         private void QueueNewEventTabSelection(int tabIndex)
         {
             _pendingEventTabIndex = tabIndex == 1 ? 1 : 0;
-            if (_pendingEventTabSelection != null &&
-                _pendingEventTabSelection.Status == DispatcherOperationStatus.Pending)
+            if (_pendingEventTabSelection != null && _pendingEventTabSelection.Status == DispatcherOperationStatus.Pending)
             {
                 return;
             }
 
-            _pendingEventTabSelection = Dispatcher.BeginInvoke(
-                DispatcherPriority.DataBind,
-                new Action(() =>
-                {
-                    int resolvedIndex = _pendingEventTabIndex;
-                    _pendingEventTabIndex = -1;
-                    ApplyEventTabSelection(resolvedIndex, "NEW EVENT");
-                }));
+            _pendingEventTabSelection = Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+            {
+                int resolvedIndex = _pendingEventTabIndex;
+                _pendingEventTabIndex = -1;
+                ApplyEventTabSelection(resolvedIndex, "NEW EVENT");
+            }));
         }
 
+        /// <summary>
+        /// 현재 이벤트 종류와 일치하도록 하위 탭 선택을 적용한다.
+        /// </summary>
         private void ApplyEventTabSelection(int tabIndex, string reason)
         {
             try
@@ -204,31 +191,19 @@ namespace OpenCvWpfTracking
                 MainViewModel viewModel = DataContext as MainViewModel;
                 if (viewModel == null || EventTypeTabControl == null || tabIndex < 0)
                 {
-                    ConsoleLogHelper.Warning(
-                        "EVENT UI",
-                        "Event tab auto-selection skipped / ViewModel, TabControl, or index is unavailable");
+                    ConsoleLogHelper.Warning("EVENT UI", "Event tab auto-selection skipped / ViewModel, TabControl, or index is unavailable");
                     return;
                 }
 
                 int resolvedIndex = tabIndex == 1 ? 1 : 0;
                 viewModel.SelectedEventAlertTabIndex = resolvedIndex;
-                EventTypeTabControl.SetCurrentValue(
-                    TabControl.SelectedIndexProperty,
-                    resolvedIndex);
-
-                ConsoleLogHelper.Info(
-                    "EVENT UI",
-                    "Event alert sub-tab selected / REASON=" + reason +
-                    " / TYPE=" +
-                    (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION"));
+                EventTypeTabControl.SetCurrentValue(TabControl.SelectedIndexProperty, resolvedIndex);
+                ConsoleLogHelper.Info("EVENT UI", "Event alert sub-tab selected / REASON=" + reason + " / TYPE=" + (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION"));
             }
             catch (Exception exception)
             {
-                ConsoleLogHelper.Error(
-                    "EVENT UI",
-                    "Event tab auto-selection failed / " + exception.Message);
+                ConsoleLogHelper.Error("EVENT UI", "Event tab auto-selection failed / " + exception.Message);
             }
-
         }
 
         /// <summary>
@@ -239,62 +214,48 @@ namespace OpenCvWpfTracking
         {
             try
             {
-                MainViewModel viewModel =
-                    DataContext as MainViewModel;
-
+                MainViewModel viewModel = DataContext as MainViewModel;
                 if (viewModel == null || EventTypeTabControl == null)
                 {
-                    ConsoleLogHelper.Warning(
-                        "EVENT UI",
-                        "Event tab selection skipped / ViewModel or TabControl is unavailable");
+                    ConsoleLogHelper.Warning("EVENT UI", "Event tab selection skipped / ViewModel or TabControl is unavailable");
                     return;
                 }
 
                 // 2026-08-24: 저장된 인덱스만 신뢰하지 않고 실제 목록의 최신 시각을
                 // 비교한다. 테스트 프로그램 FIRE 이벤트도 항상 FIRE 탭으로 연결된다.
-                DateTime? latestAiTime = viewModel.AiDetectionEvents.Count > 0
-                    ? viewModel.AiDetectionEvents.Max(item => item.DetectedTime)
-                    : (DateTime?)null;
-                DateTime? latestFireTime = viewModel.FireDetectionEvents.Count > 0
-                    ? viewModel.FireDetectionEvents.Max(item => item.DetectedTime)
-                    : (DateTime?)null;
-                int resolvedIndex = latestFireTime.HasValue &&
-                    (!latestAiTime.HasValue || latestFireTime.Value >= latestAiTime.Value)
-                    ? 1
-                    : latestAiTime.HasValue
-                        ? 0
-                        : viewModel.SelectedEventAlertTabIndex;
-
+                DateTime? latestAiTime = viewModel.AiDetectionEvents.Count > 0 ? viewModel.AiDetectionEvents.Max(item => item.DetectedTime) : (DateTime? )null;
+                DateTime? latestFireTime = viewModel.FireDetectionEvents.Count > 0 ? viewModel.FireDetectionEvents.Max(item => item.DetectedTime) : (DateTime? )null;
+                int resolvedIndex = latestFireTime.HasValue && (!latestAiTime.HasValue || latestFireTime.Value >= latestAiTime.Value) ? 1 : latestAiTime.HasValue ? 0 : viewModel.SelectedEventAlertTabIndex;
                 ApplyEventTabSelection(resolvedIndex, "EVENT PANEL OPEN");
-
-                ConsoleLogHelper.Info(
-                    "EVENT UI",
-                    "Event alert tab opened / TYPE=" +
-                    (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION") +
-                    " / AI_COUNT=" + viewModel.AiDetectionEvents.Count +
-                    " / FIRE_COUNT=" + viewModel.FireDetectionEvents.Count);
+                ConsoleLogHelper.Info("EVENT UI", "Event alert tab opened / TYPE=" + (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION") + " / AI_COUNT=" + viewModel.AiDetectionEvents.Count + " / FIRE_COUNT=" + viewModel.FireDetectionEvents.Count);
             }
             catch (Exception exception)
             {
-                ConsoleLogHelper.Error(
-                    "EVENT UI",
-                    "Event tab selection failed / " + exception.Message);
+                ConsoleLogHelper.Error("EVENT UI", "Event tab selection failed / " + exception.Message);
             }
-
         }
 
+        /// <summary>
+        /// AI 이벤트의 이전 페이지로 이동한다.
+        /// </summary>
         private void AiPreviousButton_Click(object sender, RoutedEventArgs e) => _aiPager?.MovePage(-1);
+        /// <summary>
+        /// AI 이벤트의 다음 페이지로 이동한다.
+        /// </summary>
         private void AiNextButton_Click(object sender, RoutedEventArgs e) => _aiPager?.MovePage(1);
+        /// <summary>
+        /// 화재 및 연기 이벤트의 이전 페이지로 이동한다.
+        /// </summary>
         private void FirePreviousButton_Click(object sender, RoutedEventArgs e) => _firePager?.MovePage(-1);
+        /// <summary>
+        /// 화재 및 연기 이벤트의 다음 페이지로 이동한다.
+        /// </summary>
         private void FireNextButton_Click(object sender, RoutedEventArgs e) => _firePager?.MovePage(1);
-
         /// <summary>
         /// 2026-08-28: 페이지 버튼에 초점이 있으면 좌·우 방향키로
         /// AI 또는 FIRE/SMOKE 목록을 같은 방식으로 순환 이동한다.
         /// </summary>
-        private void EventPageButton_PreviewKeyDown(
-            object sender,
-            KeyEventArgs e)
+        private void EventPageButton_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.Left && e.Key != Key.Right)
             {
@@ -303,37 +264,28 @@ namespace OpenCvWpfTracking
 
             try
             {
-                bool isAiPage =
-                    ReferenceEquals(sender, AiPreviousButton) ||
-                    ReferenceEquals(sender, AiNextButton);
-
-                EventPageController pager =
-                    isAiPage
-                        ? _aiPager
-                        : _firePager;
-
+                bool isAiPage = ReferenceEquals(sender, AiPreviousButton) || ReferenceEquals(sender, AiNextButton);
+                EventPageController pager = isAiPage ? _aiPager : _firePager;
                 int direction = e.Key == Key.Left ? -1 : 1;
                 pager?.MovePage(direction);
                 e.Handled = true;
-
-                ConsoleLogHelper.Info(
-                    "EVENT UI",
-                    "Keyboard page navigation / TYPE=" +
-                    (isAiPage ? "AI" : "FIRE_SMOKE") +
-                    " / DIRECTION=" + direction);
+                ConsoleLogHelper.Info("EVENT UI", "Keyboard page navigation / TYPE=" + (isAiPage ? "AI" : "FIRE_SMOKE") + " / DIRECTION=" + direction);
             }
             catch (Exception exception)
             {
                 e.Handled = true;
-                ConsoleLogHelper.Error(
-                    "EVENT UI",
-                    "Keyboard page navigation failed / " + exception.Message);
+                ConsoleLogHelper.Error("EVENT UI", "Keyboard page navigation failed / " + exception.Message);
             }
-
         }
-        private void AiDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _aiPager?.DeleteSelected();
-        private void FireDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _firePager?.DeleteSelected();
 
+        /// <summary>
+        /// 선택된 AI 이벤트 행의 삭제를 요청한다.
+        /// </summary>
+        private void AiDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _aiPager?.DeleteSelected();
+        /// <summary>
+        /// 선택된 화재 및 연기 이벤트 행의 삭제를 요청한다.
+        /// </summary>
+        private void FireDeleteSelectedButton_Click(object sender, RoutedEventArgs e) => _firePager?.DeleteSelected();
         /// <summary>
         /// 선택 개수 표시를 현재 두 표에 동기화한다.
         /// </summary>
@@ -352,27 +304,15 @@ namespace OpenCvWpfTracking
             try
             {
                 DataGrid grid = sender as DataGrid;
-                EventPageController pager = ReferenceEquals(grid, AiEventGrid)
-                    ? _aiPager
-                    : ReferenceEquals(grid, FireEventGrid)
-                        ? _firePager
-                        : null;
-
-                if (grid == null || pager == null || e.Column == null ||
-                    string.IsNullOrWhiteSpace(e.Column.SortMemberPath))
+                EventPageController pager = ReferenceEquals(grid, AiEventGrid) ? _aiPager : ReferenceEquals(grid, FireEventGrid) ? _firePager : null;
+                if (grid == null || pager == null || e.Column == null || string.IsNullOrWhiteSpace(e.Column.SortMemberPath))
                 {
                     e.Handled = true;
-                    ConsoleLogHelper.Warning(
-                        "EVENT UI",
-                        "Event sort skipped / Grid, pager, or sort key is unavailable");
+                    ConsoleLogHelper.Warning("EVENT UI", "Event sort skipped / Grid, pager, or sort key is unavailable");
                     return;
                 }
 
-                ListSortDirection direction =
-                    e.Column.SortDirection == ListSortDirection.Ascending
-                        ? ListSortDirection.Descending
-                        : ListSortDirection.Ascending;
-
+                ListSortDirection direction = e.Column.SortDirection == ListSortDirection.Ascending ? ListSortDirection.Descending : ListSortDirection.Ascending;
                 foreach (DataGridColumn column in grid.Columns)
                 {
                     column.SortDirection = null;
@@ -385,11 +325,8 @@ namespace OpenCvWpfTracking
             catch (Exception exception)
             {
                 e.Handled = true;
-                ConsoleLogHelper.Error(
-                    "EVENT UI",
-                    "Event sort failed / " + exception.Message);
+                ConsoleLogHelper.Error("EVENT UI", "Event sort failed / " + exception.Message);
             }
-
         }
 
         /// <summary>
@@ -398,59 +335,36 @@ namespace OpenCvWpfTracking
         private sealed class EventPageController
         {
             private const double DefaultHeaderHeight = 30.0;
-
             private const int FixedPageSize = 22;
-
             private const double MinimumRowHeight = 27.0;
-
             private const double GridBottomReserve = 3.0;
-
             private readonly DataGrid _grid;
-
             private readonly TextBlock _totalText;
-
             private readonly TextBlock _selectedText;
-
             private readonly TextBlock _pageText;
-
             private readonly RepeatButton _previousButton;
-
             private readonly RepeatButton _nextButton;
-
             private readonly IList _source;
-
             private readonly ICollectionView _view;
-
             private readonly DispatcherTimer _refreshTimer;
-
             private readonly List<object> _orderedItems = new List<object>();
-
             private int _pageIndex;
-
             private int _pageSize = FixedPageSize;
-
             private double _lastAvailableHeight = -1.0;
             private ScrollContentPresenter _rowsViewport;
-
-            private EventRecordComparer _activeComparer =
-                new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
-
-            internal EventPageController(
-                DataGrid grid,
-                TextBlock totalText,
-                TextBlock selectedText,
-                TextBlock pageText,
-                RepeatButton previousButton,
-                RepeatButton nextButton)
+            private EventRecordComparer _activeComparer = new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
+            internal EventPageController(DataGrid grid, TextBlock totalText, TextBlock selectedText, TextBlock pageText, RepeatButton previousButton, RepeatButton nextButton)
             {
                 _grid = grid ?? throw new ArgumentNullException(nameof(grid));
-                // 2026-10-16 V32_0: pagination owns vertical navigation. Hidden logical
-                // scrolling must not expose a further blank row after the final fitted row.
-                ScrollViewer.SetCanContentScroll(_grid,false);
-                _grid.EnableRowVirtualization=false; // At most 22 rows are rendered per page.
-                _grid.PreviewMouseWheel+=(sender,args)=>args.Handled=true;
-                _grid.AddHandler(ScrollViewer.ScrollChangedEvent,new ScrollChangedEventHandler((sender,args)=>{
-                    if(args.VerticalOffset>0&&args.OriginalSource is ScrollViewer viewer)viewer.ScrollToVerticalOffset(0);
+                // 2026-10-16: 수직 이동은 페이지 제어가 담당한다. 숨은 논리 스크롤로
+                // 마지막 표시 행 아래에 빈 행이 추가로 나타나지 않도록 한다.
+                ScrollViewer.SetCanContentScroll(_grid, false);
+                _grid.EnableRowVirtualization = false; // 페이지당 최대 22행만 표시한다.
+                _grid.PreviewMouseWheel += (sender, args) => args.Handled = true;
+                _grid.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((sender, args) =>
+                {
+                    if (args.VerticalOffset > 0 && args.OriginalSource is ScrollViewer viewer)
+                        viewer.ScrollToVerticalOffset(0);
                 }));
                 _totalText = totalText ?? throw new ArgumentNullException(nameof(totalText));
                 _selectedText = selectedText ?? throw new ArgumentNullException(nameof(selectedText));
@@ -459,17 +373,12 @@ namespace OpenCvWpfTracking
                 _nextButton = nextButton ?? throw new ArgumentNullException(nameof(nextButton));
                 _source = grid.ItemsSource as IList;
                 _view = CollectionViewSource.GetDefaultView(grid.ItemsSource);
-                _refreshTimer = new DispatcherTimer(
-                    TimeSpan.FromMilliseconds(80),
-                    DispatcherPriority.Background,
-                    (sender, args) =>
-                    {
-                        _refreshTimer.Stop();
-                        Refresh();
-                    },
-                    _grid.Dispatcher);
+                _refreshTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(80), DispatcherPriority.Background, (sender, args) =>
+                {
+                    _refreshTimer.Stop();
+                    Refresh();
+                }, _grid.Dispatcher);
                 _refreshTimer.Stop();
-
                 if (_view != null)
                 {
                     _view.Filter = IsVisibleOnCurrentPage;
@@ -477,30 +386,32 @@ namespace OpenCvWpfTracking
                     {
                         initialListView.CustomSort = _activeComparer;
                     }
-
                 }
 
                 if (_source is INotifyCollectionChanged observableSource)
                 {
                     observableSource.CollectionChanged += OnSourceCollectionChanged;
                 }
+
                 foreach (FireEventRecord item in _source?.Cast<FireEventRecord>() ?? Enumerable.Empty<FireEventRecord>())
                 {
                     item.PropertyChanged += EventRecord_PropertyChanged;
                 }
 
                 _grid.SizeChanged += OnGridSizeChanged;
-                // 2026-10-15: scrolling the surrounding panel can resize the rows viewport after SizeChanged.
-                _grid.LayoutUpdated += (sender,args)=>{if(UpdatePageSize())QueueRefresh();};
+                // 2026-10-15: 외부 패널 스크롤로 SizeChanged 이후에도 행 뷰포트 높이가 바뀔 수 있다.
+                _grid.LayoutUpdated += (sender, args) =>
+                {
+                    if (UpdatePageSize())
+                        QueueRefresh();
+                };
                 QueueRefresh();
             }
 
             /// <summary>
             /// 2026-08-24: 원본 전체 목록에 정렬을 적용한 후 첫 페이지부터 다시 표시한다.
             /// </summary>
-            internal void ApplySort(
-                string sortMemberPath,
-                ListSortDirection direction)
+            internal void ApplySort(string sortMemberPath, ListSortDirection direction)
             {
                 if (string.IsNullOrWhiteSpace(sortMemberPath))
                 {
@@ -510,7 +421,6 @@ namespace OpenCvWpfTracking
                 _activeComparer = new EventRecordComparer(sortMemberPath, direction);
                 _pageIndex = 0;
                 RebuildOrderedItems();
-
                 if (_view is ListCollectionView listView)
                 {
                     listView.CustomSort = _activeComparer;
@@ -518,29 +428,27 @@ namespace OpenCvWpfTracking
                 else if (_view != null && _view.CanSort)
                 {
                     _view.SortDescriptions.Clear();
-                    _view.SortDescriptions.Add(
-                        new SortDescription(sortMemberPath, direction));
+                    _view.SortDescriptions.Add(new SortDescription(sortMemberPath, direction));
                 }
 
-                ConsoleLogHelper.Info(
-                    "EVENT UI",
-                    "Event list sorted / COLUMN=" + sortMemberPath +
-                    " / DIRECTION=" + direction +
-                    " / TOTAL=" + SourceCount);
+                ConsoleLogHelper.Info("EVENT UI", "Event list sorted / COLUMN=" + sortMemberPath + " / DIRECTION=" + direction + " / TOTAL=" + SourceCount);
                 Refresh();
             }
 
+            /// <summary>
+            /// 유효한 범위 안에서 이벤트 페이지를 이동한다.
+            /// </summary>
             internal void MovePage(int offset)
             {
                 int pageCount = PageCount;
-                _pageIndex =
-                    ((_pageIndex + offset) % pageCount + pageCount) % pageCount;
-                ConsoleLogHelper.Info(
-                    "EVENT UI",
-                    "Event page moved / PAGE=" + (_pageIndex + 1) + "/" + PageCount);
+                _pageIndex = ((_pageIndex + offset) % pageCount + pageCount) % pageCount;
+                ConsoleLogHelper.Info("EVENT UI", "Event page moved / PAGE=" + (_pageIndex + 1) + "/" + PageCount);
                 Refresh();
             }
 
+            /// <summary>
+            /// 현재 선택된 이벤트 행을 해당 원본 목록에서 삭제한다.
+            /// </summary>
             internal void DeleteSelected()
             {
                 if (_source == null || _grid.SelectedItems.Count == 0)
@@ -556,15 +464,15 @@ namespace OpenCvWpfTracking
                         _source.Remove(item);
                         removedCount++;
                     }
-
                 }
 
-                ConsoleLogHelper.Info(
-                    "EVENT UI",
-                    "Selected event rows deleted / COUNT=" + removedCount);
+                ConsoleLogHelper.Info("EVENT UI", "Selected event rows deleted / COUNT=" + removedCount);
                 Refresh();
             }
 
+            /// <summary>
+            /// 현재 페이지와 전체 건수 및 선택 건수를 표시한다.
+            /// </summary>
             internal void UpdateStatus()
             {
                 _totalText.Text = SourceCount + " EVENTS";
@@ -576,11 +484,11 @@ namespace OpenCvWpfTracking
             }
 
             private int SourceCount => _source?.Count ?? 0;
+            private int PageCount => Math.Max(1, (int)Math.Ceiling(SourceCount / (double)Math.Max(1, _pageSize)));
 
-            private int PageCount => Math.Max(
-                1,
-                (int)Math.Ceiling(SourceCount / (double)Math.Max(1, _pageSize)));
-
+            /// <summary>
+            /// 지정 이벤트가 현재 표시 페이지에 속하는지 확인한다.
+            /// </summary>
             private bool IsVisibleOnCurrentPage(object item)
             {
                 if (_source == null || item == null)
@@ -599,7 +507,6 @@ namespace OpenCvWpfTracking
             private void RebuildOrderedItems()
             {
                 _orderedItems.Clear();
-
                 if (_source == null)
                 {
                     return;
@@ -618,9 +525,7 @@ namespace OpenCvWpfTracking
                     {
                         eventRecord.DisplayIndex = (index % _pageSize) + 1;
                     }
-
                 }
-
             }
 
             /// <summary>
@@ -630,39 +535,25 @@ namespace OpenCvWpfTracking
             /// </summary>
             private bool UpdatePageSize()
             {
-                double headerHeight = IsFinitePositive(_grid.ColumnHeaderHeight)
-                    ? _grid.ColumnHeaderHeight
-                    : DefaultHeaderHeight;
-                var viewport=_rowsViewport??(_rowsViewport=FindRowsViewport(_grid));
-                double availableHeight = Math.Max(0.0,
-                    (viewport!=null&&viewport.ActualHeight>0?viewport.ActualHeight:_grid.ActualHeight-headerHeight)-GridBottomReserve);
+                double headerHeight = IsFinitePositive(_grid.ColumnHeaderHeight) ? _grid.ColumnHeaderHeight : DefaultHeaderHeight;
+                var viewport = _rowsViewport ?? (_rowsViewport = FindRowsViewport(_grid));
+                double availableHeight = Math.Max(0.0, (viewport != null && viewport.ActualHeight > 0 ? viewport.ActualHeight : _grid.ActualHeight - headerHeight) - GridBottomReserve);
                 if (availableHeight <= 0.0)
                 {
                     return false;
                 }
 
-                int fittingPageSize = Math.Max(
-                    1,
-                    Math.Min(FixedPageSize,
-                        (int)Math.Floor(availableHeight / MinimumRowHeight)));
-                double fittedHeight=Math.Max(MinimumRowHeight,availableHeight/fittingPageSize);
-                if(Math.Abs(_grid.RowHeight-fittedHeight)>.01||double.IsNaN(_grid.RowHeight))_grid.RowHeight=fittedHeight;
-
-                bool layoutChanged =
-                    Math.Abs(_lastAvailableHeight - availableHeight) >= 1.0;
-
+                int fittingPageSize = Math.Max(1, Math.Min(FixedPageSize, (int)Math.Floor(availableHeight / MinimumRowHeight)));
+                double fittedHeight = Math.Max(MinimumRowHeight, availableHeight / fittingPageSize);
+                if (Math.Abs(_grid.RowHeight - fittedHeight) > .01 || double.IsNaN(_grid.RowHeight))
+                    _grid.RowHeight = fittedHeight;
+                bool layoutChanged = Math.Abs(_lastAvailableHeight - availableHeight) >= 1.0;
                 _lastAvailableHeight = availableHeight;
-
                 if (_pageSize == fittingPageSize)
                 {
                     if (layoutChanged)
                     {
-                        ConsoleLogHelper.State(
-                            "EVENT UI",
-                            "Fitting event page capacity retained / ROWS=" +
-                            _pageSize +
-                            " / HEIGHT=" +
-                            _grid.ActualHeight.ToString("F0"));
+                        ConsoleLogHelper.State("EVENT UI", "Fitting event page capacity retained / ROWS=" + _pageSize + " / HEIGHT=" + _grid.ActualHeight.ToString("F0"));
                     }
 
                     return false;
@@ -670,28 +561,41 @@ namespace OpenCvWpfTracking
 
                 _pageSize = fittingPageSize;
                 _pageIndex = Math.Max(0, Math.Min(PageCount - 1, _pageIndex));
-                ConsoleLogHelper.State(
-                    "EVENT UI",
-                    "Fitting event page capacity updated / ROWS=" + _pageSize +
-                    " / HEIGHT=" + _grid.ActualHeight.ToString("F0"));
+                ConsoleLogHelper.State("EVENT UI", "Fitting event page capacity updated / ROWS=" + _pageSize + " / HEIGHT=" + _grid.ActualHeight.ToString("F0"));
                 return true;
             }
 
+            /// <summary>
+            /// 목록 표시 크기 변경에 맞춰 페이지 구성을 다시 계산한다.
+            /// </summary>
             private void OnGridSizeChanged(object sender, SizeChangedEventArgs e)
             {
                 if (UpdatePageSize())
                 {
                     QueueRefresh();
                 }
-
             }
+
+            /// <summary>
+            /// 행이 실제로 표시되는 내부 뷰포트를 찾는다.
+            /// </summary>
             private static ScrollContentPresenter FindRowsViewport(DependencyObject root)
             {
-                if(root is ScrollContentPresenter presenter)return presenter;
-                for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++){var found=FindRowsViewport(VisualTreeHelper.GetChild(root,i));if(found!=null)return found;}
+                if (root is ScrollContentPresenter presenter)
+                    return presenter;
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                {
+                    var found = FindRowsViewport(VisualTreeHelper.GetChild(root, i));
+                    if (found != null)
+                        return found;
+                }
+
                 return null;
             }
 
+            /// <summary>
+            /// 원본 목록 변경을 반영하고 페이지 갱신을 예약한다.
+            /// </summary>
             private void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
                 if (e.OldItems != null)
@@ -700,28 +604,33 @@ namespace OpenCvWpfTracking
                     {
                         item.PropertyChanged -= EventRecord_PropertyChanged;
                     }
-
                 }
+
                 if (e.NewItems != null)
                 {
                     foreach (FireEventRecord item in e.NewItems.OfType<FireEventRecord>())
                     {
                         item.PropertyChanged += EventRecord_PropertyChanged;
                     }
-
                 }
+
                 QueueRefresh();
             }
 
+            /// <summary>
+            /// 행 상태 변경에 따른 정렬과 표시 갱신을 예약한다.
+            /// </summary>
             private void EventRecord_PropertyChanged(object sender, PropertyChangedEventArgs e)
             {
                 if (e.PropertyName == nameof(FireEventRecord.Status))
                 {
                     QueueRefresh();
                 }
-
             }
 
+            /// <summary>
+            /// 중복된 목록 갱신을 묶어 UI 스레드에 예약한다.
+            /// </summary>
             private void QueueRefresh()
             {
                 if (!_refreshTimer.IsEnabled)
@@ -730,6 +639,9 @@ namespace OpenCvWpfTracking
                 }
             }
 
+            /// <summary>
+            /// 현재 상태와 표시 영역에 맞춰 화면을 갱신한다.
+            /// </summary>
             private void Refresh()
             {
                 UpdatePageSize();
@@ -739,6 +651,9 @@ namespace OpenCvWpfTracking
                 UpdateStatus();
             }
 
+            /// <summary>
+            /// 표시 영역 계산에 사용할 값이 양의 유한수인지 확인한다.
+            /// </summary>
             private static bool IsFinitePositive(double value)
             {
                 return !double.IsNaN(value) && !double.IsInfinity(value) && value > 0.0;
@@ -749,23 +664,33 @@ namespace OpenCvWpfTracking
             /// </summary>
             private sealed class EventRecordComparer : IComparer, IComparer<object>
             {
-                private readonly string _sortMemberPath;
 
+                #region [필드 및 상태 정보]
+
+                private readonly string _sortMemberPath;
                 private readonly int _directionFactor;
 
-                internal EventRecordComparer(
-                    string sortMemberPath,
-                    ListSortDirection direction)
+                #endregion
+
+                #region [초기화]
+
+                internal EventRecordComparer(string sortMemberPath, ListSortDirection direction)
                 {
                     _sortMemberPath = sortMemberPath;
                     _directionFactor = direction == ListSortDirection.Ascending ? 1 : -1;
                 }
 
+                #endregion
+
+                #region [기능 처리 함수]
+
+                /// <summary>
+                /// 현재 정렬 기준에 따라 두 이벤트의 표시 순서를 비교한다.
+                /// </summary>
                 public int Compare(object left, object right)
                 {
                     FireEventRecord leftEvent = left as FireEventRecord;
                     FireEventRecord rightEvent = right as FireEventRecord;
-
                     if (ReferenceEquals(leftEvent, rightEvent))
                     {
                         return 0;
@@ -801,8 +726,7 @@ namespace OpenCvWpfTracking
                             result = CompareText(leftEvent.DetectionType, rightEvent.DetectionType);
                             break;
                         case "Confidence":
-                            result = ParseConfidence(leftEvent.Confidence)
-                                .CompareTo(ParseConfidence(rightEvent.Confidence));
+                            result = ParseConfidence(leftEvent.Confidence).CompareTo(ParseConfidence(rightEvent.Confidence));
                             break;
                         case "PixelArea":
                             result = leftEvent.PixelArea.CompareTo(rightEvent.PixelArea);
@@ -823,31 +747,26 @@ namespace OpenCvWpfTracking
                     return result * _directionFactor;
                 }
 
+                /// <summary>
+                /// 이벤트의 텍스트 정렬 값을 비교한다.
+                /// </summary>
                 private static int CompareText(string left, string right)
                 {
-                    return StringComparer.OrdinalIgnoreCase.Compare(
-                        left ?? string.Empty,
-                        right ?? string.Empty);
+                    return StringComparer.OrdinalIgnoreCase.Compare(left ?? string.Empty, right ?? string.Empty);
                 }
 
+                /// <summary>
+                /// 이벤트 신뢰도 문자열에서 정렬용 숫자를 읽는다.
+                /// </summary>
                 private static double ParseConfidence(string value)
                 {
-                    string normalized = (value ?? string.Empty)
-                        .Trim()
-                        .TrimEnd('%');
-                    return double.TryParse(
-                        normalized,
-                        NumberStyles.Float,
-                        CultureInfo.InvariantCulture,
-                        out double result)
-                        ? result
-                        : double.MinValue;
+                    string normalized = (value ?? string.Empty).Trim().TrimEnd('%');
+                    return double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out double result) ? result : double.MinValue;
                 }
 
+                #endregion
+
             }
-
         }
-
     }
-
 }

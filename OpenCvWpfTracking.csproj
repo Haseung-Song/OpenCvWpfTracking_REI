@@ -72,9 +72,9 @@
     <Page Include="Views\Main\CameraSpecialControl.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
     <Compile Include="Services\Configuration\ControlTuning.cs" />
     <Compile Include="Services\Input\GlobalControlKeyboard.cs" />
-    <Compile Include="ViewModels\Main\MainViewModel.V30Control.cs" />
-    <Compile Include="ViewModels\Main\MainViewModel.V30CameraFeatures.cs" />
-    <Compile Include="Views\Main\MainWindow.V30Control.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.InputCoordinator.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.CameraFeatureControl.cs" />
+    <Compile Include="Views\Main\MainWindow.ControlUi.cs" />
     <Compile Include="Views\Video\VideoShortcutGuide.cs" />
     <Content Include="Config\ControlTuning.xml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Compile Include="Services\Control\OpticalCenterCalibration.cs" />
