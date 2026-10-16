@@ -668,18 +668,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             8;
 
         /// <summary>
-        /// [IR Focus Sync] 이동 상태 확인 주기
-        /// </summary>
-        private const int IrFocusSyncPollingIntervalMs =
-            20;
-
-        /// <summary>
-        /// [IR Focus Sync] Stop 명령 이후 위치 안정화 확인 주기
-        /// </summary>
-        private const int IrFocusSyncSettlePollingIntervalMs =
-            40;
-
-        /// <summary>
         /// [IR Focus Sync] Stop 이후 최대 안정화 대기시간
         /// </summary>
         private const int IrFocusSyncSettleTimeoutMs =
@@ -690,24 +678,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private const int IrFocusSyncStableSampleCount =
             3;
-
-        /// <summary>
-        /// [IR Focus Sync] 1차 이동 시 기본 선행 정지 거리
-        /// </summary>
-        private const int IrFocusSyncInitialStopLead =
-            16;
-
-        /// <summary>
-        /// [IR Focus Sync] 보정 이동 시 최소 선행 정지 거리
-        /// </summary>
-        private const int IrFocusSyncCorrectionStopLead =
-            5;
-
-        /// <summary>
-        /// [IR Focus Sync] 최대 보정 횟수
-        /// </summary>
-        private const int IrFocusSyncMaxMoveAttempts =
-            5;
 
         /// <summary>
         /// [IR Focus Sync] 최대 이동 대기시간

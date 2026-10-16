@@ -1812,7 +1812,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             cancellationToken
                 .ThrowIfCancellationRequested();
 
-            // V31_8: 환경부 IR은 0x29 절대위치를 우선 송신하고 실제 피드백으로 검증한다.
+            // 2026-10-16: 환경부 IR은 신규 CMD2=0xB7 절대위치를 송신하고 실제 피드백으로 검증한다.
             // 확인된 무이동일 때만 0x31 경로를 사용하며 목표값으로 UI 현재값을 덮어쓰지 않는다.
             int irRawTarget=ConvertIrZoomStandardToStatusPosition(safeIrPosition);
             Task<bool> irMoveTask=irAlreadyAtTarget ? Task.FromResult(true) :
@@ -3402,7 +3402,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 환경부 비례 Zoom은 EO 0x37과 IR 0x29 절대위치를 우선 송신한다.
+        /// 2026-10-16: 환경부 비례 Zoom은 EO 0x37과 IR 0xB7 절대위치를 우선 송신한다.
         /// IR은 실제 렌즈 피드백으로 확인하며, 무이동이 확인된 때만 0x31로 대체한다.
         /// </summary>
         private async Task ApplyEnvironmentProportionalZoomAsync(
@@ -3552,12 +3552,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             .EoFocusGoPosition(
                                 (short)safePosition);
 
-                    irResult = Interlocked.Read(ref _irLensStatusVersion) > 0
-                        ? await MoveIrFocusToPositionAsync(
+                    irResult = await MoveIrFocusToPositionAsync(
                             irRawTargetPosition,
-                            focusCts.Token)
-                        : await MoveEnvironmentIrFocusWithoutFeedbackAsync(
-                            safePosition,
                             focusCts.Token);
                 }
                 else

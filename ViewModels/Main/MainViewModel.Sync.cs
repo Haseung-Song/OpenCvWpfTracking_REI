@@ -420,7 +420,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 환경부 장비는 규격의 0x29 절대위치를 우선 사용하고 실제 IR 렌즈
+        /// 2026-10-16: 환경부 장비는 신규 CMD2=0xB7 절대위치를 우선 사용하고 실제 IR 렌즈
         /// 피드백으로 도달 여부를 확인한다. 새 피드백이 계속 수신되는데도
         /// 위치가 전혀 변하지 않을 때만 0x31 폐루프 경로로 전환한다.
         /// </summary>
@@ -713,7 +713,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool sent = _controlCommandService.IrZoomGoPosition((short)rawTarget);
             ConsoleLogHelper.Command(
                 "IR ZOOM ABSOLUTE",
-                $"COMMAND=0x29 / STANDARD_TARGET={standardTarget} / " +
+                $"COMMAND=0xB7 / STANDARD_TARGET={standardTarget} / " +
                 $"COMMAND_RAW_TARGET={rawTarget} / START_RAW={startPosition} / SENT={sent}");
             if (!sent)
             {
@@ -1056,8 +1056,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                     else
                     {
-                        irResult = Interlocked.Read(ref _irLensStatusVersion) > 0 &&
-                            await MoveIrFocusToPositionAsync(
+                        irResult = await MoveIrFocusToPositionAsync(
                                 irRawTargetPosition,
                                 focusSyncCts.Token);
                     }
@@ -1156,81 +1155,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (!wasCanceled && !FocusSyncStatusText.StartsWith("ERROR", StringComparison.Ordinal))
             {
                 FocusSyncStatusText = !irResult
-                    ? "INCOMPLETE / IR FOCUS NO MOVEMENT"
+                    ? "INCOMPLETE / IR FOCUS TARGET NOT CONFIRMED"
                     : eoResult
                         ? $"COMPLETED / LEVEL {selectedLevel.Level}"
                         : $"COMPLETED / LEVEL {selectedLevel.Level} / EO VERIFY WARNING";
             }
         }
 
-        /// <summary>
-        /// Function 0x07 피드백이 없는 환경장비에서 FAR 끝점을 확보한 뒤
-        /// 목표 비율만큼 NEAR로 이동하는 MOE 공통 보완 경로이다.
-        /// </summary>
-        private async Task<bool> MoveEnvironmentIrFocusWithoutFeedbackAsync(
-            int targetPosition,
-            CancellationToken cancellationToken)
-        {
-            int safeTarget = Math.Max(0, Math.Min(1000, targetPosition));
-
-            ConsoleLogHelper.Command(
-                "IR FOCUS SYNC",
-                $"No Function 0x07 feedback; timed fallback / TARGET={safeTarget}");
-
-            bool homeStarted = _controlCommandService.StartIrFocusFar();
-            if (!homeStarted)
-            {
-                return false;
-            }
-
-            try
-            {
-                await Task.Delay(EnvironmentIrFocusHomeMs, cancellationToken);
-            }
-            finally
-            {
-                _controlCommandService.StopIrFocus();
-            }
-
-            ApplyEnvironmentIrCommandedPosition(
-                null,
-                0,
-                "ENVIRONMENT FOCUS HOME ESTIMATE");
-
-            if (safeTarget == 0)
-            {
-                return true;
-            }
-
-            await Task.Delay(120, cancellationToken);
-
-            bool moveStarted = _controlCommandService.StartIrFocusNear();
-            if (!moveStarted)
-            {
-                return false;
-            }
-
-            int moveDurationMs = Math.Max(
-                80,
-                (int)Math.Round(
-                    EnvironmentIrFocusFullTravelMs * safeTarget / 1000.0));
-
-            try
-            {
-                await Task.Delay(moveDurationMs, cancellationToken);
-            }
-            finally
-            {
-                _controlCommandService.StopIrFocus();
-            }
-
-            ApplyEnvironmentIrCommandedPosition(
-                null,
-                safeTarget,
-                "ENVIRONMENT FOCUS TIMED ESTIMATE");
-
-            return true;
-        }
 
         /// <summary>
         /// IR Focus를 목표 Position으로 이동한다.
@@ -1251,339 +1182,185 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CancellationToken cancellationToken,
             int tolerance = IrFocusSyncTolerance)
         {
-            int safeTargetPosition =
-                Math.Max(
-                    0,
-                    Math.Min(
-                        1000,
-                        targetPosition));
-
-            Stopwatch totalTimeout =
-                Stopwatch.StartNew();
-
-            int lastFinalPosition =
-                _currentIrFocus;
-
-            bool operationMovementObserved = false;
-
-            for (int attempt = 1;
-                 attempt <= IrFocusSyncMaxMoveAttempts;
-                 attempt++)
+            if (targetPosition < 0 || targetPosition > 1000)
             {
-                cancellationToken
-                    .ThrowIfCancellationRequested();
+                ConsoleLogHelper.Warning("IR FOCUS SYNC", "RESULT=INVALID_TARGET");
+                return false;
+            }
+            if (!await EnsurePresetIrLensFeedbackAsync(false, cancellationToken))
+                return false;
 
-                int startPosition =
-                    _currentIrFocus;
+            var planner = new IrFocusMotionPlanner();
+            var total = Stopwatch.StartNew();
+            int previousDirection = 0;
+            int consecutiveNoMovement = 0;
 
-                int initialError =
-                    Math.Abs(
-                        safeTargetPosition -
-                        startPosition);
-
-                if (initialError <=
-                    tolerance)
+            // 2026-10-16: 축별 유효 응답과 정지 후 정착값만 사용한다.
+            // 옛 0x28 시험 경로·시간 추정·움직임만으로 성공하는 판정은 사용하지 않는다.
+            for (int phase = 1; phase <= 20 && total.ElapsedMilliseconds < IrFocusSyncTimeoutMs; phase++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int start = _currentIrFocus;
+                int error = Math.Abs(targetPosition - start);
+                if (error <= tolerance)
                 {
-                    Console.WriteLine(
-                        "[IR FOCUS SYNC] COMPLETED " +
-                        $"/ ATTEMPT={attempt - 1} " +
-                        $"/ POSITION={startPosition} " +
-                        $"/ TARGET={safeTargetPosition} " +
-                        $"/ ERROR={initialError}");
-
-                    ConsoleLogHelper.PrintLine();
-
-                    return true;
+                    int? stable = await WaitForIrFocusStableEvidenceAsync(cancellationToken);
+                    if (!stable.HasValue) return false;
+                    if (Math.Abs(stable.Value - targetPosition) <= tolerance)
+                    {
+                        ConsoleLogHelper.State("IR FOCUS SYNC",
+                            $"RESULT=COMPLETED / TARGET={targetPosition} / ACTUAL={stable.Value} / TOLERANCE={tolerance} / ELAPSED_MS={total.ElapsedMilliseconds}");
+                        return true;
+                    }
+                    continue;
                 }
 
-                // 2026-09-17 실장비 로그: FAR 명령은 Raw Focus를 증가시킨다.
-                // 따라서 낮은 Raw 목표는 NEAR, 높은 Raw 목표는 FAR로 이동한다.
-                bool moveNear =
-                    safeTargetPosition < startPosition;
-
-                long feedbackSequence =
-                    Interlocked.Read(ref _irLensStatusVersion);
-
-                bool commandResult =
-                    moveNear
-                        ? _controlCommandService
-                            .StartIrFocusNear()
-                        : _controlCommandService
-                            .StartIrFocusFar();
-
-                if (!commandResult)
+                int direction = targetPosition > start ? 1 : -1;
+                if (previousDirection != 0 && direction != previousDirection && !planner.TryReverse())
                 {
+                    ConsoleLogHelper.Warning("IR FOCUS SYNC",
+                        $"RESULT=REVERSAL_LIMIT / TARGET={targetPosition} / ACTUAL={start}");
                     return false;
                 }
+                previousDirection = direction;
+                bool pulse = planner.UsePulse(error, tolerance);
+                int duration = pulse ? planner.PulseMilliseconds(error) : planner.CoarseMilliseconds(error, tolerance);
+                long focusTicks = PresetLensTicks(true, false);
+                bool started = direction < 0
+                    ? _controlCommandService.StartIrFocusNear()
+                    : _controlCommandService.StartIrFocusFar();
+                if (!started) return false;
 
-                int stopLead =
-                    attempt == 1
-                        ? IrFocusSyncInitialStopLead
-                        : IrFocusSyncCorrectionStopLead;
-
-                int previousPosition =
-                    startPosition;
-
-                int largestObservedStep =
-                    0;
-
-                bool stopRequested =
-                    false;
-
-                bool movementObserved =
-                    false;
-
-                int unchangedFeedbackCount = 0;
-
-                ConsoleLogHelper.PrintLine();
-
-                Console.WriteLine(
-                    "[IR FOCUS SYNC] START " +
-                    $"/ ATTEMPT={attempt} " +
-                    $"/ DIRECTION={(moveNear ? "NEAR" : "FAR")} " +
-                    $"/ CURRENT={startPosition} " +
-                    $"/ TARGET={safeTargetPosition} " +
-                    $"/ BASE_LEAD={stopLead}");
-
-                ConsoleLogHelper.PrintLine();
+                var active = Stopwatch.StartNew();
+                long lastFeedbackMs = 0;
+                int previous = start;
+                int stoppedPosition = start;
+                long commandOnMs = 0;
+                bool stopped = false;
+                bool feedbackLost = false;
+                bool wrongDirection = false;
+                int freshSamples = 0;
+                ConsoleLogHelper.Command("IR FOCUS SYNC",
+                    $"PHASE={phase} / MODE={(pulse ? "FINE_PULSE" : "COARSE")} / TARGET={targetPosition} / START={start} / DIRECTION={(direction < 0 ? "NEAR" : "FAR")} / MAX_ON_MS={duration}");
 
                 try
                 {
-                    while (totalTimeout.ElapsedMilliseconds <
-                           IrFocusSyncTimeoutMs)
+                    while (active.ElapsedMilliseconds < duration && total.ElapsedMilliseconds < IrFocusSyncTimeoutMs)
                     {
-                        cancellationToken
-                            .ThrowIfCancellationRequested();
-
-                        if (!await WaitForIrLensFeedbackAsync(
-                                feedbackSequence,
-                                cancellationToken))
+                        cancellationToken.ThrowIfCancellationRequested();
+                        long nowTicks = PresetLensTicks(true, false);
+                        if (nowTicks > focusTicks && HasFreshPresetLens(true, false))
                         {
-                            ConsoleLogHelper.Warning(
-                                "IR FOCUS SYNC",
-                                $"FEEDBACK TIMEOUT / ATTEMPT={attempt} / CURRENT={_currentIrFocus} / TARGET={safeTargetPosition}");
+                            focusTicks = nowTicks;
+                            long nowMs = active.ElapsedMilliseconds;
+                            int current = _currentIrFocus;
+                            int delta = current - previous;
+                            planner.ObserveFeedback(delta, nowMs - lastFeedbackMs);
+                            freshSamples++;
+                            lastFeedbackMs = nowMs;
+                            previous = current;
+                            if (delta * direction < -Math.Max(2, tolerance))
+                            {
+                                wrongDirection = true;
+                                break;
+                            }
+                            int remaining = (targetPosition - current) * direction;
+                            if (remaining <= 0 || (!pulse && current != start && remaining <= planner.StopLead(tolerance)))
+                                break;
+                            if (!pulse && current != start)
+                            {
+                                int predicted = planner.CoarseMilliseconds(Math.Max(1, remaining), tolerance);
+                                duration = Math.Min(duration, (int)nowMs + predicted);
+                            }
+                        }
+                        if (active.ElapsedMilliseconds - lastFeedbackMs >= 3000)
+                        {
+                            feedbackLost = true;
                             break;
                         }
-
-                        feedbackSequence =
-                            Interlocked.Read(ref _irLensStatusVersion);
-
-                        int currentPosition =
-                            _currentIrFocus;
-
-                        int movementStep =
-                            Math.Abs(
-                                currentPosition -
-                                previousPosition);
-
-                        if (movementStep >
-                            largestObservedStep)
-                        {
-                            largestObservedStep =
-                                movementStep;
-                        }
-
-                        if (movementStep > 0)
-                        {
-                            movementObserved = true;
-                            operationMovementObserved = true;
-                            unchangedFeedbackCount = 0;
-                        }
-                        else
-                        {
-                            unchangedFeedbackCount++;
-                        }
-
-                        if (unchangedFeedbackCount >= 6)
-                        {
-                            ConsoleLogHelper.Warning(
-                                "IR FOCUS SYNC",
-                                $"Position stalled; retry / ATTEMPT={attempt} / POSITION={currentPosition} / TARGET={safeTargetPosition}");
-                            break;
-                        }
-
-                        int dynamicStopLead =
-                            Math.Max(
-                                stopLead,
-                                Math.Min(
-                                    24,
-                                    largestObservedStep +
-                                    4));
-
-                        int remainingDistance =
-                            moveNear
-                                ? currentPosition -
-                                  safeTargetPosition
-                                : safeTargetPosition -
-                                  currentPosition;
-
-                        bool reachedStopZone =
-                            remainingDistance <=
-                            dynamicStopLead;
-
-                        bool passedTarget =
-                            moveNear
-                                ? currentPosition <=
-                                  safeTargetPosition
-                                : currentPosition >=
-                                  safeTargetPosition;
-
-                        // START 직후 이전 상태가 반복된 STEP=0은 정지 근거가 아니다.
-                        if (movementObserved &&
-                            (reachedStopZone ||
-                            passedTarget)
-                           )
-                        {
-                            stopRequested =
-                                _controlCommandService
-                                    .StopIrFocus();
-
-                            Console.WriteLine(
-                                "[IR FOCUS SYNC] EARLY STOP " +
-                                $"/ ATTEMPT={attempt} " +
-                                $"/ POSITION={currentPosition} " +
-                                $"/ TARGET={safeTargetPosition} " +
-                                $"/ REMAIN={remainingDistance} " +
-                                $"/ STEP={largestObservedStep} " +
-                                $"/ LEAD={dynamicStopLead} " +
-                                $"/ STOP={stopRequested}");
-
-                            ConsoleLogHelper.PrintLine();
-
-                            break;
-                        }
-
-                        previousPosition =
-                            currentPosition;
-
-                        await Task.Delay(
-                            IrFocusSyncPollingIntervalMs,
-                            cancellationToken);
+                        await Task.Delay(10, cancellationToken);
                     }
-
-                }
-                catch (OperationCanceledException)
-                {
-                    _controlCommandService
-                        .StopIrFocus();
-
-                    return false;
+                    stoppedPosition = _currentIrFocus;
                 }
                 finally
                 {
-                    if (!stopRequested)
-                    {
-                        _controlCommandService
-                            .StopIrFocus();
-                    }
-
+                    commandOnMs = active.ElapsedMilliseconds;
+                    stopped = _controlCommandService.StopIrFocus();
                 }
 
-                int settledPosition =
-                    await WaitForIrLensSettledPositionAsync(
-                        false,
-                        cancellationToken);
-
-                lastFinalPosition =
-                    settledPosition;
-
-                int finalError =
-                    Math.Abs(
-                        safeTargetPosition -
-                        settledPosition);
-
-                Console.WriteLine(
-                    "[IR FOCUS SYNC] SETTLED " +
-                    $"/ ATTEMPT={attempt} " +
-                    $"/ POSITION={settledPosition} " +
-                    $"/ TARGET={safeTargetPosition} " +
-                    $"/ ERROR={finalError}");
-
-                ConsoleLogHelper.PrintLine();
-
-                if (finalError <=
-                    tolerance)
+                if (!stopped || feedbackLost || wrongDirection)
                 {
-                    Console.WriteLine(
-                        "[IR FOCUS SYNC] COMPLETED " +
-                        $"/ ATTEMPT={attempt} " +
-                        $"/ POSITION={settledPosition} " +
-                        $"/ TARGET={safeTargetPosition} " +
-                        $"/ ERROR={finalError}");
+                    ConsoleLogHelper.Warning("IR FOCUS SYNC",
+                        $"RESULT={(wrongDirection ? "DIRECTION_MISMATCH" : feedbackLost ? "FOCUS_FEEDBACK_TIMEOUT" : "STOP_SEND_FAILED")} / TARGET={targetPosition} / ACTUAL={_currentIrFocus}");
+                    return false;
+                }
 
-                    ConsoleLogHelper.PrintLine();
+                int? settled = await WaitForIrFocusStableEvidenceAsync(cancellationToken);
+                if (!settled.HasValue) return false;
+                planner.ObserveSettled(start, stoppedPosition, settled.Value, commandOnMs, pulse);
+                int finalError = Math.Abs(settled.Value - targetPosition);
+                ConsoleLogHelper.State("IR FOCUS SYNC",
+                    $"PHASE={phase} / MODE={(pulse ? "FINE_PULSE" : "COARSE")} / TARGET={targetPosition} / STOP_POSITION={stoppedPosition} / SETTLED={settled.Value} / ERROR={finalError} / ON_MS={commandOnMs} / TOTAL_PHASE_MS={active.ElapsedMilliseconds} / RATE={planner.UnitsPerSecond:F1} / LEAD={planner.StopLead(tolerance)} / REVERSALS={planner.ReversalCount} / FRESH_SAMPLES={freshSamples}");
 
+                if (finalError <= tolerance)
+                {
+                    ConsoleLogHelper.State("IR FOCUS SYNC",
+                        $"RESULT=COMPLETED / TARGET={targetPosition} / ACTUAL={settled.Value} / TOLERANCE={tolerance} / ELAPSED_MS={total.ElapsedMilliseconds}");
                     return true;
                 }
-
-                await Task.Delay(
-                    80,
-                    cancellationToken);
+                consecutiveNoMovement = Math.Abs(settled.Value - start) <= 1
+                    ? consecutiveNoMovement + 1 : 0;
+                if (consecutiveNoMovement > 0)
+                    planner.ObserveNoMovement();
+                if (consecutiveNoMovement >= 4)
+                {
+                    ConsoleLogHelper.Warning("IR FOCUS SYNC", "RESULT=NO_MOVEMENT / no automatic absolute fallback");
+                    return false;
+                }
             }
 
-            Console.WriteLine(
-                "[IR FOCUS SYNC] INCOMPLETE " +
-                $"/ POSITION={lastFinalPosition} " +
-                $"/ TARGET={safeTargetPosition} " +
-                $"/ ERROR={Math.Abs(safeTargetPosition - lastFinalPosition)}");
-
-            ConsoleLogHelper.PrintLine();
-
-            return operationMovementObserved;
+            ConsoleLogHelper.Warning("IR FOCUS SYNC",
+                $"RESULT=INCOMPLETE / TARGET={targetPosition} / ACTUAL={_currentIrFocus} / ELAPSED_MS={total.ElapsedMilliseconds}");
+            return false;
         }
 
         /// <summary>
-        /// IR Focus Stop 이후 실제 위치가 안정될 때까지 기다린다.
+        /// 2026-10-16: 정지 이후 새 Focus 유효 응답 3개가 안정된 경우에만 위치를 반환한다.
+        /// Zoom 응답만 갱신되거나 수신이 끊기면 정착 완료로 판단하지 않는다.
         /// </summary>
-        private async Task<int> WaitForIrFocusSettledPositionAsync(
-            CancellationToken cancellationToken)
+        private async Task<int?> WaitForIrFocusStableEvidenceAsync(CancellationToken token)
         {
-            Stopwatch settleTimeout =
-                Stopwatch.StartNew();
-
-            int previousPosition =
-                _currentIrFocus;
-
-            int stableCount =
-                0;
-
-            while (settleTimeout.ElapsedMilliseconds <
-                   IrFocusSyncSettleTimeoutMs)
+            long ticks = PresetLensTicks(true, false);
+            int previous = _currentIrFocus;
+            int stableSamples = 0;
+            long stableStartedMs = 0;
+            var timer = Stopwatch.StartNew();
+            while (timer.ElapsedMilliseconds < 3500)
             {
-                cancellationToken
-                    .ThrowIfCancellationRequested();
-
-                await Task.Delay(
-                    IrFocusSyncSettlePollingIntervalMs,
-                    cancellationToken);
-
-                int currentPosition =
-                    _currentIrFocus;
-
-                if (Math.Abs(
-                        currentPosition -
-                        previousPosition) <= 1)
+                token.ThrowIfCancellationRequested();
+                long nextTicks = PresetLensTicks(true, false);
+                if (nextTicks > ticks && HasFreshPresetLens(true, false))
                 {
-                    stableCount++;
+                    ticks = nextTicks;
+                    int current = _currentIrFocus;
+                    if (Math.Abs(current - previous) <= 1)
+                        stableSamples++;
+                    else
+                    {
+                        stableSamples = 0;
+                        stableStartedMs = timer.ElapsedMilliseconds;
+                    }
+                    previous = current;
+                    if (stableSamples >= 3 && timer.ElapsedMilliseconds >= 800 &&
+                        timer.ElapsedMilliseconds - stableStartedMs >= 500) return current;
                 }
-                else
-                {
-                    stableCount =
-                        0;
-                }
-
-                previousPosition =
-                    currentPosition;
-
-                if (stableCount >=
-                    IrFocusSyncStableSampleCount)
-                {
-                    break;
-                }
-
+                await Task.Delay(20, token);
             }
-            return _currentIrFocus;
+            ConsoleLogHelper.Warning("IR FOCUS SYNC",
+                $"RESULT=SETTLE_NOT_CONFIRMED / ACTUAL={_currentIrFocus}");
+            return null;
         }
+
 
         /// <summary>
         /// 옥상장비 CTEC EO Focus를 목표 Raw Position으로 직접 이동한다.

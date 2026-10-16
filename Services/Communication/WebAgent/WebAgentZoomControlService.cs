@@ -1,3 +1,5 @@
+using OpenCvWpfTracking.Common;
+
 namespace OpenCvWpfTracking.Services.Communication.WebAgent
 {
     /// <summary>
@@ -33,6 +35,12 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             short eoPosition,
             short irRawPosition)
         {
+            // 2026-10-16: 잘못된 IR 위치에서 EO만 먼저 움직이지 않도록 사전 거절한다.
+            if (!IsValidIrPosition(irRawPosition))
+            {
+                return false;
+            }
+
             bool eoResult =
                 _controlCommandService
                     .EoZoomGoPosition(
@@ -41,9 +49,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
 
             bool irResult =
                 _controlCommandService
-                    .IrZoomGoPosition(
-                        ClampPosition(
-                            irRawPosition));
+                    .IrZoomGoPosition(irRawPosition);
 
             return eoResult &&
                    irResult;
@@ -59,6 +65,11 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         public bool ApplySynchronizedZoom(
             short position)
         {
+            if (!IsValidIrPosition(position))
+            {
+                return false;
+            }
+
             short safePosition =
                 ClampPosition(
                     position);
@@ -96,9 +107,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             short position)
         {
             return _controlCommandService
-                .IrZoomGoPosition(
-                    ClampPosition(
-                        position));
+                .IrZoomGoPosition(position);
         }
 
         /// <summary>
@@ -109,9 +118,24 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             short rawPosition)
         {
             return _controlCommandService
-                .IrZoomGoPosition(
-                    ClampPosition(
-                        rawPosition));
+                .IrZoomGoPosition(rawPosition);
+        }
+
+        /// <summary>
+        /// 2026-10-16: B7 IR 요청은 0~1000 밖의 값을 임의 보정하지 않는다.
+        /// 동시 이동에서도 범위 오류가 있으면 부분 송신 없이 종료한다.
+        /// </summary>
+        private static bool IsValidIrPosition(short position)
+        {
+            if (position >= 0 && position <= 1000)
+            {
+                return true;
+            }
+
+            ConsoleLogHelper.Warning(
+                "WEB AGENT IR ZOOM",
+                $"RESULT=INVALID_POSITION / CMD2=0xB7 / POSITION={position} / RANGE=0~1000");
+            return false;
         }
 
         /// <summary>

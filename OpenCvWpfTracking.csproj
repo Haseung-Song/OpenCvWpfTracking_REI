@@ -86,6 +86,7 @@
     <Compile Include="Views\Video\LegacyVideoIntegration.cs" />
     <Compile Include="Views\Video\PanoramaLinkedView.cs" />
     <Compile Include="Views\Main\MainWindow.LegacyFeatures.cs" />
+    <Compile Include="Services\Control\IrFocusMotionPlanner.cs" />
     <Content Include="V32_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Resource Include="Images\Demo\Toruss.ico" />
     <Reference Include="FFmpeg.AutoGen, Version=8.1.0.0, Culture=neutral, processorArchitecture=MSIL">

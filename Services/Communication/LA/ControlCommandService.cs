@@ -36,6 +36,12 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private const int IrPaletteCount = 10;
 
+        /// <summary>
+        /// 2026-10-16: WebAgent에 추가된 IR 줌 절대 위치 요청 코드.
+        /// 수신 Function 0x29(기계 원점 상태)와는 별개이다.
+        /// </summary>
+        public const byte WebAgentIrZoomAbsoluteCommand = 0xB7;
+
         private int _currentIrPaletteIndex;
 
         private bool _isIrPaletteSynchronized;
@@ -1544,26 +1550,56 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// [IR] 열영상 카메라 [Zoom] 위치 제어 명령
-        /// 
-        /// 프로토콜 위치 0~1000 (0=Wide, 1000=Tele).
-        /// Data1/Data2는 uint16 Big Endian이다. 화각×100 값이 아니다.
+        /// 2026-10-16: WebAgent IR 줌 절대 위치를 CMD2=0xB7로 요청한다.
+        /// 위치 0~1000을 상위/하위 바이트 순서로 송신하며 화각×100 값이 아니다.
+        /// 범위를 벗어난 값은 보정해 송신하지 않고 거절한다.
+        /// 송신 성공은 장비 도달 확인과 다르며 기존 렌즈 피드백으로 확인한다.
         /// </summary>
         public bool IrZoomGoPosition(short zoom)
         {
-            if (zoom > 1000)
-                zoom = 1000;
-            else if (zoom < 0)
-                zoom = 0;
+            if (zoom < 0 || zoom > 1000)
+            {
+                ConsoleLogHelper.Warning(
+                    "WEB AGENT IR ZOOM",
+                    $"RESULT=INVALID_POSITION / CMD2=0xB7 / POSITION={zoom} / RANGE=0~1000");
+                return false;
+            }
 
-            byte data1 = (byte)((zoom >> 8) & 0xFF);
-            byte data2 = (byte)(zoom & 0xFF);
+            bool sent = _tcpClientService.Send(BuildWebAgentIrZoomPositionPacket(zoom));
+            ConsoleLogHelper.Command(
+                "WEB AGENT IR ZOOM",
+                $"CMD2=0xB7 / POSITION={zoom} / SENT={sent}");
+            return sent;
+        }
 
-            return SendCommand(
+        /// <summary>
+        /// 2026-10-16: IR 줌 B7 요청의 7바이트 패킷을 생성한다.
+        /// FF를 제외한 Unit ID~POS_L의 합 하위 8비트를 체크섬으로 사용한다.
+        /// 예: 위치 500 → FF 01 00 B7 01 F4 AD.
+        /// </summary>
+        public static byte[] BuildWebAgentIrZoomPositionPacket(int position)
+        {
+            if (position < 0 || position > 1000)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(position),
+                    position,
+                    "IR 줌 절대 위치는 0~1000 범위여야 합니다.");
+            }
+
+            byte[] packet =
+            {
+                0xFF,
+                0x01,
                 0x00,
-                0x29,
-                data1,
-                data2);
+                WebAgentIrZoomAbsoluteCommand,
+                (byte)((position >> 8) & 0xFF),
+                (byte)(position & 0xFF),
+                0x00
+            };
+
+            packet[6] = CheckSum(packet, 1, 5);
+            return packet;
         }
 
         /// <summary>
