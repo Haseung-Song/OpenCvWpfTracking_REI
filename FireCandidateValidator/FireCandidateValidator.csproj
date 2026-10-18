@@ -50,11 +50,11 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="lib\x64\OpenCvSharpExtern.dll">
+    <Content Include="..\packages\OpenCvSharp4.runtime.win.4.7.0.20230115\runtimes\win-x64\native\OpenCvSharpExtern.dll">
       <Link>dll\x64\OpenCvSharpExtern.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="lib\x64\opencv_videoio_ffmpeg470_64.dll">
+    <Content Include="..\packages\OpenCvSharp4.runtime.win.4.7.0.20230115\runtimes\win-x64\native\opencv_videoio_ffmpeg470_64.dll">
       <Link>dll\x64\opencv_videoio_ffmpeg470_64.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
