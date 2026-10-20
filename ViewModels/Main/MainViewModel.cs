@@ -662,7 +662,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [IR Focus Sync] 최종 완료 허용 오차
         ///
         /// IR Focus는 Near / Far 연속 구동 후 Stop 방식이므로
-        /// 상태 수신 지연과 정지 지연을 고려해 최종 ±12 이내를 정상으로 판단한다.
+        /// 상태 수신 지연과 정지 지연을 고려해 최종 ±8 이내를 정상으로 판단한다.
         /// </summary>
         private const int IrFocusSyncTolerance =
             8;
@@ -1758,6 +1758,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         }
 
                         AiSettingStatusText = "[AI] Refresh Setting...";
+                        int refreshGeneration = Volatile.Read(ref _aiManualConnectionGeneration);
 
                         await RequestAiDetectorInfoAsync();
                         await Task.Delay(200);
@@ -1769,6 +1770,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         await Task.Delay(200);
 
                         await RequestAiDetectorMappingAsync();
+
+                        if (refreshGeneration != Volatile.Read(ref _aiManualConnectionGeneration) ||
+                            !_aiDetectorClientService.IsConnected)
+                        {
+                            return;
+                        }
+                        await RequestAiDetectorRtspVideoSizeAsync(0);
+                        await RequestAiDetectorRtspVideoSizeAsync(1);
 
                         AiSettingStatusText = "[AI] Refresh Complete";
                     });

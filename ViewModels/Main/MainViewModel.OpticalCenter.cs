@@ -46,6 +46,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 채널의 표준 광학 줌 위치를 반환한다.
         /// </summary>
         public int OpticalZoom(bool ir) => ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom();
+
+        /// <summary>
+        /// 성공한 D-ZOOM ON 요청 또는 장비 ON 응답이 있는 채널의 4점 보정을 막는다.
+        /// 미수신을 ON으로 취급하지 않으며 D-ZOOM 미지원 IR의 보정은 허용한다.
+        /// </summary>
+        public bool IsOpticalCalibrationBlockedByDigitalZoom(bool ir)
+        {
+            int channel = ir ? 1 : 0;
+            if (ir && _digitalCapsKnown[channel] && (_digitalCaps[channel] & 5) != 5)
+                return false;
+
+            return (ir ? _irDigitalEstimate : _eoDigitalEstimate).Enabled || _digitalState[channel] == 1;
+        }
+
         /// <summary>
         /// 현재 장비와 줌 위치에 대응하는 십자선 중심을 반환한다.
         /// </summary>

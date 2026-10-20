@@ -298,7 +298,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-10-06: 0x31의 MCB/SCB 원본 상태를 보존한다.
         /// 요청 송신 여부로 상태를 추정하지 않고 이 수신값만 표시 기준으로 사용한다.
         /// </summary>
-        private void ApplyDevicePowerStatus(byte mcbStatus, byte scbStatus)
+        private void ApplyDevicePowerStatus(
+            byte mcbStatus,
+            byte scbStatus,
+            DateTime? sourceTime = null,
+            string sourceFunction = "0x31")
         {
             string powerResponseSession = _connectionSessionId;
             bool shouldLog =
@@ -308,14 +312,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _currentMcbPowerStatus = mcbStatus;
             _currentScbPowerStatus = scbStatus;
-            _devicePowerStatusReceivedAt = DateTime.Now;
+            _devicePowerStatusReceivedAt = sourceTime ?? DateTime.Now;
             _hasDevicePowerStatus = true;
-            _isDevicePowerStatusStale = false;
+            _isDevicePowerStatusStale = DateTime.Now - _devicePowerStatusReceivedAt > TimeSpan.FromSeconds(2);
             // 주기 응답에 이전 상태가 담겨 있어도 요청 목표에 도달할 때까지 WAIT 유지.
-            if (IsGpsTabVisible && IsSelectedConnectionTarget && _eoPowerCommandPending &&
+            if (!_isDevicePowerStatusStale && _devicePowerStatusReceivedAt >= _eoPowerCommandSentAt &&
+                IsGpsTabVisible && IsSelectedConnectionTarget && _eoPowerCommandPending &&
                 ((scbStatus & 0x01) != 0) == _eoPowerCommandTargetOn)
                 _eoPowerCommandPending = false;
-            if (IsGpsTabVisible && IsSelectedConnectionTarget && _irPowerCommandPending &&
+            if (!_isDevicePowerStatusStale && _devicePowerStatusReceivedAt >= _irPowerCommandSentAt &&
+                IsGpsTabVisible && IsSelectedConnectionTarget && _irPowerCommandPending &&
                 ((mcbStatus & 0x20) != 0) == _irPowerCommandTargetOn)
                 _irPowerCommandPending = false;
 
@@ -326,14 +332,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State(
                     "DEVICE STATUS RX",
                     string.Format(
-                        "SESSION={0} / ACTIVE_ENDPOINT={1} / CONNECTED_PROFILE={2} / SELECTED_PROFILE={3} / FUNCTION=0x31 / MCB=0x{4:X2} / SCB=0x{5:X2} / RX={6:HH:mm:ss.fff}",
+                        "SESSION={0} / ACTIVE_ENDPOINT={1} / CONNECTED_PROFILE={2} / SELECTED_PROFILE={3} / FUNCTION={7} / MCB=0x{4:X2} / SCB=0x{5:X2} / RX={6:HH:mm:ss.fff}",
                         _connectionSessionId,
                         _connectedControlAgentEndpoint,
                         _connectedControlAgentProfile?.DisplayName ?? "UNKNOWN",
                         SelectedControlAgentProfile?.DisplayName ?? "UNKNOWN",
                         mcbStatus,
                         scbStatus,
-                        _devicePowerStatusReceivedAt));
+                        _devicePowerStatusReceivedAt,
+                        sourceFunction));
             }
 
             Dispatcher dispatcher = Application.Current?.Dispatcher;
@@ -346,7 +353,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 DispatcherPriority.Background,
                 new Action(() =>
                 {
-                    if (IsGpsTabVisible && IsSelectedConnectionTarget && powerResponseSession == _connectionSessionId && _connectedControlAgentProfile == SelectedControlAgentProfile &&
+                    if (!_isDevicePowerStatusStale && IsGpsTabVisible && IsSelectedConnectionTarget && powerResponseSession == _connectionSessionId && _connectedControlAgentProfile == SelectedControlAgentProfile &&
                         _connectedControlAgentEndpoint == ControlAgentIp + ":" + ControlAgentPortText)
                     {
                         RememberCameraPower("EO", (scbStatus & 0x01) != 0);
@@ -400,6 +407,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _connectedControlAgentProfile = _requestedControlProfile ?? SelectedControlAgentProfile;
             _connectedControlAgentEndpoint = SessionControlIp + ":" + SessionControlPort;
             _connectionSessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
+            ResetWebAgentTelemetrySession();
             ResetDevicePowerStatus();
             _devicePowerFreshnessTimer?.Start();
             ConsoleLogHelper.State("CONTROL SESSION", "START / SESSION=" +
@@ -413,6 +421,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _connectedControlAgentProfile = null;
             _connectedControlAgentEndpoint = "-";
             _connectionSessionId = "-";
+            ResetWebAgentTelemetrySession();
             ResetDevicePowerStatus();
         }
 

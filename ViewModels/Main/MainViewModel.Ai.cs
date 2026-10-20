@@ -42,6 +42,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _hasAppliedDefaultAiModelMapping;
 
+        private readonly object _aiRtspVideoSizeSync = new object();
+
+        private readonly Dictionary<int, Tuple<int, int, DateTime>> _aiRtspVideoSizes =
+            new Dictionary<int, Tuple<int, int, DateTime>>();
+
+        private bool _aiRtspVideoSizeErrorActive;
+
         private const int AiDisplayHoldMilliseconds = 750;
 
         private DateTime _lastEoAiDisplayDetectionTime = DateTime.MinValue;
@@ -82,6 +89,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 2026-10-15 V31_13: attempt socket cleanup even if reconnect cancellation fails.
                 try{_aiDetectorClientService.StopAutoReconnect();}
                 finally{_aiDetectorClientService.Disconnect();}
+                ResetAiRtspVideoSizes();
 
                 bool connected =
                     await _aiDetectorClientService.ConnectAsync(
@@ -131,6 +139,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     AiSettingStatusText = "[AI] Initial Setting Incomplete";
                     return;
                 }
+
+                // v2.91: CMD56은 Mapping이 아니라 RTSP 원본 영상 크기 응답이다.
+                // 자동 알림을 놓친 경우를 보완하기 위해 EO/IR을 1회 조회한다.
+                await RequestAiDetectorRtspVideoSizeAsync(0);
+                await RequestAiDetectorRtspVideoSizeAsync(1);
 
                 if(generation==Volatile.Read(ref _aiManualConnectionGeneration))AiSettingStatusText = "[AI] Connect / Setting Complete";
             }
@@ -204,6 +217,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 _aiDetectorClientService.StopAutoReconnect();
                 _aiDetectorClientService.Disconnect();
+                ResetAiRtspVideoSizes();
 
                 // 2026-08-25: 수동 연결 해제 즉시 EO/IR BBox와 AI ACTIVE 상태를 정리한다.
                 ClearAiDetectionState("Manual disconnect");
@@ -264,7 +278,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// [CMD 53] : [ONNX] 목록 조회 응답
             /// [CMD 54] : [RTSP] / [ONNX] Mapping 조회 응답
             /// [CMD 55] : 탐지데이터 응답
-            /// [CMD 56] : Mapping 설정 응답 또는 확장 Mapping 응답
+            /// [CMD 56] : RTSP 원본 영상 크기 응답 또는 비동기 알림
             /// </summary>
             switch (command)
             {
@@ -322,7 +336,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     break;
 
                 case "56":
-                    HandleAiDetectorMappingResponse(payload);
+                    HandleAiDetectorRtspVideoSizeResponse(payload, receiveTime);
+                    break;
+
+                case "99":
+                    ConsoleLogHelper.Warning(
+                        "AI DETECTOR RESPONSE",
+                        "CMD=99 / MESSAGE=" + payload);
                     break;
 
                 default:
@@ -371,6 +391,72 @@ namespace OpenCvWpfTracking.ViewModels.Main
             HandleAiDetectionResult(
                 result,
                 receiveTime);
+        }
+
+        #endregion
+
+        #region [AI RTSP Video Size]
+
+        /// <summary>접속 및 RTSP URL 변경 때 이전 원본 크기를 무효화한다.</summary>
+        private void ResetAiRtspVideoSizes()
+        {
+            lock (_aiRtspVideoSizeSync)
+            {
+                _aiRtspVideoSizes.Clear();
+                _aiRtspVideoSizeErrorActive = false;
+            }
+        }
+
+        /// <summary>
+        /// v2.91 CMD56의 RTSP 원본 영상 크기를 검증하고 최신값을 보관한다.
+        /// 로컬 FFmpeg 해상도는 실제 표시 영상의 기준이므로 이 값으로 덮어쓰지 않는다.
+        /// </summary>
+        private void HandleAiDetectorRtspVideoSizeResponse(
+            string payload,
+            DateTime receiveTime)
+        {
+            if (!_aiDetectorPacketParser.TryParseRtspVideoSizePayload(
+                payload,
+                out int rtspIndex,
+                out int width,
+                out int height))
+            {
+                if (!_aiRtspVideoSizeErrorActive)
+                {
+                    _aiRtspVideoSizeErrorActive = true;
+                    ConsoleLogHelper.Warning(
+                        "AI RTSP VIDEO SIZE",
+                        "CMD=56 / RESULT=INVALID_PAYLOAD / PAYLOAD=" + payload);
+                }
+                return;
+            }
+
+            _aiRtspVideoSizeErrorActive = false;
+            lock (_aiRtspVideoSizeSync)
+            {
+                _aiRtspVideoSizes[rtspIndex] =
+                    Tuple.Create(width, height, receiveTime);
+            }
+
+            bool available = width > 0 && height > 0;
+            ConsoleLogHelper.State(
+                "AI RTSP VIDEO SIZE",
+                $"CMD=56 / INDEX={rtspIndex} / WIDTH={width} / HEIGHT={height} / AVAILABLE={available}");
+
+            int localWidth = rtspIndex == 0
+                ? EoVideoWidth
+                : rtspIndex == 1 ? IrVideoWidth : 0;
+            int localHeight = rtspIndex == 0
+                ? EoVideoHeight
+                : rtspIndex == 1 ? IrVideoHeight : 0;
+
+            if (available && localWidth > 0 && localHeight > 0 &&
+                (localWidth != width || localHeight != height))
+            {
+                ConsoleLogHelper.Warning(
+                    "AI RTSP VIDEO SIZE",
+                    $"SOURCE_SIZE_MISMATCH / INDEX={rtspIndex} / AI={width}x{height} / VIEWER={localWidth}x{localHeight}");
+            }
         }
 
         #endregion
@@ -1119,6 +1205,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         AiRtsp0Address,
                         AiRtsp1Address);
 
+            ResetAiRtspVideoSizes();
             return await _aiDetectorClientService.SendAsync(packet);
         }
 
@@ -1339,6 +1426,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     .BuildRtspOnnxMappingRequest();
 
             return await _aiDetectorClientService.SendAsync(packet);
+        }
+
+        /// <summary>
+        /// v2.91 CMD07로 지정 RTSP Index의 원본 영상 크기를 조회한다.
+        /// </summary>
+        private async Task<bool> RequestAiDetectorRtspVideoSizeAsync(int rtspIndex)
+        {
+            byte[] packet =
+                _aiPacketBuilder.BuildRtspVideoSizeRequest(rtspIndex);
+
+            bool sent = await _aiDetectorClientService.SendAsync(packet);
+            ConsoleLogHelper.Command(
+                "AI RTSP VIDEO SIZE",
+                $"CMD=07 / INDEX={rtspIndex} / SENT={sent}");
+            return sent;
         }
 
         #endregion

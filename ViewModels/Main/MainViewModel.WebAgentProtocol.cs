@@ -30,6 +30,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private int _lastWebAgentTiltRaw = -1;
 
+        private int _webAgentTelemetryNegotiationStarted;
+
+        private int _webAgentSeparatedTelemetryAckMask;
+
+        private readonly long[] _webAgentLensSampleMilliseconds = new long[2];
+
+        private long _webAgentPanSampleMilliseconds;
+
+        private long _webAgentTiltSampleMilliseconds;
+
+        private long _webAgentPowerSampleMilliseconds;
+
+        private long _webAgentSplitLogTicks;
+
+        /// <summary>연결마다 이전 캐시 시각과 기능 협상 결과를 비운다.</summary>
+        private void ResetWebAgentTelemetrySession()
+        {
+            Interlocked.Exchange(ref _webAgentTelemetryNegotiationStarted, 0);
+            Interlocked.Exchange(ref _webAgentSeparatedTelemetryAckMask, 0);
+            Interlocked.Exchange(ref _lastLegacyEoLensStatusUtcTicks, 0);
+            Interlocked.Exchange(ref _webAgentPanSampleMilliseconds, 0);
+            Interlocked.Exchange(ref _webAgentTiltSampleMilliseconds, 0);
+            Interlocked.Exchange(ref _webAgentPowerSampleMilliseconds, 0);
+            for (int index = 0; index < _webAgentLensSampleMilliseconds.Length; index++)
+            {
+                Interlocked.Exchange(ref _webAgentLensSampleMilliseconds[index], 0);
+            }
+            _irFocusDirectUnavailableSession = null;
+        }
+
+        /// <summary>원본 Unix epoch ms를 검증하며 캐시의 시각을 수신 시각으로 바꾸지 않는다.</summary>
+        private static bool TryReadTelemetryTime(ulong milliseconds, out DateTimeOffset value)
+        {
+            value = default(DateTimeOffset);
+            if (milliseconds == 0 || milliseconds > 253402300799999UL)
+            {
+                return false;
+            }
+            value = DateTimeOffset.FromUnixTimeMilliseconds((long)milliseconds);
+            return value <= DateTimeOffset.UtcNow.AddSeconds(5);
+        }
+
         private void InitializeWebAgentProtocolV18()
         {
             if (!IsEnvironmentStatusSelected) return;
@@ -42,7 +84,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _controlCommandService.RequestCameraFeatureCapability(0x00);
             _controlCommandService.RequestImuTelemetry();
             RequestGpsAutoTxRateAfterConnection();
-            ConsoleLogHelper.State("WEB AGENT V1.8", "Identity, EO/IR lens, IR feature, IMU and GPS rate queries sent");
+            for (byte category = 0; category <= 3; category++)
+            {
+                _controlCommandService.RequestWebAgentTelemetrySetting(category);
+            }
+            ConsoleLogHelper.State("WEB AGENT V2.9", "Identity, EO/IR lens, feature, IMU, GPS rate and separated telemetry capability queries sent");
         }
 
         private void ParseWebAgentV18Packet(LaResponsePacket packet)
@@ -66,11 +112,204 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     case 0x2E: ParseStoredRpyOffsetResponse(payload); break;
                     case 0x2F: ParseStoredRpyRateResponse(payload); break;
                     case 0x30: ParseGpsAutoTxRateResponse(payload); break;
+                    case 0x32: ParseWebAgentPanTiltTelemetry(payload); break;
+                    case 0x33: ParseWebAgentPowerTelemetry(payload); break;
+                    case 0x34: ParseWebAgentTelemetrySetting(payload); break;
                 }
             }
             catch (Exception ex)
             {
                 ConsoleLogHelper.Warning("WEB AGENT V1.8", "Response parse failed / " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// v2.9 Function 0x32 PAN/TILT 분리 텔레메트리를 기존 상태에 반영한다.
+        /// Payload의 각도와 시각은 Little Endian이다.
+        /// </summary>
+        private void ParseWebAgentPanTiltTelemetry(byte[] p)
+        {
+            if (p == null || p.Length != 22 || p[0] != 0x01)
+            {
+                ConsoleLogHelper.Warning("WEB AGENT TELEMETRY", "FUNCTION=0x32 / INVALID_PAYLOAD");
+                return;
+            }
+
+            byte validFlags = p[1];
+            bool panValid = (validFlags & 0x01) != 0;
+            bool tiltValid = (validFlags & 0x02) != 0;
+            ushort panRaw = BitConverter.ToUInt16(p, 2);
+            ushort tiltRaw = BitConverter.ToUInt16(p, 4);
+            ulong panUpdatedAt = BitConverter.ToUInt64(p, 6);
+            ulong tiltUpdatedAt = BitConverter.ToUInt64(p, 14);
+
+            DateTimeOffset panTime;
+            DateTimeOffset tiltTime;
+            panValid &= TryReadTelemetryTime(panUpdatedAt, out panTime);
+            tiltValid &= TryReadTelemetryTime(tiltUpdatedAt, out tiltTime);
+            panValid &= DateTimeOffset.UtcNow - panTime <= TimeSpan.FromSeconds(3);
+            tiltValid &= DateTimeOffset.UtcNow - tiltTime <= TimeSpan.FromSeconds(3);
+
+            if ((panValid && panRaw > 35999) || (tiltValid && tiltRaw > 35999))
+            {
+                ConsoleLogHelper.Warning(
+                    "WEB AGENT TELEMETRY",
+                    $"FUNCTION=0x32 / OUT_OF_RANGE / PAN={panRaw} / TILT={tiltRaw}");
+                return;
+            }
+
+            double previousPan = _currentPan;
+            double previousTilt = _currentTilt;
+            bool panNew = panValid && (long)panUpdatedAt > Interlocked.Read(ref _webAgentPanSampleMilliseconds);
+            bool tiltNew = tiltValid && (long)tiltUpdatedAt > Interlocked.Read(ref _webAgentTiltSampleMilliseconds);
+
+            if (panNew)
+            {
+                Interlocked.Exchange(ref _webAgentPanSampleMilliseconds, (long)panUpdatedAt);
+                _currentPan = ConvertWebAgentPanToGuiAngle(panRaw / 100.0);
+                if (Math.Abs(Math.Abs(_currentPan) - 180.0) <= 0.05 &&
+                    _lastPanAbsoluteTarget.HasValue &&
+                    Math.Abs(Math.Abs(_lastPanAbsoluteTarget.Value) - 180.0) <= 0.05)
+                {
+                    _currentPan = _lastPanAbsoluteTarget.Value < 0 ? -180.0 : 180.0;
+                }
+            }
+
+            if (tiltNew)
+            {
+                Interlocked.Exchange(ref _webAgentTiltSampleMilliseconds, (long)tiltUpdatedAt);
+                _currentTilt = NormalizeUnsignedWebAgentTilt(
+                    tiltRaw / 100.0,
+                    _currentTilt);
+            }
+
+            if (!panNew && !tiltNew)
+            {
+                return;
+            }
+
+            if (panNew && _activePanAbsoluteTarget.HasValue &&
+                Math.Abs(_currentPan - _activePanAbsoluteTarget.Value) <= 0.03)
+                _activePanAbsoluteTarget = null;
+            if (tiltNew && _activeTiltAbsoluteTarget.HasValue &&
+                Math.Abs(GetTiltDifference(_currentTilt, _activeTiltAbsoluteTarget.Value)) <= 0.03)
+                _activeTiltAbsoluteTarget = null;
+
+            if (panValid && tiltValid)
+            {
+                DateTimeOffset poseTime = panTime < tiltTime ? panTime : tiltTime;
+                Interlocked.Exchange(
+                    ref _videoCenterPose,
+                    Tuple.Create(_currentPan, _currentTilt, poseTime.UtcDateTime.Ticks));
+                Interlocked.Increment(ref _panTiltStatusVersion);
+                _positionSnapshotService.UpdatePtz(_currentPan, _currentTilt, poseTime);
+                QueuePositionStatusNotification();
+            }
+            NotifyEoCurrentStatusChanged(
+                panValid && Math.Abs(previousPan - _currentPan) > 0.0001,
+                tiltValid && Math.Abs(previousTilt - _currentTilt) > 0.0001,
+                false,
+                false,
+                false);
+
+            long nowTicks = DateTime.UtcNow.Ticks;
+            if (nowTicks - Interlocked.Read(ref _webAgentSplitLogTicks) >= TimeSpan.TicksPerSecond)
+            {
+                Interlocked.Exchange(ref _webAgentSplitLogTicks, nowTicks);
+                ConsoleLogHelper.State(
+                    "WEB AGENT TELEMETRY",
+                    $"FUNCTION=0x32 / VALID=0x{validFlags:X2} / PAN={_currentPan:F2} / TILT={_currentTilt:F2} / PAN_AT={panUpdatedAt} / TILT_AT={tiltUpdatedAt}");
+            }
+        }
+
+        /// <summary>
+        /// v2.9 Function 0x33 MCB/SCB 전원 상태 이벤트를 반영한다.
+        /// 미수신 Valid=0은 실제 OFF로 해석하지 않는다.
+        /// </summary>
+        private void ParseWebAgentPowerTelemetry(byte[] p)
+        {
+            if (p == null || p.Length != 12 || p[0] != 0x01)
+            {
+                ConsoleLogHelper.Warning("WEB AGENT TELEMETRY", "FUNCTION=0x33 / INVALID_PAYLOAD");
+                return;
+            }
+
+            byte validFlags = p[1];
+            byte mcbStatus = p[2];
+            byte scbStatus = p[3];
+            ulong updatedAt = BitConverter.ToUInt64(p, 4);
+
+            DateTimeOffset powerTime;
+            if ((validFlags & 0x01) != 0 && TryReadTelemetryTime(updatedAt, out powerTime) &&
+                (long)updatedAt > Interlocked.Read(ref _webAgentPowerSampleMilliseconds))
+            {
+                Interlocked.Exchange(ref _webAgentPowerSampleMilliseconds, (long)updatedAt);
+                ApplyDevicePowerStatus(mcbStatus, scbStatus, powerTime.LocalDateTime, "0x33");
+            }
+
+            ConsoleLogHelper.State(
+                "WEB AGENT TELEMETRY",
+                $"FUNCTION=0x33 / VALID=0x{validFlags:X2} / MCB=0x{mcbStatus:X2} / SCB=0x{scbStatus:X2} / UPDATED_AT={updatedAt}");
+        }
+
+        /// <summary>
+        /// v2.9 Function 0x34 설정/지원 응답을 처리한다.
+        /// 구형 서버는 BB에 응답하지 않으므로 기존 호환 모드를 그대로 유지한다.
+        /// </summary>
+        private void ParseWebAgentTelemetrySetting(byte[] p)
+        {
+            if (p == null || p.Length != 6 || p[0] != 0x01 || p[1] > 3)
+            {
+                ConsoleLogHelper.Warning("WEB AGENT TELEMETRY", "FUNCTION=0x34 / INVALID_PAYLOAD");
+                return;
+            }
+
+            byte category = p[1];
+            byte mode = p[2];
+            byte frequencyHz = p[3];
+            byte maximumHz = p[4];
+            byte flags = p[5];
+
+            if (mode > 1 || frequencyHz > 30 || maximumHz > 30 ||
+                (category == 3 && (frequencyHz != 0 || maximumHz != 0)))
+            {
+                ConsoleLogHelper.Warning("WEB AGENT TELEMETRY", "FUNCTION=0x34 / INVALID_SETTING");
+                return;
+            }
+
+            ConsoleLogHelper.State(
+                "WEB AGENT TELEMETRY",
+                $"FUNCTION=0x34 / CATEGORY={category} / MODE={mode} / HZ={frequencyHz} / MAX={maximumHz} / FLAGS=0x{flags:X2}");
+
+            if (IsEnvironmentStatusSelected && category == 0 && maximumHz >= 10 && (flags & 0x01) != 0 &&
+                Interlocked.CompareExchange(ref _webAgentTelemetryNegotiationStarted, 1, 0) == 0)
+            {
+                bool ptSent = _controlCommandService.SetWebAgentTelemetryRate(0, 10);
+                bool eoSent = _controlCommandService.SetWebAgentTelemetryRate(1, 2);
+                bool irSent = _controlCommandService.SetWebAgentTelemetryRate(2, 2);
+                ConsoleLogHelper.Command(
+                    "WEB AGENT TELEMETRY",
+                    $"SEPARATED_MODE_REQUEST / PT_10HZ={ptSent} / EO_2HZ={eoSent} / IR_2HZ={irSent}");
+            }
+
+            if (mode == 0x01 && category <= 2)
+            {
+                int mask = 1 << category;
+                int currentMask;
+                int acknowledged;
+                do
+                {
+                    currentMask = Volatile.Read(ref _webAgentSeparatedTelemetryAckMask);
+                    acknowledged = currentMask | mask;
+                }
+                while (Interlocked.CompareExchange(
+                    ref _webAgentSeparatedTelemetryAckMask,
+                    acknowledged,
+                    currentMask) != currentMask);
+                if ((acknowledged & 0x07) == 0x07 && (currentMask & 0x07) != 0x07)
+                {
+                    _controlCommandService.RequestWebAgentTelemetrySnapshot(3);
+                }
             }
         }
 
@@ -127,13 +366,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void ParseWebAgentLensTelemetry(byte[] p)
         {
-            if (p.Length < 16 || p[0] != 1) return;
+            if (p.Length != 16 || p[0] != 1 || p[1] > 1) return;
             byte target = p[1];
             byte flags = p[2];
             ushort zoom = BitConverter.ToUInt16(p, 4);
             ushort focus = BitConverter.ToUInt16(p, 6);
             bool zoomValid = (flags & 0x01) != 0 && zoom <= 1000;
             bool focusValid = (flags & 0x02) != 0 && focus <= 1000;
+            DateTimeOffset sampleTime;
+            ulong sampleMilliseconds = BitConverter.ToUInt64(p, 8);
+            if (!TryReadTelemetryTime(sampleMilliseconds, out sampleTime) ||
+                DateTimeOffset.UtcNow - sampleTime > TimeSpan.FromSeconds(3) ||
+                (long)sampleMilliseconds <= Interlocked.Read(ref _webAgentLensSampleMilliseconds[target]))
+            {
+                return;
+            }
+            Interlocked.Exchange(ref _webAgentLensSampleMilliseconds[target], (long)sampleMilliseconds);
             if (target == 0x00)
             {
                 Interlocked.Increment(ref _eoLensStatusVersion);
@@ -340,6 +588,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ParseWebAgentUnavailable(byte[] p)
         {
             if (p.Length < 6) return;
+            if (p[0] == 1 && p[2] == 0 && p[3] == 0x2B)
+            {
+                _irFocusDirectUnavailableSession = _connectionSessionId;
+            }
             DispatchSpecialFeaturePacket(p, ApplySpecialFeatureUnavailable);
             HandleGpsUnavailable(p);
             if(p[2]==0x1D && p[3]==0xE9 && p[4]<2)

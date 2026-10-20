@@ -15,7 +15,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// 따라서 ReadAsync에서 전달된 byte[] 하나를
     /// 완전한 Packet이라고 가정하지 않고 내부 Buffer에 누적한 뒤,
     /// Header(0xFF)와 Function을 확인하여 Legacy 12Byte 또는
-    /// Function 0x23~0x2C의 Payload 길이 기반으로 분리한다.
+    /// Function 0x23~0x30 및 0x32~0x34의 Payload 길이 기반으로 분리한다.
     /// </summary>
     public class LAPacketParser
     {
@@ -41,9 +41,9 @@ namespace OpenCvWpfTracking.Services.Communication
 
         private const byte VariableFunctionMinimum = 0x23;
 
-        // 2026-10-02: GPS 자동 전송 주파수 설정/조회 응답(0x30)도
-        // LEN 기반 가변 Packet으로 조립한다.
-        private const byte VariableFunctionMaximum = 0x30;
+        // 2026-10-20: v2.9 분리 텔레메트리 응답(0x32~0x34)까지
+        // LEN 기반 가변 Packet으로 조립한다. 0x31은 위의 고정 13Byte 분기다.
+        private const byte VariableFunctionMaximum = 0x34;
 
         private const int VariableHeaderSize = 4;
 

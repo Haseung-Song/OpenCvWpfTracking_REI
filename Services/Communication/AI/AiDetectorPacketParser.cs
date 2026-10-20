@@ -121,7 +121,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 int payloadSize;
 
                 // [SIZE]가 숫자가 아니면 비정상 [Packet]으로 보고 [STX] 하나 제거 후 재탐색
-                if (!int.TryParse(sizeText, out payloadSize))
+                if (!int.TryParse(sizeText, NumberStyles.None, CultureInfo.InvariantCulture, out payloadSize))
                 {
                     receiveBuffer.RemoveAt(0);
                     continue;
@@ -286,7 +286,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         /// <summary>
-        /// [CMD 54 / 56] [RTSP] / [ONNX] [Mapping] [Payload] 파싱
+        /// [CMD 54] [RTSP] / [ONNX] [Mapping] [Payload] 파싱
         /// 
         /// [Payload] 예:
         /// 0:1^0.10^0.45[US]1:0^0.10^0.45,1^0.10^0.45
@@ -373,6 +373,45 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             return mappingList;
         }
 
+        /// <summary>
+        /// [CMD 56] RTSP 원본 영상 크기 Payload를 파싱한다.
+        ///
+        /// 형식: index[US]width[US]height
+        /// index는 0~2, 크기는 양수 쌍 또는 미가용을 나타내는 0/0만 허용한다.
+        /// </summary>
+        public bool TryParseRtspVideoSizePayload(
+            string payload,
+            out int rtspIndex,
+            out int width,
+            out int height)
+        {
+            rtspIndex = -1;
+            width = 0;
+            height = 0;
+
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return false;
+            }
+
+            string[] parts = payload.Split(PayloadSeparator);
+            if (parts.Length != 3 ||
+                !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out rtspIndex) ||
+                !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out width) ||
+                !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out height))
+            {
+                return false;
+            }
+
+            if (rtspIndex < 0 || rtspIndex > 2 || width < 0 || height < 0)
+            {
+                return false;
+            }
+
+            return (width == 0 && height == 0) ||
+                   (width > 0 && height > 0);
+        }
+
         #endregion
 
         #region [Common Packet Parse]
@@ -381,7 +420,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// [AI] [Packet] 공통 구조를 외부에서 파싱한다.
         /// 
         /// [CMD 55] 탐지데이터 외에도
-        /// [CMD 51] / [CMD 52] / [CMD 53] / [CMD 54] / [CMD 56]
+        /// [CMD 51] / [CMD 52] / [CMD 53] / [CMD 54] / [CMD 55] / [CMD 56] / [CMD 99]
         /// 응답 [Packet]을 구분하기 위해 사용한다.
         /// 
         /// 내부적으로 [TryParsePacket()]을 호출하여
@@ -457,7 +496,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             int payloadSize;
 
-            if (!int.TryParse(sizeText, out payloadSize))
+            if (!int.TryParse(sizeText, NumberStyles.None, CultureInfo.InvariantCulture, out payloadSize))
             {
                 return false;
             }

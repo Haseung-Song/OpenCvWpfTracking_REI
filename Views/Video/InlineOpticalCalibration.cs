@@ -156,10 +156,10 @@ namespace OpenCvWpfTracking
         private static readonly ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration> controllers = new ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration>();
         private readonly FrameworkElement image;
         private readonly MainViewModel vm;
+        private readonly Button fourPointButton;
         private readonly Func<bool> ir;
         private readonly OpticalCalibrationSession session = new OpticalCalibrationSession();
         private readonly TextBlock status;
-        private readonly CheckBox confirmed;
         private readonly ToggleButton settingsToggle;
         private readonly Border settingsBorder;
         private readonly TextBlock pickingHint;
@@ -265,7 +265,7 @@ namespace OpenCvWpfTracking
             buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.45, GridUnitType.Star) });
             buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             tools.Children.Add(buttons);
-            Add(buttons, 0, "수동 계산(4점)", () => Begin(true));
+            fourPointButton = Add(buttons, 0, "수동 계산(4점)", () => Begin(true));
             Add(buttons, 1, "기본 중심", () =>
             {
                 try
@@ -281,20 +281,6 @@ namespace OpenCvWpfTracking
                     Notice(e.Message);
                 }
             });
-            confirmed = new CheckBox
-            {
-                Content = new TextBlock
-                {
-                    Text = "D-ZOOM OFF 확인",
-                    TextWrapping = TextWrapping.Wrap
-                },
-                IsChecked = true,
-                Foreground = Brushes.White,
-                FontSize = 10,
-                Margin = new Thickness(3, 2, 3, 2),
-                ToolTip = "기본 선택은 실제 D-ZOOM OFF 명령/응답 확인이 아닙니다. 디지털 줌 OFF 및 영상 안정 상태를 확인한 뒤 계산하세요."
-            };
-            tools.Children.Add(confirmed);
             status = new TextBlock
             {
                 Foreground = Brushes.White,
@@ -390,6 +376,7 @@ namespace OpenCvWpfTracking
                 }
 
                 header.Text = (channel ? "IR" : "EO") + " 십자선 표시";
+                RefreshDigitalZoomAvailability();
                 settingsToggle.Foreground = LegacyVideoIntegration.ChannelBrush(channel);
                 settingsBorder.BorderBrush = settingsToggle.Foreground;
                 bool connected = (channel ? vm.IrStatusText : vm.EoStatusText).EndsWith("] Connected", StringComparison.Ordinal);
@@ -462,11 +449,9 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void Begin(bool four)
         {
-            if (confirmed.IsChecked != true)
-            {
-                Notice("D-ZOOM OFF·영상 안정 확인 필요");
+            RefreshDigitalZoomAvailability();
+            if (vm.IsOpticalCalibrationBlockedByDigitalZoom(ir()))
                 return;
-            }
 
             if (vm.IsControlInputLocked || !vm.OpticalFeedbackFresh(ir()))
             {
@@ -498,6 +483,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void Refresh()
         {
+            RefreshDigitalZoomAvailability();
             pickingHint.Text = session.Status;
             pickingHint.Visibility = session.Active && settingsToggle.IsChecked != true ? Visibility.Visible : Visibility.Collapsed;
             settingsToggle.ToolTip = session.Active ? session.Status : "이 영상의 십자선 표시 및 중심 보정 설정";
@@ -518,6 +504,10 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void SelectPoint(Point point)
         {
+            RefreshDigitalZoomAvailability();
+            if (vm.IsOpticalCalibrationBlockedByDigitalZoom(ir()))
+                return;
+
             session.Select(point, vm.OpticalZoom(ir()), vm.OpticalPose, vm.OpticalDeviceKey(ir()), vm.OpticalFeedbackFresh(ir()));
             drawnPoints.Clear();
             drawnPoints.AddRange(session.SelectedPoints);
@@ -541,10 +531,12 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void Save()
         {
+            RefreshDigitalZoomAvailability();
+            if (vm.IsOpticalCalibrationBlockedByDigitalZoom(ir()))
+                return;
+
             try
             {
-                if (confirmed.IsChecked != true)
-                    throw new InvalidOperationException("D-ZOOM OFF·영상 안정 상태를 확인하세요.");
                 if (vm.IsControlInputLocked)
                     throw new InvalidOperationException("장비 작업 중 · 다시 계산하세요.");
                 if (!session.CanSave(vm.OpticalZoom(ir()), vm.OpticalPose, vm.OpticalDeviceKey(ir()), vm.OpticalFeedbackFresh(ir())))
@@ -669,7 +661,7 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// 지정 열에 동일한 형식의 작은 보정 버튼을 추가한다.
         /// </summary>
-        private static void Add(Grid panel, int column, string text, Action action)
+        private static Button Add(Grid panel, int column, string text, Action action)
         {
             var button = new Button
             {
@@ -681,6 +673,25 @@ namespace OpenCvWpfTracking
             button.Click += (s, e) => action();
             Grid.SetColumn(button, column);
             panel.Children.Add(button);
+            return button;
+        }
+
+        /// <summary>
+        /// 체크 확인 없이 채널의 D-ZOOM 요청 이력으로 계산 버튼만 갱신한다.
+        /// 계산 중 ON 전환 시 임시 점만 버리고 기존 저장 중심을 유지한다.
+        /// </summary>
+        private void RefreshDigitalZoomAvailability()
+        {
+            bool blocked = vm.IsOpticalCalibrationBlockedByDigitalZoom(ir());
+            fourPointButton.IsEnabled = !blocked;
+            if (!blocked || !session.Active)
+                return;
+
+            session.Cancel();
+            ClearGeometry();
+            pickingHint.Visibility = Visibility.Collapsed;
+            OpenCvWpfTracking.Common.ConsoleLogHelper.State(
+                "OPTICAL CENTER", (ir() ? "IR" : "EO") + " / CALIBRATION_CANCELED / DIGITAL_ZOOM_ON");
         }
 
         #endregion

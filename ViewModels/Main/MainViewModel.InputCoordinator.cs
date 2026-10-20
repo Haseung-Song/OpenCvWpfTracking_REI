@@ -23,7 +23,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly Dictionary<string, Tuple<string, int, int>> _controlInputs = new Dictionary<string, Tuple<string, int, int>>();
         private readonly Dictionary<string, Tuple<int, int>> _issuedControlAxes = new Dictionary<string, Tuple<int, int>>();
         private readonly SemaphoreSlim _inputReconcile = new SemaphoreSlim(1, 1);
-        private bool _isFovSpeedEnabled = true, _isGlobalControlEnabled, _isVideoClickCenterEnabled = true;
+        private bool _isFovSpeedEnabled = true, _isGlobalControlEnabled, _isVideoClickCenterEnabled;
         private bool _isZoomRatioOverlayVisible = true;
         private int _inputEpoch;
         private long _eoLensReceivedTicks, _irLensReceivedTicks;
@@ -253,6 +253,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     AiPowerStatusText = "OFF";
                     ClearAiDetectionState("AI transport lost");
                     SetFireSmokeDetectorsForAiConnection(false, "AI transport lost");
+                    ResetAiRtspVideoSizes();
                 }
 
                 TickDigitalEstimate();

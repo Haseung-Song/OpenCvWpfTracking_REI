@@ -1167,6 +1167,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// IR Focus를 목표 Position으로 이동한다.
         ///
         /// 사용 명령:
+        /// - Direct     : Command2 0x2B / Position Big Endian
         /// - Near Start : Command2 0x31 / Data1 0x03
         /// - Far Start  : Command2 0x31 / Data1 0x04
         /// - Focus Stop : Command2 0x31 / Data1 0x05
@@ -1174,8 +1175,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 상태 확인:
         /// - Function 0x07의 IR Focus Position 0 ~ 1000
         ///
-        /// 기존의 0x28 Absolute 명령은 실장비에서 Pan / Tilt가 움직였으므로
-        /// 이 경로에서는 절대 사용하지 않는다.
+        /// 0x2B 직접 절대이동을 우선 시도하고 미지원·무응답·미도달이면
+        /// 기존 0x31 폐루프 제어로 안전하게 전환한다.
         /// </summary>
         private async Task<bool> MoveIrFocusToPositionAsync(
             int targetPosition,
@@ -1189,6 +1190,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             if (!await EnsurePresetIrLensFeedbackAsync(false, cancellationToken))
                 return false;
+
+            if (await TryMoveIrFocusDirectAsync(
+                targetPosition,
+                tolerance,
+                cancellationToken))
+            {
+                return true;
+            }
 
             var planner = new IrFocusMotionPlanner();
             var total = Stopwatch.StartNew();
@@ -1321,6 +1330,120 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.Warning("IR FOCUS SYNC",
                 $"RESULT=INCOMPLETE / TARGET={targetPosition} / ACTUAL={_currentIrFocus} / ELAPSED_MS={total.ElapsedMilliseconds}");
+            return false;
+        }
+
+        /// <summary>
+        /// v2.91 0x2B IR Focus 절대이동을 우선 시도한다.
+        /// 직접 명령이 없는 구형 장비는 새 Focus 피드백이 없거나 목표에 도달하지 않으므로
+        /// 정지 후 호출자가 0x31 적응형 폐루프로 계속 진행한다.
+        /// </summary>
+        private string _irFocusDirectUnavailableSession;
+
+        private async Task<bool> TryMoveIrFocusDirectAsync(
+            int targetPosition,
+            int tolerance,
+            CancellationToken token)
+        {
+            int startPosition = _currentIrFocus;
+            string session = _connectionSessionId;
+            if (Math.Abs(targetPosition - startPosition) <= tolerance ||
+                _irFocusDirectUnavailableSession == session)
+            {
+                return false;
+            }
+
+            long feedbackTicks = PresetLensTicks(true, false);
+            // 전달받은 목표는 피드백 Raw 좌표이고 0x2B의 전송값은 표준 Far~Near 좌표다.
+            int standardTarget = ConvertIrFocusStandardToStatusPosition(targetPosition);
+            token.ThrowIfCancellationRequested();
+            if (!_controlCommandService.IrFocusGoPosition((short)standardTarget))
+            {
+                return false;
+            }
+
+            ConsoleLogHelper.Command(
+                "IR FOCUS DIRECT",
+                $"CMD2=0x2B / TARGET={targetPosition} / WIRE_POSITION={standardTarget} / START={startPosition}");
+
+            var timer = Stopwatch.StartNew();
+            long lastFreshMs = 0;
+            long lastMovementMs = 0;
+            int previous = startPosition;
+            int expectedDirection = Math.Sign(targetPosition - startPosition);
+            bool moved = false;
+            bool completed = false;
+            try
+            {
+                while (timer.ElapsedMilliseconds < IrFocusSyncTimeoutMs)
+                {
+                    if (session != _connectionSessionId || _irFocusDirectUnavailableSession == session)
+                    {
+                        break;
+                    }
+                    token.ThrowIfCancellationRequested();
+                    long nextTicks = PresetLensTicks(true, false);
+                    if (nextTicks > feedbackTicks && HasFreshPresetLens(true, false))
+                    {
+                        feedbackTicks = nextTicks;
+                        lastFreshMs = timer.ElapsedMilliseconds;
+                        int current = _currentIrFocus;
+                        int delta = current - previous;
+                        previous = current;
+                        if (delta != 0) lastMovementMs = timer.ElapsedMilliseconds;
+                        moved |= Math.Abs(current - startPosition) > 1;
+
+                        if (delta != 0 && Math.Sign(delta) != expectedDirection &&
+                            Math.Abs(delta) > Math.Max(2, tolerance))
+                        {
+                            ConsoleLogHelper.Warning(
+                                "IR FOCUS DIRECT",
+                                $"RESULT=DIRECTION_MISMATCH / TARGET={targetPosition} / ACTUAL={current}");
+                            break;
+                        }
+
+                        if (Math.Abs(current - targetPosition) <= tolerance)
+                        {
+                            int? stable = await WaitForIrFocusStableEvidenceAsync(token);
+                            if (stable.HasValue && Math.Abs(stable.Value - targetPosition) <= tolerance)
+                            {
+                                ConsoleLogHelper.State(
+                                    "IR FOCUS DIRECT",
+                                    $"RESULT=COMPLETED / TARGET={targetPosition} / ACTUAL={stable.Value} / ELAPSED_MS={timer.ElapsedMilliseconds}");
+                                completed = true;
+                                return true;
+                            }
+                        }
+                    }
+
+                    if ((!moved && timer.ElapsedMilliseconds >= 1800) ||
+                        (moved && timer.ElapsedMilliseconds - lastMovementMs >= 2500) ||
+                        (moved && timer.ElapsedMilliseconds - lastFreshMs >= 2500))
+                    {
+                        break;
+                    }
+
+                    await Task.Delay(20, token);
+                }
+            }
+            finally
+            {
+                // 취소·예외·미지원 전환 때도 같은 연결에 정지 명령을 보장한다.
+                if (!completed && session == _connectionSessionId)
+                {
+                    _controlCommandService.StopIrFocus();
+                }
+            }
+            token.ThrowIfCancellationRequested();
+            if (session != _connectionSessionId)
+            {
+                throw new OperationCanceledException("IR Focus 이동 중 연결 세션이 변경되었습니다.");
+            }
+            _irFocusDirectUnavailableSession = session;
+            await Task.Delay(120, token);
+            ConsoleLogHelper.Warning(
+                "IR FOCUS DIRECT",
+                $"RESULT=FALLBACK_0x31 / TARGET={targetPosition} / ACTUAL={_currentIrFocus} / MOVED={moved} / ELAPSED_MS={timer.ElapsedMilliseconds}");
             return false;
         }
 

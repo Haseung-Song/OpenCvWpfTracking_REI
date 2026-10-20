@@ -76,7 +76,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public byte Checksum => RawData[RawData.Length - 1];
 
         public bool IsVariableLength =>
-            Function >= 0x23 && Function <= 0x30;
+            Function >= 0x23 && Function <= 0x34 && Function != 0x31;
 
         /// <summary>
         /// 2026-10-06: PTZF + MCB/SCB 상태를 전달하는 고정 13Byte 응답.

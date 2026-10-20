@@ -37,6 +37,12 @@ namespace OpenCvWpfTracking.Services.Position
             _state.UpdatePtzAndEoLens(pan, tilt, eoZoom, eoFocus, DateTimeOffset.Now);
         }
 
+        /// <summary>분리 PT 수신은 EO 렌즈를 최신 상태로 승격하지 않는다.</summary>
+        public void UpdatePtz(double pan, double tilt, DateTimeOffset receivedAt)
+        {
+            _state.UpdatePtz(pan, tilt, receivedAt);
+        }
+
         public void UpdateEoLens(int eoZoom, int eoFocus)
         {
             _state.UpdateEoLens(eoZoom, eoFocus, DateTimeOffset.Now);

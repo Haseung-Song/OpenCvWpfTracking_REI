@@ -505,11 +505,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 WriteVideoConnectLog(result);
 
                 /*
-                 * [LA AGENT] 최초 장비 연결 완료 후 HOME POSITION 자동 실행
-                */
-
-                /*
-                 * [LA AGENT] 최초 장비 연결 완료 후 HOME POSITION 자동 실행
+                 * LA/WEB AGENT 최초 장비 연결 완료 후 HOME POSITION 자동 실행
                  *
                  * Vertiport 운용 흐름과 동일하게 다음 순서를 보장한다.
                  *
@@ -519,8 +515,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 한 채널만 연결된 상태에서는 자동 HOME을 실행하지 않는다.
                  * 필요한 경우 운용자가 연결 복구 후 HOME 버튼을 직접 누른다.
                  *
-                 * ENVIRONMENT / WEB AGENT에서는 HOME / ZERO가 지원 대상이 아니므로
-                 * 자동 HOME을 실행하지 않는다.
+                 * LA/WEB 모두 수동 HOME과 같은 Pan 0° / Tilt 0° 절대 이동을 사용한다.
+                 * 기계식 원점 탐색이나 ZERO 설정은 실행하지 않는다.
+                 * 자동 영상 재연결 경로에서는 이 블록을 호출하지 않는다.
                  *
                  * HOME 진행 중에는 수동 HOME과 동일하게
                  * 전체 우측 UI, 탭, 버튼, 방향키, WASD, Zoom/Focus 단축키가 잠기며,
@@ -531,16 +528,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     result.IrResult;
 
                 if (isControlAgentConnected &&
-                    IsRooftopStatusSelected &&
+                    _laTcpService.IsConnected &&
+                    session == Interlocked.Read(ref _deviceSessionGeneration) &&
                     areBothCamerasConnected)
                 {
                     ConsoleLogHelper.Info(
                         "CONNECT / AUTO HOME",
-                        "Eligibility passed / CONTROL AGENT + EO and IR connected / MODE=LA AGENT");
+                        $"Eligibility passed / CONTROL AGENT + EO and IR connected / MODE={(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")}");
 
                     Console.WriteLine();
                     Console.WriteLine(
-                        "[CONNECT] LA AGENT + EO/IR VIDEO AVAILABLE " +
+                        $"[CONNECT] {(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")} + EO/IR VIDEO AVAILABLE " +
                         "/ AUTO HOME POSITION START");
                     ConsoleLogHelper.PrintLine();
 
@@ -552,7 +550,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     Console.WriteLine();
                     Console.WriteLine(
-                        "[CONNECT] LA AGENT AUTO HOME POSITION END " +
+                        $"[CONNECT] {(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")} AUTO HOME POSITION END " +
                         $"/ STATUS={HomeZeroStatusText}");
                     ConsoleLogHelper.PrintLine();
                 }

@@ -660,9 +660,51 @@ namespace OpenCvWpfTracking
                         button.MinHeight = Math.Max(30, button.MinHeight);
                 }
 
-                if (aiScroll.Content is FrameworkElement root)
+                if (aiScroll.Content is StackPanel root)
+                {
                     root.Margin = new Thickness(5, 8, 5, 16);
+                    AlignAiScrollBottom(aiTab, aiScroll, root);
+                }
             }
+        }
+
+        /// <summary>
+        /// 실제 구역 상태 행 수에 맞춰 하단 여백을 계산한다.
+        /// 최하단에서 이전 진단 문구가 상단 경계에 반쯤 남지 않게 다음 제목을 맞춘다.
+        /// </summary>
+        private void AlignAiScrollBottom(TabItem tab, ScrollViewer scroll, StackPanel root)
+        {
+            var tail = new Border { Height = 0, IsHitTestVisible = false };
+            root.Children.Add(tail);
+            bool adjusting = false;
+            root.LayoutUpdated += (s, e) =>
+            {
+                if (adjusting || !tab.IsSelected || scroll.ViewportHeight <= 0)
+                    return;
+
+                double baseOffset = scroll.ScrollableHeight - tail.Height;
+                if (baseOffset <= 0)
+                    return;
+
+                var smoke = LogicalDescendants<CheckBox>(root)
+                    .FirstOrDefault(c => Convert.ToString(c.Content) == "SMOKE DETECTOR");
+                if (smoke == null || smoke.ActualHeight <= 0)
+                    return;
+
+                double top = smoke.TranslatePoint(new Point(), scroll).Y + scroll.VerticalOffset - scroll.Padding.Top;
+                // 가까운 카드 제목만 정렬하며 큰 빈 페이지를 추가하지 않는다.
+                double desired = top >= baseOffset && top <= baseOffset + 120
+                    ? Math.Max(0, top - baseOffset - 6) : 0;
+                if (Math.Abs(tail.Height - desired) < 1)
+                    return;
+
+                bool atBottom = scroll.VerticalOffset >= scroll.ScrollableHeight - 1;
+                adjusting = true;
+                tail.Height = desired;
+                adjusting = false;
+                if (atBottom)
+                    Dispatcher.BeginInvoke(new Action(scroll.ScrollToEnd));
+            };
         }
 
         /// <summary>

@@ -103,6 +103,19 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 분리 텔레메트리의 PT만 갱신한다. 렌즈의 수신 시각은 변경하지 않는다.
+        /// </summary>
+        public void UpdatePtz(double pan, double tilt, DateTimeOffset receivedAt)
+        {
+            lock (_sync)
+            {
+                _pan = pan;
+                _tilt = tilt;
+                _ptzUpdatedAt = receivedAt;
+            }
+        }
+
         public void UpdateEoLens(int eoZoom, int eoFocus, DateTimeOffset receivedAt)
         {
             lock (_sync)

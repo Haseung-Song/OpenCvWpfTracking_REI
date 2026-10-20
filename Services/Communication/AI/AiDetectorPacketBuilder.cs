@@ -23,6 +23,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// 4. [CMD 04] [ONNX] 파일 목록 조회
     /// 5. [CMD 05] [RTSP] / [ONNX] [Mapping] 설정
     /// 6. [CMD 06] [RTSP] / [ONNX] [Mapping] 조회
+    /// 7. [CMD 07] [RTSP] 원본 영상 크기 조회
     /// </summary>
     public class AiDetectorPacketBuilder
     {
@@ -134,11 +135,33 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// [RTSP] / [ONNX] [Mapping] 조회 요청 [Packet] 생성
         /// 
         /// 요청 [CMD 06]
-        /// 응답 [CMD 56]
+        /// 응답 [CMD 54]
         /// </summary>
         public byte[] BuildRtspOnnxMappingRequest()
         {
             return BuildRequestPacket("06", string.Empty);
+        }
+
+        /// <summary>
+        /// [RTSP] 원본 영상 크기 조회 요청 [Packet] 생성
+        ///
+        /// 요청 [CMD 07]
+        /// 응답 [CMD 56]
+        /// Payload는 0부터 시작하는 RTSP Index의 ASCII 10진 문자열이다.
+        /// </summary>
+        public byte[] BuildRtspVideoSizeRequest(int rtspIndex)
+        {
+            if (rtspIndex < 0 || rtspIndex > 2)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(rtspIndex),
+                    rtspIndex,
+                    "RTSP Index는 0~2 범위여야 합니다.");
+            }
+
+            return BuildRequestPacket(
+                "07",
+                rtspIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         #endregion
@@ -175,6 +198,13 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             byte[] payloadBytes =
                 Encoding.UTF8.GetBytes(payload);
+
+            if (payloadBytes.Length > 999)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(payload),
+                    "AI Payload의 UTF-8 바이트 길이는 999 이하여야 합니다.");
+            }
 
             string sizeText =
                 payloadBytes.Length.ToString("D3");

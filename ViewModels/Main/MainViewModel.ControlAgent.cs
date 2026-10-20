@@ -592,6 +592,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 "Connected",
                                 "#55D187", token);
 
+                            // 재접속한 TCP 연결은 호환 모드에서 시작하므로 지원 조회부터 다시 수행한다.
+                            string reconnectedSession = _connectionSessionId;
+                            var reconnectDispatcher = App.Current?.Dispatcher;
+                            if (reconnectDispatcher != null && !reconnectDispatcher.HasShutdownStarted)
+                            {
+                                _ = reconnectDispatcher.BeginInvoke(new Action(() =>
+                                {
+                                    if (!token.IsCancellationRequested &&
+                                        reconnectedSession == _connectionSessionId &&
+                                        _laTcpService.IsConnected)
+                                    {
+                                        InitializeWebAgentProtocolV18();
+                                    }
+                                }));
+                            }
+
                             Console.WriteLine(
                                 "[CONTROL AGENT] Reconnect Success");
 
@@ -796,6 +812,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 case 0x2E:
                 case 0x2F:
                 case 0x30:
+                case 0x32:
+                case 0x33:
+                case 0x34:
                     ParseWebAgentV18Packet(packet);
                     break;
 

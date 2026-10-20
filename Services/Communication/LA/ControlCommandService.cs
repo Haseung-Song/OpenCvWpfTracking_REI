@@ -42,6 +42,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public const byte WebAgentIrZoomAbsoluteCommand = 0xB7;
 
+        public const byte WebAgentTelemetryRateCommand = 0xB9;
+
+        public const byte WebAgentTelemetrySettingQueryCommand = 0xBB;
+
+        public const byte WebAgentTelemetrySnapshotQueryCommand = 0xBD;
+
         private int _currentIrPaletteIndex;
 
         private bool _isIrPaletteSynchronized;
@@ -82,6 +88,74 @@ namespace OpenCvWpfTracking.Services.Communication
             packet[6] = CheckSum(packet, 1, 5);
 
             return _tcpClientService.Send(packet);
+        }
+
+        /// <summary>
+        /// v2.9 연결별 분리 텔레메트리 전송률을 설정한다.
+        /// Category 0=PT, 1=EO Lens, 2=IR Lens이며 0Hz는 자동 발신 중지다.
+        /// </summary>
+        public bool SetWebAgentTelemetryRate(byte category, byte frequencyHz)
+        {
+            if (category > 2)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(category),
+                    category,
+                    "전송률 설정 Category는 0~2 범위여야 합니다.");
+            }
+
+            if (frequencyHz > 30)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(frequencyHz),
+                    frequencyHz,
+                    "분리 텔레메트리 전송률은 0~30Hz 범위여야 합니다.");
+            }
+
+            return SendCommand(
+                0x00,
+                WebAgentTelemetryRateCommand,
+                category,
+                frequencyHz);
+        }
+
+        /// <summary>
+        /// v2.9 Category별 현재 GUI 전달 설정을 조회한다.
+        /// Category 0=PT, 1=EO Lens, 2=IR Lens, 3=Power다.
+        /// </summary>
+        public bool RequestWebAgentTelemetrySetting(byte category)
+        {
+            ValidateTelemetryQueryCategory(category);
+            return SendCommand(
+                0x00,
+                WebAgentTelemetrySettingQueryCommand,
+                category,
+                0x00);
+        }
+
+        /// <summary>
+        /// v2.9 Category별 캐시를 단건 조회한다.
+        /// 자동 발신이 0Hz인 경우에도 사용할 수 있다.
+        /// </summary>
+        public bool RequestWebAgentTelemetrySnapshot(byte category)
+        {
+            ValidateTelemetryQueryCategory(category);
+            return SendCommand(
+                0x00,
+                WebAgentTelemetrySnapshotQueryCommand,
+                category,
+                0x00);
+        }
+
+        private static void ValidateTelemetryQueryCategory(byte category)
+        {
+            if (category > 3)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(category),
+                    category,
+                    "텔레메트리 조회 Category는 0~3 범위여야 합니다.");
+            }
         }
 
         /// <summary>
@@ -713,8 +787,8 @@ namespace OpenCvWpfTracking.Services.Communication
         private static ushort NormalizeLaPresetId(
             ushort presetId)
         {
-            return presetId > 98
-                ? (ushort)98
+            return presetId > 99
+                ? (ushort)99
                 : presetId;
         }
 
@@ -1651,23 +1725,27 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// [IR] 열영상 카메라 [Focus] 위치 제어 명령
-        /// 
-        /// 범위: [0 ~ 1000]
+        /// v2.91 [IR] 열영상 카메라 [Focus] 절대 위치 제어 명령.
+        /// 범위 0(Far)~1000(Near)을 Big Endian으로 송신한다.
+        /// 장비가 직접 절대이동을 지원하지 않으면 상위 이동 로직이
+        /// 기존 0x31 Near/Far/Stop 폐루프로 자동 전환한다.
         /// </summary>
         public bool IrFocusGoPosition(short focus)
         {
-            if (focus > 1000)
-                focus = 1000;
-            else if (focus < 0)
-                focus = 0;
+            if (focus < 0 || focus > 1000)
+            {
+                ConsoleLogHelper.Warning(
+                    "WEB AGENT IR FOCUS",
+                    $"RESULT=INVALID_POSITION / CMD2=0x2B / POSITION={focus} / RANGE=0~1000");
+                return false;
+            }
 
             byte data1 = (byte)((focus >> 8) & 0xFF);
             byte data2 = (byte)(focus & 0xFF);
 
             return SendCommand(
                 0x00,
-                0x28,
+                0x2B,
                 data1,
                 data2);
         }
