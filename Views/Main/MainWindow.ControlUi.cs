@@ -26,6 +26,49 @@ namespace OpenCvWpfTracking
 
         #endregion
 
+        #region [영상 배치 보정]
+
+        /// <summary>
+        /// IR이 보조 화면일 때 원본 전체가 여백 없이 들어가는 높이를 적용한다.
+        /// EO/IR 주화면 전환과 디코더·BBox 좌표·클릭 이동 계산은 변경하지 않는다.
+        /// </summary>
+        private void UpdateAuxiliaryIrAspectLayout()
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(UpdateAuxiliaryIrAspectLayout));
+                return;
+            }
+            if (IrVideoContainer == null || CompanyMapPanel == null)
+                return;
+
+            if (Grid.GetColumn(IrVideoContainer) != 1)
+            {
+                if (Math.Abs(CompanyMapPanel.Height - 295) > .1)
+                    CompanyMapPanel.Height = 295;
+                return;
+            }
+
+            var bitmap = IrCameraImageView.Source as System.Windows.Media.Imaging.BitmapSource;
+            // 미연결 로고의 비율은 카메라의 원본 비율로 사용하지 않는다.
+            bool hasVideo = vm.IrStatusText != null && vm.IrStatusText.EndsWith("] Connected", StringComparison.Ordinal);
+            double aspect = hasVideo && bitmap != null && bitmap.PixelWidth > 0 && bitmap.PixelHeight > 0
+                ? bitmap.PixelWidth / (double)bitmap.PixelHeight
+                : 4.0 / 3.0;
+            double width = IrVideoContainer.ActualWidth;
+            if (width <= 4 || aspect <= 0)
+                return;
+
+            double height = Math.Max(120, Math.Min(522, (width - 4) / aspect + 4));
+            if (Math.Abs(IrVideoContainer.Height - height) > .1)
+                IrVideoContainer.Height = height;
+            double mapHeight = 295 + 345 - height;
+            if (Math.Abs(CompanyMapPanel.Height - mapHeight) > .1)
+                CompanyMapPanel.Height = mapHeight;
+        }
+
+        #endregion
+
         #region [기능 처리 함수]
 
         // 2026-10-08: 장비 제어 화면은 기존 보더 색상과 글자 형식을 유지한다.
@@ -40,6 +83,16 @@ namespace OpenCvWpfTracking
             _v30UiInitialized = true;
             vm.InitializeV30Status();
             vm.PropertyChanged += V30PropertyChanged;
+            vm.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(vm.IrStatusText))
+                    UpdateAuxiliaryIrAspectLayout();
+            };
+            // IR 보조 슬롯은 실제 영상 종횡비로 맞추고 남는 높이를 지도에 배분한다.
+            System.ComponentModel.DependencyPropertyDescriptor.FromProperty(Image.SourceProperty, typeof(Image))
+                .AddValueChanged(IrCameraImageView, (s, e) => UpdateAuxiliaryIrAspectLayout());
+            IrVideoContainer.SizeChanged += (s, e) => UpdateAuxiliaryIrAspectLayout();
+            Loaded += (s, e) => UpdateAuxiliaryIrAspectLayout();
             AddHandler(Keyboard.PreviewKeyDownEvent, new KeyEventHandler(InputConfirmKey), true);
             AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(ReturnControlFocus), true);
             var speed = Descendants<Slider>(Content as DependencyObject).FirstOrDefault(s => BindingOperations.GetBinding(s, Slider.ValueProperty)?.Path?.Path == "PanTiltSpeedLevel");
@@ -749,6 +802,13 @@ namespace OpenCvWpfTracking
                     nested.Padding = new Thickness(padding.Left, Math.Min(6, padding.Top), padding.Right, Math.Min(6, padding.Bottom));
                 }
 
+                var presetScanCard = header == "PRESET"
+                    ? root.Children.OfType<Border>().FirstOrDefault(card => LogicalDescendants<TextBlock>(card).Any(text => text.Text == "AUTO SCAN / LA SCAN OBJECT"))
+                    : null;
+                var presetScanTitle = presetScanCard == null ? null
+                    : LogicalDescendants<TextBlock>(presetScanCard).First(text => text.Text == "AUTO SCAN / LA SCAN OBJECT");
+                Thickness presetScanMargin = presetScanCard?.Margin ?? new Thickness();
+
                 // 맨 아래 위치에서는 인접한 제목 또는 프리셋 상태가
                 // 첫 행 중간에서 잘리지 않고 완전하게 표시되도록 맞춘다. 이 여백은 외부 패딩이 아닌
                 // 실제 스크롤 내용이므로 이동 범위 계산에 포함된다.
@@ -763,6 +823,26 @@ namespace OpenCvWpfTracking
                 {
                     if (adjusting || !tab.IsSelected || scroll.ViewportHeight <= 0)
                         return;
+
+                    // 첫 화면의 아래 경계에 오토 스캔 제목이 걸리면 카드 전체를
+                    // 경계 아래로 옮긴다. 원래 위치를 기준으로 계산하여 여백 누적을 막는다.
+                    // 카드 내용과 스크롤 이동 범위는 그대로 유지한다.
+                    if (presetScanCard != null && presetScanTitle.ActualHeight > 0)
+                    {
+                        double addedMargin = presetScanCard.Margin.Top - presetScanMargin.Top;
+                        double cardTop = presetScanCard.TranslatePoint(new Point(), scroll).Y + scroll.VerticalOffset - scroll.Padding.Top - addedMargin;
+                        double titleBottom = presetScanTitle.TranslatePoint(new Point(0, presetScanTitle.ActualHeight), scroll).Y + scroll.VerticalOffset - scroll.Padding.Top - addedMargin;
+                        double desiredMargin = cardTop < scroll.ViewportHeight && titleBottom + 4 > scroll.ViewportHeight
+                            ? scroll.ViewportHeight - cardTop + 8 : 0;
+                        if (Math.Abs(addedMargin - desiredMargin) >= 1)
+                        {
+                            adjusting = true;
+                            presetScanCard.Margin = new Thickness(presetScanMargin.Left, presetScanMargin.Top + desiredMargin, presetScanMargin.Right, presetScanMargin.Bottom);
+                            adjusting = false;
+                            return;
+                        }
+                    }
+
                     double baseOffset = scroll.ScrollableHeight - tail.Height;
                     if (baseOffset <= 0)
                         return;

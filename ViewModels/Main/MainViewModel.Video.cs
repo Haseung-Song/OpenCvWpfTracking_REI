@@ -374,6 +374,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _requestedEoAddress = eoRtspAddress;
             _requestedIrAddress = irRtspAddress;
 
+            // 이전 연결 중 선택한 다음 장비는 아직 이전 좌표계를 사용했을 수 있다.
+            // 새 TCP 수신과 자동 HOME 전에 송신·수신 좌표계를 새 요청에 맞춘다.
+            ApplyControlAgentPanCoordinateMode(_requestedControlProfile);
+
             // 2026-08-18: 한 채널만 연결된 상태에서 다시 연결해도
             // 정상 채널의 프레임과 CaptureLoop는 유지하고 실패 채널만 초기화한다.
             bool isEoStreamActive =

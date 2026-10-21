@@ -1497,9 +1497,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _connectedEoCtecSource =
                     null;
 
-                SelectedEquipmentStatusMode =
-                    EquipmentStatusMode.Environment;
-
+                // CTEC 수신 지원 여부는 EO 렌즈 경로이며 PT Agent 모드와 무관하다.
                 _ctecCameraResponseService.Stop();
 
                 OnPropertyChanged(
@@ -1514,9 +1512,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _connectedEoCtecSource =
                 sourceOption;
 
-            SelectedEquipmentStatusMode =
-                EquipmentStatusMode.Rooftop;
-
+            // LA/WEB 상태 모드는 Control Agent 프로필에서만 선택한다.
             _currentCtecEoZoomPosition =
                 0;
 

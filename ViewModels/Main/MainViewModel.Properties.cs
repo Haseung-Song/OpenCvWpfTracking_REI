@@ -360,13 +360,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (_controlCommandService != null)
                 {
-                    bool useWebAgentCoordinates =
-                        value == EquipmentStatusMode.Environment;
-
-                    _controlCommandService.UseUnsignedWebAgentPanCoordinates =
-                        useWebAgentCoordinates;
-                    _controlCommandService.UseUnsignedWebAgentTiltCoordinates =
-                        useWebAgentCoordinates;
+                    // 상태 화면이나 EO 카메라 경로는 PT 프로토콜을 결정하지 않는다.
+                    // 연결 중에는 고정한 Agent 프로필의 좌표계를 계속 사용한다.
+                    ApplyControlAgentPanCoordinateMode(SelectedControlAgentProfile);
                 }
 
                 ConvertPanTiltValuesForSelectedCoordinateMode();

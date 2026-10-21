@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:OpenCvWpfTracking"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="[REI] EO/IR VIDEO MONITORING &amp; PTZF CONTROL VIEWER"
+        Title="TORUSS [EO/IR] 통합 관제시스템"
         Icon="/Images/Demo/Toruss.ico"
         Width="1920"
         Height="1080"
@@ -887,7 +887,7 @@
                     MouseLeftButtonDown="WindowTitleBar_MouseLeftButtonDown"
                     CornerRadius="7,7,0,0">
                 <Grid x:Name="TitleBarClockHost">
-                    <TextBlock x:Name="TitleBarProgramTitle" Text="[REI] EO/IR VIDEO MONITORING &amp; PTZF CONTROL VIEWER"
+                    <TextBlock x:Name="TitleBarProgramTitle" Text="TORUSS [EO/IR] 통합 관제시스템"
                                HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"
                                Margin="12,0,0,0"
                                Foreground="#D8E3EA"
@@ -1485,7 +1485,7 @@
                                            Foreground="#6F8A99"
                                            FontSize="10.5"
                                            VerticalAlignment="Center">
-                                    <Run Text="EO 16:9 / IR 5:4 FULL FRAME · AI BBOX SYNC · "/>
+                                    <Run Text="EO 16:9 / IR 원본 비율 FULL FRAME · AI BBOX SYNC · "/>
                                     <!-- 2026-09-08: Run.Text 기본 TwoWay 처리로 인한 읽기 전용 속성 예외 방지. -->
                                     <Run Text="{Binding SelectedPanoramaCaptureSummary, Mode=OneWay}" Foreground="#8FD3FF"/>
                                 </TextBlock>
@@ -1647,7 +1647,7 @@
                                 -->
                                 <StackPanel Grid.Row="0"
                                             Margin="0,0,0,8">
-                                    <Image x:Name="DeviceBrandLogo" Source="/Images/Demo/TorussLogo.png"
+                                    <Image x:Name="DeviceBrandLogo" Source="/Images/Demo/TorussControlLogo.png"
                                            Height="58"
                                            Margin="0,0,0,10"
                                            HorizontalAlignment="Stretch"

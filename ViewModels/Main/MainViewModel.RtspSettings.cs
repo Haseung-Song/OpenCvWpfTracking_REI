@@ -440,12 +440,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ApplyControlAgentPanCoordinateMode(ControlAgentProfileOption profile)
         {
             profile = _requestedControlProfile ?? profile;
+            bool previousPanMode = _controlCommandService.UseUnsignedWebAgentPanCoordinates;
+            bool previousTiltMode = _controlCommandService.UseUnsignedWebAgentTiltCoordinates;
             // 프로토콜 변환만 Agent 좌표계에 맞추고 GUI는 항상 signed 좌표로 표시한다.
             _controlCommandService.UseUnsignedWebAgentPanCoordinates =
                 profile?.AgentType == ControlAgentType.WebAgent;
 
             _controlCommandService.UseUnsignedWebAgentTiltCoordinates =
                 _controlCommandService.UseUnsignedWebAgentPanCoordinates;
+
+            if (previousPanMode != _controlCommandService.UseUnsignedWebAgentPanCoordinates ||
+                previousTiltMode != _controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            {
+                ConsoleLogHelper.State(
+                    "CONTROL COORDINATE MODE",
+                    "PROFILE=" + (profile?.DisplayName ?? "UNKNOWN") +
+                    " / MODE=" + (_controlCommandService.UseUnsignedWebAgentPanCoordinates
+                        ? "WEB_AGENT_UNSIGNED"
+                        : "LA_SIGNED") +
+                    " / SOURCE=CONTROL_AGENT_PROFILE");
+            }
 
         }
 

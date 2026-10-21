@@ -419,7 +419,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             var pose = Volatile.Read(ref _videoCenterPose);
             long now = DateTime.UtcNow.Ticks;
             string status = ir ? IrStatusText : EoStatusText;
-            if (_videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue || !CameraFeatureTransportReady || IsControlInputLocked || !IsOperationCommandEnabled || _controlInputs.Count > 0 || pose == null || now - pose.Item3 > TimeSpan.FromSeconds(2).Ticks || !IsLensFresh(ir) || now - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]) > TimeSpan.FromSeconds(1).Ticks || status == null || !status.EndsWith("] Connected", StringComparison.Ordinal) || now - _lastCenterClickTicks < TimeSpan.FromMilliseconds(300).Ticks)
+            bool approximateIr = ir && !IsLensFresh(true);
+            if (_videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue || !CameraFeatureTransportReady || IsControlInputLocked || !IsOperationCommandEnabled || _controlInputs.Count > 0 || pose == null || now - pose.Item3 > TimeSpan.FromSeconds(2).Ticks || (!ir && !IsLensFresh(false)) || now - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]) > TimeSpan.FromSeconds(1).Ticks || status == null || !status.EndsWith("] Connected", StringComparison.Ordinal) || now - _lastCenterClickTicks < TimeSpan.FromMilliseconds(300).Ticks)
             {
                 ConsoleLogHelper.Warning("VIDEO CENTER", "Rejected / stale video, pose/lens, lock, connection or active input / CAMERA=" + (ir ? "IR" : "EO"));
                 return false;
@@ -427,6 +428,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             var tuning = ControlTuningFor(ir);
             int zoom = ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom();
+            if (approximateIr && Interlocked.Read(ref _irLensReceivedTicks) == 0)
+                zoom = 0; // 이번 세션에 줌 응답이 없으면 초기 Raw 값을 실제 Tele 배율로 해석하지 않는다.
             TickDigitalEstimate();
             double opticalRatio = tuning.Ratio(zoom);
             var estimate = ir ? _irDigitalEstimate : _eoDigitalEstimate;
@@ -445,6 +448,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             var target = VideoCenterTarget(pose.Item1, pose.Item2, nx / rayScale, ny / rayScale, projectionFov, aspect);
             if (target == null)
                 return false;
+            if (approximateIr)
+            {
+                // 배율이 미확인인 IR도 방향 선택은 허용한다. 정확한 중심 도달로 가장하지 않으며
+                // 한 번에 각 축 최대 3°만 요청하여 오래된 배율로 큰 이동이 발생하지 않게 한다.
+                double deltaPan = (target.Item1 - pose.Item1 + 540) % 360 - 180;
+                target = Tuple.Create(
+                    (pose.Item1 + Clamp(deltaPan, -3.0, 3.0) + 540) % 360 - 180,
+                    pose.Item2 + Clamp(target.Item2 - pose.Item2, -3.0, 3.0));
+            }
             double tilt = Clamp(target.Item2, CurrentMoveControlTiltMinimum, CurrentMoveControlTiltMaximum);
             if (Math.Abs(nx) < .005 && Math.Abs(ny) < .005)
                 return true;
@@ -455,6 +467,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 SetActivePanTiltZoomSource(ir);
                 double speed = tuning.Speed(PanTiltSpeedLevel, zoom, IsFovSpeedEnabled);
+                if (approximateIr)
+                    speed = Math.Min(speed, 10);
                 if (!_controlCommandService.SetPanPositionSpeed(speed) || !_controlCommandService.SetTiltPositionSpeed(speed) || !_controlCommandService.SetPanShortestPathMode())
                     return false;
                 await Task.Delay(IsEnvironmentStatusSelected ? 100 : 80);
@@ -481,7 +495,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 double panDistance = Math.Abs((target.Item1 - pose.Item1 + 540) % 360 - 180), tiltDistance = Math.Abs(tilt - pose.Item2);
                 _centerMoveEpoch = epoch;
                 _centerDeadlineTicks = DateTime.UtcNow.AddSeconds(Math.Min(120, Math.Max(5, 2 * Math.Max(panDistance, tiltDistance) / Math.Max(1, speed) + 3))).Ticks;
-                ConsoleLogHelper.Command("VIDEO CENTER", "SOURCE=VIDEO_CLICK / CAMERA=" + (ir ? "IR" : "EO") + " / MODEL=" + (tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") + " / RAW_ZOOM=" + zoom + " / OPTICAL_RATIO=" + opticalRatio + " / DIGITAL_ESTIMATE=" + digitalFactor + " / EFFECTIVE_RATIO=" + effectiveRatio + " / XY=" + nx + "," + ny + " / ESTIMATED_HFOV=" + hfov + " / TARGET=" + target.Item1 + "," + tilt + " / TX_ONLY, arrival not confirmed");
+                ConsoleLogHelper.Command("VIDEO CENTER", "SOURCE=VIDEO_CLICK / CAMERA=" + (ir ? "IR" : "EO") + " / APPROXIMATE_IR=" + approximateIr + " / MODEL=" + (tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") + " / RAW_ZOOM=" + zoom + " / OPTICAL_RATIO=" + opticalRatio + " / DIGITAL_ESTIMATE=" + digitalFactor + " / EFFECTIVE_RATIO=" + effectiveRatio + " / XY=" + nx + "," + ny + " / ESTIMATED_HFOV=" + hfov + " / TARGET=" + target.Item1 + "," + tilt + " / TX_ONLY, arrival not confirmed");
                 return true;
             }
             catch (Exception ex)

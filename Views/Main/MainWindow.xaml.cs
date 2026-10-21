@@ -1030,6 +1030,8 @@ namespace OpenCvWpfTracking
                 IrVideoContainer,
                 !isEoPrimary);
 
+            UpdateAuxiliaryIrAspectLayout();
+
             Console.WriteLine();
 
             Console.WriteLine(
