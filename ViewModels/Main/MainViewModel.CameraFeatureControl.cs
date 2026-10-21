@@ -109,6 +109,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string EoDigitalZoomStatusText => DigitalStatus(0);
         public string IrDigitalZoomStatusText => DigitalStatus(1);
 
+        /// <summary>
+        /// 영상 클릭으로 요청한 Pan/Tilt 절대 위치 이동이 송신 중이거나
+        /// 장비의 목표 도착 응답을 기다리고 있는지 여부입니다.
+        /// 마우스 hover에 따른 EO/IR 채널 전환이 진행 중인 클릭 이동을
+        /// 중단하지 않도록 MainWindow에서 사용합니다.
+        /// </summary>
+        public bool IsVideoCenterMoveActive =>
+            _videoCenterBusy ||
+            _activePanAbsoluteTarget.HasValue ||
+            _activeTiltAbsoluteTarget.HasValue;
+
         #endregion
 
         #region [기능 처리 함수]

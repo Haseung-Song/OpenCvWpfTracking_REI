@@ -197,6 +197,26 @@ namespace OpenCvWpfTracking
             if (!IsActive)
                 return;
             bool ir = GetHoveredCameraType() == VideoPopoutCameraType.Ir;
+
+            // V32_4: 원격 제어 또는 서로 다른 DPI/해상도 환경에서는 마우스 포인터가
+            // EO/IR 경계를 순간적으로 넘으며 MouseLeave/MouseEnter가 연속 발생할 수 있다.
+            // 클릭 중심 이동 중 hover만으로 ReleaseAllControlInputs를 호출하면 절대 위치
+            // 이동 정지(0x4F)가 송신되므로, 목표 도착 전까지 클릭한 채널을 유지한다.
+            // 실제 버튼/키보드 입력은 PressControlInput에서 기존대로 클릭 이동을 중단한다.
+            if (vm.IsVideoCenterMoveActive)
+            {
+                if (_lastVideoControlRoute.HasValue &&
+                    _lastVideoControlRoute.Value != ir)
+                {
+                    ConsoleLogHelper.State(
+                        "VIDEO CONTROL ROUTE",
+                        "Hover channel change ignored during video-center move / " +
+                        "REQUESTED_CAMERA=" + (ir ? "IR" : "EO"));
+                }
+
+                return;
+            }
+
             if (_lastVideoControlRoute.HasValue && _lastVideoControlRoute.Value != ir)
                 vm.ReleaseAllControlInputs("Video focus channel changed");
             _lastVideoControlRoute = ir;
