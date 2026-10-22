@@ -64,6 +64,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Services\Communication\WebAgent\TelemetryClock.cs" />
     <Compile Include="Services\Communication\WebAgent\CameraFeatureProtocol.cs" />
     <Compile Include="Models\Main\CameraSpecialFeatureRow.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.SpecialFeatures.cs" />

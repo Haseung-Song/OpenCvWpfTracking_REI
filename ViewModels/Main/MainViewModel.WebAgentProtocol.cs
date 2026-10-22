@@ -44,9 +44,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private long _webAgentSplitLogTicks;
 
+        private readonly TelemetryClock _webAgentTelemetryClock = new TelemetryClock();
+        private int _webAgentTelemetryClockGeneration = -1;
+        private double _webAgentTelemetryRejectedLogAt;
+
+        private void LogDeferredWebAgentTelemetry(string channel, ulong sample)
+        {
+            double now = TelemetryClock.MonotonicMilliseconds;
+            if (now - _webAgentTelemetryRejectedLogAt < 5000) return;
+            _webAgentTelemetryRejectedLogAt = now;
+            ConsoleLogHelper.State("WEB AGENT TELEMETRY DEFERRED",
+                "CHANNEL=" + channel + " / SOURCE_TIMESTAMP=" + sample +
+                " / Clock reference pending, invalid time, or stale sample; packet is not used for control");
+        }
+
         /// <summary>연결마다 이전 캐시 시각과 기능 협상 결과를 비운다.</summary>
         private void ResetWebAgentTelemetrySession()
         {
+            _webAgentTelemetryClock.Reset();
+            _webAgentTelemetryClockGeneration = -1;
             Interlocked.Exchange(ref _webAgentTelemetryNegotiationStarted, 0);
             Interlocked.Exchange(ref _webAgentSeparatedTelemetryAckMask, 0);
             Interlocked.Exchange(ref _lastLegacyEoLensStatusUtcTicks, 0);
@@ -60,16 +76,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _irFocusDirectUnavailableSession = null;
         }
 
-        /// <summary>원본 Unix epoch ms를 검증하며 캐시의 시각을 수신 시각으로 바꾸지 않는다.</summary>
-        private static bool TryReadTelemetryTime(ulong milliseconds, out DateTimeOffset value)
+        /// <summary>F1 장비 시간과 단조 시계를 사용하여 로컬 기준 샘플 시각으로 보정한다.</summary>
+        private bool TryReadTelemetryTime(ulong milliseconds, out DateTimeOffset value, bool requireFresh = true)
         {
-            value = default(DateTimeOffset);
-            if (milliseconds == 0 || milliseconds > 253402300799999UL)
+            int generation;
+            bool valid = _webAgentTelemetryClock.TryGetLocalSampleTime(milliseconds,
+                TelemetryClock.MonotonicMilliseconds, DateTimeOffset.UtcNow, out value, out generation, requireFresh);
+            if (generation != _webAgentTelemetryClockGeneration)
             {
-                return false;
+                _webAgentTelemetryClockGeneration = generation;
+                Interlocked.Exchange(ref _webAgentPanSampleMilliseconds, 0);
+                Interlocked.Exchange(ref _webAgentTiltSampleMilliseconds, 0);
+                Interlocked.Exchange(ref _webAgentPowerSampleMilliseconds, 0);
+                for (int index = 0; index < _webAgentLensSampleMilliseconds.Length; index++)
+                    Interlocked.Exchange(ref _webAgentLensSampleMilliseconds[index], 0);
             }
-            value = DateTimeOffset.FromUnixTimeMilliseconds((long)milliseconds);
-            return value <= DateTimeOffset.UtcNow.AddSeconds(5);
+            return valid;
         }
 
         private void InitializeWebAgentProtocolV18()
@@ -149,6 +171,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             tiltValid &= TryReadTelemetryTime(tiltUpdatedAt, out tiltTime);
             panValid &= DateTimeOffset.UtcNow - panTime <= TimeSpan.FromSeconds(3);
             tiltValid &= DateTimeOffset.UtcNow - tiltTime <= TimeSpan.FromSeconds(3);
+            if (!panValid && !tiltValid)
+                LogDeferredWebAgentTelemetry("PT", panUpdatedAt);
 
             if ((panValid && panRaw > 35999) || (tiltValid && tiltRaw > 35999))
             {
@@ -240,7 +264,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ulong updatedAt = BitConverter.ToUInt64(p, 4);
 
             DateTimeOffset powerTime;
-            if ((validFlags & 0x01) != 0 && TryReadTelemetryTime(updatedAt, out powerTime) &&
+            if ((validFlags & 0x01) != 0 && TryReadTelemetryTime(updatedAt, out powerTime, false) &&
                 (long)updatedAt > Interlocked.Read(ref _webAgentPowerSampleMilliseconds))
             {
                 Interlocked.Exchange(ref _webAgentPowerSampleMilliseconds, (long)updatedAt);
@@ -376,11 +400,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DateTimeOffset sampleTime;
             ulong sampleMilliseconds = BitConverter.ToUInt64(p, 8);
             if (!TryReadTelemetryTime(sampleMilliseconds, out sampleTime) ||
-                DateTimeOffset.UtcNow - sampleTime > TimeSpan.FromSeconds(3) ||
-                (long)sampleMilliseconds <= Interlocked.Read(ref _webAgentLensSampleMilliseconds[target]))
+                DateTimeOffset.UtcNow - sampleTime > TimeSpan.FromSeconds(3))
             {
+                LogDeferredWebAgentTelemetry(target == 0 ? "EO" : "IR", sampleMilliseconds);
                 return;
             }
+            if ((long)sampleMilliseconds <= Interlocked.Read(ref _webAgentLensSampleMilliseconds[target])) return;
             Interlocked.Exchange(ref _webAgentLensSampleMilliseconds[target], (long)sampleMilliseconds);
             if (target == 0x00)
             {

@@ -23,10 +23,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private string _systemDateTimeStatusText = "Ready";
         private DispatcherTimer _systemTimePollTimer;
-        private bool _systemTimeQueryInFlight;
+        private volatile bool _systemTimeQueryInFlight;
         private DateTime _systemTimeQuerySentAt;
         private bool _isAutomaticSystemTimeQuery;
         private bool _manualSystemTimeQueryPending;
+        private double _systemTimeQueryMonotonicSentAt;
+        private double _systemTimeLastAutomaticQueryAt;
 
         public ICommand RequestSystemDateTimeCommand { get; private set; }
 
@@ -112,6 +114,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool isAutomatic = _isAutomaticSystemTimeQuery;
             UpdatePcDateTimePreview();
 
+            // F1 has no request ID: never overlap queries used for RTT calibration.
+            if (_systemTimeQueryInFlight && TelemetryClock.MonotonicMilliseconds -
+                _systemTimeQueryMonotonicSentAt < 2000)
+            {
+                if (!isAutomatic) _manualSystemTimeQueryPending = true;
+                return;
+            }
+
             // 2026-10-06: 사용자가 누른 단건 조회는 자동 폴링의 응답 대기 상태보다
             // 우선한다. 자동 조회가 진행 중이어도 즉시 새 요청을 송신한다.
             if (!isAutomatic)
@@ -120,12 +130,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _manualSystemTimeQueryPending = true;
                 SystemDateTimeStatusText = "조회 응답 대기";
             }
+            _systemTimeQueryMonotonicSentAt = TelemetryClock.MonotonicMilliseconds;
+            _systemTimeQuerySentAt = DateTime.Now;
+            _systemTimeQueryInFlight = true;
             bool sent = _controlCommandService.RequestSystemDateTime();
-            if (sent)
-            {
-                _systemTimeQueryInFlight = true;
-                _systemTimeQuerySentAt = DateTime.Now;
-            }
 
             if (!isAutomatic)
             {
@@ -136,6 +144,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (!sent)
             {
+                _systemTimeQueryInFlight = false;
                 _manualSystemTimeQueryPending = false;
                 SystemDateTimeStatusText = "Failed: 조회 명령 전송 실패";
             }
@@ -199,6 +208,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void ParseWebAgentSystemDateTime(byte[] payload)
         {
+            double receivedAt = TelemetryClock.MonotonicMilliseconds;
+            bool queryWasPending = _systemTimeQueryInFlight;
+            double querySentAt = _systemTimeQueryMonotonicSentAt;
             _systemTimeQueryInFlight = false;
             _manualSystemTimeQueryPending = false;
             if (payload == null || payload.Length < 10)
@@ -238,6 +250,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                            (operation == 0x00 || operation == 0x01) &&
                            status == 0x00;
 
+            if (success && operation == 0x00 && queryWasPending)
+            {
+                bool clockChanged;
+                if (_webAgentTelemetryClock.Observe(
+                    new DateTimeOffset(utcDateTime).ToUnixTimeMilliseconds(),
+                    querySentAt, receivedAt, out clockChanged) && clockChanged)
+                {
+                    ConsoleLogHelper.State("WEB AGENT CLOCK",
+                        "F1 clock reference established/reset; no EF time write / PC_MINUS_SBC_SECONDS=" +
+                        (DateTime.UtcNow - utcDateTime).TotalSeconds.ToString("F1", CultureInfo.InvariantCulture));
+                }
+            }
+            if (success && operation == 0x01) _webAgentTelemetryClock.Reset();
+
             RunOnUiThread(() =>
             {
                 WebAgentUtcDateTimeText =
@@ -266,8 +292,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 2026-10-06: 연결 직후 1회 조회하고 SYSTEM TIME 탭 활성 중에만
-        /// 1Hz로 조회한다. 응답 대기 중에는 중복 송신하지 않는다.
+        /// V32_5: 연결 직후와 다른 탭에서도 5초마다 읽기 전용 F1 조회.
+        /// SYSTEM TIME 탭은 기존 1Hz이며 응답 대기 중에는 중복 송신하지 않는다.
         /// </summary>
         private void StartSystemTimePollingAfterConnection()
         {
@@ -275,6 +301,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _systemTimePollTimer?.Start();
             _systemTimeQueryInFlight = false;
             _manualSystemTimeQueryPending = false;
+            _systemTimeLastAutomaticQueryAt = TelemetryClock.MonotonicMilliseconds;
             ConsoleLogHelper.State("SYSTEM TIME AUTO POLL", "Connected / initial query");
             RequestSystemDateTimeAutomatically();
         }
@@ -308,7 +335,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             UpdatePcDateTimePreview();
             if (_manualSystemTimeQueryPending &&
-                DateTime.Now - _systemTimeQuerySentAt >= TimeSpan.FromSeconds(2))
+                TelemetryClock.MonotonicMilliseconds - _systemTimeQueryMonotonicSentAt >= 2000)
             {
                 _manualSystemTimeQueryPending = false;
                 _systemTimeQueryInFlight = false;
@@ -320,13 +347,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             // XAML 기본 순서: CTRL=0, GPS=1, IMU/RPY=2, SYSTEM TIME=3.
-            if (SelectedCommunicationSettingsTabIndex != 3) return;
+            // Keep a read-only clock reference even while another tab is open.
+            // No automatic EF setting: shared SBC time is never overwritten.
+            double nowMonotonic = TelemetryClock.MonotonicMilliseconds;
+            double interval = SelectedCommunicationSettingsTabIndex == 3 ? 1000 : 5000;
+            if (nowMonotonic - _systemTimeLastAutomaticQueryAt < interval) return;
             if (_systemTimeQueryInFlight)
             {
-                if (DateTime.Now - _systemTimeQuerySentAt < TimeSpan.FromSeconds(2)) return;
+                if (nowMonotonic - _systemTimeQueryMonotonicSentAt < 2000) return;
                 _systemTimeQueryInFlight = false;
                 ConsoleLogHelper.Warning("SYSTEM TIME AUTO POLL", "Query timeout; retry enabled");
             }
+            _systemTimeLastAutomaticQueryAt = nowMonotonic;
             RequestSystemDateTimeAutomatically();
         }
 
