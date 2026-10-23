@@ -516,7 +516,7 @@
 
         </Style>
 
-        <!-- 2026-09-17: 운용 제어 하위 탭 4개를 실제 사용 가능 폭 전체에 균등 배치한다. -->
+        <!-- 표시 중인 운용 탭 개수에 맞춰 실제 사용 가능 폭 전체에 균등 배치한다. -->
         <Style x:Key="OperationSubTabControlStyle" TargetType="TabControl">
             <Setter Property="Template">
                 <Setter.Value>
@@ -526,7 +526,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <UniformGrid Grid.Row="0" Rows="1" Columns="4" IsItemsHost="True" HorizontalAlignment="Stretch"/>
+                            <UniformGrid Grid.Row="0" Rows="1" IsItemsHost="True" HorizontalAlignment="Stretch"/>
                             <Border Grid.Row="1" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
                                 <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                             </Border>
@@ -5170,8 +5170,13 @@
                                                 </TabItem>
 
                                                 <!-- [SYNC] 환경장비 Web Agent 표준 Zoom 동기화 -->
-                                                <TabItem Header="SYNC">
-                                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                <!-- LA 장비는 IR 구성이 달라 동기화 시험 탭을 제공하지 않는다. -->
+                                                <TabItem x:Name="SyncOperationTab" Header="SYNC"
+                                                         IsEnabledChanged="SyncOperationTab_IsEnabledChanged"
+                                                         IsEnabled="{Binding IsEnvironmentStatusSelected}"
+                                                         Visibility="{Binding IsEnvironmentStatusSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <ScrollViewer IsEnabled="{Binding IsEnvironmentStatusSelected}"
+                                                                  VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"

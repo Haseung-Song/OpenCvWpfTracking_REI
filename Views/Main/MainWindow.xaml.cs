@@ -427,17 +427,66 @@ namespace OpenCvWpfTracking
         /// FireDetectorTestProgram_Click 이벤트 처리 함수.
         /// </summary>
         private FireSmokeZoneWindow _zoneWindow;
+
+        private void SyncOperationTab_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (!(sender is TabItem syncTab) || syncTab.IsEnabled || !syncTab.IsSelected ||
+                !(DataContext is MainViewModel model) || model.IsEnvironmentStatusSelected)
+            {
+                return;
+            }
+
+            // 탭 순서를 바꾼 경우에도 표시 중인 PTZF 탭으로 복귀한다.
+            var tabs = ItemsControl.ItemsControlFromItemContainer(syncTab) as TabControl;
+            var ptzf = tabs?.Items.OfType<TabItem>().FirstOrDefault(tab => Equals(tab.Header, "PTZF"));
+            if (ptzf != null)
+            {
+                tabs.SelectedItem = ptzf;
+            }
+        }
+
+        private bool _isMainWindowClosing;
+
         private void FireSmokeZoneSettings_Click(object sender, RoutedEventArgs e)
         {
             if (!(DataContext is MainViewModel vm)) return;
             try
             {
                 if (_zoneWindow != null) { if (_zoneWindow.WindowState == WindowState.Minimized) _zoneWindow.WindowState = WindowState.Normal; _zoneWindow.Activate(); return; }
-                _zoneWindow = new FireSmokeZoneWindow(vm) { Owner = this };
-                _zoneWindow.Closed += (s, args) => _zoneWindow = null;
+                WindowState returnState = WindowState == WindowState.Minimized
+                    ? WindowState.Normal
+                    : WindowState;
+                _zoneWindow = new FireSmokeZoneWindow(vm) { Owner = this, ShowInTaskbar = false };
+                _zoneWindow.Closed += (s, args) =>
+                {
+                    _zoneWindow = null;
+
+                    // 닫기와 제목 표시줄 X 모두 같은 메인 화면 복귀 경로를 사용한다.
+                    Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+                        RestoreMainWindowAfterZoneClosed(returnState)));
+                };
                 _zoneWindow.Show();
             }
             catch (Exception ex) { MessageBox.Show(this, ex.Message, "FIRE / SMOKE 구역 설정", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        }
+
+        private void RestoreMainWindowAfterZoneClosed(WindowState returnState)
+        {
+            // 프로그램 종료 중에는 구역 창이 닫혀도 메인 창을 다시 활성화하지 않는다.
+            if (_isMainWindowClosing || !IsVisible || Dispatcher.HasShutdownStarted)
+            {
+                return;
+            }
+
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = returnState == WindowState.Maximized
+                    ? WindowState.Maximized
+                    : WindowState.Normal;
+            }
+
+            Activate();
+            Focus();
         }
 
         private void FireDetectorTestProgram_Click(
@@ -535,6 +584,12 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// OnClosed 상태 및 이벤트 처리 함수.
         /// </summary>
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            _isMainWindowClosing = !e.Cancel;
+        }
+
         protected override void OnClosed(EventArgs e)
         {
             ShutdownV30Ui();

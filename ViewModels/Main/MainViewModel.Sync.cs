@@ -67,6 +67,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task ApplySelectedZoomSyncLevelAsync()
         {
+            // LA 장비에는 현재 EO/IR 동기화 보정 구성을 적용하지 않는다.
+            if (!IsEnvironmentStatusSelected)
+            {
+                return;
+            }
+
             ConsoleLogHelper.Command(
                 "ZOOM SYNC",
                 $"Apply requested / EQUIPMENT={SelectedEquipmentStatusMode} / TARGET={SelectedZoomSyncLevel?.Position.ToString() ?? "NULL"}");
@@ -951,6 +957,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task ApplySelectedFocusSyncLevelAsync()
         {
+            // 숨겨진 탭 외의 호출에서도 LA 초점 동기화를 시작하지 않는다.
+            if (!IsEnvironmentStatusSelected)
+            {
+                return;
+            }
+
             ConsoleLogHelper.Command(
                 "FOCUS SYNC",
                 $"Apply requested / EQUIPMENT={SelectedEquipmentStatusMode} / TARGET={SelectedFocusSyncLevel?.Position.ToString() ?? "NULL"}");
