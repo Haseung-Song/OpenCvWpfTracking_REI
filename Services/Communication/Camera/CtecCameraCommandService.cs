@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -32,7 +32,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public sealed class CtecCameraCommandService
     {
-        #region [Constants]
+        #region [상수]
 
         /// <summary>
         /// [CTEC] 고정 Header / Camera Code
@@ -58,8 +58,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// VISCA Zoom Direct 명령 범위:
         /// 0x0000 ~ 0x4000
         /// </summary>
-        private const ushort MaximumZoomDirectPosition =
-            0x4000;
+        private const ushort MaximumZoomDirectPosition = 0x4000;
 
         /// <summary>
         /// [XV-Z4850HC] EO Focus Direct Position 최대값
@@ -67,8 +66,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// VISCA Focus Direct 명령 범위:
         /// 0x0000 ~ 0x8000
         /// </summary>
-        private const ushort MaximumFocusDirectPosition =
-            0x8000;
+        private const ushort MaximumFocusDirectPosition = 0x8000;
 
         /// <summary>
         /// [Focus Mode Manual] 적용 후
@@ -88,7 +86,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Fields]
+        #region [필드]
 
         /// <summary>
         /// CTEC 명령 순차 송신 보호
@@ -97,8 +95,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// Start 명령보다 Stop 명령이 먼저 전송되지 않도록
         /// Zoom / Focus CGI 요청을 한 번에 하나씩 처리한다.
         /// </summary>
-        private readonly SemaphoreSlim _controlSendLock =
-            new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _controlSendLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// [CTEC Inquiry] 상태 조회 명령 순차 송신 보호
@@ -107,8 +104,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 따라서 Position Inquiry가 진행 중이어도
         /// MouseUp에서 발생한 Stop 명령은 조회 완료를 기다리지 않고 송신할 수 있다.
         /// </summary>
-        private readonly SemaphoreSlim _inquirySendLock =
-            new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _inquirySendLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// [Digest Authentication] Nonce Count
@@ -121,7 +117,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Zoom Continuous Control]
+        #region [줌 연속 제어]
 
         /// <summary>
         /// [EO] 주간 카메라 [Zoom Tele] 연속 제어 시작
@@ -134,24 +130,23 @@ namespace OpenCvWpfTracking.Services.Communication
             string userName,
             string password,
             bool useHttps,
-            byte speed = MaximumControlSpeed)
+            byte speed = MaximumControlSpeed
+        )
         {
-            speed = ClampControlSpeed(
-                speed);
-
-            return ExecuteControlLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO ZOOM TELE",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x07,
-                    (byte)(0x20 | speed),
-                    0xFF));
+            speed = ClampControlSpeed(speed);
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO ZOOM TELE",
+                0x81,
+                0x01,
+                0x04,
+                0x07,
+                (byte)(0x20 | speed),
+                0xFF
+            ));
         }
 
         /// <summary>
@@ -162,53 +157,48 @@ namespace OpenCvWpfTracking.Services.Communication
             string userName,
             string password,
             bool useHttps,
-            byte speed = MaximumControlSpeed)
+            byte speed = MaximumControlSpeed
+        )
         {
-            speed = ClampControlSpeed(
-                speed);
-
-            return ExecuteControlLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO ZOOM WIDE",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x07,
-                    (byte)(0x30 | speed),
-                    0xFF));
+            speed = ClampControlSpeed(speed);
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO ZOOM WIDE",
+                0x81,
+                0x01,
+                0x04,
+                0x07,
+                (byte)(0x30 | speed),
+                0xFF
+            ));
         }
 
         /// <summary>
         /// [EO] 주간 카메라 [Zoom] 연속 제어 정지
         /// </summary>
-        public Task<bool> StopZoomAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps)
+        public Task<bool> StopZoomAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteControlLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO ZOOM STOP",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x07,
-                    0x00,
-                    0xFF));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO ZOOM STOP",
+                0x81,
+                0x01,
+                0x04,
+                0x07,
+                0x00,
+                0xFF
+            ));
         }
 
         #endregion
 
-        #region [Zoom Direct Position Control]
+        #region [줌 절대 위치 제어]
 
         /// <summary>
         /// [EO] 주간 카메라 Optical Zoom 목표 위치 직접 이동
@@ -225,51 +215,34 @@ namespace OpenCvWpfTracking.Services.Communication
         ///
         /// 전달되는 Position은 4개의 4bit Nibble로 분리한다.
         /// </summary>
-        public Task<bool> MoveZoomPositionAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            ushort position)
+        public Task<bool> MoveZoomPositionAsync(string cameraIp, string userName, string password, bool useHttps, ushort position)
         {
-            ushort safePosition =
-                (ushort)Math.Min(
-                    MaximumZoomDirectPosition,
-                    position);
-
-            byte positionNibble1 =
-                (byte)((safePosition >> 12) & 0x0F);
-
-            byte positionNibble2 =
-                (byte)((safePosition >> 8) & 0x0F);
-
-            byte positionNibble3 =
-                (byte)((safePosition >> 4) & 0x0F);
-
-            byte positionNibble4 =
-                (byte)(safePosition & 0x0F);
-
-            return ExecuteControlLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    $"EO ZOOM DIRECT / {safePosition}",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x47,
-                    positionNibble1,
-                    positionNibble2,
-                    positionNibble3,
-                    positionNibble4,
-                    0xFF));
+            ushort safePosition = (ushort)Math.Min(MaximumZoomDirectPosition, position);
+            byte positionNibble1 = (byte)((safePosition >> 12) & 0x0F);
+            byte positionNibble2 = (byte)((safePosition >> 8) & 0x0F);
+            byte positionNibble3 = (byte)((safePosition >> 4) & 0x0F);
+            byte positionNibble4 = (byte)(safePosition & 0x0F);
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                $"EO ZOOM DIRECT / {safePosition}",
+                0x81,
+                0x01,
+                0x04,
+                0x47,
+                positionNibble1,
+                positionNibble2,
+                positionNibble3,
+                positionNibble4,
+                0xFF
+            ));
         }
 
         #endregion
 
-        #region [Focus Direct Position Control]
+        #region [초점 절대 위치 제어]
 
         /// <summary>
         /// [EO] 주간 카메라 Focus 목표 위치 직접 이동
@@ -286,69 +259,45 @@ namespace OpenCvWpfTracking.Services.Communication
         ///
         /// 전달되는 Position은 4개의 4bit Nibble로 분리한다.
         /// </summary>
-        public Task<bool> MoveFocusPositionAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            ushort position)
+        public Task<bool> MoveFocusPositionAsync(string cameraIp, string userName, string password, bool useHttps, ushort position)
         {
-            ushort safePosition =
-                (ushort)Math.Min(
-                    MaximumFocusDirectPosition,
-                    position);
+            ushort safePosition = (ushort)Math.Min(MaximumFocusDirectPosition, position);
+            byte positionNibble1 = (byte)((safePosition >> 12) & 0x0F);
+            byte positionNibble2 = (byte)((safePosition >> 8) & 0x0F);
+            byte positionNibble3 = (byte)((safePosition >> 4) & 0x0F);
+            byte positionNibble4 = (byte)(safePosition & 0x0F);
+            return ExecuteControlLockedAsync(async () =>
+            {
+                bool manualResult = await SendFocusManualCoreAsync(cameraIp, userName, password, useHttps);
 
-            byte positionNibble1 =
-                (byte)((safePosition >> 12) & 0x0F);
-
-            byte positionNibble2 =
-                (byte)((safePosition >> 8) & 0x0F);
-
-            byte positionNibble3 =
-                (byte)((safePosition >> 4) & 0x0F);
-
-            byte positionNibble4 =
-                (byte)(safePosition & 0x0F);
-
-            return ExecuteControlLockedAsync(
-                async () =>
+                if (!manualResult)
                 {
-                    bool manualResult =
-                        await SendFocusManualCoreAsync(
-                            cameraIp,
-                            userName,
-                            password,
-                            useHttps);
+                    return false;
+                }
 
-                    if (!manualResult)
-                    {
-                        return false;
-                    }
-
-                    await Task.Delay(
-                        FocusManualApplyDelayMs);
-
-                    return await SendCameraCommandCoreAsync(
-                        cameraIp,
-                        userName,
-                        password,
-                        useHttps,
-                        $"EO FOCUS DIRECT / {safePosition}",
-                        0x81,
-                        0x01,
-                        0x04,
-                        0x48,
-                        positionNibble1,
-                        positionNibble2,
-                        positionNibble3,
-                        positionNibble4,
-                        0xFF);
-                });
+                await Task.Delay(FocusManualApplyDelayMs);
+                return await SendCameraCommandCoreAsync(
+                    cameraIp,
+                    userName,
+                    password,
+                    useHttps,
+                    $"EO FOCUS DIRECT / {safePosition}",
+                    0x81,
+                    0x01,
+                    0x04,
+                    0x48,
+                    positionNibble1,
+                    positionNibble2,
+                    positionNibble3,
+                    positionNibble4,
+                    0xFF
+                );
+            });
         }
 
         #endregion
 
-        #region [Focus Continuous Control]
+        #region [초점 연속 제어]
 
         /// <summary>
         /// [EO] 주간 카메라 [Focus Near] 연속 제어 시작
@@ -361,42 +310,34 @@ namespace OpenCvWpfTracking.Services.Communication
             string userName,
             string password,
             bool useHttps,
-            byte speed = MaximumControlSpeed)
+            byte speed = MaximumControlSpeed
+        )
         {
-            speed = ClampControlSpeed(
-                speed);
+            speed = ClampControlSpeed(speed);
+            return ExecuteControlLockedAsync(async () =>
+            {
+                bool manualResult = await SendFocusManualCoreAsync(cameraIp, userName, password, useHttps);
 
-            return ExecuteControlLockedAsync(
-                async () =>
+                if (!manualResult)
                 {
-                    bool manualResult =
-                        await SendFocusManualCoreAsync(
-                            cameraIp,
-                            userName,
-                            password,
-                            useHttps);
+                    return false;
+                }
 
-                    if (!manualResult)
-                    {
-                        return false;
-                    }
-
-                    await Task.Delay(
-                        FocusManualApplyDelayMs);
-
-                    return await SendCameraCommandCoreAsync(
-                        cameraIp,
-                        userName,
-                        password,
-                        useHttps,
-                        "EO FOCUS NEAR",
-                        0x81,
-                        0x01,
-                        0x04,
-                        0x08,
-                        (byte)(0x30 | speed),
-                        0xFF);
-                });
+                await Task.Delay(FocusManualApplyDelayMs);
+                return await SendCameraCommandCoreAsync(
+                    cameraIp,
+                    userName,
+                    password,
+                    useHttps,
+                    "EO FOCUS NEAR",
+                    0x81,
+                    0x01,
+                    0x04,
+                    0x08,
+                    (byte)(0x30 | speed),
+                    0xFF
+                );
+            });
         }
 
         /// <summary>
@@ -410,100 +351,80 @@ namespace OpenCvWpfTracking.Services.Communication
             string userName,
             string password,
             bool useHttps,
-            byte speed = MaximumControlSpeed)
+            byte speed = MaximumControlSpeed
+        )
         {
-            speed = ClampControlSpeed(
-                speed);
+            speed = ClampControlSpeed(speed);
+            return ExecuteControlLockedAsync(async () =>
+            {
+                bool manualResult = await SendFocusManualCoreAsync(cameraIp, userName, password, useHttps);
 
-            return ExecuteControlLockedAsync(
-                async () =>
+                if (!manualResult)
                 {
-                    bool manualResult =
-                        await SendFocusManualCoreAsync(
-                            cameraIp,
-                            userName,
-                            password,
-                            useHttps);
+                    return false;
+                }
 
-                    if (!manualResult)
-                    {
-                        return false;
-                    }
-
-                    await Task.Delay(
-                        FocusManualApplyDelayMs);
-
-                    return await SendCameraCommandCoreAsync(
-                        cameraIp,
-                        userName,
-                        password,
-                        useHttps,
-                        "EO FOCUS FAR",
-                        0x81,
-                        0x01,
-                        0x04,
-                        0x08,
-                        (byte)(0x20 | speed),
-                        0xFF);
-                });
+                await Task.Delay(FocusManualApplyDelayMs);
+                return await SendCameraCommandCoreAsync(
+                    cameraIp,
+                    userName,
+                    password,
+                    useHttps,
+                    "EO FOCUS FAR",
+                    0x81,
+                    0x01,
+                    0x04,
+                    0x08,
+                    (byte)(0x20 | speed),
+                    0xFF
+                );
+            });
         }
 
         /// <summary>
         /// [EO] 주간 카메라 [Focus] 연속 제어 정지
         /// </summary>
-        public Task<bool> StopFocusAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps)
+        public Task<bool> StopFocusAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteControlLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO FOCUS STOP",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x08,
-                    0x00,
-                    0xFF));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO FOCUS STOP",
+                0x81,
+                0x01,
+                0x04,
+                0x08,
+                0x00,
+                0xFF
+            ));
         }
 
         /// <summary>
         /// [EO] 주간 카메라 [One Push Focus] 요청
         /// </summary>
-        public Task<bool> OnePushFocusAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps)
+        public Task<bool> OnePushFocusAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteControlLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO ONE PUSH FOCUS",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x18,
-                    0x01,
-                    0xFF));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO ONE PUSH FOCUS",
+                0x81,
+                0x01,
+                0x04,
+                0x18,
+                0x01,
+                0xFF
+            ));
         }
 
         /// <summary>
         /// [EO] 주간 카메라 [Focus Mode]를 [Manual]로 설정
         /// </summary>
-        private Task<bool> SendFocusManualCoreAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps)
+        private Task<bool> SendFocusManualCoreAsync(string cameraIp, string userName, string password, bool useHttps)
         {
             return SendCameraCommandCoreAsync(
                 cameraIp,
@@ -516,12 +437,13 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x04,
                 0x38,
                 0x03,
-                0xFF);
+                0xFF
+            );
         }
 
         #endregion
 
-        #region [Camera Inquiry Commands]
+        #region [카메라 조회 명령]
 
         /// <summary>
         /// [EO] 주간 카메라 현재 [Optical Zoom Position] 조회
@@ -533,24 +455,20 @@ namespace OpenCvWpfTracking.Services.Communication
         /// Response:
         /// 0x99 0x55 0x47 0x00 P1 P2 0xFF
         /// </summary>
-        public Task<bool> RequestZoomPositionAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps)
+        public Task<bool> RequestZoomPositionAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteInquiryLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO ZOOM POSITION INQUIRY",
-                    0x81,
-                    0x09,
-                    0x04,
-                    0x47,
-                    0xFF));
+            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO ZOOM POSITION INQUIRY",
+                0x81,
+                0x09,
+                0x04,
+                0x47,
+                0xFF
+            ));
         }
 
         /// <summary>
@@ -559,24 +477,20 @@ namespace OpenCvWpfTracking.Services.Communication
         /// Response:
         /// 0x99 0x55 0x48 0x00 P1 P2 0xFF
         /// </summary>
-        public Task<bool> RequestFocusPositionAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps)
+        public Task<bool> RequestFocusPositionAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteInquiryLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO FOCUS POSITION INQUIRY",
-                    0x81,
-                    0x09,
-                    0x04,
-                    0x48,
-                    0xFF));
+            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO FOCUS POSITION INQUIRY",
+                0x81,
+                0x09,
+                0x04,
+                0x48,
+                0xFF
+            ));
         }
 
         /// <summary>
@@ -589,35 +503,30 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 0x02 = Auto
         /// 0x03 = Manual
         /// </summary>
-        public Task<bool> RequestFocusModeAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps)
+        public Task<bool> RequestFocusModeAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteInquiryLockedAsync(
-                () => SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO FOCUS MODE INQUIRY",
-                    0x81,
-                    0x09,
-                    0x04,
-                    0x38,
-                    0xFF));
+            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(
+                cameraIp,
+                userName,
+                password,
+                useHttps,
+                "EO FOCUS MODE INQUIRY",
+                0x81,
+                0x09,
+                0x04,
+                0x38,
+                0xFF
+            ));
         }
 
         #endregion
 
-        #region [CGI / Packet Methods]
+        #region [CGI / 패킷 처리 함수]
 
         /// <summary>
         /// CTEC 명령 송신 순서 보호 실행
         /// </summary>
-        private async Task<bool> ExecuteControlLockedAsync(
-            Func<Task<bool>> action)
+        private async Task<bool> ExecuteControlLockedAsync(Func<Task<bool>> action)
         {
             await _controlSendLock.WaitAsync();
 
@@ -629,7 +538,6 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _controlSendLock.Release();
             }
-
         }
 
         /// <summary>
@@ -638,8 +546,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 제어 명령 Lock과 분리되어 있으므로
         /// 실행 중인 Inquiry가 Stop 명령 송신을 막지 않는다.
         /// </summary>
-        private async Task<bool> ExecuteInquiryLockedAsync(
-            Func<Task<bool>> action)
+        private async Task<bool> ExecuteInquiryLockedAsync(Func<Task<bool>> action)
         {
             await _inquirySendLock.WaitAsync();
 
@@ -651,7 +558,6 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _inquirySendLock.Release();
             }
-
         }
 
         /// <summary>
@@ -664,38 +570,23 @@ namespace OpenCvWpfTracking.Services.Communication
             string password,
             bool useHttps,
             string commandName,
-            params byte[] viscaProtocol)
+            params byte[] viscaProtocol
+        )
         {
-            if (string.IsNullOrWhiteSpace(
-                    cameraIp))
+            if (string.IsNullOrWhiteSpace(cameraIp))
             {
-                Console.WriteLine(
-                    "[CTEC CGI] Send Failed : Camera IP is empty");
-
+                Console.WriteLine("[CTEC CGI] Send Failed : Camera IP is empty");
                 return false;
             }
 
-            if (viscaProtocol == null ||
-                viscaProtocol.Length == 0 ||
-                viscaProtocol.Length > byte.MaxValue)
+            if (viscaProtocol == null || viscaProtocol.Length == 0 || viscaProtocol.Length > byte.MaxValue)
             {
-                Console.WriteLine(
-                    "[CTEC CGI] Send Failed : Invalid VISCA Protocol");
-
+                Console.WriteLine("[CTEC CGI] Send Failed : Invalid VISCA Protocol");
                 return false;
             }
 
-            byte[] packet =
-                BuildPacket(
-                    viscaProtocol);
-
-            return await SendCgiRequestAsync(
-                cameraIp.Trim(),
-                userName,
-                password,
-                useHttps,
-                commandName,
-                packet);
+            byte[] packet = BuildPacket(viscaProtocol);
+            return await SendCgiRequestAsync(cameraIp.Trim(), userName, password, useHttps, commandName, packet);
         }
 
         /// <summary>
@@ -713,20 +604,11 @@ namespace OpenCvWpfTracking.Services.Communication
             string password,
             bool useHttps,
             string commandName,
-            byte[] packet)
+            byte[] packet
+        )
         {
-            string packetHex =
-                BitConverter
-                    .ToString(packet)
-                    .Replace(
-                        "-",
-                        string.Empty);
-
-            string scheme =
-                useHttps
-                    ? "https"
-                    : "http";
-
+            string packetHex = BitConverter.ToString(packet).Replace("-", string.Empty);
+            string scheme = useHttps ? "https" : "http";
             /*
              * Digest HA2 계산에는 전체 URL이 아니라
              * Path + Query 형태의 Request-URI가 사용된다.
@@ -734,150 +616,68 @@ namespace OpenCvWpfTracking.Services.Communication
              * curl --digest에서 실제 동작이 확인된 URI와
              * 동일한 문자열을 생성해야 한다.
              */
-            string requestPath =
-                "/api/ptz.cgi" +
-                "?PTZNumber=1" +
-                "&Transparent=" +
-                packetHex +
-                "&SerialPort=1";
-
-            string requestUrl =
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0}://{1}{2}",
-                    scheme,
-                    cameraIp,
-                    requestPath);
-
-            Uri requestUri =
-                new Uri(
-                    requestUrl,
-                    UriKind.Absolute);
-
+            string requestPath = "/api/ptz.cgi" + "?PTZNumber=1" + "&Transparent=" + packetHex + "&SerialPort=1";
+            string requestUrl = string.Format(CultureInfo.InvariantCulture, "{0}://{1}{2}", scheme, cameraIp, requestPath);
+            Uri requestUri = new Uri(requestUrl, UriKind.Absolute);
             Console.WriteLine();
-            Console.WriteLine(
-                $"[CTEC CGI] {commandName}");
-
-            Console.WriteLine(
-                $"[CTEC CGI] TARGET : {scheme}://{cameraIp}");
-
-            Console.WriteLine(
-                $"[CTEC CGI] REQUEST URI : {requestUri.AbsoluteUri}");
-
-            Console.WriteLine(
-                "[CTEC CGI] AUTH : Manual Digest MD5");
-
-            Console.WriteLine(
-                $"[CTEC CGI] PACKET : {packetHex}");
-
+            Console.WriteLine($"[CTEC CGI] {commandName}");
+            Console.WriteLine($"[CTEC CGI] TARGET : {scheme}://{cameraIp}");
+            Console.WriteLine($"[CTEC CGI] REQUEST URI : {requestUri.AbsoluteUri}");
+            Console.WriteLine("[CTEC CGI] AUTH : Manual Digest MD5");
+            Console.WriteLine($"[CTEC CGI] PACKET : {packetHex}");
             ConsoleLogHelper.PrintLine();
 
             try
             {
-                using (HttpClientHandler handler =
-                    CreateHttpClientHandler())
-                using (HttpClient client =
-                    new HttpClient(
-                        handler,
-                        true))
+                using (HttpClientHandler handler = CreateHttpClientHandler())
+                using (HttpClient client = new HttpClient(handler, true))
                 {
-                    client.Timeout =
-                        TimeSpan.FromSeconds(
-                            RequestTimeoutSeconds);
-
+                    client.Timeout = TimeSpan.FromSeconds(RequestTimeoutSeconds);
                     /*
                      * 1차 요청:
                      * Authorization Header 없이 요청하여
                      * 카메라의 401 Digest Challenge를 수신한다.
                      */
-                    using (HttpRequestMessage challengeRequest =
-                        CreateRequestMessage(
-                            requestUri))
-                    using (HttpResponseMessage challengeResponse =
-                        await client
-                            .SendAsync(
-                                challengeRequest,
-                                HttpCompletionOption.ResponseContentRead)
-                            .ConfigureAwait(false))
+                    using (HttpRequestMessage challengeRequest = CreateRequestMessage(requestUri))
+                    using (HttpResponseMessage challengeResponse = await client.SendAsync(
+                        challengeRequest,
+                        HttpCompletionOption.ResponseContentRead
+                    ).ConfigureAwait(false))
                     {
                         if (challengeResponse.IsSuccessStatusCode)
                         {
-                            Console.WriteLine(
-                                $"[CTEC CGI] RESULT : " +
-                                $"{(int)challengeResponse.StatusCode} " +
-                                $"{challengeResponse.StatusCode}");
-
-                            Console.WriteLine(
-                                "[CTEC CGI] SEND RESULT : True");
-
+                            Console.WriteLine($"[CTEC CGI] RESULT : " + $"{(int)challengeResponse.StatusCode} " + $"{challengeResponse.StatusCode}");
+                            Console.WriteLine("[CTEC CGI] SEND RESULT : True");
                             ConsoleLogHelper.PrintLine();
-
                             return true;
                         }
 
-                        if (challengeResponse.StatusCode !=
-                            HttpStatusCode.Unauthorized)
+                        if (challengeResponse.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            string challengeErrorText =
-                                challengeResponse.Content == null
-                                    ? string.Empty
-                                    : await challengeResponse.Content
-                                        .ReadAsStringAsync()
-                                        .ConfigureAwait(false);
-
-                            Console.WriteLine(
-                                $"[CTEC CGI] CHALLENGE RESULT : " +
-                                $"{(int)challengeResponse.StatusCode} " +
-                                $"{challengeResponse.StatusCode}");
-
-                            LogResponseSummary(
-                                challengeErrorText);
-
-                            Console.WriteLine(
-                                "[CTEC CGI] SEND RESULT : False");
-
+                            string challengeErrorText = challengeResponse.Content == null ? string.Empty : await challengeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            Console.WriteLine($"[CTEC CGI] CHALLENGE RESULT : " + $"{(int)challengeResponse.StatusCode} " + $"{challengeResponse.StatusCode}");
+                            LogResponseSummary(challengeErrorText);
+                            Console.WriteLine("[CTEC CGI] SEND RESULT : False");
                             ConsoleLogHelper.PrintLine();
-
                             return false;
                         }
 
-                        string digestChallenge =
-                            GetMd5DigestChallenge(
-                                challengeResponse);
+                        string digestChallenge = GetMd5DigestChallenge(challengeResponse);
 
-                        if (string.IsNullOrWhiteSpace(
-                                digestChallenge))
+                        if (string.IsNullOrWhiteSpace(digestChallenge))
                         {
-                            Console.WriteLine(
-                                "[CTEC CGI] FAILED : " +
-                                "MD5 Digest Challenge Not Found");
-
-                            Console.WriteLine(
-                                "[CTEC CGI] CHECK : " +
-                                "WWW-Authenticate Header");
-
+                            Console.WriteLine("[CTEC CGI] FAILED : " + "MD5 Digest Challenge Not Found");
+                            Console.WriteLine("[CTEC CGI] CHECK : " + "WWW-Authenticate Header");
                             ConsoleLogHelper.PrintLine();
-
                             return false;
                         }
 
-                        string authorizationValue =
-                            CreateDigestAuthorization(
-                                "GET",
-                                requestPath,
-                                userName,
-                                password,
-                                digestChallenge);
+                        string authorizationValue = CreateDigestAuthorization("GET", requestPath, userName, password, digestChallenge);
 
-                        if (string.IsNullOrWhiteSpace(
-                                authorizationValue))
+                        if (string.IsNullOrWhiteSpace(authorizationValue))
                         {
-                            Console.WriteLine(
-                                "[CTEC CGI] FAILED : " +
-                                "Digest Authorization Build Failed");
-
+                            Console.WriteLine("[CTEC CGI] FAILED : " + "Digest Authorization Build Failed");
                             ConsoleLogHelper.PrintLine();
-
                             return false;
                         }
 
@@ -886,146 +686,79 @@ namespace OpenCvWpfTracking.Services.Communication
                          * MD5 Digest 값을 직접 계산하여
                          * Authorization Header에 포함한 뒤 실제 명령을 송신한다.
                          */
-                        using (HttpRequestMessage authenticatedRequest =
-                            CreateRequestMessage(
-                                requestUri))
+                        using (HttpRequestMessage authenticatedRequest = CreateRequestMessage(requestUri))
                         {
-                            authenticatedRequest.Headers
-                                .TryAddWithoutValidation(
-                                    "Authorization",
-                                    authorizationValue);
-
-                            using (HttpResponseMessage authenticatedResponse =
-                                await client
-                                    .SendAsync(
-                                        authenticatedRequest,
-                                        HttpCompletionOption.ResponseContentRead)
-                                    .ConfigureAwait(false))
+                            authenticatedRequest.Headers.TryAddWithoutValidation("Authorization", authorizationValue);
+                            using (HttpResponseMessage authenticatedResponse = await client.SendAsync(
+                                authenticatedRequest,
+                                HttpCompletionOption.ResponseContentRead
+                            ).ConfigureAwait(false))
                             {
-                                string responseText =
-                                    authenticatedResponse.Content == null
-                                        ? string.Empty
-                                        : await authenticatedResponse.Content
-                                            .ReadAsStringAsync()
-                                            .ConfigureAwait(false);
+                                string responseText = authenticatedResponse.Content == null ? string.Empty : await authenticatedResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                string contentType = authenticatedResponse.Content?.Headers?.ContentType?.MediaType ?? string.Empty;
+                                Console.WriteLine($"[CTEC CGI] RESULT : " + $"{(int)authenticatedResponse.StatusCode} " + $"{authenticatedResponse.StatusCode}");
 
-                                string contentType =
-                                    authenticatedResponse.Content?.Headers
-                                        ?.ContentType?.MediaType ??
-                                    string.Empty;
-
-                                Console.WriteLine(
-                                    $"[CTEC CGI] RESULT : " +
-                                    $"{(int)authenticatedResponse.StatusCode} " +
-                                    $"{authenticatedResponse.StatusCode}");
-
-                                if (!string.IsNullOrWhiteSpace(
-                                        contentType))
+                                if (!string.IsNullOrWhiteSpace(contentType))
                                 {
-                                    Console.WriteLine(
-                                        $"[CTEC CGI] CONTENT TYPE : {contentType}");
+                                    Console.WriteLine($"[CTEC CGI] CONTENT TYPE : {contentType}");
                                 }
 
-                                LogResponseSummary(
-                                    responseText);
+                                LogResponseSummary(responseText);
 
-                                if (authenticatedResponse.StatusCode ==
-                                    HttpStatusCode.Unauthorized)
+                                if (authenticatedResponse.StatusCode == HttpStatusCode.Unauthorized)
                                 {
-                                    Console.WriteLine(
-                                        "[CTEC CGI] FAILED : " +
-                                        "Digest Authentication Failed");
-
-                                    Console.WriteLine(
-                                        "[CTEC CGI] CHECK : " +
-                                        "Camera User Name / Password / CGI Permission");
-
-                                    Console.WriteLine(
-                                        "[CTEC CGI] SEND RESULT : False");
-
+                                    Console.WriteLine("[CTEC CGI] FAILED : " + "Digest Authentication Failed");
+                                    Console.WriteLine("[CTEC CGI] CHECK : " + "Camera User Name / Password / CGI Permission");
+                                    Console.WriteLine("[CTEC CGI] SEND RESULT : False");
                                     ConsoleLogHelper.PrintLine();
-
                                     return false;
                                 }
 
-                                bool isCameraLoginPage =
-                                    IsCameraLoginPage(
-                                        responseText);
+                                bool isCameraLoginPage = IsCameraLoginPage(responseText);
 
                                 if (isCameraLoginPage)
                                 {
-                                    Console.WriteLine(
-                                        "[CTEC CGI] FAILED : " +
-                                        "Camera Login / Redirect Page Response");
-
-                                    Console.WriteLine(
-                                        "[CTEC CGI] SEND RESULT : False");
-
+                                    Console.WriteLine("[CTEC CGI] FAILED : " + "Camera Login / Redirect Page Response");
+                                    Console.WriteLine("[CTEC CGI] SEND RESULT : False");
                                     ConsoleLogHelper.PrintLine();
-
                                     return false;
                                 }
 
                                 if (!authenticatedResponse.IsSuccessStatusCode)
                                 {
-                                    Console.WriteLine(
-                                        "[CTEC CGI] FAILED : HTTP Request Error");
-
-                                    Console.WriteLine(
-                                        "[CTEC CGI] SEND RESULT : False");
-
+                                    Console.WriteLine("[CTEC CGI] FAILED : HTTP Request Error");
+                                    Console.WriteLine("[CTEC CGI] SEND RESULT : False");
                                     ConsoleLogHelper.PrintLine();
-
                                     return false;
                                 }
 
-                                Console.WriteLine(
-                                    "[CTEC CGI] NOTE : " +
-                                    "Camera Protocol ACK is received through TCP Port 9000");
-
-                                Console.WriteLine(
-                                    "[CTEC CGI] SEND RESULT : True");
-
+                                Console.WriteLine("[CTEC CGI] NOTE : " + "Camera Protocol ACK is received through TCP Port 9000");
+                                Console.WriteLine("[CTEC CGI] SEND RESULT : True");
                                 ConsoleLogHelper.PrintLine();
-
                                 return true;
                             }
-
                         }
-
                     }
-
                 }
-
             }
             catch (TaskCanceledException)
             {
-                Console.WriteLine(
-                    "[CTEC CGI] ERROR : Request Timeout");
-
+                Console.WriteLine("[CTEC CGI] ERROR : Request Timeout");
                 ConsoleLogHelper.PrintLine();
-
                 return false;
             }
             catch (HttpRequestException ex)
             {
-                Console.WriteLine(
-                    $"[CTEC CGI] HTTP ERROR : {ex.Message}");
-
+                Console.WriteLine($"[CTEC CGI] HTTP ERROR : {ex.Message}");
                 ConsoleLogHelper.PrintLine();
-
                 return false;
             }
             catch (Exception ex)
             {
-                Console.WriteLine(
-                    $"[CTEC CGI] ERROR : {ex.Message}");
-
+                Console.WriteLine($"[CTEC CGI] ERROR : {ex.Message}");
                 ConsoleLogHelper.PrintLine();
-
                 return false;
             }
-
         }
 
         /// <summary>
@@ -1036,44 +769,23 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private HttpClientHandler CreateHttpClientHandler()
         {
-            HttpClientHandler handler =
-                new HttpClientHandler
-                {
-                    AllowAutoRedirect =
-                        false,
-
-                    UseDefaultCredentials =
-                        false
-                };
-
-            handler.ServerCertificateCustomValidationCallback =
-                (request, certificate, chain, sslPolicyErrors) =>
-                    true;
-
+            HttpClientHandler handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                UseDefaultCredentials = false
+            };
+            handler.ServerCertificateCustomValidationCallback = (request, certificate, chain, sslPolicyErrors) => true;
             return handler;
         }
 
         /// <summary>
         /// 카메라 CGI GET 요청 Message 생성
         /// </summary>
-        private HttpRequestMessage CreateRequestMessage(
-            Uri requestUri)
+        private HttpRequestMessage CreateRequestMessage(Uri requestUri)
         {
-            HttpRequestMessage request =
-                new HttpRequestMessage(
-                    HttpMethod.Get,
-                    requestUri);
-
-            request.Headers
-                .TryAddWithoutValidation(
-                    "User-Agent",
-                    "OpenCvWpfTracking/1.0");
-
-            request.Headers
-                .TryAddWithoutValidation(
-                    "Accept",
-                    "*/*");
-
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            request.Headers.TryAddWithoutValidation("User-Agent", "OpenCvWpfTracking/1.0");
+            request.Headers.TryAddWithoutValidation("Accept", "*/*");
             return request;
         }
 
@@ -1084,49 +796,39 @@ namespace OpenCvWpfTracking.Services.Communication
         /// XV-Z4850HC는 MD5와 SHA-256 Challenge를 동시에 반환하므로,
         /// curl --digest로 검증된 MD5 항목을 우선 사용한다.
         /// </summary>
-        private string GetMd5DigestChallenge(
-            HttpResponseMessage response)
+        private string GetMd5DigestChallenge(HttpResponseMessage response)
         {
             IEnumerable<string> values;
 
-            if (!response.Headers.TryGetValues(
-                    "WWW-Authenticate",
-                    out values))
+            if (!response.Headers.TryGetValues("WWW-Authenticate", out values))
             {
                 return null;
             }
 
-            string[] challenges =
-                values
-                    .Where(value =>
-                        !string.IsNullOrWhiteSpace(value))
-                    .ToArray();
+            string[] challenges = values.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+            string md5Challenge = challenges.FirstOrDefault(value => value.IndexOf(
+                "Digest",
+                StringComparison.OrdinalIgnoreCase
+            ) >= 0 &&
+                Regex.IsMatch(
+                value,
+                @"algorithm\s*=\s*""?MD5""?(?:,|$)",
+                RegexOptions.IgnoreCase
+            ));
 
-            string md5Challenge =
-                challenges.FirstOrDefault(
-                    value =>
-                        value.IndexOf(
-                            "Digest",
-                            StringComparison.OrdinalIgnoreCase) >= 0 &&
-                        Regex.IsMatch(
-                            value,
-                            @"algorithm\s*=\s*""?MD5""?(?:,|$)",
-                            RegexOptions.IgnoreCase));
-
-            if (!string.IsNullOrWhiteSpace(
-                    md5Challenge))
+            if (!string.IsNullOrWhiteSpace(md5Challenge))
             {
                 return md5Challenge;
             }
 
-            return challenges.FirstOrDefault(
-                value =>
-                    value.IndexOf(
-                        "Digest",
-                        StringComparison.OrdinalIgnoreCase) >= 0 &&
-                    value.IndexOf(
-                        "SHA-256",
-                        StringComparison.OrdinalIgnoreCase) < 0);
+            return challenges.FirstOrDefault(value => value.IndexOf(
+                "Digest",
+                StringComparison.OrdinalIgnoreCase
+            ) >= 0 &&
+                value.IndexOf(
+                "SHA-256",
+                StringComparison.OrdinalIgnoreCase
+            ) < 0);
         }
 
         /// <summary>
@@ -1137,37 +839,14 @@ namespace OpenCvWpfTracking.Services.Communication
         /// HA2 = MD5(method:uri)
         /// response = MD5(HA1:nonce:nc:cnonce:qop:HA2)
         /// </summary>
-        private string CreateDigestAuthorization(
-            string method,
-            string requestPath,
-            string userName,
-            string password,
-            string challenge)
+        private string CreateDigestAuthorization(string method, string requestPath, string userName, string password, string challenge)
         {
-            string realm =
-                GetDigestValue(
-                    challenge,
-                    "realm");
+            string realm = GetDigestValue(challenge, "realm");
+            string nonce = GetDigestValue(challenge, "nonce");
+            string qop = GetDigestValue(challenge, "qop");
+            string opaque = GetDigestValue(challenge, "opaque");
 
-            string nonce =
-                GetDigestValue(
-                    challenge,
-                    "nonce");
-
-            string qop =
-                GetDigestValue(
-                    challenge,
-                    "qop");
-
-            string opaque =
-                GetDigestValue(
-                    challenge,
-                    "opaque");
-
-            if (string.IsNullOrWhiteSpace(
-                    realm) ||
-                string.IsNullOrWhiteSpace(
-                    nonce))
+            if (string.IsNullOrWhiteSpace(realm) || string.IsNullOrWhiteSpace(nonce))
             {
                 return null;
             }
@@ -1176,161 +855,61 @@ namespace OpenCvWpfTracking.Services.Communication
              * qop 값이 "auth,auth-int" 형태로 오는 경우에도
              * 현재 GET 요청에 맞는 auth 항목을 선택한다.
              */
-            qop =
-                SelectDigestQop(
-                    qop);
-
-            Interlocked.Exchange(
-                ref _digestNonceCount,
-                0);
-
-            int nonceCount =
-                Interlocked.Increment(
-                    ref _digestNonceCount);
-
-            string nc =
-                nonceCount.ToString(
-                    "x8",
-                    CultureInfo.InvariantCulture);
-
-            string cnonce =
-                Guid.NewGuid()
-                    .ToString("N")
-                    .Substring(
-                        0,
-                        16);
-
-            string normalizedUserName =
-                userName ??
-                string.Empty;
-
-            string normalizedPassword =
-                password ??
-                string.Empty;
-
-            string ha1 =
-                ComputeMd5(
-                    normalizedUserName +
-                    ":" +
-                    realm +
-                    ":" +
-                    normalizedPassword);
-
-            string ha2 =
-                ComputeMd5(
-                    method +
-                    ":" +
-                    requestPath);
-
+            qop = SelectDigestQop(qop);
+            Interlocked.Exchange(ref _digestNonceCount, 0);
+            int nonceCount = Interlocked.Increment(ref _digestNonceCount);
+            string nc = nonceCount.ToString("x8", CultureInfo.InvariantCulture);
+            string cnonce = Guid.NewGuid().ToString("N").Substring(0, 16);
+            string normalizedUserName = userName ?? string.Empty;
+            string normalizedPassword = password ?? string.Empty;
+            string ha1 = ComputeMd5(normalizedUserName + ":" + realm + ":" + normalizedPassword);
+            string ha2 = ComputeMd5(method + ":" + requestPath);
             string digestResponse;
 
-            if (!string.IsNullOrWhiteSpace(
-                    qop))
+            if (!string.IsNullOrWhiteSpace(qop))
             {
-                digestResponse =
-                    ComputeMd5(
-                        ha1 +
-                        ":" +
-                        nonce +
-                        ":" +
-                        nc +
-                        ":" +
-                        cnonce +
-                        ":" +
-                        qop +
-                        ":" +
-                        ha2);
+                digestResponse = ComputeMd5(ha1 + ":" + nonce + ":" + nc + ":" + cnonce + ":" + qop + ":" + ha2);
             }
             else
             {
-                digestResponse =
-                    ComputeMd5(
-                        ha1 +
-                        ":" +
-                        nonce +
-                        ":" +
-                        ha2);
+                digestResponse = ComputeMd5(ha1 + ":" + nonce + ":" + ha2);
             }
 
-            StringBuilder authorization =
-                new StringBuilder();
+            StringBuilder authorization = new StringBuilder();
+            authorization.Append("Digest ");
+            authorization.Append("username=\"");
+            authorization.Append(EscapeDigestQuotedValue(normalizedUserName));
+            authorization.Append("\", ");
+            authorization.Append("realm=\"");
+            authorization.Append(EscapeDigestQuotedValue(realm));
+            authorization.Append("\", ");
+            authorization.Append("nonce=\"");
+            authorization.Append(EscapeDigestQuotedValue(nonce));
+            authorization.Append("\", ");
+            authorization.Append("uri=\"");
+            authorization.Append(EscapeDigestQuotedValue(requestPath));
+            authorization.Append("\", ");
+            authorization.Append("algorithm=MD5, ");
+            authorization.Append("response=\"");
+            authorization.Append(digestResponse);
+            authorization.Append("\"");
 
-            authorization.Append(
-                "Digest ");
-
-            authorization.Append(
-                "username=\"");
-            authorization.Append(
-                EscapeDigestQuotedValue(
-                    normalizedUserName));
-            authorization.Append(
-                "\", ");
-
-            authorization.Append(
-                "realm=\"");
-            authorization.Append(
-                EscapeDigestQuotedValue(
-                    realm));
-            authorization.Append(
-                "\", ");
-
-            authorization.Append(
-                "nonce=\"");
-            authorization.Append(
-                EscapeDigestQuotedValue(
-                    nonce));
-            authorization.Append(
-                "\", ");
-
-            authorization.Append(
-                "uri=\"");
-            authorization.Append(
-                EscapeDigestQuotedValue(
-                    requestPath));
-            authorization.Append(
-                "\", ");
-
-            authorization.Append(
-                "algorithm=MD5, ");
-
-            authorization.Append(
-                "response=\"");
-            authorization.Append(
-                digestResponse);
-            authorization.Append(
-                "\"");
-
-            if (!string.IsNullOrWhiteSpace(
-                    qop))
+            if (!string.IsNullOrWhiteSpace(qop))
             {
-                authorization.Append(
-                    ", qop=");
-                authorization.Append(
-                    qop);
-
-                authorization.Append(
-                    ", nc=");
-                authorization.Append(
-                    nc);
-
-                authorization.Append(
-                    ", cnonce=\"");
-                authorization.Append(
-                    cnonce);
-                authorization.Append(
-                    "\"");
+                authorization.Append(", qop=");
+                authorization.Append(qop);
+                authorization.Append(", nc=");
+                authorization.Append(nc);
+                authorization.Append(", cnonce=\"");
+                authorization.Append(cnonce);
+                authorization.Append("\"");
             }
 
-            if (!string.IsNullOrWhiteSpace(
-                    opaque))
+            if (!string.IsNullOrWhiteSpace(opaque))
             {
-                authorization.Append(
-                    ", opaque=\"");
-                authorization.Append(
-                    EscapeDigestQuotedValue(
-                        opaque));
-                authorization.Append(
-                    "\"");
+                authorization.Append(", opaque=\"");
+                authorization.Append(EscapeDigestQuotedValue(opaque));
+                authorization.Append("\"");
             }
 
             return authorization.ToString();
@@ -1339,184 +918,119 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// Digest Challenge 문자열에서 지정 Parameter 값 추출
         /// </summary>
-        private string GetDigestValue(
-            string challenge,
-            string parameterName)
+        private string GetDigestValue(string challenge, string parameterName)
         {
-            if (string.IsNullOrWhiteSpace(
-                    challenge) ||
-                string.IsNullOrWhiteSpace(
-                    parameterName))
+            if (string.IsNullOrWhiteSpace(challenge) || string.IsNullOrWhiteSpace(parameterName))
             {
                 return null;
             }
 
-            Match quotedMatch =
-                Regex.Match(
-                    challenge,
-                    @"(?:^|[,\s])" +
-                    Regex.Escape(parameterName) +
-                    @"\s*=\s*""(?<value>[^""]*)""",
-                    RegexOptions.IgnoreCase);
+            Match quotedMatch = Regex.Match(
+                challenge,
+                @"(?:^|[,\s])" + Regex.Escape(parameterName) + @"\s*=\s*""(?<value>[^""]*)""",
+                RegexOptions.IgnoreCase
+            );
 
             if (quotedMatch.Success)
             {
-                return quotedMatch
-                    .Groups["value"]
-                    .Value;
+                return quotedMatch.Groups["value"].Value;
             }
 
-            Match tokenMatch =
-                Regex.Match(
-                    challenge,
-                    @"(?:^|[,\s])" +
-                    Regex.Escape(parameterName) +
-                    @"\s*=\s*(?<value>[^,\s]+)",
-                    RegexOptions.IgnoreCase);
-
-            return tokenMatch.Success
-                ? tokenMatch.Groups["value"].Value
-                : null;
+            Match tokenMatch = Regex.Match(
+                challenge,
+                @"(?:^|[,\s])" + Regex.Escape(parameterName) + @"\s*=\s*(?<value>[^,\s]+)",
+                RegexOptions.IgnoreCase
+            );
+            return tokenMatch.Success ? tokenMatch.Groups["value"].Value : null;
         }
 
         /// <summary>
         /// Digest qop 목록에서 auth 항목 선택
         /// </summary>
-        private string SelectDigestQop(
-            string qopValue)
+        private string SelectDigestQop(string qopValue)
         {
-            if (string.IsNullOrWhiteSpace(
-                    qopValue))
+            if (string.IsNullOrWhiteSpace(qopValue))
             {
                 return null;
             }
 
-            string[] qopItems =
-                qopValue
-                    .Split(',')
-                    .Select(item =>
-                        item.Trim())
-                    .Where(item =>
-                        !string.IsNullOrWhiteSpace(item))
-                    .ToArray();
-
-            string authQop =
-                qopItems.FirstOrDefault(
-                    item =>
-                        string.Equals(
-                            item,
-                            "auth",
-                            StringComparison.OrdinalIgnoreCase));
-
-            return authQop ??
-                   qopItems.FirstOrDefault();
+            string[] qopItems = qopValue.Split(',').Select(item => item.Trim()).Where(item => !string.IsNullOrWhiteSpace(item)).ToArray();
+            string authQop = qopItems.FirstOrDefault(item => string.Equals(item, "auth", StringComparison.OrdinalIgnoreCase));
+            return authQop ?? qopItems.FirstOrDefault();
         }
 
         /// <summary>
         /// Digest 인증용 MD5 Hash 계산
         /// </summary>
-        private string ComputeMd5(
-            string value)
+        private string ComputeMd5(string value)
         {
-            using (MD5 md5 =
-                MD5.Create())
+            using (MD5 md5 = MD5.Create())
             {
-                byte[] inputBytes =
-                    Encoding.UTF8.GetBytes(
-                        value ??
-                        string.Empty);
+                byte[] inputBytes = Encoding.UTF8.GetBytes(value ?? string.Empty);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                StringBuilder builder = new StringBuilder(hashBytes.Length * 2);
 
-                byte[] hashBytes =
-                    md5.ComputeHash(
-                        inputBytes);
-
-                StringBuilder builder =
-                    new StringBuilder(
-                        hashBytes.Length * 2);
-
-                foreach (byte hashByte in
-                    hashBytes)
+                foreach (byte hashByte in hashBytes)
                 {
-                    builder.Append(
-                        hashByte.ToString(
-                            "x2",
-                            CultureInfo.InvariantCulture));
+                    builder.Append(hashByte.ToString("x2", CultureInfo.InvariantCulture));
                 }
+
                 return builder.ToString();
             }
-
         }
 
         /// <summary>
         /// Digest Header의 따옴표 문자열 Escape 처리
         /// </summary>
-        private string EscapeDigestQuotedValue(
-            string value)
+        private string EscapeDigestQuotedValue(string value)
         {
-            return (value ?? string.Empty)
-                .Replace(
-                    "\\",
-                    "\\\\")
-                .Replace(
-                    "\"",
-                    "\\\"");
+            return (value ?? string.Empty).Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
         /// <summary>
         /// Console 과다 출력을 방지하기 위해
         /// CGI 응답 본문의 앞부분만 출력한다.
         /// </summary>
-        private void LogResponseSummary(
-            string responseText)
+        private void LogResponseSummary(string responseText)
         {
-            if (string.IsNullOrWhiteSpace(
-                    responseText))
+            if (string.IsNullOrWhiteSpace(responseText))
             {
                 return;
             }
 
-            string normalizedResponse =
-                responseText
-                    .Replace("\r", " ")
-                    .Replace("\n", " ")
-                    .Trim();
+            string normalizedResponse = responseText.Replace("\r", " ").Replace("\n", " ").Trim();
 
-            if (normalizedResponse.Length >
-                MaximumResponseLogLength)
+            if (normalizedResponse.Length > MaximumResponseLogLength)
             {
-                normalizedResponse =
-                    normalizedResponse.Substring(
-                        0,
-                        MaximumResponseLogLength) +
-                    "...";
+                normalizedResponse = normalizedResponse.Substring(0, MaximumResponseLogLength) + "...";
             }
 
-            Console.WriteLine(
-                $"[CTEC CGI] RESPONSE : {normalizedResponse}");
+            Console.WriteLine($"[CTEC CGI] RESPONSE : {normalizedResponse}");
         }
 
         /// <summary>
         /// CGI 응답이 실제 제어 결과가 아니라
         /// 카메라 로그인 / 초기 설정 페이지인지 확인한다.
         /// </summary>
-        private bool IsCameraLoginPage(
-            string responseText)
+        private bool IsCameraLoginPage(string responseText)
         {
-            if (string.IsNullOrWhiteSpace(
-                    responseText))
+            if (string.IsNullOrWhiteSpace(responseText))
             {
                 return false;
             }
 
             return responseText.IndexOf(
-                       "Page Redirection",
-                       StringComparison.OrdinalIgnoreCase) >= 0 ||
-                   responseText.IndexOf(
-                       "admin_password_status",
-                       StringComparison.OrdinalIgnoreCase) >= 0 ||
-                   responseText.IndexOf(
-                       "/viewer/viewer.html",
-                       StringComparison.OrdinalIgnoreCase) >= 0;
+                "Page Redirection",
+                StringComparison.OrdinalIgnoreCase
+            ) >= 0 ||
+                responseText.IndexOf(
+                "admin_password_status",
+                StringComparison.OrdinalIgnoreCase
+            ) >= 0 ||
+                responseText.IndexOf(
+                "/viewer/viewer.html",
+                StringComparison.OrdinalIgnoreCase
+            ) >= 0;
         }
 
         /// <summary>
@@ -1531,32 +1045,16 @@ namespace OpenCvWpfTracking.Services.Communication
         /// [5 ~ n] VISCA Protocol
         /// [n + 1] Checksum
         /// </summary>
-        private byte[] BuildPacket(
-            byte[] viscaProtocol)
+        private byte[] BuildPacket(byte[] viscaProtocol)
         {
-            byte[] packet =
-                new byte[viscaProtocol.Length + 6];
-
+            byte[] packet = new byte[viscaProtocol.Length + 6];
             packet[0] = Header1;
             packet[1] = Header2;
             packet[2] = CameraCode1;
             packet[3] = CameraCode2;
-            packet[4] =
-                (byte)viscaProtocol.Length;
-
-            Buffer.BlockCopy(
-                viscaProtocol,
-                0,
-                packet,
-                5,
-                viscaProtocol.Length);
-
-            packet[packet.Length - 1] =
-                CalculateChecksum(
-                    packet,
-                    1,
-                    packet.Length - 2);
-
+            packet[4] = (byte)viscaProtocol.Length;
+            Buffer.BlockCopy(viscaProtocol, 0, packet, 5, viscaProtocol.Length);
+            packet[packet.Length - 1] = CalculateChecksum(packet, 1, packet.Length - 2);
             return packet;
         }
 
@@ -1566,16 +1064,11 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 문서 기준 Byte 2부터
         /// 마지막 VISCA Data까지 모두 더한 뒤 0xFF Mask 처리한다.
         /// </summary>
-        private byte CalculateChecksum(
-            byte[] data,
-            int startIndex,
-            int length)
+        private byte CalculateChecksum(byte[] data, int startIndex, int length)
         {
             int sum = 0;
 
-            for (int i = startIndex;
-                 i < startIndex + length;
-                 i++)
+            for (int i = startIndex; i < startIndex + length; i++)
             {
                 sum += data[i];
             }
@@ -1585,13 +1078,12 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Value Helpers]
+        #region [값 변환 보조 함수]
 
         /// <summary>
         /// Zoom / Focus 속도를 문서 허용 범위 [1 ~ 7]로 보정한다.
         /// </summary>
-        private byte ClampControlSpeed(
-            byte speed)
+        private byte ClampControlSpeed(byte speed)
         {
             if (speed < MinimumControlSpeed)
             {
@@ -1605,7 +1097,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
             return speed;
         }
+
         #endregion
     }
-
 }

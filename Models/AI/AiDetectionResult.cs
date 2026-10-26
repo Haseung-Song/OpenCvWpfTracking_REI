@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace OpenCvWpfTracking.Models.AI
 {
@@ -39,8 +39,6 @@ namespace OpenCvWpfTracking.Models.AI
         /// <summary>
         /// 탐지 객체 [Bounding Box] 목록
         /// </summary>
-        public List<AiDetectionBox> Boxes { get; set; }
-            = new List<AiDetectionBox>();
+        public List<AiDetectionBox> Boxes { get; set; } = new List<AiDetectionBox>();
     }
-
 }

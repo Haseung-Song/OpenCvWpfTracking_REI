@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Services.Communication;
 using System;
 using System.Diagnostics;
@@ -54,11 +54,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private string _currentRpyDisplay = "RPY 수신 대기";
 
-        private string _currentRpyOffsetDisplay =
-            "DB 저장 Offset: 조회 대기";
+        private string _currentRpyOffsetDisplay = "DB 저장 Offset: 조회 대기";
 
-        private string _currentRpyRateDisplay =
-            "DB 저장 주파수: 조회 대기 / 실측 수신률: 측정 대기";
+        private string _currentRpyRateDisplay = "DB 저장 주파수: 조회 대기 / 실측 수신률: 측정 대기";
 
         private string _rpyOffsetStatusText = "Ready";
 
@@ -226,6 +224,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 자세 보정·전송 주기 설정 명령과 표시 상태를 준비한다.
+        /// </summary>
         private void InitializeRpySettings()
         {
             ApplyRpyOffsetCommand = new RelayCommand(ApplyRpyOffset);
@@ -233,10 +234,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RequestRpyTelemetryCommand = new RelayCommand(RequestRpyTelemetry);
             RequestStoredRpyOffsetCommand = new RelayCommand(RequestStoredRpyOffset);
             RequestStoredRpyRateCommand = new RelayCommand(RequestStoredRpyRate);
-
             VerifyRpyPacketEncoding();
         }
 
+        /// <summary>
+        /// 연결 장비의 빌드 정보를 조회해 설정 지원 여부를 판단할 근거를 확보한다.
+        /// </summary>
         private void BeginWebAgentBuildCheck()
         {
             _webAgentBuildNumber = null;
@@ -251,6 +254,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             UpdateRpyRateDisplay();
         }
 
+        /// <summary>
+        /// 입력한 자세 보정값을 검증하고 장비에 설정을 요청한다.
+        /// </summary>
         private void ApplyRpyOffset()
         {
             if (!CanUseRpySettings(out string unavailableReason))
@@ -260,41 +266,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (!TryParseAngle(RpyRollOffsetInput, -180.0, 180.0, out double roll) ||
-                !TryParseAngle(RpyPitchOffsetInput, -180.0, 180.0, out double pitch) ||
-                !TryParseAngle(RpyYawOffsetInput, 0.0, 359.99, out double yaw))
+            if (!TryParseAngle(
+                RpyRollOffsetInput,
+                -180.0,
+                180.0,
+                out double roll
+            ) ||
+                !TryParseAngle(
+                RpyPitchOffsetInput,
+                -180.0,
+                180.0,
+                out double pitch
+            ) ||
+                !TryParseAngle(
+                RpyYawOffsetInput,
+                0.0,
+                359.99,
+                out double yaw
+            ))
             {
                 RpyOffsetStatusText = "Failed: 입력 범위를 확인하세요";
-                ConsoleLogHelper.Warning(
-                    "RPY OFFSET",
-                    "Invalid input / Roll, Pitch=-180.00~180.00 / Yaw=0.00~359.99");
+                ConsoleLogHelper.Warning("RPY OFFSET", "Invalid input / Roll, Pitch=-180.00~180.00 / Yaw=0.00~359.99");
                 return;
             }
 
             short rollHundredths = ToSignedHundredths(roll);
             short pitchHundredths = ToSignedHundredths(pitch);
             ushort yawHundredths = ToUnsignedHundredths(yaw);
-            byte[] packet = ControlCommandService.BuildRpyOffsetPacket(
-                rollHundredths,
-                pitchHundredths,
-                yawHundredths);
-
+            byte[] packet = ControlCommandService.BuildRpyOffsetPacket(rollHundredths, pitchHundredths, yawHundredths);
             RpyOffsetStatusText = "Applying";
-            bool sent = _controlCommandService.SetRpyOffsets(
-                rollHundredths,
-                pitchHundredths,
-                yawHundredths);
-
+            bool sent = _controlCommandService.SetRpyOffsets(rollHundredths, pitchHundredths, yawHundredths);
             ConsoleLogHelper.Command(
                 "RPY OFFSET TX",
                 string.Format(
-                    CultureInfo.InvariantCulture,
-                    "ROLL={0:F2} / PITCH={1:F2} / YAW={2:F2} / PACKET={3} / SENT={4}",
-                    roll,
-                    pitch,
-                    yaw,
-                    ToHex(packet),
-                    sent));
+                CultureInfo.InvariantCulture,
+                "ROLL={0:F2} / PITCH={1:F2} / YAW={2:F2} / PACKET={3} / SENT={4}",
+                roll,
+                pitch,
+                yaw,
+                ToHex(packet),
+                sent
+            )
+            );
 
             if (!sent)
             {
@@ -302,6 +315,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 입력한 자세 자동 전송 주기를 검증하고 장비에 설정을 요청한다.
+        /// </summary>
         private void ApplyRpyAutoTxRate()
         {
             if (!CanUseRpySettings(out string unavailableReason))
@@ -312,10 +328,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             if (!int.TryParse(
-                    RpyAutoTxRateInput,
-                    NumberStyles.Integer,
-                    CultureInfo.InvariantCulture,
-                    out int frequencyHz) ||
+                RpyAutoTxRateInput,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out int frequencyHz
+            ) ||
                 frequencyHz < 0 ||
                 frequencyHz > 30)
             {
@@ -328,12 +345,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             byte[] packet = ControlCommandService.BuildRpyAutoTxRatePacket(frequency);
             RpyRateStatusText = "Applying";
             bool sent = _controlCommandService.SetRpyAutoTxRate(frequency);
-
-            ConsoleLogHelper.Command(
-                "RPY RATE TX",
-                "HZ=" + frequencyHz +
-                " / PACKET=" + ToHex(packet) +
-                " / SENT=" + sent);
+            ConsoleLogHelper.Command("RPY RATE TX", "HZ=" + frequencyHz + " / PACKET=" + ToHex(packet) + " / SENT=" + sent);
 
             if (!sent)
             {
@@ -341,6 +353,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비의 현재 자세 센서 상태를 조회한다.
+        /// </summary>
         private void RequestRpyTelemetry()
         {
             if (!CanUseRpySettings(out string unavailableReason))
@@ -351,9 +366,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             bool sent = _controlCommandService.RequestImuTelemetry();
-            ConsoleLogHelper.Command(
-                "RPY QUERY",
-                "Function 0x24 single query / CMD2=0xE5 / SENT=" + sent);
+            ConsoleLogHelper.Command("RPY QUERY", "Function 0x24 single query / CMD2=0xE5 / SENT=" + sent);
 
             if (!sent)
             {
@@ -361,6 +374,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비에 저장된 자세 보정값을 조회한다.
+        /// </summary>
         private void RequestStoredRpyOffset()
         {
             if (!CanQueryStoredRpySettings(out string unavailableReason))
@@ -372,9 +388,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             RunOnUiThread(() => RpyOffsetStatusText = "DB 저장값 조회 중");
             bool sent = _controlCommandService.RequestStoredRpyOffsets();
-            ConsoleLogHelper.Command(
-                "RPY OFFSET DB QUERY TX",
-                "PACKET=FF 01 00 F3 00 00 F4 / SENT=" + sent);
+            ConsoleLogHelper.Command("RPY OFFSET DB QUERY TX", "PACKET=FF 01 00 F3 00 00 F4 / SENT=" + sent);
 
             if (!sent)
             {
@@ -382,6 +396,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비에 저장된 자세 전송 주기를 조회한다.
+        /// </summary>
         private void RequestStoredRpyRate()
         {
             if (!CanQueryStoredRpySettings(out string unavailableReason))
@@ -393,9 +410,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             RunOnUiThread(() => RpyRateStatusText = "DB 저장값 조회 중");
             bool sent = _controlCommandService.RequestStoredRpyAutoTxRate();
-            ConsoleLogHelper.Command(
-                "RPY RATE DB QUERY TX",
-                "PACKET=FF 01 00 F5 00 00 F6 / SENT=" + sent);
+            ConsoleLogHelper.Command("RPY RATE DB QUERY TX", "PACKET=FF 01 00 F5 00 00 F6 / SENT=" + sent);
 
             if (!sent)
             {
@@ -462,7 +477,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             int? parsedBuild = ParseBuildNumber(buildText);
             _webAgentBuildNumber = parsedBuild;
-
             RunOnUiThread(() =>
             {
                 if (!parsedBuild.HasValue)
@@ -471,22 +485,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 else if (parsedBuild.Value < MinimumRpySettingsBuild)
                 {
-                    WebAgentBuildStatusText =
-                        "WebAgent Build " + parsedBuild.Value + " / 기능 미지원";
+                    WebAgentBuildStatusText = "WebAgent Build " + parsedBuild.Value + " / 기능 미지원";
                 }
                 else
                 {
-                    WebAgentBuildStatusText =
-                        "WebAgent Build " + parsedBuild.Value +
-                        (parsedBuild.Value >= MinimumRpyStoredSettingsQueryBuild
-                            ? " / DB 조회 지원"
-                            : " / 설정 지원·DB 조회 미지원");
+                    WebAgentBuildStatusText = "WebAgent Build " + parsedBuild.Value + (parsedBuild.Value >= MinimumRpyStoredSettingsQueryBuild ? " / DB 조회 지원" : " / 설정 지원·DB 조회 미지원");
                 }
             });
 
             if (parsedBuild.HasValue &&
                 parsedBuild.Value >= MinimumRpyStoredSettingsQueryBuild &&
-                Interlocked.Exchange(ref _storedRpySettingsQueryRequested, 1) == 0)
+                Interlocked.Exchange(
+                ref _storedRpySettingsQueryRequested,
+                1
+            ) == 0)
             {
                 RequestStoredRpyOffset();
                 RequestStoredRpyRate();
@@ -504,21 +516,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             byte result = payload[0];
             byte frequencyHz = payload[1];
             bool success = result == 0x01 && frequencyHz <= 30;
-
             RunOnUiThread(() =>
             {
                 RpyRateStatusText = success ? "Applied" : "Failed";
+
                 if (success)
                 {
                     RpyAutoTxRateInput = frequencyHz.ToString(CultureInfo.InvariantCulture);
                 }
             });
-
             ConsoleLogHelper.State(
                 "RPY RATE ACK",
-                "RESULT=" + (success ? "SUCCESS" : "FAILED") +
-                " / CODE=0x" + result.ToString("X2") +
-                " / HZ=" + frequencyHz);
+                "RESULT=" + (success ? "SUCCESS" : "FAILED") + " / CODE=0x" + result.ToString("X2") + " / HZ=" + frequencyHz
+            );
 
             if (success && _webAgentBuildNumber >= MinimumRpyStoredSettingsQueryBuild)
             {
@@ -538,15 +548,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double roll = BitConverter.ToInt16(payload, 1) / 100.0;
             double pitch = BitConverter.ToInt16(payload, 3) / 100.0;
             double yaw = BitConverter.ToUInt16(payload, 5) / 100.0;
-            bool success =
-                result == 0x01 &&
-                roll >= -180.0 && roll <= 180.0 &&
-                pitch >= -180.0 && pitch <= 180.0 &&
-                yaw >= 0.0 && yaw <= 359.99;
-
+            bool success = result == 0x01 &&
+                roll >= -180.0 &&
+                roll <= 180.0 &&
+                pitch >= -180.0 &&
+                pitch <= 180.0 &&
+                yaw >= 0.0 &&
+                yaw <= 359.99;
             RunOnUiThread(() =>
             {
                 RpyOffsetStatusText = success ? "Applied" : "Failed";
+
                 if (success)
                 {
                     _storedRpyRollOffset = roll;
@@ -557,24 +569,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         "현재 Offset: R={0:+0.00;-0.00;0.00}° / P={1:+0.00;-0.00;0.00}° / Y={2:0.00}°",
                         roll,
                         pitch,
-                        yaw);
+                        yaw
+                    );
                     RpyRollOffsetInput = roll.ToString("0.00", CultureInfo.InvariantCulture);
                     RpyPitchOffsetInput = pitch.ToString("0.00", CultureInfo.InvariantCulture);
                     RpyYawOffsetInput = yaw.ToString("0.00", CultureInfo.InvariantCulture);
                     UpdateGpsHeadingReferenceDisplay();
                 }
             });
-
             ConsoleLogHelper.State(
                 "RPY OFFSET ACK",
                 string.Format(
-                    CultureInfo.InvariantCulture,
-                    "RESULT={0} / CODE=0x{1:X2} / ROLL={2:F2} / PITCH={3:F2} / YAW={4:F2}",
-                    success ? "SUCCESS" : "FAILED",
-                    result,
-                    roll,
-                    pitch,
-                    yaw));
+                CultureInfo.InvariantCulture,
+                "RESULT={0} / CODE=0x{1:X2} / ROLL={2:F2} / PITCH={3:F2} / YAW={4:F2}",
+                success ? "SUCCESS" : "FAILED",
+                result,
+                roll,
+                pitch,
+                yaw
+            )
+            );
 
             if (success && _webAgentBuildNumber >= MinimumRpyStoredSettingsQueryBuild)
             {
@@ -582,6 +596,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 저장된 자세 보정값 응답을 해석해 입력·표시 상태에 반영한다.
+        /// </summary>
         private void ParseStoredRpyOffsetResponse(byte[] payload)
         {
             if (payload == null || payload.Length < 7)
@@ -594,11 +611,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double roll = BitConverter.ToInt16(payload, 1) / 100.0;
             double pitch = BitConverter.ToInt16(payload, 3) / 100.0;
             double yaw = BitConverter.ToUInt16(payload, 5) / 100.0;
-            bool valid =
-                version == 0x01 &&
-                roll >= -180.0 && roll <= 180.0 &&
-                pitch >= -180.0 && pitch <= 180.0 &&
-                yaw >= 0.0 && yaw <= 359.99;
+            bool valid = version == 0x01 &&
+                roll >= -180.0 &&
+                roll <= 180.0 &&
+                pitch >= -180.0 &&
+                pitch <= 180.0 &&
+                yaw >= 0.0 &&
+                yaw <= 359.99;
 
             if (!valid)
             {
@@ -620,21 +639,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "DB 저장 Offset: R={0:+0.00;-0.00;0.00}° / P={1:+0.00;-0.00;0.00}° / Y={2:0.00}°",
                     roll,
                     pitch,
-                    yaw);
+                    yaw
+                );
                 UpdateGpsHeadingReferenceDisplay();
             });
-
             ConsoleLogHelper.State(
                 "RPY OFFSET DB RX",
                 string.Format(
-                    CultureInfo.InvariantCulture,
-                    "FUNCTION=0x2E / VERSION={0} / ROLL={1:F2} / PITCH={2:F2} / YAW={3:F2}",
-                    version,
-                    roll,
-                    pitch,
-                    yaw));
+                CultureInfo.InvariantCulture,
+                "FUNCTION=0x2E / VERSION={0} / ROLL={1:F2} / PITCH={2:F2} / YAW={3:F2}",
+                version,
+                roll,
+                pitch,
+                yaw
+            )
+            );
         }
 
+        /// <summary>
+        /// 저장된 자세 전송 주기 응답을 해석해 표시 상태를 갱신한다.
+        /// </summary>
         private void ParseStoredRpyRateResponse(byte[] payload)
         {
             if (payload == null || payload.Length < 2)
@@ -645,6 +669,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             byte version = payload[0];
             byte frequencyHz = payload[1];
+
             if (version != 0x01 || frequencyHz > 30)
             {
                 SetRpyRateFailure("Failed: 0x2F DB 저장값 범위/버전 오류");
@@ -658,10 +683,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 RpyRateStatusText = "DB 저장값 조회 완료";
                 UpdateRpyRateDisplay();
             });
-
-            ConsoleLogHelper.State(
-                "RPY RATE DB RX",
-                "FUNCTION=0x2F / VERSION=" + version + " / HZ=" + frequencyHz);
+            ConsoleLogHelper.State("RPY RATE DB RX", "FUNCTION=0x2F / VERSION=" + version + " / HZ=" + frequencyHz);
         }
 
         /// <summary>
@@ -674,7 +696,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool writeRateLog = false;
             double receiveRate = 0.0;
             long now = Stopwatch.GetTimestamp();
-
             lock (_rpyTelemetrySync)
             {
                 _rpyRxCount++;
@@ -703,7 +724,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         "RAW R {0:F2}° / P {1:F2}° / Y {2:F2}°",
                         roll,
                         pitch,
-                        yaw);
+                        yaw
+                    );
                 });
             }
 
@@ -714,31 +736,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     UpdateRpyRateDisplay();
                 });
-
                 ConsoleLogHelper.State(
                     "RPY RX",
                     string.Format(
-                        CultureInfo.InvariantCulture,
-                        "ROLL={0:F4} / PITCH={1:F4} / YAW={2:F4} / RX_RATE={3:F1}Hz",
-                        roll,
-                        pitch,
-                        yaw,
-                        receiveRate));
+                    CultureInfo.InvariantCulture,
+                    "ROLL={0:F4} / PITCH={1:F4} / YAW={2:F4} / RX_RATE={3:F1}Hz",
+                    roll,
+                    pitch,
+                    yaw,
+                    receiveRate
+                )
+                );
             }
         }
 
         private void UpdateRpyRateDisplay()
         {
-            string storedText = _storedRpyAutoTxRate.HasValue
-                ? _storedRpyAutoTxRate.Value.ToString(CultureInfo.InvariantCulture) + " Hz"
-                : "조회 대기";
-            string measuredText = _measuredRpyReceiveRate.HasValue
-                ? string.Format(CultureInfo.InvariantCulture, "약 {0:F1} Hz", _measuredRpyReceiveRate.Value)
-                : "측정 대기";
-
-            CurrentRpyRateDisplay =
-                "DB 저장 주파수: " + storedText +
-                " / 실측 수신률: " + measuredText;
+            string storedText = _storedRpyAutoTxRate.HasValue ? _storedRpyAutoTxRate.Value.ToString(CultureInfo.InvariantCulture) + " Hz" : "조회 대기";
+            string measuredText = _measuredRpyReceiveRate.HasValue ? string.Format(
+                CultureInfo.InvariantCulture,
+                "약 {0:F1} Hz",
+                _measuredRpyReceiveRate.Value
+            ) : "측정 대기";
+            CurrentRpyRateDisplay = "DB 저장 주파수: " + storedText + " / 실측 수신률: " + measuredText;
         }
 
         private void SetRpyRateFailure(string message)
@@ -753,42 +773,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("RPY OFFSET ACK", message);
         }
 
-        private static bool TryParseAngle(
-            string text,
-            double minimum,
-            double maximum,
-            out double value)
+        private static bool TryParseAngle(string text, double minimum, double maximum, out double value)
         {
             bool parsed = double.TryParse(
-                              text,
-                              NumberStyles.Float,
-                              CultureInfo.CurrentCulture,
-                              out value) ||
-                          double.TryParse(
-                              text,
-                              NumberStyles.Float,
-                              CultureInfo.InvariantCulture,
-                              out value);
-
-            return parsed &&
-                   !double.IsNaN(value) &&
-                   !double.IsInfinity(value) &&
-                   value >= minimum &&
-                   value <= maximum;
+                text,
+                NumberStyles.Float,
+                CultureInfo.CurrentCulture,
+                out value
+            ) ||
+                double.TryParse(
+                text,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out value
+            );
+            return parsed && !double.IsNaN(value) && !double.IsInfinity(value) && value >= minimum && value <= maximum;
         }
 
         private static short ToSignedHundredths(double value)
         {
-            return checked((short)Math.Round(
-                value * 100.0,
-                MidpointRounding.AwayFromZero));
+            return checked((short)Math.Round(value * 100.0, MidpointRounding.AwayFromZero));
         }
 
         private static ushort ToUnsignedHundredths(double value)
         {
-            return checked((ushort)Math.Round(
-                value * 100.0,
-                MidpointRounding.AwayFromZero));
+            return checked((ushort)Math.Round(value * 100.0, MidpointRounding.AwayFromZero));
         }
 
         private static string ToHex(byte[] packet)
@@ -808,14 +817,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 digits,
                 NumberStyles.Integer,
                 CultureInfo.InvariantCulture,
-                out int buildNumber)
-                    ? buildNumber
-                    : (int?)null;
+                out int buildNumber
+            ) ? buildNumber : (int?)null;
         }
 
         private static void RunOnUiThread(Action action)
         {
             Dispatcher dispatcher = System.Windows.Application.Current?.Dispatcher;
+
             if (dispatcher == null || dispatcher.CheckAccess())
             {
                 action();
@@ -827,20 +836,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private static void VerifyRpyPacketEncoding()
         {
-            byte[] offsetPacket = ControlCommandService.BuildRpyOffsetPacket(
-                100,
-                -200,
-                3000);
+            byte[] offsetPacket = ControlCommandService.BuildRpyOffsetPacket(100, -200, 3000);
             byte[] ratePacket = ControlCommandService.BuildRpyAutoTxRatePacket(10);
             byte[] offsetQueryPacket = ControlCommandService.BuildStoredRpyOffsetQueryPacket();
             byte[] rateQueryPacket = ControlCommandService.BuildStoredRpyAutoTxRateQueryPacket();
-
             string offsetHex = ToHex(offsetPacket);
             string rateHex = ToHex(ratePacket);
             string offsetQueryHex = ToHex(offsetQueryPacket);
             string rateQueryHex = ToHex(rateQueryPacket);
-            bool valid =
-                offsetHex == "FF 01 00 ED 64 00 38 FF B8 0B 4C" &&
+            bool valid = offsetHex == "FF 01 00 ED 64 00 38 FF B8 0B 4C" &&
                 rateHex == "FF 01 00 EB 0A 00 F6" &&
                 offsetQueryHex == "FF 01 00 F3 00 00 F4" &&
                 rateQueryHex == "FF 01 00 F5 00 00 F6";
@@ -849,11 +853,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error(
                     "RPY PROTOCOL",
-                    "Packet encoding self-test failed / OFFSET=" + offsetHex +
-                    " / RATE=" + rateHex +
-                    " / OFFSET_QUERY=" + offsetQueryHex +
-                    " / RATE_QUERY=" + rateQueryHex,
-                    new InvalidOperationException("RPY packet sample mismatch."));
+                    "Packet encoding self-test failed / OFFSET=" + offsetHex + " / RATE=" + rateHex + " / OFFSET_QUERY=" + offsetQueryHex + " / RATE_QUERY=" + rateQueryHex,
+                    new InvalidOperationException("RPY packet sample mismatch.")
+                );
             }
         }
     }

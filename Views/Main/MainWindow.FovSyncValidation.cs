@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Services.Control;
+﻿using OpenCvWpfTracking.Services.Control;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -17,8 +17,7 @@ namespace OpenCvWpfTracking
 {
     public partial class MainWindow
     {
-        private readonly FovSyncValidationService _fovSyncValidationService =
-            new FovSyncValidationService();
+        private readonly FovSyncValidationService _fovSyncValidationService = new FovSyncValidationService();
 
         private readonly List<double> _eoFovBoundaryX = new List<double>();
 
@@ -33,15 +32,13 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void StartFovValidation_Click(object sender, RoutedEventArgs e)
         {
-            if (vm.SelectedZoomSyncLevel == null ||
-                vm.SelectedZoomSyncLevel.Level < 1)
+            if (vm.SelectedZoomSyncLevel == null || vm.SelectedZoomSyncLevel.Level < 1)
             {
                 FovValidationStatusText.Text = "SELECT LEVEL 1 ~ 10 FIRST";
                 return;
             }
 
-            if (!(EoCameraImageView.Source is BitmapSource) ||
-                !(IrCameraImageView.Source is BitmapSource))
+            if (!(EoCameraImageView.Source is BitmapSource) || !(IrCameraImageView.Source is BitmapSource))
             {
                 FovValidationStatusText.Text = "EO / IR VIDEO NOT READY";
                 return;
@@ -50,12 +47,8 @@ namespace OpenCvWpfTracking
             ResetFovValidationMeasurement();
             _fovValidationLevel = vm.SelectedZoomSyncLevel.Level;
             _isFovValidationActive = true;
-            FovValidationStatusText.Text =
-                $"LEVEL {_fovValidationLevel} / CLICK EO LEFT BOUNDARY";
-
-            Log.Information(
-                "[FOV VALIDATION] 측정 시작 | LEVEL={Level} | 순서=EO 좌/우, IR 좌/우",
-                _fovValidationLevel);
+            FovValidationStatusText.Text = $"LEVEL {_fovValidationLevel} / CLICK EO LEFT BOUNDARY";
+            Log.Information("[FOV VALIDATION] 측정 시작 | LEVEL={Level} | 순서=EO 좌/우, IR 좌/우", _fovValidationLevel);
         }
 
         private void ResetFovValidation_Click(object sender, RoutedEventArgs e)
@@ -77,9 +70,7 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// 영상 더블클릭 분리창과 충돌하지 않도록 검증 활성 상태의 단일 클릭만 처리한다.
         /// </summary>
-        private bool TryHandleFovValidationClick(
-            bool infrared,
-            MouseButtonEventArgs e)
+        private bool TryHandleFovValidationClick(bool infrared, MouseButtonEventArgs e)
         {
             if (!_isFovValidationActive)
             {
@@ -97,12 +88,9 @@ namespace OpenCvWpfTracking
             Canvas overlay = infrared ? IrFovValidationOverlay : EoFovValidationOverlay;
             List<double> boundaries = infrared ? _irFovBoundaryX : _eoFovBoundaryX;
 
-            if ((!infrared && _eoFovBoundaryX.Count >= 2) ||
-                (infrared && _eoFovBoundaryX.Count < 2))
+            if ((!infrared && _eoFovBoundaryX.Count >= 2) || (infrared && _eoFovBoundaryX.Count < 2))
             {
-                FovValidationStatusText.Text = _eoFovBoundaryX.Count < 2
-                    ? "CLICK EO LEFT / RIGHT FIRST"
-                    : "CLICK IR LEFT / RIGHT";
+                FovValidationStatusText.Text = _eoFovBoundaryX.Count < 2 ? "CLICK EO LEFT / RIGHT FIRST" : "CLICK IR LEFT / RIGHT";
                 return true;
             }
 
@@ -157,25 +145,25 @@ namespace OpenCvWpfTracking
                     eoSource.PixelWidth,
                     _irFovBoundaryX[0],
                     _irFovBoundaryX[1],
-                    irSource.PixelWidth);
-
+                    irSource.PixelWidth
+                );
                 _isFovValidationActive = false;
                 FovValidationStatusText.Text = string.Format(
                     CultureInfo.InvariantCulture,
                     "LEVEL {0} / FOV ERROR {1:F2}% / {2}",
                     result.Level,
                     result.ErrorPercent,
-                    result.Passed ? "PASS" : "FAIL");
-
+                    result.Passed ? "PASS" : "FAIL"
+                );
                 SaveFovValidationCsv(result, eoSource.PixelWidth, irSource.PixelWidth);
-
                 Log.Information(
                     "[FOV VALIDATION] 측정 완료 | LEVEL={Level} | EO_NORMALIZED={EoNormalized:F6} | IR_NORMALIZED={IrNormalized:F6} | ERROR={Error:F2}% | RESULT={Result}",
                     result.Level,
                     result.EoNormalizedWidth,
                     result.IrNormalizedWidth,
                     result.ErrorPercent,
-                    result.Passed ? "PASS" : "FAIL");
+                    result.Passed ? "PASS" : "FAIL"
+                );
             }
             catch (Exception ex)
             {
@@ -185,76 +173,86 @@ namespace OpenCvWpfTracking
             }
         }
 
-        private void SaveFovValidationCsv(
-            FovSyncValidationResult result,
-            int eoFrameWidth,
-            int irFrameWidth)
+        private void SaveFovValidationCsv(FovSyncValidationResult result, int eoFrameWidth, int irFrameWidth)
         {
-            string logDirectory = IOPath.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "Logs");
+            string logDirectory = IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
             Directory.CreateDirectory(logDirectory);
-
-            string path = IOPath.Combine(
-                logDirectory,
-                "fov-sync-validation-" + DateTime.Now.ToString("yyyyMMdd") + ".csv");
+            string path = IOPath.Combine(logDirectory, "fov-sync-validation-" + DateTime.Now.ToString("yyyyMMdd") + ".csv");
 
             if (!File.Exists(path))
             {
                 File.AppendAllText(
                     path,
                     "Timestamp,Level,EoZoom,IrZoom,EoFrameWidth,IrFrameWidth,EoTargetPixelWidth,IrTargetPixelWidth,EoNormalizedWidth,IrNormalizedWidth,FovErrorPercent,Result" + Environment.NewLine,
-                    new UTF8Encoding(true));
+                    new UTF8Encoding(true)
+                );
             }
 
-            string row = string.Join(",",
-                DateTime.Now.ToString("O", CultureInfo.InvariantCulture),
+            string row = string.Join(
+                ",",
+                DateTime.Now.ToString(
+                "O",
+                CultureInfo.InvariantCulture
+            ),
                 result.Level.ToString(CultureInfo.InvariantCulture),
                 vm.CurrentEoZoomText,
                 vm.CurrentIrZoomText,
                 eoFrameWidth.ToString(CultureInfo.InvariantCulture),
                 irFrameWidth.ToString(CultureInfo.InvariantCulture),
-                result.EoPixelWidth.ToString("F2", CultureInfo.InvariantCulture),
-                result.IrPixelWidth.ToString("F2", CultureInfo.InvariantCulture),
-                result.EoNormalizedWidth.ToString("F6", CultureInfo.InvariantCulture),
-                result.IrNormalizedWidth.ToString("F6", CultureInfo.InvariantCulture),
-                result.ErrorPercent.ToString("F2", CultureInfo.InvariantCulture),
-                result.Passed ? "PASS" : "FAIL");
-
+                result.EoPixelWidth.ToString(
+                "F2",
+                CultureInfo.InvariantCulture
+            ),
+                result.IrPixelWidth.ToString(
+                "F2",
+                CultureInfo.InvariantCulture
+            ),
+                result.EoNormalizedWidth.ToString(
+                "F6",
+                CultureInfo.InvariantCulture
+            ),
+                result.IrNormalizedWidth.ToString(
+                "F6",
+                CultureInfo.InvariantCulture
+            ),
+                result.ErrorPercent.ToString(
+                "F2",
+                CultureInfo.InvariantCulture
+            ),
+                result.Passed ? "PASS" : "FAIL"
+            );
             File.AppendAllText(path, row + Environment.NewLine, new UTF8Encoding(true));
         }
 
-        private static bool TryGetFovSourcePixel(
-            Image image,
-            Point viewPoint,
-            out Point sourcePoint)
+        private static bool TryGetFovSourcePixel(Image image, Point viewPoint, out Point sourcePoint)
         {
             sourcePoint = new Point();
             BitmapSource source = image.Source as BitmapSource;
 
-            if (source == null || source.PixelWidth <= 0 || source.PixelHeight <= 0 ||
-                image.ActualWidth <= 0 || image.ActualHeight <= 0)
+            if (source == null ||
+                source.PixelWidth <= 0 ||
+                source.PixelHeight <= 0 ||
+                image.ActualWidth <= 0 ||
+                image.ActualHeight <= 0)
             {
                 return false;
             }
 
-            double scale = Math.Min(
-                image.ActualWidth / source.PixelWidth,
-                image.ActualHeight / source.PixelHeight);
+            double scale = Math.Min(image.ActualWidth / source.PixelWidth, image.ActualHeight / source.PixelHeight);
             double renderWidth = source.PixelWidth * scale;
             double renderHeight = source.PixelHeight * scale;
             double offsetX = (image.ActualWidth - renderWidth) / 2.0;
             double offsetY = (image.ActualHeight - renderHeight) / 2.0;
 
-            if (viewPoint.X < offsetX || viewPoint.X > offsetX + renderWidth ||
-                viewPoint.Y < offsetY || viewPoint.Y > offsetY + renderHeight)
+            if (viewPoint.X < offsetX ||
+                viewPoint.X > offsetX + renderWidth ||
+                viewPoint.Y < offsetY ||
+                viewPoint.Y > offsetY + renderHeight)
             {
                 return false;
             }
 
-            sourcePoint = new Point(
-                (viewPoint.X - offsetX) / scale,
-                (viewPoint.Y - offsetY) / scale);
+            sourcePoint = new Point((viewPoint.X - offsetX) / scale, (viewPoint.Y - offsetY) / scale);
             return true;
         }
 

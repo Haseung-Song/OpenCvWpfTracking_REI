@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.RegularExpressions;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -24,34 +24,28 @@ namespace OpenCvWpfTracking
     /// </summary>
     public partial class MainWindow
     {
-        #region [Move Control Input Constants]
+        #region [이동 제어 입력 상수]
 
         /// <summary>
         /// Pan Absolute 최소 / 최대 입력값
         /// </summary>
-        private const double MoveControlPanMinimumInput =
-            -180.0;
+        private const double MoveControlPanMinimumInput = -180.0;
 
-        private const double MoveControlPanMaximumInput =
-            180.0;
+        private const double MoveControlPanMaximumInput = 180.0;
 
         /// <summary>
         /// Tilt Absolute 최소 / 최대 입력값
         /// </summary>
-        private const double MoveControlTiltMinimumInput =
-            -90.0;
+        private const double MoveControlTiltMinimumInput = -90.0;
 
-        private const double MoveControlTiltMaximumInput =
-            90.0;
+        private const double MoveControlTiltMaximumInput = 90.0;
 
         /// <summary>
         /// Zoom / Focus Position 최소 / 최대 입력값
         /// </summary>
-        private const int MoveControlPositionMinimumInput =
-            0;
+        private const int MoveControlPositionMinimumInput = 0;
 
-        private const int MoveControlPositionMaximumInput =
-            1000;
+        private const int MoveControlPositionMaximumInput = 1000;
 
         /// <summary>
         /// EO 기준 광학 Zoom 배율 입력 범위
@@ -85,7 +79,7 @@ namespace OpenCvWpfTracking
 
         #endregion
 
-        #region [Move Control Preview Text Input]
+        #region [이동 제어 입력 사전 검사]
 
         /// <summary>
         /// Pan Absolute 숫자 입력 제한
@@ -100,27 +94,16 @@ namespace OpenCvWpfTracking
         /// 첫 글자의 음수 기호를 허용한다.
         /// 실제 범위 제한은 LostFocus에서 최종 적용한다.
         /// </summary>
-        private void PanDecimalNumberOnly_PreviewTextInput(
-            object sender,
-            TextCompositionEventArgs e)
+        private void PanDecimalNumberOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             if (!(sender is TextBox textBox))
             {
-                e.Handled =
-                    true;
-
+                e.Handled = true;
                 return;
             }
 
-            string previewText =
-                CreatePreviewText(
-                    textBox,
-                    e.Text);
-
-            e.Handled =
-                !Regex.IsMatch(
-                    previewText,
-                    @"^-?\d{0,3}(\.\d{0,2})?$");
+            string previewText = CreatePreviewText(textBox, e.Text);
+            e.Handled = !Regex.IsMatch(previewText, @"^-?\d{0,3}(\.\d{0,2})?$");
         }
 
         /// <summary>
@@ -135,27 +118,16 @@ namespace OpenCvWpfTracking
         /// 부호는 첫 글자에 한 번만 허용하고,
         /// 소수점은 둘째 자리까지만 입력할 수 있다.
         /// </summary>
-        private void DecimalNumberOnly_PreviewTextInput(
-            object sender,
-            TextCompositionEventArgs e)
+        private void DecimalNumberOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             if (!(sender is TextBox textBox))
             {
-                e.Handled =
-                    true;
-
+                e.Handled = true;
                 return;
             }
 
-            string previewText =
-                CreatePreviewText(
-                    textBox,
-                    e.Text);
-
-            e.Handled =
-                !Regex.IsMatch(
-                    previewText,
-                    @"^-?\d{0,3}(\.\d{0,2})?$");
+            string previewText = CreatePreviewText(textBox, e.Text);
+            e.Handled = !Regex.IsMatch(previewText, @"^-?\d{0,3}(\.\d{0,2})?$");
         }
 
         /// <summary>
@@ -165,27 +137,16 @@ namespace OpenCvWpfTracking
         /// 범위를 넘는 붙여넣기 또는 직접 입력은
         /// LostFocus에서 0 ~ 1000으로 최종 보정한다.
         /// </summary>
-        private void IntegerNumberOnly_PreviewTextInput(
-            object sender,
-            TextCompositionEventArgs e)
+        private void IntegerNumberOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             if (!(sender is TextBox textBox))
             {
-                e.Handled =
-                    true;
-
+                e.Handled = true;
                 return;
             }
 
-            string previewText =
-                CreatePreviewText(
-                    textBox,
-                    e.Text);
-
-            e.Handled =
-                !Regex.IsMatch(
-                    previewText,
-                    @"^\d{0,4}$");
+            string previewText = CreatePreviewText(textBox, e.Text);
+            e.Handled = !Regex.IsMatch(previewText, @"^\d{0,4}$");
         }
 
         /// <summary>
@@ -203,36 +164,7 @@ namespace OpenCvWpfTracking
         /// 25.5
         /// 90.0
         /// </summary>
-        private void ZoomRatio_PreviewTextInput(
-            object sender,
-            TextCompositionEventArgs e)
-        {
-            if (!(sender is TextBox textBox))
-            {
-                e.Handled =
-                    true;
-
-                return;
-            }
-
-            string previewText =
-                CreatePreviewText(
-                    textBox,
-                    e.Text);
-
-            e.Handled =
-                !Regex.IsMatch(
-                    previewText,
-                    @"^\d{0,2}(\.\d{0,1})?$");
-        }
-
-        /// <summary>
-        /// RPY Yaw 입력은 음수 없이 0~359.99 형식만 허용한다.
-        /// 실제 상·하한 보정은 LostFocus에서 적용한다.
-        /// </summary>
-        private void UnsignedDecimalNumberOnly_PreviewTextInput(
-            object sender,
-            TextCompositionEventArgs e)
+        private void ZoomRatio_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             if (!(sender is TextBox textBox))
             {
@@ -241,14 +173,28 @@ namespace OpenCvWpfTracking
             }
 
             string previewText = CreatePreviewText(textBox, e.Text);
-            e.Handled = !Regex.IsMatch(
-                previewText,
-                @"^\d{0,3}(\.\d{0,2})?$");
+            e.Handled = !Regex.IsMatch(previewText, @"^\d{0,2}(\.\d{0,1})?$");
+        }
+
+        /// <summary>
+        /// RPY Yaw 입력은 음수 없이 0~359.99 형식만 허용한다.
+        /// 실제 상·하한 보정은 LostFocus에서 적용한다.
+        /// </summary>
+        private void UnsignedDecimalNumberOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            if (!(sender is TextBox textBox))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            string previewText = CreatePreviewText(textBox, e.Text);
+            e.Handled = !Regex.IsMatch(previewText, @"^\d{0,3}(\.\d{0,2})?$");
         }
 
         #endregion
 
-        #region [Move Control Lost Focus]
+        #region [이동 제어 입력 초점 해제]
 
         /// <summary>
         /// Pan Absolute 입력 완료 처리
@@ -256,17 +202,11 @@ namespace OpenCvWpfTracking
         /// 범위:
         /// -180.00 ~ 180.00
         /// </summary>
-        private void PanAngle_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void PanAngle_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
             // 2026-09-18: GUI 입력은 Agent 종류와 무관하게 항상 signed 좌표를 유지한다.
             // Web Agent 0~360 변환은 ControlCommandService 송신 경계에서만 수행한다.
-            ClampDecimalTextBoxValue(
-                sender,
-                MoveControlPanMinimumInput,
-                MoveControlPanMaximumInput,
-                2);
+            ClampDecimalTextBoxValue(sender, MoveControlPanMinimumInput, MoveControlPanMaximumInput, 2);
         }
 
         /// <summary>
@@ -278,15 +218,9 @@ namespace OpenCvWpfTracking
         /// LA Middleware에서 수신하는 실제 Tilt 기준값을 그대로 사용하고,
         /// 이 입력 단계에서는 별도 Zero Offset을 적용하지 않는다.
         /// </summary>
-        private void TiltAngle_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void TiltAngle_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            ClampDecimalTextBoxValue(
-                sender,
-                MoveControlTiltMinimumInput,
-                MoveControlTiltMaximumInput,
-                2);
+            ClampDecimalTextBoxValue(sender, MoveControlTiltMinimumInput, MoveControlTiltMaximumInput, 2);
         }
 
         /// <summary>
@@ -295,14 +229,9 @@ namespace OpenCvWpfTracking
         /// 범위:
         /// 0 ~ 1000
         /// </summary>
-        private void PositionValue_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void PositionValue_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            ClampIntegerTextBoxValue(
-                sender,
-                MoveControlPositionMinimumInput,
-                MoveControlPositionMaximumInput);
+            ClampIntegerTextBoxValue(sender, MoveControlPositionMinimumInput, MoveControlPositionMaximumInput);
         }
 
         /// <summary>
@@ -310,74 +239,46 @@ namespace OpenCvWpfTracking
         ///
         /// EO XV-Z2090HC 장비 스펙에 따라 1.0 ~ 90.0배로 제한한다.
         /// </summary>
-        private void ZoomRatio_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void ZoomRatio_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            ClampDecimalTextBoxValue(
-                sender,
-                MoveControlZoomRatioMinimumInput,
-                MoveControlZoomRatioMaximumInput,
-                1);
+            ClampDecimalTextBoxValue(sender, MoveControlZoomRatioMinimumInput, MoveControlZoomRatioMaximumInput, 1);
         }
 
         /// <summary>
         /// Roll/Pitch Offset 입력을 -180.00~180.00 범위로 보정한다.
         /// </summary>
-        private void RpySignedOffset_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void RpySignedOffset_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            ClampDecimalTextBoxValue(
-                sender,
-                RpySignedMinimumInput,
-                RpySignedMaximumInput,
-                2);
+            ClampDecimalTextBoxValue(sender, RpySignedMinimumInput, RpySignedMaximumInput, 2);
         }
 
         /// <summary>
         /// Yaw Offset 입력을 0.00~359.99 범위로 보정한다.
         /// </summary>
-        private void RpyYawOffset_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void RpyYawOffset_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            ClampDecimalTextBoxValue(
-                sender,
-                RpyYawMinimumInput,
-                RpyYawMaximumInput,
-                2);
+            ClampDecimalTextBoxValue(sender, RpyYawMinimumInput, RpyYawMaximumInput, 2);
         }
 
         /// <summary>
         /// RPY 자동 전송 주파수 입력을 0~30Hz 범위로 보정한다.
         /// </summary>
-        private void RpyRate_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void RpyRate_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            ClampIntegerTextBoxValue(
-                sender,
-                RpyRateMinimumInput,
-                RpyRateMaximumInput);
+            ClampIntegerTextBoxValue(sender, RpyRateMinimumInput, RpyRateMaximumInput);
         }
 
         /// <summary>
         /// 2026-10-02: GPS 자동 전송 주파수 입력을 0~10Hz로 보정한다.
         /// </summary>
-        private void GpsRate_LostFocus(
-            object sender,
-            System.Windows.RoutedEventArgs e)
+        private void GpsRate_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            ClampIntegerTextBoxValue(
-                sender,
-                GpsRateMinimumInput,
-                GpsRateMaximumInput);
+            ClampIntegerTextBoxValue(sender, GpsRateMinimumInput, GpsRateMaximumInput);
         }
 
         #endregion
 
-        #region [Move Control Input Helpers]
+        #region [이동 제어 입력 보조 함수]
 
         /// <summary>
         /// 현재 TextBox에서 선택된 문자열을 새 입력 문자열로 교체한 뒤,
@@ -386,29 +287,13 @@ namespace OpenCvWpfTracking
         /// PreviewTextInput은 TextBox.Text에 새 문자가 반영되기 전에 호출되므로
         /// 선택 영역 / Caret 위치를 직접 계산해야 정확한 형식 검사가 가능하다.
         /// </summary>
-        private static string CreatePreviewText(
-            TextBox textBox,
-            string inputText)
+        private static string CreatePreviewText(TextBox textBox, string inputText)
         {
-            string currentText =
-                textBox.Text ??
-                string.Empty;
-
-            int selectionStart =
-                textBox.SelectionStart;
-
-            int selectionLength =
-                textBox.SelectionLength;
-
-            string removedSelectionText =
-                currentText.Remove(
-                    selectionStart,
-                    selectionLength);
-
-            return removedSelectionText.Insert(
-                selectionStart,
-                inputText ??
-                string.Empty);
+            string currentText = textBox.Text ?? string.Empty;
+            int selectionStart = textBox.SelectionStart;
+            int selectionLength = textBox.SelectionLength;
+            string removedSelectionText = currentText.Remove(selectionStart, selectionLength);
+            return removedSelectionText.Insert(selectionStart, inputText ?? string.Empty);
         }
 
         /// <summary>
@@ -417,11 +302,7 @@ namespace OpenCvWpfTracking
         /// 입력값이 비어 있거나 숫자로 변환되지 않으면 최소값을 적용한다.
         /// 보정된 값은 Binding Source에 즉시 반영한다.
         /// </summary>
-        private static void ClampDecimalTextBoxValue(
-            object sender,
-            double minimum,
-            double maximum,
-            int decimalDigits)
+        private static void ClampDecimalTextBoxValue(object sender, double minimum, double maximum, int decimalDigits)
         {
             if (!(sender is TextBox textBox))
             {
@@ -430,43 +311,21 @@ namespace OpenCvWpfTracking
 
             double parsedValue;
 
-            if (!double.TryParse(
-                    textBox.Text,
-                    out parsedValue))
+            if (!double.TryParse(textBox.Text, out parsedValue))
             {
-                parsedValue =
-                    minimum;
+                parsedValue = minimum;
             }
 
-            double clampedValue =
-                Math.Max(
-                    minimum,
-                    Math.Min(
-                        maximum,
-                        parsedValue));
-
-            clampedValue =
-                Math.Round(
-                    clampedValue,
-                    decimalDigits,
-                    MidpointRounding.AwayFromZero);
-
-            textBox.Text =
-                clampedValue.ToString(
-                    "F" +
-                    decimalDigits);
-
-            UpdateTextBindingSource(
-                textBox);
+            double clampedValue = Math.Max(minimum, Math.Min(maximum, parsedValue));
+            clampedValue = Math.Round(clampedValue, decimalDigits, MidpointRounding.AwayFromZero);
+            textBox.Text = clampedValue.ToString("F" + decimalDigits);
+            UpdateTextBindingSource(textBox);
         }
 
         /// <summary>
         /// TextBox 정수 입력값을 지정 범위로 보정한다.
         /// </summary>
-        private static void ClampIntegerTextBoxValue(
-            object sender,
-            int minimum,
-            int maximum)
+        private static void ClampIntegerTextBoxValue(object sender, int minimum, int maximum)
         {
             if (!(sender is TextBox textBox))
             {
@@ -475,38 +334,23 @@ namespace OpenCvWpfTracking
 
             int parsedValue;
 
-            if (!int.TryParse(
-                    textBox.Text,
-                    out parsedValue))
+            if (!int.TryParse(textBox.Text, out parsedValue))
             {
-                parsedValue =
-                    minimum;
+                parsedValue = minimum;
             }
 
-            int clampedValue =
-                Math.Max(
-                    minimum,
-                    Math.Min(
-                        maximum,
-                        parsedValue));
-
-            textBox.Text =
-                clampedValue.ToString();
-
-            UpdateTextBindingSource(
-                textBox);
+            int clampedValue = Math.Max(minimum, Math.Min(maximum, parsedValue));
+            textBox.Text = clampedValue.ToString();
+            UpdateTextBindingSource(textBox);
         }
 
         /// <summary>
         /// LostFocus에서 보정한 TextBox.Text 값을
         /// MainViewModel Binding Property에 즉시 반영한다.
         /// </summary>
-        private static void UpdateTextBindingSource(
-            TextBox textBox)
+        private static void UpdateTextBindingSource(TextBox textBox)
         {
-            BindingExpression bindingExpression =
-                textBox.GetBindingExpression(
-                    TextBox.TextProperty);
+            BindingExpression bindingExpression = textBox.GetBindingExpression(TextBox.TextProperty);
 
             if (bindingExpression == null)
             {
@@ -515,7 +359,7 @@ namespace OpenCvWpfTracking
 
             bindingExpression.UpdateSource();
         }
+
         #endregion
     }
-
 }

@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using System;
 using System.Diagnostics;
 using System.Net.Sockets;
@@ -40,35 +40,22 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private const int MotorEnableStabilizationMs = 1000;
 
-        private readonly SemaphoreSlim _sendLock =
-            new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// Pan 현재 Encoder 위치를 0으로 설정한다.
         /// </summary>
-        public Task<bool> SetPanZeroAsync(
-            string ipAddress,
-            int port)
+        public Task<bool> SetPanZeroAsync(string ipAddress, int port)
         {
-            return SendSetOriginSequenceAsync(
-                ipAddress,
-                port,
-                0x01,
-                "PAN SET ORIGIN");
+            return SendSetOriginSequenceAsync(ipAddress, port, 0x01, "PAN SET ORIGIN");
         }
 
         /// <summary>
         /// Tilt 현재 Encoder 위치를 0으로 설정한다.
         /// </summary>
-        public Task<bool> SetTiltZeroAsync(
-            string ipAddress,
-            int port)
+        public Task<bool> SetTiltZeroAsync(string ipAddress, int port)
         {
-            return SendSetOriginSequenceAsync(
-                ipAddress,
-                port,
-                0x02,
-                "TILT SET ORIGIN");
+            return SendSetOriginSequenceAsync(ipAddress, port, 0x02, "TILT SET ORIGIN");
         }
 
         /// <summary>
@@ -82,38 +69,16 @@ namespace OpenCvWpfTracking.Services.Communication
         ///
         /// 각 명령은 AA AA Cmd1 Length ASCII-Data XOR 패킷으로 전송한다.
         /// </summary>
-        private Task<bool> SendSetOriginSequenceAsync(
-            string ipAddress,
-            int port,
-            byte command1,
-            string commandName)
+        private Task<bool> SendSetOriginSequenceAsync(string ipAddress, int port, byte command1, string commandName)
         {
             byte[][] packets =
             {
-                BuildCoolPacket(
-                    command1,
-                    "]"),
-
-                BuildCoolPacket(
-                    command1,
-                    ")"),
-
-                BuildCoolPacket(
-                    command1,
-                    "|2"),
-
-                BuildCoolPacket(
-                    command1,
-                    "(")
+                BuildCoolPacket(command1, "]"),
+                BuildCoolPacket(command1, ")"),
+                BuildCoolPacket(command1, "|2"),
+                BuildCoolPacket(command1, "(")
             };
-
-            return SendPacketsAsync(
-                ipAddress,
-                port,
-                packets,
-                commandName,
-                SetOriginInterPacketDelayMs,
-                MotorEnableStabilizationMs);
+            return SendPacketsAsync(ipAddress, port, packets, commandName, SetOriginInterPacketDelayMs, MotorEnableStabilizationMs);
         }
 
         /// <summary>
@@ -125,14 +90,10 @@ namespace OpenCvWpfTracking.Services.Communication
             byte[][] packets,
             string commandName,
             int interPacketDelayMs = InterPacketDelayMs,
-            int postSendDelayMs = 0)
+            int postSendDelayMs = 0
+        )
         {
-            if (string.IsNullOrWhiteSpace(
-                    ipAddress) ||
-                port <= 0 ||
-                port > 65535 ||
-                packets == null ||
-                packets.Length == 0)
+            if (string.IsNullOrWhiteSpace(ipAddress) || port <= 0 || port > 65535 || packets == null || packets.Length == 0)
             {
                 return false;
             }
@@ -141,105 +102,56 @@ namespace OpenCvWpfTracking.Services.Communication
 
             try
             {
-                using (TcpClient client =
-                    new TcpClient())
+                using (TcpClient client = new TcpClient())
                 {
                     client.NoDelay = true;
-                    client.SendTimeout =
-                        SendTimeoutMs;
-
+                    client.SendTimeout = SendTimeoutMs;
                     ConsoleLogHelper.PrintLine();
-                    Console.WriteLine(
-                        $"[MCB DIRECT] {commandName} CONNECT : " +
-                        $"{ipAddress}:{port}");
+                    Console.WriteLine($"[MCB DIRECT] {commandName} CONNECT : " + $"{ipAddress}:{port}");
+                    Task connectTask = client.ConnectAsync(ipAddress, port);
+                    Task completedTask = await Task.WhenAny(connectTask, Task.Delay(ConnectTimeoutMs));
 
-                    Task connectTask =
-                        client.ConnectAsync(
-                            ipAddress,
-                            port);
-
-                    Task completedTask =
-                        await Task.WhenAny(
-                            connectTask,
-                            Task.Delay(
-                                ConnectTimeoutMs));
-
-                    if (completedTask !=
-                        connectTask)
+                    if (completedTask != connectTask)
                     {
                         // 2026-09-29: Timeout으로 using TcpClient가 Dispose된 뒤
                         // ConnectAsync가 fault되어도 예외가 미관찰 상태로 남지 않게 한다.
-                        ObserveTimedOutConnectTask(
-                            connectTask,
-                            commandName,
-                            ipAddress,
-                            port);
-
-                        Console.WriteLine(
-                            $"[MCB DIRECT] {commandName} FAILED : CONNECT TIMEOUT");
-
+                        ObserveTimedOutConnectTask(connectTask, commandName, ipAddress, port);
+                        Console.WriteLine($"[MCB DIRECT] {commandName} FAILED : CONNECT TIMEOUT");
                         ConsoleLogHelper.PrintLine();
                         return false;
                     }
 
                     await connectTask;
-
-                    using (NetworkStream stream =
-                        client.GetStream())
+                    using (NetworkStream stream = client.GetStream())
                     {
-                        for (int index = 0;
-                             index < packets.Length;
-                             index++)
+                        for (int index = 0; index < packets.Length; index++)
                         {
-                            byte[] packet =
-                                packets[index];
-
-                            await stream.WriteAsync(
-                                packet,
-                                0,
-                                packet.Length);
-
+                            byte[] packet = packets[index];
+                            await stream.WriteAsync(packet, 0, packet.Length);
                             await stream.FlushAsync();
+                            PrintPacket(commandName, packet);
 
-                            PrintPacket(
-                                commandName,
-                                packet);
-
-                            if (index <
-                                packets.Length - 1)
+                            if (index < packets.Length - 1)
                             {
-                                await Task.Delay(
-                                    interPacketDelayMs);
+                                await Task.Delay(interPacketDelayMs);
                             }
-
                         }
 
                         if (postSendDelayMs > 0)
                         {
-                            Console.WriteLine(
-                                $"[MCB DIRECT] {commandName} MOTOR ENABLE STABILIZING : " +
-                                $"{postSendDelayMs}ms");
-
-                            await Task.Delay(
-                                postSendDelayMs);
+                            Console.WriteLine($"[MCB DIRECT] {commandName} MOTOR ENABLE STABILIZING : " + $"{postSendDelayMs}ms");
+                            await Task.Delay(postSendDelayMs);
                         }
-
                     }
-
                 }
 
-                Console.WriteLine(
-                    $"[MCB DIRECT] {commandName} SEND COMPLETE");
-
+                Console.WriteLine($"[MCB DIRECT] {commandName} SEND COMPLETE");
                 ConsoleLogHelper.PrintLine();
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine(
-                    $"[MCB DIRECT] {commandName} FAILED : " +
-                    ex.Message);
-
+                Console.WriteLine($"[MCB DIRECT] {commandName} FAILED : " + ex.Message);
                 ConsoleLogHelper.PrintLine();
                 return false;
             }
@@ -247,108 +159,70 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _sendLock.Release();
             }
-
         }
 
-        private static void ObserveTimedOutConnectTask(
-            Task connectTask,
-            string commandName,
-            string ipAddress,
-            int port)
+        /// <summary>
+        /// 시간 초과된 연결 작업의 최종 결과를 관찰해 예외가 누락되지 않게 한다.
+        /// </summary>
+        private static void ObserveTimedOutConnectTask(Task connectTask, string commandName, string ipAddress, int port)
         {
             _ = connectTask.ContinueWith(
                 faultedTask =>
-                {
-                    Exception observedException = faultedTask.Exception;
-
-                    Debug.WriteLine(
-                        $"[MCB DIRECT CONNECT TIMEOUT CLEANUP] {commandName} / " +
-                        $"{ipAddress}:{port} / " +
-                        observedException?.GetBaseException().Message);
-                },
+            {
+                Exception observedException = faultedTask.Exception;
+                Debug.WriteLine($"[MCB DIRECT CONNECT TIMEOUT CLEANUP] {commandName} / " + $"{ipAddress}:{port} / " + observedException?.GetBaseException().Message);
+            },
                 CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted |
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
         }
 
         /// <summary>
         /// COOL::SendCommand()와 동일하게 명령 문자열 뒤에 CR/LF를 붙인 후
         /// MCB TCP 프레임으로 감싼다.
         /// </summary>
-        private static byte[] BuildCoolPacket(
-            byte command1,
-            string commandText)
+        private static byte[] BuildCoolPacket(byte command1, string commandText)
         {
-            return BuildTextPacket(
-                command1,
-                commandText + "\r\n");
+            return BuildTextPacket(command1, commandText + "\r\n");
         }
 
         /// <summary>
         /// BuildTextPacket 생성 및 변환 함수.
         /// </summary>
-        private static byte[] BuildTextPacket(
-            byte command1,
-            string commandText)
+        private static byte[] BuildTextPacket(byte command1, string commandText)
         {
-            byte[] data =
-                Encoding.ASCII.GetBytes(
-                    commandText);
-
-            byte checksum =
-                0x00;
+            byte[] data = Encoding.ASCII.GetBytes(commandText);
+            byte checksum = 0x00;
 
             foreach (byte value in data)
             {
                 checksum ^= value;
             }
 
-            byte[] packet =
-                new byte[
-                    2 +
-                    1 +
-                    1 +
-                    data.Length +
-                    1];
-
+            byte[] packet = new byte[2 + 1 + 1 + data.Length + 1];
             packet[0] = 0xAA;
             packet[1] = 0xAA;
             packet[2] = command1;
             packet[3] = (byte)data.Length;
-
-            Array.Copy(
-                data,
-                0,
-                packet,
-                4,
-                data.Length);
-
-            packet[packet.Length - 1] =
-                checksum;
-
+            Array.Copy(data, 0, packet, 4, data.Length);
+            packet[packet.Length - 1] = checksum;
             return packet;
         }
 
         /// <summary>
         /// PrintPacket 동작 수행 함수.
         /// </summary>
-        private static void PrintPacket(
-            string commandName,
-            byte[] packet)
+        private static void PrintPacket(string commandName, byte[] packet)
         {
-            Console.Write(
-                $"[MCB DIRECT SEND] {commandName} : ");
+            Console.Write($"[MCB DIRECT SEND] {commandName} : ");
 
             foreach (byte value in packet)
             {
-                Console.Write(
-                    $"{value:X2} ");
+                Console.Write($"{value:X2} ");
             }
 
             Console.WriteLine();
         }
-
     }
-
 }

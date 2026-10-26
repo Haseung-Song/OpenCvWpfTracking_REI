@@ -190,7 +190,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Compile Include="Services\Video\SmokeDetectionService.cs" />
-    <Compile Include="FireCandidateValidator\SmokeCandidateAnalyzer.cs" />
+    <Compile Include="FireCandidateValidator\SmokeCandidateAnalyzer.cs">
+      <Link>Services\Video\SmokeCandidateAnalyzer.cs</Link>
+    </Compile>
     <Compile Include="Services\Video\EoPanoramaStitchingService.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.Ai.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.ContinuousControl.cs" />

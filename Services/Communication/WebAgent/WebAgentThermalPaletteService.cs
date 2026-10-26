@@ -1,6 +1,6 @@
-namespace OpenCvWpfTracking.Services.Communication.WebAgent
+﻿namespace OpenCvWpfTracking.Services.Communication.WebAgent
 {
-    /// <summary>WebAgent GUI-SBC additional protocol v1.8 thermal adapter.</summary>
+    /// <summary>WEB AGENT의 열상 팔레트 명령과 상태 응답을 연결한다.</summary>
     public sealed class WebAgentThermalPaletteService
     {
         private const byte IrTarget = 0x01;
@@ -27,24 +27,36 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         }
 
         public bool SelectPrevious() => SelectRelative(-1);
+
         public bool SelectNext() => SelectRelative(1);
+
         public bool SelectBlackHot() => SelectPalette(1);
+
         public bool SelectWhiteHot() => SelectPalette(0);
+
         public bool SelectRainbow() => SelectPalette(3);
+
         public bool RequestNuc() => _controlCommandService.SetCameraFeature(NucFeature, IrTarget, 0x01);
+
         public bool RequestCapability() => _controlCommandService.RequestCameraFeatureCapability(IrTarget);
+
         public bool RequestPaletteState() => _controlCommandService.RequestCameraFeatureState(IrTarget, PaletteFeature);
+
         public bool RequestPolarityState() => _controlCommandService.RequestCameraFeatureState(IrTarget, PolarityFeature);
 
         public void ApplyPaletteCapability(uint optionMask)
         {
-            lock (_sync) _supportedPaletteMask = optionMask;
+            lock (_sync)
+                _supportedPaletteMask = optionMask;
         }
 
         public void ApplyReportedPalette(int palette)
         {
-            if (palette < 0 || palette >= PaletteCount) return;
-            lock (_sync) _currentPalette = palette;
+            if (palette < 0 || palette >= PaletteCount)
+                return;
+
+            lock (_sync)
+                _currentPalette = palette;
         }
 
         private bool SelectRelative(int offset)
@@ -59,13 +71,17 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         {
             lock (_sync)
             {
-                if ((_supportedPaletteMask & (1u << palette)) == 0) return false;
+                if ((_supportedPaletteMask & (1u << palette)) == 0)
+                    return false;
+
                 bool sent = _controlCommandService.SetCameraFeature(PaletteFeature, IrTarget, (byte)palette);
+
                 if (sent)
                 {
                     _currentPalette = palette;
                     _controlCommandService.RequestCameraFeatureState(IrTarget, PaletteFeature);
                 }
+
                 return sent;
             }
         }

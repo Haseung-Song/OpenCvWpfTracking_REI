@@ -13,10 +13,10 @@ namespace OpenCvWpfTracking.Services.Control
     // 창 크기와 DPI에 영향을 받지 않는 원본 영상 정규화 좌표를 사용한다.
     public sealed class OpticalCenterCalibration
     {
-
         #region [필드 및 상태 정보]
 
         private readonly List<Tuple<string, int, double, double>> anchors = new List<Tuple<string, int, double, double>>();
+
         private readonly string file;
 
         #endregion
@@ -26,8 +26,10 @@ namespace OpenCvWpfTracking.Services.Control
         public OpticalCenterCalibration(string filePath)
         {
             file = filePath;
+
             if (!File.Exists(file))
                 return;
+
             try
             {
                 foreach (var e in XDocument.Load(file).Root.Elements("Point"))
@@ -35,6 +37,7 @@ namespace OpenCvWpfTracking.Services.Control
                     string key = (string)e.Attribute("Device");
                     int zoom = (int)e.Attribute("Zoom");
                     double x = (double)e.Attribute("X"), y = (double)e.Attribute("Y");
+
                     if (Valid(x, y) && zoom >= 0 && zoom <= 1000)
                         anchors.Add(Tuple.Create(key, zoom, x, y));
                 }
@@ -52,22 +55,37 @@ namespace OpenCvWpfTracking.Services.Control
         /// <summary>
         /// 원본 영상의 정규화 좌표가 유한한 화면 내부 값인지 확인한다.
         /// </summary>
-        public static bool Valid(double x, double y) => !double.IsNaN(x) && !double.IsNaN(y) && !double.IsInfinity(x) && !double.IsInfinity(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1;
+        public static bool Valid(double x, double y) =>
+            !double.IsNaN(x) &&
+            !double.IsNaN(y) &&
+            !double.IsInfinity(x) &&
+            !double.IsInfinity(y) &&
+            x >= 0 &&
+            x <= 1 &&
+            y >= 0 &&
+            y <= 1;
+
         /// <summary>
         /// 같은 장비의 줌 구간별 보정값을 조회하고 필요한 구간은 보간한다.
         /// </summary>
         public Point Get(string key, int zoom)
         {
             var a = anchors.Where(p => p.Item1 == key).OrderBy(p => p.Item2).ToArray();
+
             if (a.Length == 0)
                 return new Point(.5, .5);
+
             if (zoom <= a[0].Item2)
                 return new Point(a[0].Item3, a[0].Item4);
+
             for (int i = 1; i < a.Length; i++)
                 if (zoom <= a[i].Item2)
                 {
                     double t = (zoom - a[i - 1].Item2) / (double)(a[i].Item2 - a[i - 1].Item2);
-                    return new Point(a[i - 1].Item3 + t * (a[i].Item3 - a[i - 1].Item3), a[i - 1].Item4 + t * (a[i].Item4 - a[i - 1].Item4));
+                    return new Point(
+                        a[i - 1].Item3 + t * (a[i].Item3 - a[i - 1].Item3),
+                        a[i - 1].Item4 + t * (a[i].Item4 - a[i - 1].Item4)
+                    );
                 }
 
             return new Point(a[a.Length - 1].Item3, a[a.Length - 1].Item4);
@@ -80,6 +98,7 @@ namespace OpenCvWpfTracking.Services.Control
         {
             if (!Valid(point.X, point.Y) || zoom < 0 || zoom > 1000)
                 throw new ArgumentException("Invalid optical center");
+
             var next = anchors.Where(p => p.Item1 != key || p.Item2 != zoom).ToList();
             next.Add(Tuple.Create(key, zoom, point.X, point.Y));
             Persist(next);
@@ -104,9 +123,41 @@ namespace OpenCvWpfTracking.Services.Control
         private void Persist(List<Tuple<string, int, double, double>> next)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(file));
-            var doc = new XDocument(new XElement("OpticalCenters", new XAttribute("Version", 1), next.Select(p => new XElement("Point", new XAttribute("Device", p.Item1), new XAttribute("Zoom", p.Item2), new XAttribute("X", p.Item3.ToString("R", CultureInfo.InvariantCulture)), new XAttribute("Y", p.Item4.ToString("R", CultureInfo.InvariantCulture))))));
+            var doc = new XDocument(new XElement(
+                "OpticalCenters",
+                new XAttribute(
+                "Version",
+                1
+            ),
+                next.Select(p => new XElement(
+                "Point",
+                new XAttribute(
+                "Device",
+                p.Item1
+            ),
+                new XAttribute(
+                "Zoom",
+                p.Item2
+            ),
+                new XAttribute(
+                "X",
+                p.Item3.ToString(
+                "R",
+                CultureInfo.InvariantCulture
+            )
+            ),
+                new XAttribute(
+                "Y",
+                p.Item4.ToString(
+                "R",
+                CultureInfo.InvariantCulture
+            )
+            )
+            ))
+            ));
             string tmp = file + ".tmp";
             doc.Save(tmp);
+
             if (File.Exists(file))
                 File.Replace(tmp, file, file + ".bak");
             else
@@ -122,8 +173,10 @@ namespace OpenCvWpfTracking.Services.Control
             center = new Point();
             Vector a = aHigh - aLow, b = bHigh - bLow;
             double determinant = a.X * b.Y - a.Y * b.X;
+
             if (a.Length < .01 || b.Length < .01 || Math.Abs(determinant) / (a.Length * b.Length) < .08)
                 return false;
+
             Vector q = bLow - aLow;
             double t = (q.X * b.Y - q.Y * b.X) / determinant;
             center = aLow + t * a;
@@ -131,6 +184,5 @@ namespace OpenCvWpfTracking.Services.Control
         }
 
         #endregion
-
     }
 }

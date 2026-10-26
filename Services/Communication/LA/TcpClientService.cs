@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using System;
 using System.Diagnostics;
 using System.Net.Sockets;
@@ -19,7 +19,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public class TcpClientService
     {
-        #region [Constants]
+        #region [상수]
 
         /// <summary>
         /// [TCP] 연결 제한 시간 [ms]
@@ -27,18 +27,16 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 장비 미기동 상태에서 UI가 오래 멈추지 않도록
         /// 기존 기본 Socket 대기 시간보다 짧게 제한한다.
         /// </summary>
-        private const int CONNECT_TIMEOUT_MS =
-            1500;
+        private const int CONNECT_TIMEOUT_MS = 1500;
 
         /// <summary>
         /// [TCP] 송신 제한 시간 [ms]
         /// </summary>
-        private const int SEND_TIMEOUT_MS =
-            1500;
+        private const int SEND_TIMEOUT_MS = 1500;
 
         #endregion
 
-        #region [Fields]
+        #region [필드]
 
         private TcpClient _tcpClient;
 
@@ -53,14 +51,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [TCP] 연결 / 송신 / 해제 동기화 객체
         /// </summary>
-        private readonly object _socketLock =
-            new object();
+        private readonly object _socketLock = new object();
 
         /// <summary>
         /// 마지막 수신 Log 출력 시간
         /// </summary>
-        private DateTime _lastRecvLogTime =
-            DateTime.MinValue;
+        private DateTime _lastRecvLogTime = DateTime.MinValue;
 
         /// <summary>
         /// 사용자가 직접 연결 해제를 요청했는지 여부
@@ -72,7 +68,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Events]
+        #region [이벤트]
 
         public event Action<byte[], DateTime> MessageReceived;
 
@@ -85,7 +81,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Properties]
+        #region [속성]
 
         public bool IsConnected
         {
@@ -93,18 +89,14 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 lock (_socketLock)
                 {
-                    return _tcpClient != null &&
-                           _tcpClient.Connected &&
-                           _networkStream != null;
+                    return _tcpClient != null && _tcpClient.Connected && _networkStream != null;
                 }
-
             }
-
         }
 
         #endregion
 
-        #region [Connect]
+        #region [연결]
 
         /// <summary>
         /// [Web Agent / LA] TCP Server 연결
@@ -112,9 +104,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 연결 제한 시간을 적용하여 서버가 준비되지 않은 경우에도
         /// 장비 연결 UI가 장시간 대기하지 않도록 한다.
         /// </summary>
-        public async Task<bool> ConnectAsync(
-            string ip,
-            int port)
+        public async Task<bool> ConnectAsync(string ip, int port)
         {
             if (IsConnected)
             {
@@ -122,62 +112,35 @@ namespace OpenCvWpfTracking.Services.Communication
                 return true;
             }
 
-            ConsoleLogHelper.InfoSection(
-                "TCP",
-                "Connect Try...",
-                string.Empty,
-                $"TARGET : {ip}:{port}");
-
-            TcpClient newClient =
-                new TcpClient
-                {
-                    NoDelay =
-                    true,
-
-                    SendTimeout =
-                    SEND_TIMEOUT_MS
-                };
-
-            // V31_4: Disconnect invalidates in-flight connects, not only active receive loops.
+            ConsoleLogHelper.InfoSection("TCP", "Connect Try...", string.Empty, $"TARGET : {ip}:{port}");
+            TcpClient newClient = new TcpClient
+            {
+                NoDelay = true,
+                SendTimeout = SEND_TIMEOUT_MS
+            };
+            // 연결 해제는 수신 루프뿐 아니라 진행 중인 연결 시도도 무효화한다.
             long connectGeneration;
-            lock (_socketLock) connectGeneration = ++_sessionGeneration;
+            lock (_socketLock)
+                connectGeneration = ++_sessionGeneration;
 
             try
             {
-                Task connectTask =
-                    newClient.ConnectAsync(
-                        ip,
-                        port);
-
-                Task completedTask =
-                    await Task.WhenAny(
-                        connectTask,
-                        Task.Delay(CONNECT_TIMEOUT_MS));
+                Task connectTask = newClient.ConnectAsync(ip, port);
+                Task completedTask = await Task.WhenAny(connectTask, Task.Delay(CONNECT_TIMEOUT_MS));
 
                 if (completedTask != connectTask)
                 {
-                    ConsoleLogHelper.StateSection(
-                        "TCP",
-                        "Connect Failed",
-                        string.Empty,
-                        "REASON : Timeout",
-                        $"TARGET : {ip}:{port}");
-
+                    ConsoleLogHelper.StateSection("TCP", "Connect Failed", string.Empty, "REASON : Timeout", $"TARGET : {ip}:{port}");
                     // 2026-09-29: Timeout 뒤 Socket을 닫으면 진행 중인
                     // ConnectAsync가 나중에 fault될 수 있다. 해당 예외를 반드시
                     // 관찰하여 Finalizer Thread의 UnobservedTaskException을 막는다.
-                    ObserveTimedOutConnectTask(
-                        connectTask,
-                        $"TCP {ip}:{port}");
-
+                    ObserveTimedOutConnectTask(connectTask, $"TCP {ip}:{port}");
                     newClient.Close();
                     newClient.Dispose();
-
                     return false;
                 }
 
                 await connectTask;
-
                 long sessionGeneration;
                 CancellationToken receiveToken;
                 lock (_socketLock)
@@ -188,86 +151,58 @@ namespace OpenCvWpfTracking.Services.Communication
                         newClient.Dispose();
                         return false;
                     }
+
                     CleanupSocketInternal();
-
                     sessionGeneration = ++_sessionGeneration;
-
-                    _tcpClient =
-                        newClient;
-
-                    _networkStream =
-                        _tcpClient.GetStream();
-
-                    _cts =
-                        new CancellationTokenSource();
-
+                    _tcpClient = newClient;
+                    _networkStream = _tcpClient.GetStream();
+                    _cts = new CancellationTokenSource();
                     receiveToken = _cts.Token;
-
-                    _isManualDisconnect =
-                        false;
+                    _isManualDisconnect = false;
                     _receiveLoopTask = Task.Run(() => ReceiveLoopAsync(receiveToken, sessionGeneration));
                 }
 
-                ConsoleLogHelper.StateSection(
-                    "TCP",
-                    "Connect Success",
-                    string.Empty,
-                    $"TARGET : {ip}:{port}");
-
+                ConsoleLogHelper.StateSection("TCP", "Connect Success", string.Empty, $"TARGET : {ip}:{port}");
                 return true;
             }
             catch (Exception ex)
             {
                 newClient.Close();
                 newClient.Dispose();
-
-                ConsoleLogHelper.StateSection(
-                    "TCP",
-                    "Connect Failed",
-                    string.Empty,
-                    $"REASON : {ex.Message}",
-                    $"TARGET : {ip}:{port}");
-
+                ConsoleLogHelper.StateSection("TCP", "Connect Failed", string.Empty, $"REASON : {ex.Message}", $"TARGET : {ip}:{port}");
                 return false;
             }
-
         }
 
-        private static void ObserveTimedOutConnectTask(
-            Task connectTask,
-            string connectionName)
+        /// <summary>
+        /// 시간 초과된 연결 작업의 최종 결과를 관찰해 예외가 누락되지 않게 한다.
+        /// </summary>
+        private static void ObserveTimedOutConnectTask(Task connectTask, string connectionName)
         {
             _ = connectTask.ContinueWith(
                 faultedTask =>
-                {
-                    Exception observedException = faultedTask.Exception;
-
-                    Debug.WriteLine(
-                        $"[TCP CONNECT TIMEOUT CLEANUP] {connectionName} / " +
-                        observedException?.GetBaseException().Message);
-                },
+            {
+                Exception observedException = faultedTask.Exception;
+                Debug.WriteLine($"[TCP CONNECT TIMEOUT CLEANUP] {connectionName} / " + observedException?.GetBaseException().Message);
+            },
                 CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted |
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
         }
 
         #endregion
 
-        #region [Send]
+        #region [송신]
 
         /// <summary>
         /// Send 송신 함수.
         /// </summary>
-        public bool Send(
-            byte[] data)
+        public bool Send(byte[] data)
         {
-            if (data == null ||
-                data.Length == 0)
+            if (data == null || data.Length == 0)
             {
-                Console.WriteLine(
-                    "[TCP SEND] Invalid Packet.");
-
+                Console.WriteLine("[TCP SEND] Invalid Packet.");
                 return false;
             }
 
@@ -277,36 +212,21 @@ namespace OpenCvWpfTracking.Services.Communication
                 {
                     if (!CanSend())
                     {
-                        Console.WriteLine(
-                            "[TCP SEND] Not Connected.");
-
+                        Console.WriteLine("[TCP SEND] Not Connected.");
                         return false;
                     }
 
-                    _networkStream.Write(
-                        data,
-                        0,
-                        data.Length);
-
+                    _networkStream.Write(data, 0, data.Length);
                     _networkStream.Flush();
-
-                    PrintHexData(
-                        "[TCP SEND]",
-                        data);
-
+                    PrintHexData("[TCP SEND]", data);
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(
-                        "[TCP ERROR] Send Failed : " +
-                        ex.Message);
-
+                    Console.WriteLine("[TCP ERROR] Send Failed : " + ex.Message);
                     return false;
                 }
-
             }
-
         }
 
         /// <summary>
@@ -314,39 +234,29 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private bool CanSend()
         {
-            return _tcpClient != null &&
-                   _tcpClient.Connected &&
-                   _networkStream != null &&
-                   _networkStream.CanWrite;
+            return _tcpClient != null && _tcpClient.Connected && _networkStream != null && _networkStream.CanWrite;
         }
 
         #endregion
 
-        #region [Receive]
+        #region [수신]
 
         /// <summary>
         /// ReceiveLoopAsync 수신 함수.
         /// </summary>
-        private async Task ReceiveLoopAsync(
-            CancellationToken token,
-            long sessionGeneration)
+        private async Task ReceiveLoopAsync(CancellationToken token, long sessionGeneration)
         {
-            byte[] buffer =
-                new byte[2048];
-
-            bool shouldNotifyConnectionClosed =
-                false;
+            byte[] buffer = new byte[2048];
+            bool shouldNotifyConnectionClosed = false;
 
             try
             {
                 while (!token.IsCancellationRequested)
                 {
                     NetworkStream stream;
-
                     lock (_socketLock)
                     {
-                        stream =
-                            _networkStream;
+                        stream = _networkStream;
                     }
 
                     if (stream == null)
@@ -354,38 +264,22 @@ namespace OpenCvWpfTracking.Services.Communication
                         break;
                     }
 
-                    int readSize =
-                        await stream.ReadAsync(
-                            buffer,
-                            0,
-                            buffer.Length,
-                            token);
+                    int readSize = await stream.ReadAsync(buffer, 0, buffer.Length, token);
 
                     if (readSize <= 0)
                     {
-                        Console.WriteLine(
-                            "[TCP] Server Disconnected.");
-
-                        shouldNotifyConnectionClosed =
-                            true;
-
+                        Console.WriteLine("[TCP] Server Disconnected.");
+                        shouldNotifyConnectionClosed = true;
                         break;
                     }
 
-                    if(token.IsCancellationRequested || sessionGeneration!=Interlocked.Read(ref _sessionGeneration)) break;
+                    if (token.IsCancellationRequested || sessionGeneration != Interlocked.Read(ref _sessionGeneration))
+                        break;
 
-                    byte[] receivedData =
-                        CopyReceivedData(
-                            buffer,
-                            readSize);
-
-                    PrintReceiveLogIfNeeded(
-                        receivedData);
-
-                    RaiseMessageReceived(
-                        receivedData);
+                    byte[] receivedData = CopyReceivedData(buffer, readSize);
+                    PrintReceiveLogIfNeeded(receivedData);
+                    RaiseMessageReceived(receivedData);
                 }
-
             }
             catch (OperationCanceledException)
             {
@@ -397,139 +291,105 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (Exception ex)
             {
-                Console.WriteLine(
-                    "[TCP ERROR] Receive Failed : " +
-                    ex.Message);
-
-                shouldNotifyConnectionClosed =
-                    true;
+                Console.WriteLine("[TCP ERROR] Receive Failed : " + ex.Message);
+                shouldNotifyConnectionClosed = true;
             }
             finally
             {
                 bool isManualDisconnect;
                 bool isCurrentSession;
-
                 lock (_socketLock)
                 {
                     // 2026-09-17: 이전 ReceiveLoop의 finally가 새 연결의
                     // NetworkStream을 닫는 재연결 Race를 차단한다.
                     isCurrentSession = sessionGeneration == _sessionGeneration;
                     isManualDisconnect = _isManualDisconnect;
-                    if (isCurrentSession) CleanupSocketInternal();
+
+                    if (isCurrentSession)
+                        CleanupSocketInternal();
                 }
 
-                if (isCurrentSession && shouldNotifyConnectionClosed &&
-                    !isManualDisconnect)
+                if (isCurrentSession && shouldNotifyConnectionClosed && !isManualDisconnect)
                 {
                     ConnectionClosed?.Invoke();
                 }
-
             }
-
         }
 
         /// <summary>
         /// CopyReceivedData 동작 수행 함수.
         /// </summary>
-        private byte[] CopyReceivedData(
-            byte[] buffer,
-            int readSize)
+        private byte[] CopyReceivedData(byte[] buffer, int readSize)
         {
-            byte[] receivedData =
-                new byte[readSize];
-
-            Array.Copy(
-                buffer,
-                receivedData,
-                readSize);
-
+            byte[] receivedData = new byte[readSize];
+            Array.Copy(buffer, receivedData, readSize);
             return receivedData;
         }
 
         /// <summary>
         /// PrintReceiveLogIfNeeded 동작 수행 함수.
         /// </summary>
-        private void PrintReceiveLogIfNeeded(
-            byte[] receivedData)
+        private void PrintReceiveLogIfNeeded(byte[] receivedData)
         {
             if ((DateTime.Now - _lastRecvLogTime).TotalSeconds < 1)
             {
                 return;
             }
 
-            PrintReceivePackets(
-                receivedData);
-
-            _lastRecvLogTime =
-                DateTime.Now;
+            PrintReceivePackets(receivedData);
+            _lastRecvLogTime = DateTime.Now;
         }
 
         /// <summary>
         /// PrintReceivePackets 동작 수행 함수.
         /// </summary>
-        private void PrintReceivePackets(
-            byte[] receivedData)
+        private void PrintReceivePackets(byte[] receivedData)
         {
-            const int responsePacketSize =
-                12;
+            const int responsePacketSize = 12;
 
-            for (int i = 0;
-                 i + responsePacketSize - 1 < receivedData.Length;
-                 i += responsePacketSize)
+            for (int i = 0; i + responsePacketSize - 1 < receivedData.Length; i += responsePacketSize)
             {
-                string packet =
-                    string.Empty;
+                string packet = string.Empty;
 
-                for (int j = 0;
-                     j < responsePacketSize;
-                     j++)
+                for (int j = 0; j < responsePacketSize; j++)
                 {
-                    packet +=
-                        $"{receivedData[i + j]:X2} ";
+                    packet += $"{receivedData[i + j]:X2} ";
                 }
 
-                Console.WriteLine(
-                    $"[TCP RECV PACKET] {packet}");
+                Console.WriteLine($"[TCP RECV PACKET] {packet}");
             }
-
         }
 
         /// <summary>
         /// RaiseMessageReceived 동작 수행 함수.
         /// </summary>
-        private void RaiseMessageReceived(
-            byte[] receivedData)
+        private void RaiseMessageReceived(byte[] receivedData)
         {
-            MessageReceived?.Invoke(
-                receivedData,
-                DateTime.Now);
+            MessageReceived?.Invoke(receivedData, DateTime.Now);
         }
 
         #endregion
 
-        #region [Log]
+        #region [로그]
 
         /// <summary>
         /// PrintHexData 동작 수행 함수.
         /// </summary>
-        private void PrintHexData(
-            string prefix,
-            byte[] data)
+        private void PrintHexData(string prefix, byte[] data)
         {
-            Console.Write(
-                prefix + " ");
+            Console.Write(prefix + " ");
 
             foreach (byte value in data)
             {
-                Console.Write(
-                    $"{value:X2} ");
+                Console.Write($"{value:X2} ");
             }
+
             Console.WriteLine();
         }
 
         #endregion
 
-        #region [Disconnect]
+        #region [연결 해제]
 
         /// <summary>
         /// [TCP] 수동 연결 해제
@@ -550,12 +410,9 @@ namespace OpenCvWpfTracking.Services.Communication
             Task receiveLoop;
             lock (_socketLock)
             {
-                _isManualDisconnect =
-                    true;
-
+                _isManualDisconnect = true;
                 ++_sessionGeneration;
                 receiveLoop = _receiveLoopTask;
-
                 CleanupSocketInternal();
             }
 
@@ -564,9 +421,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 await Task.WhenAny(receiveLoop, Task.Delay(1500)).ConfigureAwait(false);
             }
 
-            Console.WriteLine(
-                "[TCP] Disconnected.");
-
+            Console.WriteLine("[TCP] Disconnected.");
             Console.WriteLine();
         }
 
@@ -583,9 +438,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Warning(
-                    "TCP / CLEANUP",
-                    "Cancellation cleanup failed / " + ex.Message);
+                ConsoleLogHelper.Warning("TCP / CLEANUP", "Cancellation cleanup failed / " + ex.Message);
             }
 
             try
@@ -595,9 +448,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Warning(
-                    "TCP / CLEANUP",
-                    "Network stream dispose failed / " + ex.Message);
+                ConsoleLogHelper.Warning("TCP / CLEANUP", "Network stream dispose failed / " + ex.Message);
             }
 
             try
@@ -607,23 +458,15 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Warning(
-                    "TCP / CLEANUP",
-                    "TCP client dispose failed / " + ex.Message);
+                ConsoleLogHelper.Warning("TCP / CLEANUP", "TCP client dispose failed / " + ex.Message);
             }
 
             _cts?.Dispose();
-
-            _cts =
-                null;
-
-            _networkStream =
-                null;
-
-            _tcpClient =
-                null;
+            _cts = null;
+            _networkStream = null;
+            _tcpClient = null;
         }
+
         #endregion
     }
-
 }

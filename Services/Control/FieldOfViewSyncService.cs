@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace OpenCvWpfTracking.Services.Control
 {
@@ -10,9 +10,9 @@ namespace OpenCvWpfTracking.Services.Control
     {
         public const double AllowedErrorPercent = 10.0;
 
-        // V31: EO motor position is not a linear optical magnification. Use the
-        // measured EO/IR matching anchors and the IR 1..9 optical model. The
-        // unmatched wide endpoint and EO-only 90x endpoint remain explicit.
+        // EO 모터 위치는 광학 배율에 선형 비례하지 않으므로 실측 대응점을 사용한다.
+        // EO/IR 실측 대응점과 IR 1~9배 광학 모델을 적용한다.
+        // 대응하지 않는 광각 끝점과 EO 전용 90배 끝점은 별도로 유지한다.
         /// <summary>EO/IR 실측 매칭표와 IR 선형 모델을 사용해 EO 광학 배율을 구간 보간한다.</summary>
         public static double EstimateEoOpticalRatio(int position, double eoWide, double irWide, double maximum)
         {
@@ -20,38 +20,61 @@ namespace OpenCvWpfTracking.Services.Control
             double scale = Math.Tan(eoWide * Math.PI / 360) / Math.Tan(irWide * Math.PI / 360);
             int previousPosition = 0;
             double previousRatio = 1;
+
             for (int i = 1; i < CalibratedEoPositions.Length; i++)
             {
-                double ratio = Math.Max(previousRatio, Math.Min(maximum,
-                    scale * (1 + 8 * CalibratedIrPositions[i] / 1000.0)));
+                double ratio = Math.Max(previousRatio, Math.Min(maximum, scale * (1 + 8 * CalibratedIrPositions[i] / 1000.0)));
                 int nextPosition = CalibratedEoPositions[i];
+
                 if (p <= nextPosition)
                     return previousRatio + (ratio - previousRatio) * (p - previousPosition) / (nextPosition - previousPosition);
+
                 previousPosition = nextPosition;
                 previousRatio = ratio;
             }
+
             return previousRatio + (maximum - previousRatio) * (p - previousPosition) / (1000 - previousPosition);
         }
 
         private static readonly short[] CalibratedEoPositions =
         {
-            0, 399, 443, 492, 536, 588, 636, 693, 765, 834, 940
+            0,
+            399,
+            443,
+            492,
+            536,
+            588,
+            636,
+            693,
+            765,
+            834,
+            940
         };
 
         private static readonly short[] CalibratedIrPositions =
         {
-            0, 99, 200, 302, 397, 501, 599, 700, 801, 900, 1000
+            0,
+            99,
+            200,
+            302,
+            397,
+            501,
+            599,
+            700,
+            801,
+            900,
+            1000
         };
 
-        // XV-Z2090HC: 6~540 mm, HFOV 65.24~0.82 deg.
+        // XV-Z2090HC 렌즈: 초점거리 6~540mm, 수평 화각 65.24~0.82도.
         private const double EoMinFocalMm = 6.0;
 
         private const double EoMaxFocalMm = 540.0;
 
         private static readonly double EoSensorWidthMm = 2.0 * EoMinFocalMm * Math.Tan(65.24 * Math.PI / 360.0);
 
-        // Infra-LWZ-25-225-AF1 + 640x512/17um detector: 25~225 mm,
-        // catalog HFOV 24.5~2.7 deg. Sensor width = 640 * 0.017 = 10.88 mm.
+        // IR 렌즈 25~225mm, 검출기 640×512 및 픽셀 간격 17마이크로미터 기준.
+        // 규격상 수평 화각 24.5~2.7도, 센서 폭은 640×0.017=10.88mm이다.
         private const double IrMinFocalMm = 25.0;
 
         private const double IrMaxFocalMm = 225.0;
@@ -66,7 +89,6 @@ namespace OpenCvWpfTracking.Services.Control
             short eoPosition = GetEoPositionForIr(irPosition);
             double irHfov = PositionToHfov(irPosition, IrMinFocalMm, IrMaxFocalMm, IrSensorWidthMm);
             double eoHfov = PositionToHfov(eoPosition, EoMinFocalMm, EoMaxFocalMm, EoSensorWidthMm);
-
             return new ZoomFovTarget(safeLevel, eoPosition, irPosition, eoHfov, irHfov);
         }
 
@@ -105,6 +127,7 @@ namespace OpenCvWpfTracking.Services.Control
                 int eoStart = CalibratedEoPositions[index];
                 int eoEnd = CalibratedEoPositions[index + 1];
                 int irSpan = irEnd - irStart;
+
                 if (irSpan <= 0)
                 {
                     // 보정표가 잘못된 경우 0으로 나누지 않고 다음 정상 구간을 찾는다.
@@ -147,9 +170,13 @@ namespace OpenCvWpfTracking.Services.Control
     public sealed class ZoomFovTarget
     {
         public int Level { get; }
+
         public short EoPosition { get; }
+
         public short IrPosition { get; }
+
         public double EoHfov { get; }
+
         public double IrHfov { get; }
 
         public ZoomFovTarget(int level, short eoPosition, short irPosition, double eoHfov, double irHfov)

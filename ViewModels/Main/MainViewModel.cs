@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.Main;
 using OpenCvWpfTracking.Services.Communication;
 using OpenCvWpfTracking.Services.Communication.AI;
@@ -26,7 +26,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel : INotifyPropertyChanged
     {
-        #region [Enum Type]
+        #region [상태 구분 열거형]
 
         /// <summary>
         /// 현재 진행 중인 [연속 제어] 종류
@@ -49,25 +49,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private enum KeyboardPanTiltDirection
         {
             None,
-
             PanLeft,
             PanRight,
-
             TiltUp,
             TiltDown,
-
             PanLeftTiltUp,
             PanRightTiltUp,
-
             PanLeftTiltDown,
             PanRightTiltDown
         }
 
         #endregion
 
-        #region [Fields]
+        #region [필드]
 
-        #region [Video State Fields]
+        #region [영상 상태 필드]
 
         /// <summary>
         /// [EO] 주간 카메라 [RTSP] 영상 처리 객체
@@ -87,31 +83,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [RTSP Source Preset Fields]
+        #region [RTSP 장비별 기본 설정 필드]
 
         /*
-         * TODO(CONFIG-NEXT):
-         * 장비 주소와 인증정보가 최종 확정되면 App.config 또는 별도 설정 파일로 이동한다.
-         * 현재 단계에서는 기존 운용값과 XAML 선택 흐름을 바꾸지 않기 위해 상수로 유지한다.
-         * 설정 파일화할 때는 암호를 Console 로그에 출력하지 않도록 반드시 마스킹한다.
+         * 장비별 주소와 인증정보는 Config/Devices.csv에서 조회한다.
+         * 아래 접근자는 기존 장비 선택 흐름에서 필요한 기본값만 제공한다.
+         * 연결 중에는 세션에 고정된 값을 사용하며 로그의 인증정보는 마스킹한다.
          */
-
         /// <summary>
         /// 옥상 MR300 주간(EO) 카메라 RTSP 주소
         /// </summary>
         private static string RooftopMr300EoRtspAddress => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").EoAddress;
-
-        /// <summary>
-        /// 옥상 MR300 주간(EO) 카메라 CTEC CGI 직접 제어 정보
-        ///
-        /// RTSP 영상 수신 주소와 별도로
-        /// Zoom / Focus 명령을 카메라 CGI로 직접 송신할 때 사용한다.
-        /// </summary>
-        private static string RooftopMr300EoControlIp => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").ControlIp;
-
-        private static string RooftopMr300EoControlUserName => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").ControlUser;
-
-        private static string RooftopMr300EoControlPassword => OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR300_TEST").ControlPassword;
 
         /// <summary>
         /// 옥상 MR300 주간(EO) 카메라 CGI 제어 HTTPS 사용 여부
@@ -121,16 +103,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 
         /// 따라서 CTEC CGI 명령은 HTTPS Port 443으로 직접 송신한다.
         /// </summary>
-        private const bool RooftopMr300EoControlUseHttps =
-            true;
+        private const bool RooftopMr300EoControlUseHttps = true;
 
         /// <summary>
         /// 옥상 MR300 주간(EO) 카메라 Zoom / Focus 연속 제어 속도
         ///
         /// XV-Z4850HC 문서 기준 유효 범위는 [1 ~ 7]이다.
         /// </summary>
-        private const byte RooftopMr300EoCtecControlSpeed =
-            7;
+        private const byte RooftopMr300EoCtecControlSpeed = 7;
 
         /// <summary>
         /// 옥상 MR300 주간(EO) 카메라 CTEC 응답 수신 TCP Port
@@ -142,8 +122,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 카메라 웹 설정의 Port를 변경한 경우
         /// 이 값도 동일하게 변경해야 한다.
         /// </summary>
-        private const int RooftopMr300EoCtecResponsePort =
-            9000;
+        private const int RooftopMr300EoCtecResponsePort = 9000;
 
         /// <summary>
         /// 옥상 MR300 열상(IR) 카메라 RTSP 주소
@@ -162,7 +141,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [LA Communication Fields]
+        #region [LA 통신 필드]
 
         /// <summary>
         /// [Control Agent] 제어 [TCP] 통신 서비스 객체
@@ -189,8 +168,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-08-26: 옥상 MR300 MCB 유지보수 기본 Port.
         /// MCB는 4001, SCB는 4002를 사용하므로 서로 혼용하지 않는다.
         /// </summary>
-        private const int McbMaintenancePort =
-            4001;
+        private const int McbMaintenancePort = 4001;
 
         /// <summary>
         /// 환경장비 Web Agent 기준 EO / IR Zoom 동기화 Adapter
@@ -252,7 +230,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [AI Detector Communication Fields]
+        #region [AI 검출기 통신 필드]
 
         /// <summary>
         /// [AI] [Detector Agent] [TCP] 통신 서비스
@@ -280,7 +258,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Control State Fields]
+        #region [제어 상태 필드]
 
         /// <summary>
         /// [PAN / TILT] 버튼 1회 클릭 시 이동할 각도 값
@@ -351,8 +329,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private long _eoLensStatusVersion;
 
-        private readonly SemaphoreSlim _lensSyncOperationLock =
-            new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _lensSyncOperationLock = new SemaphoreSlim(1, 1);
 
         private const int LensSyncFeedbackTimeoutMs = 1200;
 
@@ -408,16 +385,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private DateTime _environmentIrManualMoveStartedUtc;
 
-        private ContinuousMoveType _environmentIrManualMoveType =
-            ContinuousMoveType.None;
+        private ContinuousMoveType _environmentIrManualMoveType = ContinuousMoveType.None;
 
         private int _environmentIrManualMoveDirection;
 
         /// <summary>
         /// 프로그램 시작 이후 고정밀 경과시간 측정용
         /// </summary>
-        private readonly Stopwatch _focusLogStopwatch =
-            Stopwatch.StartNew();
+        private readonly Stopwatch _focusLogStopwatch = Stopwatch.StartNew();
 
         /// <summary>
         /// 마지막 Focus 명령 송신 시각
@@ -427,8 +402,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 마지막 Focus 명령 종류
         /// </summary>
-        private string _lastEoFocusCommandName =
-            "NONE";
+        private string _lastEoFocusCommandName = "NONE";
 
         /// <summary>
         /// Focus 명령 송신 순번
@@ -448,8 +422,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         // 2026-09-18: Pan/Tilt 축은 Lens(Zoom/Focus)와 독립 동작한다.
         private bool _isPanTiltMoveActive;
 
-        private readonly FieldOfViewSyncService _fieldOfViewSyncService =
-            new FieldOfViewSyncService();
+        private readonly FieldOfViewSyncService _fieldOfViewSyncService = new FieldOfViewSyncService();
 
         // 2026-09-18: RTSP 성능 로그와 실제 사용자 제어 상태를 같은 시간축으로 비교한다.
         private string _ptzPerformanceScenario = "IDLE";
@@ -505,8 +478,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// CTEC 응답의 Zoom Position은 0x0000 ~ 0x4000 범위이며,
         /// 십진수 기준 0 ~ 16384로 사용한다.
         /// </summary>
-        private const int CtecEoZoomPositionMax =
-            0x4000;
+        private const int CtecEoZoomPositionMax = 0x4000;
 
         /// <summary>
         /// [XV-Z4850HC] EO Focus Position 최대 원시값
@@ -514,8 +486,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 실제 장비에서 확인한 Focus Position은 0x0000 ~ 0x8000 범위이며,
         /// 십진수 기준 0 ~ 32768로 사용한다.
         /// </summary>
-        private const int CtecEoFocusPositionMax =
-            0x8000;
+        private const int CtecEoFocusPositionMax = 0x8000;
 
         /// <summary>
         /// [CTEC EO Zoom / Focus] 실시간 Position Inquiry 주기
@@ -525,8 +496,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// 200ms = 초당 약 5회 상태 갱신
         /// </summary>
-        private const int CtecEoPositionPollingIntervalMs =
-            75;
+        private const int CtecEoPositionPollingIntervalMs = 75;
 
         /// <summary>
         /// [CTEC Position Inquiry] TCP 9000 응답 제한시간
@@ -534,20 +504,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// CGI 200 OK는 Inquiry 명령 전달 성공일 뿐이며
         /// 실제 Position 값은 TCP 9000 응답을 받아야 확정된다.
         /// </summary>
-        private const int CtecEoPositionResponseTimeoutMs =
-            1000;
+        private const int CtecEoPositionResponseTimeoutMs = 1000;
 
         /// <summary>
         /// Stop 이후 최종 Position 안정화 최대 조회 횟수
         /// </summary>
-        private const int CtecEoPositionSettleMaximumCount =
-            6;
+        private const int CtecEoPositionSettleMaximumCount = 6;
 
         /// <summary>
         /// 연속 두 Position 차이가 이 값 이하이면 동일 위치로 판단한다.
         /// </summary>
-        private const int CtecEoPositionStableTolerance =
-            5;
+        private const int CtecEoPositionStableTolerance = 5;
 
         /// <summary>
         /// [CTEC EO Zoom / Focus] 실시간 Position Inquiry 종료 Token
@@ -563,8 +530,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Inquiry CGI 자체의 Lock만으로는 TCP 응답 대기 구간이 보호되지 않으므로,
         /// Zoom / Focus Polling과 Stop 후 최종 조회가 동시에 대기 작업을 만들지 않게 한다.
         /// </summary>
-        private readonly SemaphoreSlim _ctecEoPositionQueryLock =
-            new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _ctecEoPositionQueryLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// CTEC Zoom / Focus 이동 및 안정화 작업 세대 번호
@@ -580,8 +546,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Rooftop    : 한국씨텍 EO 직접 제어 상태
         /// Environment: Web Agent 기준 0 ~ 1000 상태
         /// </summary>
-        private EquipmentStatusMode _selectedEquipmentStatusMode =
-            EquipmentStatusMode.Rooftop;
+        private EquipmentStatusMode _selectedEquipmentStatusMode = EquipmentStatusMode.Rooftop;
 
         /// <summary>
         /// [EO / IR Zoom Synchronization] 현재 선택된 11단계(LEVEL 0~10) Zoom Level
@@ -591,8 +556,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [EO / IR Zoom Synchronization] 동작 상태 표시 문자열
         /// </summary>
-        private string _zoomSyncStatusText =
-            "READY";
+        private string _zoomSyncStatusText = "READY";
 
         /// <summary>
         /// [옥상장비 Zoom Sync] 한국씨텍 EO 목표 위치 이동 종료 Token
@@ -606,20 +570,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 연속 이동 방식처럼 큰 제동 구간이나 방향 보정이 필요하지 않다.
         /// 실제 장비 Position 응답의 미세 편차만 허용한다.
         /// </summary>
-        private const int RooftopZoomSyncTolerance =
-            120;
+        private const int RooftopZoomSyncTolerance = 120;
 
         /// <summary>
         /// [옥상장비 Zoom Sync] Direct Position 도착 확인 주기
         /// </summary>
-        private const int RooftopZoomSyncInquiryIntervalMs =
-            100;
+        private const int RooftopZoomSyncInquiryIntervalMs = 100;
 
         /// <summary>
         /// [옥상장비 Zoom Sync] Direct Position 이동 완료 대기시간
         /// </summary>
-        private const int RooftopZoomSyncTimeoutMs =
-            15000;
+        private const int RooftopZoomSyncTimeoutMs = 15000;
 
         /// <summary>
         /// [EO / IR Focus Synchronization] 현재 선택된 10단계 Focus Level
@@ -629,8 +590,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [EO / IR Focus Synchronization] 동작 상태 표시 문자열
         /// </summary>
-        private string _focusSyncStatusText =
-            "READY";
+        private string _focusSyncStatusText = "READY";
 
         /// <summary>
         /// [옥상장비 Focus Sync] 한국씨텍 EO 목표 위치 이동 종료 Token
@@ -643,20 +603,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// CTEC EO Focus 전체 범위는 0 ~ 32768이며,
         /// 실제 응답의 미세 편차를 고려하여 ±240을 허용한다.
         /// </summary>
-        private const int RooftopFocusSyncTolerance =
-            240;
+        private const int RooftopFocusSyncTolerance = 240;
 
         /// <summary>
         /// [옥상장비 Focus Sync] Direct Position 도착 확인 주기
         /// </summary>
-        private const int RooftopFocusSyncInquiryIntervalMs =
-            100;
+        private const int RooftopFocusSyncInquiryIntervalMs = 100;
 
         /// <summary>
         /// [옥상장비 Focus Sync] Direct Position 이동 완료 대기시간
         /// </summary>
-        private const int RooftopFocusSyncTimeoutMs =
-            15000;
+        private const int RooftopFocusSyncTimeoutMs = 15000;
 
         /// <summary>
         /// [IR Focus Sync] 최종 완료 허용 오차
@@ -664,29 +621,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// IR Focus는 Near / Far 연속 구동 후 Stop 방식이므로
         /// 상태 수신 지연과 정지 지연을 고려해 최종 ±8 이내를 정상으로 판단한다.
         /// </summary>
-        private const int IrFocusSyncTolerance =
-            8;
+        private const int IrFocusSyncTolerance = 8;
 
         /// <summary>
         /// [IR Focus Sync] Stop 이후 최대 안정화 대기시간
         /// </summary>
-        private const int IrFocusSyncSettleTimeoutMs =
-            700;
+        private const int IrFocusSyncSettleTimeoutMs = 700;
 
         /// <summary>
         /// [IR Focus Sync] 위치가 연속으로 동일 범위에 들어와야 하는 횟수
         /// </summary>
-        private const int IrFocusSyncStableSampleCount =
-            3;
+        private const int IrFocusSyncStableSampleCount = 3;
 
         /// <summary>
         /// [IR Focus Sync] 최대 이동 대기시간
         /// </summary>
-        // 2026-09-17 실장비 로그: IR Focus 전체 스트로크는 약 35~40초가 걸린다.
+         // 2026-09-17 실장비 로그: IR Focus 전체 스트로크는 약 35~40초가 걸린다.
         // 기존 12초 제한 때문에 LEVEL 0을 세 번 눌러야 했으므로 한 번의 실행에서
         // 끝점까지 도달할 수 있게 충분한 상한을 둔다.
-        private const int IrFocusSyncTimeoutMs =
-            90000;
+        private const int IrFocusSyncTimeoutMs = 90000;
 
         // 2026-09-17: EO Focus 요청값이 한 번 수신된 뒤 실장비 보정값으로
         // 복귀하는 경우를 실제 안정 피드백과 재명령으로 확인한다.
@@ -745,21 +698,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// KeyDown 자동 반복으로 동일 패킷이 계속 송신되는 것을
         /// 방지하기 위해 마지막 적용 방향을 저장한다.
         /// </summary>
-        private KeyboardPanTiltDirection
-            _currentKeyboardPanTiltDirection =
-                KeyboardPanTiltDirection.None;
+        private KeyboardPanTiltDirection _currentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
 
         /// <summary>
         /// 마우스 또는 키보드로 현재 실행 중인 Pelco-D Pan / Tilt 방향.
         /// Slider 변경 시 같은 방향 명령을 새 속도로 즉시 재송신한다.
         /// </summary>
-        private KeyboardPanTiltDirection
-            _activePanTiltMoveDirection =
-                KeyboardPanTiltDirection.None;
+        private KeyboardPanTiltDirection _activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
 
         #endregion
 
-        #region [Control Properties]
+        #region [제어 속성]
 
         /// <summary>
         /// [EO] 주간 카메라 RTSP 주소 입력값
@@ -804,8 +753,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// TCP 연결이 매우 빠르게 완료되더라도
         /// Connecting 상태가 UI에 최소한 표시되도록 사용한다.
         /// </summary>
-        private const int ControlAgentConnectingMinimumDisplayMs =
-            300;
+        private const int ControlAgentConnectingMinimumDisplayMs = 300;
 
         /// <summary>
         /// [PAN / TILT] 속도제어 현재 속도 [Level]
@@ -816,7 +764,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이후 [Slider] 또는 [ComboBox] 등 [UI] 조작으로 값이 변경될 수 있으며,
         /// 실제 연속 이동 제어 시 해당 값을 사용한다.
         /// </summary>
-        // 2026-10-08 V30_0: common initial PT speed for every device.
+         // 모든 장비의 초기 팬·틸트 속도 기본값을 공유한다.
         private byte _panTiltSpeedLevel = 30;
 
         /// <summary>
@@ -861,8 +809,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 일정 시간 이상 입력이 없으면
         /// 다음 입력 시 실제 상태값으로 다시 동기화한다.
         /// </summary>
-        private DateTime _lastEoFocusCommandTime =
-            DateTime.MinValue;
+        private DateTime _lastEoFocusCommandTime = DateTime.MinValue;
 
         /// <summary>
         /// [LRF] 최근 거리측정 값 표시 문자열
@@ -890,19 +837,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private ushort _currentIrFocus;
 
-        #region [Move Control Constants / Fields]
+        #region [이동 제어 상수 / 필드]
 
         /// <summary>
         /// 이동 제어 화면에서 사용하는 공통 Lens Position 최소값
         /// </summary>
-        private const int MoveControlPositionMinimum =
-            0;
+        private const int MoveControlPositionMinimum = 0;
 
         /// <summary>
         /// 이동 제어 화면에서 사용하는 공통 Lens Position 최대값
         /// </summary>
-        private const int MoveControlPositionMaximum =
-            1000;
+        private const int MoveControlPositionMaximum = 1000;
 
         /// <summary>
         /// EO / IR 광학 Zoom 최소 배율
@@ -931,29 +876,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Pan Absolute는 -180 ~ 180을 사용한다.
         /// 범위를 벗어난 입력은 각각 -180 또는 180으로 제한한다.
         /// </summary>
-        private const double MoveControlPanMinimum =
-            -180.0;
+        private const double MoveControlPanMinimum = -180.0;
 
-        private const double MoveControlPanMaximum =
-            180.0;
+        private const double MoveControlPanMaximum = 180.0;
 
         /// <summary>
         /// Tilt Absolute 입력 허용 범위
         /// </summary>
-        private const double MoveControlTiltMinimum =
-            -90.0;
+        private const double MoveControlTiltMinimum = -90.0;
 
-        private const double MoveControlTiltMaximum =
-            90.0;
+        private const double MoveControlTiltMaximum = 90.0;
 
         // 2026-09-30: WebAgent TILT ZERO 이후에는 기계적 가동 범위가
         // 비대칭으로 바뀔 수 있으므로 0x02 응답에서 받은 값을 보관한다.
         // 응답 전 또는 LA Agent 운용 시에는 기존 -90° ~ +90°를 유지한다.
-        private double _webAgentTiltMinimum =
-            MoveControlTiltMinimum;
+        private double _webAgentTiltMinimum = MoveControlTiltMinimum;
 
-        private double _webAgentTiltMaximum =
-            MoveControlTiltMaximum;
+        private double _webAgentTiltMaximum = MoveControlTiltMaximum;
 
         private bool _hasWebAgentTiltLimits;
 
@@ -969,76 +908,62 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private double CurrentMoveControlTiltMinimum =>
             _controlCommandService != null &&
             _controlCommandService.UseUnsignedWebAgentTiltCoordinates &&
-            _hasWebAgentTiltLimits
-                ? _webAgentTiltMinimum
-                : MoveControlTiltMinimum;
+            _hasWebAgentTiltLimits ? _webAgentTiltMinimum : MoveControlTiltMinimum;
 
         private double CurrentMoveControlTiltMaximum =>
             _controlCommandService != null &&
             _controlCommandService.UseUnsignedWebAgentTiltCoordinates &&
-            _hasWebAgentTiltLimits
-                ? _webAgentTiltMaximum
-                : MoveControlTiltMaximum;
+            _hasWebAgentTiltLimits ? _webAgentTiltMaximum : MoveControlTiltMaximum;
 
         /// <summary>
         /// 현재 Pan 선회 모드
         /// </summary>
-        private PanTurnMode _panTurnMode =
-            PanTurnMode.Short;
+        private PanTurnMode _panTurnMode = PanTurnMode.Short;
 
-        private PresetScanOrderMode _presetScanOrderMode =
-            PresetScanOrderMode.SavedOrder;
+        private PresetScanOrderMode _presetScanOrderMode = PresetScanOrderMode.SavedOrder;
 
         private bool _isLoadingPresetStorage;
 
         /// <summary>
         /// Pan Absolute 입력값
         /// </summary>
-        private double? _panAbsoluteValue =
-            0.0;
+        private double? _panAbsoluteValue = 0.0;
 
         /// <summary>
         /// Tilt Absolute 입력값
         /// </summary>
-        private double? _tiltAbsoluteValue =
-            0.0;
+        private double? _tiltAbsoluteValue = 0.0;
 
         /// <summary>
         /// EO / IR Zoom 공통 Position 입력값
         /// </summary>
-        private int? _zoomPositionValue =
-            0;
+        private int? _zoomPositionValue = 0;
 
         /// <summary>
         /// EO / IR Zoom 공통 배율 입력값
         /// </summary>
-        private double? _zoomRatioValue =
-            1.0;
+        private double? _zoomRatioValue = 1.0;
 
         /// <summary>
         /// EO / IR Focus 공통 Position 입력값
         /// </summary>
-        private int? _focusPositionValue =
-            0;
+        private int? _focusPositionValue = 0;
 
         /// <summary>
         /// Home / Pan Zero / Tilt Zero 최근 실행 상태
         /// </summary>
-        private string _homeZeroStatusText =
-            "READY";
+        private string _homeZeroStatusText = "READY";
 
         /// <summary>
         /// HOME / PAN ZERO / TILT ZERO 공통 잠금 화면 제목.
         /// 현재 실행 중인 작업에 따라 XAML Overlay 문구를 구분한다.
         /// </summary>
-        private string _homeZeroLockTitle =
-            "HOME / ZERO OPERATION";
+        private string _homeZeroLockTitle = "HOME / ZERO OPERATION";
 
         /// <summary>
         /// HOME / ZERO 공통 잠금 화면 상세 문구.
         /// </summary>
-        private string _homeZeroLockMessage =
-            "PROCESSING...";
+        private string _homeZeroLockMessage = "PROCESSING...";
 
         /// <summary>
         /// HOME POSITION 이동 진행 여부.
@@ -1056,20 +981,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Zero 명령의 마지막 Motor On 안정화 대기까지 동일 Lock 범위에 포함하여
         /// HOME 또는 다른 Zero 명령이 중간에 겹치지 않도록 한다.
         /// </summary>
-        private readonly SemaphoreSlim _homeZeroOperationLock =
-            new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _homeZeroOperationLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// HOME POSITION 완료 판정 최대 대기시간.
         /// </summary>
-        private const int HomePositionTimeoutMs =
-            30000;
+        private const int HomePositionTimeoutMs = 30000;
 
         /// <summary>
         /// HOME POSITION 상태 확인 주기.
         /// </summary>
-        private const int HomePositionPollingIntervalMs =
-            100;
+        private const int HomePositionPollingIntervalMs = 100;
 
         /// <summary>
         /// HOME POSITION 목표 위치 허용 오차.
@@ -1077,20 +999,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 확인할 수 있도록 기존 ±0.50°에서 ±0.05°로 강화한다.
         /// 파노라마 전용 허용 오차는 별도 상수이므로 이 변경의 영향을 받지 않는다.
         /// </summary>
-        private const double HomePositionTargetTolerance =
-            0.05;
+        private const double HomePositionTargetTolerance = 0.05;
 
         /// <summary>
         /// HOME POSITION 정지 상태 판정용 연속 안정 샘플 수.
         /// </summary>
-        private const int HomePositionStableSampleCount =
-            5;
+        private const int HomePositionStableSampleCount = 5;
 
         /// <summary>
         /// HOME POSITION 연속 상태값 변화 허용 오차.
         /// </summary>
-        private const double HomePositionStableTolerance =
-            0.05;
+        private const double HomePositionStableTolerance = 0.05;
 
         /// <summary>
         /// 프리셋 반복 이동 시 목표각과 현재각이 같은 0.01° 값인지 판단하는 허용 오차.
@@ -1098,58 +1017,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 상태 및 명령 Protocol의 분해능이 0.01°이므로 반올림 경계와
         /// 부동 소수점 오차를 포함한 0.015° 이내를 동일 위치로 판단한다.
         /// </summary>
-        private const double PresetPanTiltTargetTolerance =
-            0.015;
+        private const double PresetPanTiltTargetTolerance = 0.015;
 
         /// <summary>
         /// 목표 범위에 들어온 최신 상태 Packet 한 건으로 도착을 확정한다.
         /// 별도의 정착 대기를 추가하지 않기 위한 값이다.
         /// </summary>
-        private const int PresetPanTiltStableSampleCount =
-            1;
+        private const int PresetPanTiltStableSampleCount = 1;
 
         /// <summary>
         /// 목표 밖에서 장비 위치가 멈췄다고 판단할 연속 상태 Packet 수.
         /// </summary>
-        private const int PresetPanTiltStationarySampleCount =
-            3;
+        private const int PresetPanTiltStationarySampleCount = 3;
 
         /// <summary>
         /// 통신 이상으로 상태 Packet이 오지 않는 경우를 위한 안전 여유시간.
         /// 정상 도착 시에는 이 시간까지 기다리지 않고 즉시 반환한다.
         /// </summary>
-        private const int PresetPanTiltSafetyTimeoutMarginMs =
-            1500;
+        private const int PresetPanTiltSafetyTimeoutMarginMs = 1500;
 
-        private const int PresetPanTiltSettleTimeoutMinimumMs =
-            2000;
+        private const int PresetPanTiltSettleTimeoutMinimumMs = 2000;
 
-        private const int PresetPanTiltSettleTimeoutMaximumMs =
-            60000;
+        private const int PresetPanTiltSettleTimeoutMaximumMs = 60000;
 
         /// <summary>
         /// 목표 밖에서 이동이 멈춘 경우 허용하는 즉시 재보정 횟수.
         /// </summary>
-        private const int PresetPanTiltCorrectionRetryCount =
-            1;
+        private const int PresetPanTiltCorrectionRetryCount = 1;
 
         /// <summary>
         /// PRESET 1 (LA TEST) 선택 ID
         /// LA 실제 구현 기준 0 ~ 99
         /// </summary>
-        private int _laPresetSlotNumber =
-            1;
+        private int _laPresetSlotNumber = 1;
 
         private PresetPointOption _selectedLaPresetPoint;
 
-        private int _laPresetScanSpeed =
-            10;
+        private int _laPresetScanSpeed = 10;
 
-        private int _laPresetScanDelay =
-            1;
+        private int _laPresetScanDelay = 1;
 
-        private string _laPresetCommandStatusText =
-            "READY";
+        private string _laPresetCommandStatusText = "READY";
 
         private bool _isLaPresetScanRunning;
 
@@ -1159,8 +1067,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// TORUSS 프리셋 실행 / 편집 명령 기준:
         /// 1 ~ 63
         /// </summary>
-        private int _presetSlotNumber =
-            1;
+        private int _presetSlotNumber = 1;
 
         /// <summary>
         /// PRESET ComboBox에서 현재 선택된 프리셋
@@ -1173,8 +1080,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// TORUSS 문서 기준:
         /// 1 ~ 60
         /// </summary>
-        private int _presetScanSpeed =
-            10;
+        private int _presetScanSpeed = 10;
 
         /// <summary>
         /// 오토 스캔 프리셋 정지시간
@@ -1182,8 +1088,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// TORUSS 문서 기준:
         /// 1 ~ 60초
         /// </summary>
-        private int _presetScanDelay =
-            1;
+        private int _presetScanDelay = 1;
 
         /// <summary>
         /// 마지막 프리셋 / 스캔 명령 상태 표시
@@ -1191,8 +1096,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 별도 ACK / 프리셋 상태 응답이 없으므로
         /// 실제 장비 상태가 아니라 TCP 송신 결과를 표시한다.
         /// </summary>
-        private string _presetCommandStatusText =
-            "READY";
+        private string _presetCommandStatusText = "READY";
 
         /// <summary>
         /// 현재 프로그램에서 스캔 시작 명령을 송신한 상태
@@ -1242,7 +1146,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [LA Packet Fields]
+        #region [LA 패킷 필드]
 
         /// <summary>
         /// [CONTROL AGENT] 수신 [Packet Parser]
@@ -1281,7 +1185,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [AI Detector Packet Fields]
+        #region [AI 검출기 패킷 필드]
 
         /// <summary>
         /// 마지막 [AI Detector] 탐지 로그 출력 시간
@@ -1298,7 +1202,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [AI Detector Setting Fields]
+        #region [AI 검출기 설정 필드]
 
         /// <summary>
         /// [AI Detector Agent] 연결 [IP]
@@ -1366,7 +1270,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// [AI Tracking] 자동 추적 사용 여부
         /// </summary>
-        // AUTO TRACKING은 후속 구현 전에도 기본 선택 상태로 표시한다.
+         // AUTO TRACKING은 후속 구현 전에도 기본 선택 상태로 표시한다.
         private bool _isAutoTrackingEnabled = true;
 
         /// <summary>
@@ -1382,25 +1286,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// WPF Overlay로 표시하므로 AI Bounding Box 좌표와
         /// 영상 Decoder 처리에는 영향을 주지 않는다.
         /// </summary>
-        private bool _isCrosshairVisible =
-            false;
+        private bool _isCrosshairVisible = false;
 
         /// <summary>
         /// 중앙 십자선의 현재 표시 색상.
         /// 최초 색상은 기존 적색이며, 사용자가 십자선을 다시 켤 때마다
         /// 적색 -> 주황 -> 황색 -> 녹색 -> 청록 -> 청색 -> 보라 순으로 변경한다.
         /// </summary>
-        private Brush _crosshairBrush =
-            new SolidColorBrush(
-                Color.FromArgb(
-                    0xFF,
-                    0xFF,
-                    0x3B,
-                    0x30));
+        private Brush _crosshairBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0x3B, 0x30));
 
         #endregion
 
-        #region [AI Overlay Size Binding Fields]
+        #region [AI 오버레이 크기 연결 필드]
 
         /// <summary>
         /// [EO] [RTSP] 원본 영상 너비
@@ -1436,7 +1333,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Video Runtime Fields]
+        #region [영상 실행 상태 필드]
 
         /// <summary>
         /// 영상 루프를 중지하기 위한 [CancellationTokenSource]
@@ -1466,7 +1363,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Image Binding Fields]
+        #region [영상 연결 필드]
 
         /// <summary>
         /// 왼쪽 상하단 [EO] 주간 영상 출력용 [Image]
@@ -1480,7 +1377,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Status Binding Fields]
+        #region [상태 연결 필드]
 
         /// <summary>
         /// [EO] 영상 상태 표시
@@ -1500,8 +1397,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Connected
         /// Reconnecting
         /// </summary>
-        private string _controlAgentConnectionStatusText =
-            "Disconnected";
+        private string _controlAgentConnectionStatusText = "Disconnected";
 
         /// <summary>
         /// Control Agent TCP 연결 상태 표시 색상
@@ -1511,8 +1407,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Connected    : Green
         /// Reconnecting : Yellow
         /// </summary>
-        private string _controlAgentConnectionStatusColor =
-            "#FF6B6B";
+        private string _controlAgentConnectionStatusColor = "#FF6B6B";
 
         /// <summary>
         /// 현재 영상 [Connect] 진행 중 여부
@@ -1526,20 +1421,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Constructor]
+        #region [생성자]
 
         /// <summary>
         /// [MainViewModel] 생성자 (초기화 역할)
         /// </summary>
         public MainViewModel()
         {
-            ConsoleLogHelper.InfoSection(
-                "MAIN",
-                "MainViewModel initialization started");
+            ConsoleLogHelper.InfoSection("MAIN", "MainViewModel initialization started");
 
-            #region [Command Initialize]
+            #region [명령 초기화]
 
-            #region [Display Overlay Command Binding]
+            #region [표시 오버레이 명령 연결]
 
             /// <summary>
             /// [EO / IR] 중앙 십자선 표시 상태 전환
@@ -1547,15 +1440,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// 버튼을 눌러 숨긴 뒤 다시 표시할 때마다
             /// EO / IR 영상의 십자선 색상을 7가지 색상으로 순환한다.
             /// </summary>
-            ToggleCrosshairCommand =
-                new RelayCommand(() =>
-                {
-                    IsCrosshairVisible =
-                        !IsCrosshairVisible;
-                    // 2026-10-15: inherit V31_13 fixed-red visibility behavior.
-                    ConsoleLogHelper.Command("DISPLAY OVERLAY",CrosshairButtonText+" / fixed RED");
-                });
-
+            ToggleCrosshairCommand = new RelayCommand(() =>
+            {
+                IsCrosshairVisible = !IsCrosshairVisible;
+                // 기존 고정 빨강 십자선 표시 동작을 유지한다.
+                ConsoleLogHelper.Command("DISPLAY OVERLAY", CrosshairButtonText + " / fixed RED");
+            });
             /// <summary>
             /// [Environment Equipment / Zoom Synchronization]
             ///
@@ -1574,43 +1464,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// Enumerable.Range(0, 11):
             /// LEVEL 0부터 LEVEL 10까지 총 11개의 항목을 생성한다.
             /// </summary>
-            ZoomSyncLevelOptions =
-                new ObservableCollection<ZoomSyncLevelOption>(
-                    Enumerable.Range(
-                            0,
-                            11)
-                        .Select(level =>
-                            new ZoomSyncLevelOption(
-                                level,
-                                (short)(
-                                    level *
-                                    100))));
-
-            SelectedZoomSyncLevel =
-                ZoomSyncLevelOptions[0];
-
-            ShowRooftopStatusCommand =
-                new RelayCommand(() =>
-                    SelectedEquipmentStatusMode =
-                        EquipmentStatusMode.Rooftop);
-
-            ShowEnvironmentStatusCommand =
-                new RelayCommand(() =>
-                    SelectedEquipmentStatusMode =
-                        EquipmentStatusMode.Environment);
-
-            PreviousZoomSyncLevelCommand =
-                new RelayCommand(SelectPreviousZoomSyncLevel);
-
-            NextZoomSyncLevelCommand =
-                new RelayCommand(SelectNextZoomSyncLevel);
-
-            ApplyZoomSyncCommand =
-                new AsyncRelayCommand(ApplySelectedZoomSyncLevelAsync);
-
-            StopZoomSyncCommand =
-                new AsyncRelayCommand(StopZoomSyncAsync);
-
+            ZoomSyncLevelOptions = new ObservableCollection<ZoomSyncLevelOption>(Enumerable.Range(
+                0,
+                11
+            ).Select(level => new ZoomSyncLevelOption(
+                level,
+                (short)(level * 100)
+            )));
+            SelectedZoomSyncLevel = ZoomSyncLevelOptions[0];
+            ShowRooftopStatusCommand = new RelayCommand(() => SelectedEquipmentStatusMode = EquipmentStatusMode.Rooftop);
+            ShowEnvironmentStatusCommand = new RelayCommand(() => SelectedEquipmentStatusMode = EquipmentStatusMode.Environment);
+            PreviousZoomSyncLevelCommand = new RelayCommand(SelectPreviousZoomSyncLevel);
+            NextZoomSyncLevelCommand = new RelayCommand(SelectNextZoomSyncLevel);
+            ApplyZoomSyncCommand = new AsyncRelayCommand(ApplySelectedZoomSyncLevelAsync);
+            StopZoomSyncCommand = new AsyncRelayCommand(StopZoomSyncAsync);
             // 2026-09-21: Focus Sync는 현재 운용 UI에서 제외한다.
             // 아래 초기화 코드는 향후 요구가 생기면 #if를 제거해 즉시 복구한다.
 #if false
@@ -1654,7 +1521,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             #endregion
 
-            #region [Connect / Disconnect Command Binding]
+            #region [연결 및 해제 명령 연결]
 
             /// <summary>
             /// [Connect] 버튼 클릭 시 호출
@@ -1662,29 +1529,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// 영상 스트림 및 [CONTROL AGENT] [TCP] 통신 연결을 시작한다.
             /// </summary>
             ConnectCommand = new RelayCommand(Connect);
-
             /// <summary>
             /// [Disconnect] 버튼 클릭 시 호출
             ///
             /// 영상 스트림 및 [CONTROL AGENT] [TCP] 통신 연결을 종료한다.
             /// </summary>
             DisconnectCommand = new RelayCommand(Disconnect);
-
             // 2026-10-01: WebAgent Build 86 RPY Offset 및 자동 전송 주파수 명령 초기화.
             InitializeRpySettings();
-
             // 2026-10-01: WebAgent 시스템 UTC 조회 및 PC 시간 설정 명령 초기화.
             InitializeSystemDateTimeSettings();
-
             // 2026-10-02: GPS 20Byte 상태 및 0~10Hz 자동 전송 설정/조회 초기화.
             InitializeGpsSettings();
-
             // 2026-10-06: WebAgent EO/IR 전원 제어 및 Function 0x31 상태 동기화.
             InitializeDevicePowerSettings();
 
             #endregion
 
-            #region [AI Detector Setting Command Binding]
+            #region [AI 검출기 설정 명령 연결]
 
             /// <summary>
             /// [AI Detector Agent] 수동 연결
@@ -1692,99 +1554,71 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// 기존 [AI Detector Agent] 연결 및 자동 재연결 루프를 정리한 뒤,
             /// UI에 입력된 [IP] / [Port] 기준으로 수동 1회 연결을 수행한다.
             /// </summary>
-            ConnectAiAgentCommand =
-                new AsyncRelayCommand(
-                    ConnectAiAgentFromSettingAsync);
-
-            DisconnectAiAgentCommand =
-                new RelayCommand(
-                    DisconnectAiAgent);
-
+            ConnectAiAgentCommand = new AsyncRelayCommand(ConnectAiAgentFromSettingAsync);
+            DisconnectAiAgentCommand = new RelayCommand(DisconnectAiAgent);
             /// <summary>
             /// [AI Detector Agent] [RTSP] 주소 적용
             ///
             /// UI에 입력한 [RTSP 0] / [RTSP 1] 주소를
             /// [CMD 02] 요청 Packet으로 송신한다.
             /// </summary>
-            ApplyAiRtspCommand =
-                new AsyncRelayCommand(
-                    async () =>
-                    {
-                        AiSettingStatusText = "[AI] Apply RTSP...";
-
-                        bool applied = await RequestAiDetectorRtspAddressSetAsync();
-                        AiSettingStatusText = applied
-                            ? "[AI] RTSP Apply Complete"
-                            : "[AI] RTSP Apply Failed / Check configuration";
-                    });
-
+            ApplyAiRtspCommand = new AsyncRelayCommand(async () =>
+            {
+                AiSettingStatusText = "[AI] Apply RTSP...";
+                bool applied = await RequestAiDetectorRtspAddressSetAsync();
+                AiSettingStatusText = applied ? "[AI] RTSP Apply Complete" : "[AI] RTSP Apply Failed / Check configuration";
+            });
             /// <summary>
             /// [AI Detector Agent] Mapping 설정 적용
             ///
             /// UI에 입력한 [ONNX Index] / [Confidence] / [IOU] 값을
             /// [CMD 05] 요청 Packet으로 송신한다.
             /// </summary>
-            ApplyAiMappingCommand =
-                new AsyncRelayCommand(
-                    async () =>
-                    {
-                        AiSettingStatusText = "[AI] Apply Mapping...";
-                        await RequestAiDetectorMappingSetAsync();
-                        AiSettingStatusText = "[AI] Mapping Apply Complete";
-                    });
-
+            ApplyAiMappingCommand = new AsyncRelayCommand(async () =>
+            {
+                AiSettingStatusText = "[AI] Apply Mapping...";
+                await RequestAiDetectorMappingSetAsync();
+                AiSettingStatusText = "[AI] Mapping Apply Complete";
+            });
             /// <summary>
             /// [AI Detector Agent] 현재 설정 조회
             ///
             /// [Detector Info] / [RTSP List] / [ONNX List] / [Mapping Info]를 순차 조회한다.
             /// </summary>
-            RefreshAiSettingCommand =
-                new AsyncRelayCommand(
-                    async () =>
-                    {
-                        if (!_aiDetectorClientService.IsConnected)
-                        {
-                            AiSettingStatusText =
-                                "[AI] Not Connected";
+            RefreshAiSettingCommand = new AsyncRelayCommand(async () =>
+            {
+                if (!_aiDetectorClientService.IsConnected)
+                {
+                    AiSettingStatusText = "[AI] Not Connected";
+                    ConsoleLogHelper.PrintLine();
+                    Console.WriteLine("[AI TCP] Refresh Failed : Not Connected");
+                    ConsoleLogHelper.PrintLine();
+                    return;
+                }
 
-                            ConsoleLogHelper.PrintLine();
+                AiSettingStatusText = "[AI] Refresh Setting...";
+                int refreshGeneration = Volatile.Read(ref _aiManualConnectionGeneration);
+                await RequestAiDetectorInfoAsync();
+                await Task.Delay(200);
+                await RequestAiDetectorRtspAddressAsync();
+                await Task.Delay(200);
+                await RequestAiDetectorOnnxListAsync();
+                await Task.Delay(200);
+                await RequestAiDetectorMappingAsync();
 
-                            Console.WriteLine(
-                                "[AI TCP] Refresh Failed : Not Connected");
+                if (refreshGeneration != Volatile.Read(ref _aiManualConnectionGeneration) || !_aiDetectorClientService.IsConnected)
+                {
+                    return;
+                }
 
-                            ConsoleLogHelper.PrintLine();
-
-                            return;
-                        }
-
-                        AiSettingStatusText = "[AI] Refresh Setting...";
-                        int refreshGeneration = Volatile.Read(ref _aiManualConnectionGeneration);
-
-                        await RequestAiDetectorInfoAsync();
-                        await Task.Delay(200);
-
-                        await RequestAiDetectorRtspAddressAsync();
-                        await Task.Delay(200);
-
-                        await RequestAiDetectorOnnxListAsync();
-                        await Task.Delay(200);
-
-                        await RequestAiDetectorMappingAsync();
-
-                        if (refreshGeneration != Volatile.Read(ref _aiManualConnectionGeneration) ||
-                            !_aiDetectorClientService.IsConnected)
-                        {
-                            return;
-                        }
-                        await RequestAiDetectorRtspVideoSizeAsync(0);
-                        await RequestAiDetectorRtspVideoSizeAsync(1);
-
-                        AiSettingStatusText = "[AI] Refresh Complete";
-                    });
+                await RequestAiDetectorRtspVideoSizeAsync(0);
+                await RequestAiDetectorRtspVideoSizeAsync(1);
+                AiSettingStatusText = "[AI] Refresh Complete";
+            });
 
             #endregion
 
-            #region [Pan / Tilt Command Binding]
+            #region [팬·틸트 명령 연결]
 
             /// <summary>
             /// [PAN] 왼쪽 상대 이동 테스트
@@ -1794,14 +1628,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             PanLeftCommand = new RelayCommand(() =>
             {
                 double targetPan = _currentPan - PanTiltMoveStep;
-
                 Console.WriteLine();
                 Console.WriteLine($"[CONTROL] PAN -{PanTiltMoveStep} => Target : {targetPan:F2}");
                 ConsoleLogHelper.PrintLine();
-
                 _controlCommandService.PanGoPosition(targetPan);
             });
-
             /// <summary>
             /// [PAN] 오른쪽 상대 이동 테스트
             ///
@@ -1810,14 +1641,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             PanRightCommand = new RelayCommand(() =>
             {
                 double targetPan = _currentPan + PanTiltMoveStep;
-
                 Console.WriteLine();
                 Console.WriteLine($"[CONTROL] PAN +{PanTiltMoveStep} => Target : {targetPan:F2}");
                 ConsoleLogHelper.PrintLine();
-
                 _controlCommandService.PanGoPosition(targetPan);
             });
-
             /// <summary>
             /// [TILT] 위쪽 상대 이동 테스트
             ///
@@ -1826,14 +1654,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             TiltUpCommand = new RelayCommand(() =>
             {
                 double targetTilt = _currentTilt + PanTiltMoveStep;
-
                 Console.WriteLine();
                 Console.WriteLine($"[CONTROL] TILT +{PanTiltMoveStep} => Target : {targetTilt:F2}");
                 ConsoleLogHelper.PrintLine();
-
                 _controlCommandService.TiltGoPosition(targetTilt);
             });
-
             /// <summary>
             /// [TILT] 아래쪽 상대 이동 테스트
             ///
@@ -1842,17 +1667,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             TiltDownCommand = new RelayCommand(() =>
             {
                 double targetTilt = _currentTilt - PanTiltMoveStep;
-
                 Console.WriteLine();
                 Console.WriteLine($"[CONTROL] TILT -{PanTiltMoveStep} => Target : {targetTilt:F2}");
                 ConsoleLogHelper.PrintLine();
-
                 _controlCommandService.TiltGoPosition(targetTilt);
             });
 
             #endregion
 
-            #region [Zoom / Focus Command Binding]
+            #region [줌·초점 명령 연결]
 
             /// <summary>
             /// [ZOOM] 확대 상대 이동 테스트
@@ -1862,14 +1685,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ZoomInCommand = new RelayCommand(() =>
             {
                 short targetZoom = (short)(_currentEoZoom + ZoomMoveStep);
-
                 Console.WriteLine();
                 Console.WriteLine($"[CONTROL] ZOOM +{ZoomMoveStep} => Target : {targetZoom}");
                 ConsoleLogHelper.PrintLine();
-
                 _controlCommandService.EoZoomGoPosition(targetZoom);
             });
-
             /// <summary>
             /// [ZOOM] 축소 상대 이동 테스트
             ///
@@ -1878,57 +1698,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ZoomOutCommand = new RelayCommand(() =>
             {
                 short targetZoom = (short)(_currentEoZoom - ZoomMoveStep);
-
                 Console.WriteLine();
                 Console.WriteLine($"[CONTROL] ZOOM -{ZoomMoveStep} => Target : {targetZoom}");
                 ConsoleLogHelper.PrintLine();
-
                 _controlCommandService.EoZoomGoPosition(targetZoom);
             });
-
             FocusFarCommand = new RelayCommand(() =>
             {
-                int targetFocus =
-                    Math.Max(
-                        0,
-                        _currentEoFocus -
-                        FocusMoveStep);
-
+                int targetFocus = Math.Max(0, _currentEoFocus - FocusMoveStep);
                 Console.WriteLine();
-                Console.WriteLine(
-                    $"[CONTROL] EO FOCUS FAR : " +
-                    $"{_currentEoFocus} -> {targetFocus}");
-
+                Console.WriteLine($"[CONTROL] EO FOCUS FAR : " + $"{_currentEoFocus} -> {targetFocus}");
                 ConsoleLogHelper.PrintLine();
-
-                _controlCommandService
-                    .EoFocusGoPosition(
-                        (short)targetFocus);
+                _controlCommandService.EoFocusGoPosition((short)targetFocus);
             });
-
             FocusNearCommand = new RelayCommand(() =>
             {
-                int targetFocus =
-                    Math.Min(
-                        1000,
-                        _currentEoFocus +
-                        FocusMoveStep);
-
+                int targetFocus = Math.Min(1000, _currentEoFocus + FocusMoveStep);
                 Console.WriteLine();
-                Console.WriteLine(
-                    $"[CONTROL] EO FOCUS NEAR : " +
-                    $"{_currentEoFocus} -> {targetFocus}");
-
+                Console.WriteLine($"[CONTROL] EO FOCUS NEAR : " + $"{_currentEoFocus} -> {targetFocus}");
                 ConsoleLogHelper.PrintLine();
-
-                _controlCommandService
-                    .EoFocusGoPosition(
-                        (short)targetFocus);
+                _controlCommandService.EoFocusGoPosition((short)targetFocus);
             });
 
             #endregion
 
-            #region [Move Control Command Binding]
+            #region [이동 제어 명령 연결]
 
             /// <summary>
             /// VertiportNexus 이동 제어 기능을 현재 프로젝트 구조에 맞춰 연결한다.
@@ -1937,117 +1731,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// - Home Position : 현재 좌표계 기준 Pan 0° / Tilt 0° 절대 이동
             /// - Pan Zero / Tilt Zero : MCB 직접 Set0 명령
             /// </summary>
-            MoveHomePositionCommand =
-                new AsyncRelayCommand(
-                    MoveHomePositionAsync);
-
-            SetPanZeroCommand =
-                new AsyncRelayCommand(
-                    SetPanZeroAsync);
-
-            SetTiltZeroCommand =
-                new AsyncRelayCommand(
-                    SetTiltZeroAsync);
-
-            MovePanAbsoluteCommand =
-                new AsyncRelayCommand(
-                    MovePanAbsoluteFromInputAsync);
-
-            MoveTiltAbsoluteCommand =
-                new RelayCommand(
-                    MoveTiltAbsoluteFromInput);
-
-            StopAbsoluteMoveCommand =
-                new RelayCommand(
-                    StopAbsoluteMove);
-
-            SetZoomPositionCommand =
-                new AsyncRelayCommand(
-                    SetZoomPositionFromInputAsync);
-
-            SetZoomRatioCommand =
-                new AsyncRelayCommand(
-                    SetZoomRatioFromInputAsync);
-
-            SetFocusPositionCommand =
-                new AsyncRelayCommand(
-                    SetFocusPositionFromInputAsync);
-
-            ResetPositionInputCommand =
-                new RelayCommand(
-                    ResetMoveControlInput);
-
-            AddOrUpdateLaPresetCommand =
-                new RelayCommand(
-                    AddOrUpdateLaPresetPoint);
-
-            ClearAllLaPresetsCommand =
-                new RelayCommand(
-                    ClearAllLaPresetPoints);
-
-            DeleteSelectedLaPresetCommand =
-                new RelayCommand(
-                    DeleteSelectedLaPresetPoint);
-
-            MoveToLaPresetCommand =
-                new AsyncRelayCommand(
-                    MoveToSelectedLaPresetPointAsync);
-
-            StartLaPresetScanCommand =
-                new AsyncRelayCommand(
-                    StartLaPresetScanAsync);
-
-            UpdateLaPresetScanCommand =
-                new RelayCommand(
-                    UpdateLaPresetScan);
-
-            StopLaPresetScanCommand =
-                new RelayCommand(
-                    StopLaPresetScan);
-
-            StopLaPresetMoveCommand =
-                new RelayCommand(
-                    StopLaPresetMove);
-
-            AddOrUpdatePresetCommand =
-                new RelayCommand(
-                    AddOrUpdatePresetPoint);
-
-            DeletePresetCommand =
-                new RelayCommand(
-                    DeletePresetPoint);
-
-            ClearAllPresetsCommand =
-                new RelayCommand(
-                    ClearAllPresetPoints);
-
-            MoveToPresetCommand =
-                new RelayCommand(
-                    MoveToSelectedPresetPoint);
-
-            StartPresetScanCommand =
-                new RelayCommand(
-                    StartPresetScan);
-
-            UpdatePresetScanCommand =
-                new RelayCommand(
-                    UpdatePresetScan);
-
-            StopPresetScanCommand =
-                new RelayCommand(
-                    StopPresetScan);
-
-            StopPresetMoveCommand =
-                new RelayCommand(
-                    StopPresetMove);
-
-            StopActivePresetScanCommand =
-                new RelayCommand(
-                    StopActivePresetScan);
+            MoveHomePositionCommand = new AsyncRelayCommand(MoveHomePositionAsync);
+            SetPanZeroCommand = new AsyncRelayCommand(SetPanZeroAsync);
+            SetTiltZeroCommand = new AsyncRelayCommand(SetTiltZeroAsync);
+            MovePanAbsoluteCommand = new AsyncRelayCommand(MovePanAbsoluteFromInputAsync);
+            MoveTiltAbsoluteCommand = new RelayCommand(MoveTiltAbsoluteFromInput);
+            StopAbsoluteMoveCommand = new RelayCommand(StopAbsoluteMove);
+            SetZoomPositionCommand = new AsyncRelayCommand(SetZoomPositionFromInputAsync);
+            SetZoomRatioCommand = new AsyncRelayCommand(SetZoomRatioFromInputAsync);
+            SetFocusPositionCommand = new AsyncRelayCommand(SetFocusPositionFromInputAsync);
+            ResetPositionInputCommand = new RelayCommand(ResetMoveControlInput);
+            AddOrUpdateLaPresetCommand = new RelayCommand(AddOrUpdateLaPresetPoint);
+            ClearAllLaPresetsCommand = new RelayCommand(ClearAllLaPresetPoints);
+            DeleteSelectedLaPresetCommand = new RelayCommand(DeleteSelectedLaPresetPoint);
+            MoveToLaPresetCommand = new AsyncRelayCommand(MoveToSelectedLaPresetPointAsync);
+            StartLaPresetScanCommand = new AsyncRelayCommand(StartLaPresetScanAsync);
+            UpdateLaPresetScanCommand = new RelayCommand(UpdateLaPresetScan);
+            StopLaPresetScanCommand = new RelayCommand(StopLaPresetScan);
+            StopLaPresetMoveCommand = new RelayCommand(StopLaPresetMove);
+            AddOrUpdatePresetCommand = new RelayCommand(AddOrUpdatePresetPoint);
+            DeletePresetCommand = new RelayCommand(DeletePresetPoint);
+            ClearAllPresetsCommand = new RelayCommand(ClearAllPresetPoints);
+            MoveToPresetCommand = new RelayCommand(MoveToSelectedPresetPoint);
+            StartPresetScanCommand = new RelayCommand(StartPresetScan);
+            UpdatePresetScanCommand = new RelayCommand(UpdatePresetScan);
+            StopPresetScanCommand = new RelayCommand(StopPresetScan);
+            StopPresetMoveCommand = new RelayCommand(StopPresetMove);
+            StopActivePresetScanCommand = new RelayCommand(StopActivePresetScan);
 
             #endregion
 
-            #region [LRF Command Binding]
+            #region [LRF 명령 연결]
 
             /// <summary>
             /// [LRF] 거리측정 [1회] 요청
@@ -2061,13 +1775,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.PrintLine();
                 Console.WriteLine("[CONTROL] LRF MEASURE REQUEST");
                 ConsoleLogHelper.PrintLine();
-
                 _controlCommandService.ReadOnceLrfValue();
             });
 
             #endregion
 
-            #region [STOP Command Binding]
+            #region [STOP 명령 연결]
 
             /// <summary>
             /// [PT] 연속 이동 정지
@@ -2081,7 +1794,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Console.WriteLine();
                 Console.WriteLine("[CONTROL] STOP MOVE");
                 ConsoleLogHelper.PrintLine();
-
                 StopAllPtzfMove();
             });
 
@@ -2089,70 +1801,50 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             #endregion
 
-            #region [Service Initialize]
+            #region [서비스 초기화]
 
             /// <summary>
             /// EO / IR FFmpeg RTSP Decoder 생성
             /// </summary>
             _eoDecoder = new FFmpegDecoderService("EO");
             _irDecoder = new FFmpegDecoderService("IR");
-
             /// <summary>
             /// [CONTROL AGENT] 통신 서비스 생성
             /// </summary>
             _laTcpService = new TcpClientService();
-
             /// <summary>
             /// [TORUSS] 제어 명령 서비스 생성
             /// </summary>
             _controlCommandService = new ControlCommandService(_laTcpService);
-
             /// <summary>
             /// MCB 유지보수 직접 명령 서비스 생성
             /// </summary>
-            _mcbMaintenanceCommandService =
-                new McbMaintenanceCommandService();
-
+            _mcbMaintenanceCommandService = new McbMaintenanceCommandService();
             /// <summary>
             /// 환경장비 Web Agent Zoom Adapter 생성
             /// </summary>
-            _webAgentZoomControlService =
-                new WebAgentZoomControlService(
-                    _controlCommandService);
-
-            _webAgentThermalPaletteService =
-                new WebAgentThermalPaletteService(
-                    _controlCommandService);
-
+            _webAgentZoomControlService = new WebAgentZoomControlService(_controlCommandService);
+            _webAgentThermalPaletteService = new WebAgentThermalPaletteService(_controlCommandService);
             /// <summary>
             /// [옥상 MR300 EO] CTEC CGI 직접 제어 서비스 생성
             /// </summary>
-            _ctecCameraCommandService =
-                new CtecCameraCommandService();
-
+            _ctecCameraCommandService = new CtecCameraCommandService();
             /// <summary>
             /// [옥상 MR300 EO] CTEC Port 9000 응답 수신 서비스 생성
             /// </summary>
-            _ctecCameraResponseService =
-                new CtecCameraResponseService();
-
+            _ctecCameraResponseService = new CtecCameraResponseService();
             /// <summary>
             /// CTEC Camera Response Packet 수신 이벤트 연결
             /// </summary>
-            _ctecCameraResponseService.PacketReceived +=
-                OnCtecCameraResponsePacketReceived;
-
+            _ctecCameraResponseService.PacketReceived += OnCtecCameraResponsePacketReceived;
             /// <summary>
             /// CTEC Response TCP 연결 상태 이벤트 연결
             /// </summary>
-            _ctecCameraResponseService.ConnectionStatusChanged +=
-                OnCtecCameraResponseConnectionStatusChanged;
-
+            _ctecCameraResponseService.ConnectionStatusChanged += OnCtecCameraResponseConnectionStatusChanged;
             /// <summary>
             /// [CONTROL AGENT] 수신 [Packet Parser] 생성
             /// </summary>
             _laPacketParser = new LAPacketParser();
-
             /// <summary>
             /// [CONTROL AGENT] [TCP] 수신 이벤트 연결
             ///
@@ -2160,28 +1852,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// [OnLaMessageReceived] 함수가 호출된다.
             /// </summary>
             _laTcpService.MessageReceived += OnLaMessageReceived;
-
             /// <summary>
             /// [Control Agent] 서버가 연결을 종료한 경우
             /// 장비 연결 요청 상태가 유지되어 있으면 자동 재연결을 시작한다.
             /// </summary>
             _laTcpService.ConnectionClosed += OnControlAgentConnectionClosed;
-
             /// <summary>
             /// [AI Detector] 통신 서비스 생성
             /// </summary>
             _aiDetectorClientService = new AiDetectorClientService();
-
             /// <summary>
             /// [AI Detector] [Packet Parser] 생성
             /// </summary>
             _aiDetectorPacketParser = new AiDetectorPacketParser();
-
             /// <summary>
             /// [AI Detector Agent] 요청 [Packet] 생성
             /// </summary>
             _aiPacketBuilder = new AiDetectorPacketBuilder();
-
             /// <summary>
             /// [AI Detector] 수신 이벤트 연결
             ///
@@ -2192,18 +1879,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             #endregion
 
-            #region [Default Source Initialize]
+            #region [기본 소스 초기화]
 
             /// <summary>
             /// 기본 영상 주소 초기화
             /// </summary>
             InitializeDefaultSourceAddress();
-
             /// <summary>
             /// Control Agent 통신 설정 기본값 초기화
             /// </summary>
             InitializeControlAgentSetting();
-
             /// <summary>
             /// AI Detector 설정 기본값 초기화
             /// </summary>
@@ -2214,26 +1899,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeFireEventFeatures();
             InitializeZoneFeatures();
             LoadPresetStorage();
-
-            ConsoleLogHelper.PrintSection(
-                "[CONTROL AGENT]",
-                "Service Initialize Complete");
-
+            ConsoleLogHelper.PrintSection("[CONTROL AGENT]", "Service Initialize Complete");
             ConsoleLogHelper.StateSection(
                 "MAIN",
                 "Initialization complete",
                 string.Empty,
                 $"EO      : {ConsoleLogHelper.MaskRtspPassword(EoSourceAddress)}",
                 $"IR      : {ConsoleLogHelper.MaskRtspPassword(IrSourceAddress)}",
-                $"CONTROL : {ControlAgentIp}:{ControlAgentPortText}");
+                $"CONTROL : {ControlAgentIp}:{ControlAgentPortText}"
+            );
 
             #endregion
-
         }
 
         #endregion
 
-        #region [Initialize]
+        #region [초기화]
 
         /// <summary>
         /// Control Agent 통신 설정 기본값 초기화
@@ -2244,30 +1925,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void InitializeControlAgentSetting()
         {
             // 1-1. 환경부 실장비 Control Agent(Web Agent) IP
-            //ControlAgentIp =
             //    "192.168.20.161";
-
             // 1-2. 환경부 실장비 Control Agent(Web Agent) Port
-            //ControlAgentPortText =
             //    "5005";
-
             // 2-1. 옥상 MR300 장비 Local Control Agent(LA) IP
-            ControlAgentIp =
-                "127.0.0.1";
-
+            ControlAgentIp = "127.0.0.1";
             // 2-2. 옥상 MR300 장비 Control Agent(LA) Port
-            ControlAgentPortText =
-                "5001";
-
+            ControlAgentPortText = "5001";
             // 2026-08-26: 옥상 MR300 MCB 실장비 IP를 192.168.0.112로 변경한다.
-            McbMaintenanceIpAddress =
-                "192.168.0.112";
-
-            ControlAgentConnectionStatusText =
-                "Disconnected";
-
-            ControlAgentConnectionStatusColor =
-                "#FF6B6B";
+            McbMaintenanceIpAddress = "192.168.0.112";
+            ControlAgentConnectionStatusText = "Disconnected";
+            ControlAgentConnectionStatusColor = "#FF6B6B";
         }
 
         /// <summary>
@@ -2301,11 +1969,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 이후에는 소스코드 주석을 변경하지 않고
              * 통신 설정 탭의 EO / IR ComboBox에서 개별 선택한다.
              */
-            EoSourceAddress =
-                RooftopMr300EoRtspAddress;
-
-            IrSourceAddress =
-                RooftopMr300IrRtspAddress;
+            EoSourceAddress = RooftopMr300EoRtspAddress;
+            IrSourceAddress = RooftopMr300IrRtspAddress;
         }
 
         /// <summary>
@@ -2318,30 +1983,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             AiRtsp0Address = EoSourceAddress;
             AiRtsp1Address = IrSourceAddress;
-
             AiRtsp0OnnxIndex = 1;
             AiRtsp1OnnxIndex = 1;
-
             // 2026-09-02: Agent 추론 하한은 0.15로 유지해 16% 수준의 실제 송신
             // 후보를 보존하고, NMS IOU는 0.50으로 완화해 인접 플룸을 과도하게
             // 제거하지 않는다. Viewer 표시 하한은 0.12로 두어 Agent와 UI 차이를 줄인다.
             AiMappingConfidence = 0.15;
             AiMappingIou = 0.50;
-
             AiDisplayConfidenceThreshold = 0.12;
         }
 
         #endregion
 
-        #region [INotifyPropertyChanged]
+        #region [속성 변경 알림]
 
         public event PropertyChangedEventHandler PropertyChanged;
 
         /// <summary>
         /// 바인딩 속성 변경 알림
         /// </summary>
-        protected virtual void OnPropertyChanged(
-            [CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             Interlocked.Increment(ref _propertyChangedCount);
             switch (propertyName)
@@ -2361,35 +2022,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Interlocked.Increment(ref _focusPropertyChangedCount);
                     break;
             }
-            PropertyChanged?.Invoke(
-                this,
-                new PropertyChangedEventArgs(propertyName));
-            if (propertyName == nameof(SelectedControlAgentProfile) || propertyName == nameof(ControlAgentIp) ||
-                propertyName == nameof(ControlAgentPortText) || propertyName == nameof(EoSourceAddress) || propertyName == nameof(IrSourceAddress))
+
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+            if (propertyName == nameof(SelectedControlAgentProfile) ||
+                propertyName == nameof(ControlAgentIp) ||
+                propertyName == nameof(ControlAgentPortText) ||
+                propertyName == nameof(EoSourceAddress) ||
+                propertyName == nameof(IrSourceAddress))
             {
-                OnPropertyChanged(nameof(EoPowerControlStatusText)); OnPropertyChanged(nameof(IrPowerControlStatusText));
-                OnPropertyChanged(nameof(CurrentEoPowerStatusColor)); OnPropertyChanged(nameof(CurrentIrPowerStatusColor));
+                OnPropertyChanged(nameof(EoPowerControlStatusText));
+                OnPropertyChanged(nameof(IrPowerControlStatusText));
+                OnPropertyChanged(nameof(CurrentEoPowerStatusColor));
+                OnPropertyChanged(nameof(CurrentIrPowerStatusColor));
             }
+
             if (propertyName == nameof(EoPowerControlStatusText) ||
-                propertyName == nameof(CurrentEoPowerText) || propertyName == nameof(IsOperationCommandEnabled))
+                propertyName == nameof(CurrentEoPowerText) ||
+                propertyName == nameof(IsOperationCommandEnabled))
                 OnPropertyChanged(nameof(IsEoPowerControlEnabled));
+
             if (propertyName == nameof(IrPowerControlStatusText) ||
-                propertyName == nameof(CurrentIrPowerText) || propertyName == nameof(IsOperationCommandEnabled))
+                propertyName == nameof(CurrentIrPowerText) ||
+                propertyName == nameof(IsOperationCommandEnabled))
                 OnPropertyChanged(nameof(IsIrPowerControlEnabled));
+
             if (propertyName == nameof(IsEoPowerControlEnabled) || propertyName == nameof(IsIrPowerControlEnabled))
             {
                 if (propertyName == nameof(IsEoPowerControlEnabled))
                 {
-                    OnPropertyChanged(nameof(IsEoPowerOnEnabled)); OnPropertyChanged(nameof(IsEoPowerOffEnabled));
+                    OnPropertyChanged(nameof(IsEoPowerOnEnabled));
+                    OnPropertyChanged(nameof(IsEoPowerOffEnabled));
                 }
                 else
                 {
-                    OnPropertyChanged(nameof(IsIrPowerOnEnabled)); OnPropertyChanged(nameof(IsIrPowerOffEnabled));
+                    OnPropertyChanged(nameof(IsIrPowerOnEnabled));
+                    OnPropertyChanged(nameof(IsIrPowerOffEnabled));
                 }
+
                 System.Windows.Input.CommandManager.InvalidateRequerySuggested();
             }
         }
+
         #endregion
     }
-
 }

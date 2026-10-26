@@ -14,18 +14,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
-
         #region [필드 및 상태 정보]
 
         private ObservableCollection<CameraSpecialFeatureRow> _eoSpecialFeatures, _irSpecialFeatures;
+
         private readonly Queue<CameraSpecialFeatureRow> _specialReadQueue = new Queue<CameraSpecialFeatureRow>();
+
         private ICommand _refreshSpecialFeaturesCommand;
+
         private int _specialFeatureEpoch;
+
         private bool _specialWasReady;
+
         private string _specialTargetKey;
+
         private long _lastSpecialCapabilityQuery;
+
         private byte _specialCapabilityReceived;
+
         private long _specialCapabilityDeadline;
+
         private string _specialFeatureSummary;
 
         #endregion
@@ -52,11 +60,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         // 2026-10-16: LA/WEB은 같은 카메라 기능 패킷을 사용하며 RTSP 연결만으로 제어 연결을 판단하지 않는다.
         private bool SpecialFeatureReady => CameraFeatureTransportReady && IsSelectedConnectionTarget;
+
         private string SpecialFeatureAgentName => IsSelectedControlAgentWebAgent ? "WEB AGENT" : "LA AGENT";
-        private string SpecialFeatureTargetKey => _connectionSessionId + "|" + SelectedControlAgentProfile.DisplayName + "|" + ControlAgentIp + "|" + ControlAgentPortText;
-        public bool CanRefreshSpecialFeatures => SpecialFeatureReady && DateTime.UtcNow.Ticks - _lastSpecialCapabilityQuery >= TimeSpan.FromSeconds(2).Ticks;
-        public string SpecialFeatureSummary => SpecialFeatureAgentName + " · " + (!SpecialFeatureReady ? "선택 장비 연결 후 지원 조회가 가능합니다." : _specialFeatureSummary ?? "지원 미조회 · 조회 후 사용하세요.");
-        public ICommand RefreshSpecialFeaturesCommand => _refreshSpecialFeaturesCommand ?? (_refreshSpecialFeaturesCommand = new RelayCommand(QuerySpecialFeatureSupport, () => CanRefreshSpecialFeatures));
+
+        private string SpecialFeatureTargetKey =>
+            _connectionSessionId + "|" + SelectedControlAgentProfile.DisplayName + "|" + ControlAgentIp + "|" + ControlAgentPortText;
+
+        public bool CanRefreshSpecialFeatures =>
+            SpecialFeatureReady &&
+            DateTime.UtcNow.Ticks - _lastSpecialCapabilityQuery >= TimeSpan.FromSeconds(2).Ticks;
+
+        public string SpecialFeatureSummary =>
+            SpecialFeatureAgentName + " · " + (!SpecialFeatureReady ? "선택 장비 연결 후 지원 조회가 가능합니다." : _specialFeatureSummary ?? "지원 미조회 · 조회 후 사용하세요.");
+
+        public ICommand RefreshSpecialFeaturesCommand =>
+            _refreshSpecialFeaturesCommand ?? (_refreshSpecialFeaturesCommand = new RelayCommand(
+            QuerySpecialFeatureSupport,
+            () => CanRefreshSpecialFeatures
+        ));
+
         private IEnumerable<CameraSpecialFeatureRow> SpecialFeatureRows => _eoSpecialFeatures.Concat(_irSpecialFeatures);
 
         #endregion
@@ -70,21 +92,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (_eoSpecialFeatures != null)
                 return;
+
             _eoSpecialFeatures = new ObservableCollection<CameraSpecialFeatureRow>();
             _irSpecialFeatures = new ObservableCollection<CameraSpecialFeatureRow>();
+
             foreach (var definition in CameraFeatureDefinition.All)
                 for (byte target = 0; target < 2; target++)
                     if ((definition.Targets & (1 << target)) != 0)
                     {
-                        var row = new CameraSpecialFeatureRow(definition, target, () => SpecialFeatureReady, () => IsOperationCommandEnabled && !IsControlInputLocked, SendSpecialFeature, QuerySpecialFeatureState, () => SpecialFeatureAgentName + " 연결 필요");
+                        var row = new CameraSpecialFeatureRow(
+                            definition,
+                            target,
+                            () => SpecialFeatureReady,
+                            () => IsOperationCommandEnabled &&
+                            !IsControlInputLocked,
+                            SendSpecialFeature,
+                            QuerySpecialFeatureState,
+                            () => SpecialFeatureAgentName + " 연결 필요"
+                        );
                         (target == 0 ? _eoSpecialFeatures : _irSpecialFeatures).Add(row);
                     }
         }
 
         /// <summary>
-         
+
         /// 연결/모드 변경 시 이전 장비 capability와 지연된 UI 응답의 적용을 무효화한다.
-         
+
         /// </summary>
         private void ResetSpecialFeatureSession()
         {
@@ -94,9 +127,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _specialFeatureSummary = null;
             _specialCapabilityReceived = 0;
             _specialCapabilityDeadline = 0;
+
             if (_eoSpecialFeatures != null)
                 foreach (var row in SpecialFeatureRows)
                     row.Reset();
+
             OnPropertyChanged(nameof(SpecialFeatureSummary));
             OnPropertyChanged(nameof(CanRefreshSpecialFeatures));
         }
@@ -107,8 +142,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public void QuerySpecialFeatureSupport()
         {
             EnsureSpecialFeatures();
+
             if (!CanRefreshSpecialFeatures)
                 return;
+
             _lastSpecialCapabilityQuery = DateTime.UtcNow.Ticks;
             _specialCapabilityReceived = 0;
             _specialCapabilityDeadline = DateTime.UtcNow.AddSeconds(3).Ticks;
@@ -119,9 +156,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-         
+
         /// UI 큐에 넣기 전에 세션을 캡처하고 연결 변경 후 도착한 callback을 버린다.
-         
+
         /// </summary>
         private void DispatchSpecialFeaturePacket(byte[] p, Action<byte[]> apply)
         {
@@ -130,7 +167,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             var copy = (byte[])p.Clone();
             Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (epoch == _specialFeatureEpoch && session == _connectionSessionId && target == SpecialFeatureTargetKey && SpecialFeatureReady)
+                if (epoch == _specialFeatureEpoch &&
+                    session == _connectionSessionId &&
+                    target == SpecialFeatureTargetKey &&
+                    SpecialFeatureReady)
                     apply(copy);
             }));
         }
@@ -142,18 +182,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             byte target;
             List<CameraFeatureCapability> entries;
+
             if (!CameraFeatureProtocol.TryCapability(p, out target, out entries))
                 return;
+
             EnsureSpecialFeatures();
             _specialCapabilityReceived |= (byte)(1 << target);
+
             foreach (var row in SpecialFeatureRows.Where(r => r.Target == target))
             {
                 row.SetCapability(entries.FirstOrDefault(c => c.Id == row.Id));
-                if (row.Capability != null && (row.Capability.Flags & 3) == 3 && !row.IsTrigger && row.Id != 0x1D && !_specialReadQueue.Contains(row))
+
+                if (row.Capability != null &&
+                    (row.Capability.Flags & 3) == 3 &&
+                    !row.IsTrigger &&
+                    row.Id != 0x1D &&
+                    !_specialReadQueue.Contains(row))
                     _specialReadQueue.Enqueue(row);
             }
 
-            _specialFeatureSummary = "지원 EO " + ((_specialCapabilityReceived & 1) != 0 ? _eoSpecialFeatures.Count(r => r.Capability != null && (r.Capability.Flags & 1) != 0).ToString() : "미응답") + " / IR " + ((_specialCapabilityReceived & 2) != 0 ? _irSpecialFeatures.Count(r => r.Capability != null && (r.Capability.Flags & 1) != 0).ToString() : "미응답") + " · 값은 장비 응답 기준";
+            _specialFeatureSummary = "지원 EO " + ((_specialCapabilityReceived & 1) != 0 ? _eoSpecialFeatures.Count(r => r.Capability != null &&
+                (r.Capability.Flags & 1) != 0).ToString() : "미응답") + " / IR " + ((_specialCapabilityReceived & 2) != 0 ? _irSpecialFeatures.Count(r => r.Capability != null &&
+                (r.Capability.Flags & 1) != 0).ToString() : "미응답") + " · 값은 장비 응답 기준";
             OnPropertyChanged(nameof(SpecialFeatureSummary));
             CommandManager.InvalidateRequerySuggested();
         }
@@ -166,8 +216,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             byte target, id;
             bool supported, valid;
             short value;
+
             if (!CameraFeatureProtocol.TryState(p, out target, out id, out supported, out valid, out value))
                 return;
+
             EnsureSpecialFeatures();
             var row = SpecialFeatureRows.FirstOrDefault(r => r.Target == target && r.Id == id);
             row?.SetState(supported, valid, value, BitConverter.ToUInt64(p, 10));
@@ -181,6 +233,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (p.Length < 6 || p[0] != 1 || p[1] > 1 || p[4] > 1 || (p[3] != 0xE9 && p[3] != 0xE7))
                 return;
+
             EnsureSpecialFeatures();
             byte id = p[3] == 0xE9 ? p[2] : p[5];
             var row = SpecialFeatureRows.FirstOrDefault(r => r.Target == p[4] && r.Id == id);
@@ -189,34 +242,55 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-         
+
         /// supported/settable·지원값·운용 잠금을 재검증한 단발 E9만 전송한다.
-         
+
         /// </summary>
         private void SendSpecialFeature(CameraSpecialFeatureRow row, int value)
         {
             if (!SpecialFeatureReady || !IsOperationCommandEnabled || IsControlInputLocked || !row.CanEdit || !row.Allows(value))
                 return;
+
             // 지원 장비의 Defog/WDR 상호 배타 조건을 임의의 자동 OFF 명령으로 해결하지 않는다.
             var peers = row.Target == 0 ? _eoSpecialFeatures : _irSpecialFeatures;
-            if ((row.Id == 0x01 && value == 1 && peers.Any(r => r.Id == 0x10 && r.HasFreshValue(3))) || (row.Id == 0x10 && value == 3 && peers.Any(r => r.Id == 0x01 && r.HasFreshValue(1))))
+
+            if ((row.Id == 0x01 &&
+                value == 1 &&
+                peers.Any(r => r.Id == 0x10 &&
+                r.HasFreshValue(3))) ||
+                (row.Id == 0x10 &&
+                value == 3 &&
+                peers.Any(r => r.Id == 0x01 &&
+                r.HasFreshValue(1))))
             {
                 row.Warn("Defog / WDR 동시 사용 불가 · 기존 기능 OFF 후 적용");
                 return;
             }
 
-            bool sent = row.Id == 0x1D ? SetDigitalZoom(row.Target == 1, value == 1) : _controlCommandService.SetCameraFeature(row.Id, row.Target, (byte)value);
+            bool sent = row.Id == 0x1D ? SetDigitalZoom(
+                row.Target == 1,
+                value == 1
+            ) : _controlCommandService.SetCameraFeature(
+                row.Id,
+                row.Target,
+                (byte)value
+            );
             row.MarkSent(value, sent);
+
             if (sent && !row.IsTrigger && row.Capability != null && (row.Capability.Flags & 2) != 0)
             {
                 var rest = _specialReadQueue.Where(r => r != row).ToArray();
                 _specialReadQueue.Clear();
                 _specialReadQueue.Enqueue(row);
+
                 foreach (var queued in rest)
                     _specialReadQueue.Enqueue(queued);
             }
 
-            ConsoleLogHelper.Command("SPECIAL FEATURE", "TARGET=" + row.Target + " / ID=0x" + row.Id.ToString("X2") + " / VALUE=" + value + " / TX=" + sent + " / not device ACK");
+            ConsoleLogHelper.Command(
+                "SPECIAL FEATURE",
+                "TARGET=" + row.Target + " / ID=0x" + row.Id.ToString("X2") + " / VALUE=" + value + " / TX=" + sent + " / not device ACK"
+            );
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -227,47 +301,58 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (!row.CanQuery)
                 return;
+
             row.QuerySent(_controlCommandService.RequestCameraFeatureState(row.Target, row.Id));
         }
 
         /// <summary>
-         
+
         /// 기존 250ms UI 타이머를 사용한다. 일괄 조회도 한 틱당 한 건으로 제한한다.
-         
+
         /// </summary>
         private void TickSpecialFeatures()
         {
             bool ready = SpecialFeatureReady;
             string targetKey = SpecialFeatureTargetKey;
+
             if (ready != _specialWasReady || targetKey != _specialTargetKey)
             {
                 _specialWasReady = ready;
                 _specialTargetKey = targetKey;
                 ResetSpecialFeatureSession();
+
                 if (ready)
                     QuerySpecialFeatureSupport();
             }
 
             if (_eoSpecialFeatures == null)
                 return;
+
             if (_specialCapabilityDeadline != 0 && DateTime.UtcNow.Ticks >= _specialCapabilityDeadline)
             {
                 _specialCapabilityDeadline = 0;
+
                 if (_specialCapabilityReceived != 3)
                 {
                     _specialFeatureSummary = "지원 응답 없음: " + ((_specialCapabilityReceived & 1) == 0 ? "EO " : "") + ((_specialCapabilityReceived & 2) == 0 ? "IR" : "") + " · 지원 조회로 재시도";
-                    foreach (var row in SpecialFeatureRows.Where(r => (_specialCapabilityReceived & (1 << r.Target)) == 0 && !r.CapabilityKnown))
+
+                    foreach (var row in SpecialFeatureRows.Where(r => (_specialCapabilityReceived & (1 << r.Target)) == 0 &&
+                        !r.CapabilityKnown))
                         row.Warn("지원 응답 없음 · 제어 잠금");
+
                     OnPropertyChanged(nameof(SpecialFeatureSummary));
                 }
             }
 
             bool changed = false;
+
             foreach (var row in SpecialFeatureRows)
                 changed |= row.Refresh();
+
             if (ready && _specialReadQueue.Count > 0)
             {
                 var row = _specialReadQueue.Peek();
+
                 if (row.CanQuery)
                 {
                     _specialReadQueue.Dequeue();
@@ -278,11 +363,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             OnPropertyChanged(nameof(CanRefreshSpecialFeatures));
+
             if (changed)
                 CommandManager.InvalidateRequerySuggested();
         }
 
         #endregion
-
     }
 }

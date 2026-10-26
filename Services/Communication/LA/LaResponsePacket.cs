@@ -1,4 +1,4 @@
-namespace OpenCvWpfTracking.Services.Communication
+﻿namespace OpenCvWpfTracking.Services.Communication
 {
     /// <summary>
     /// WebAgent(Local Agent) 응답 Packet 데이터 클래스.
@@ -28,7 +28,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public class LaResponsePacket
     {
-        #region [Fields / Properties]
+        #region [필드 / 속성]
 
         /// <summary>
         /// WebAgent에서 수신한 원본 Packet.
@@ -75,26 +75,20 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public byte Checksum => RawData[RawData.Length - 1];
 
-        public bool IsVariableLength =>
-            Function >= 0x23 && Function <= 0x34 && Function != 0x31;
+        public bool IsVariableLength => Function >= 0x23 && Function <= 0x34 && Function != 0x31;
 
         /// <summary>
         /// 2026-10-06: PTZF + MCB/SCB 상태를 전달하는 고정 13Byte 응답.
         /// </summary>
-        public bool IsDevicePowerStatus =>
-            Function == 0x31 && RawData != null && RawData.Length == 13;
+        public bool IsDevicePowerStatus => Function == 0x31 && RawData != null && RawData.Length == 13;
 
-        public int PayloadLength =>
-            IsVariableLength && RawData != null && RawData.Length >= 5
-                ? RawData[2] | RawData[3] << 8
-                : 0;
+        public int PayloadLength => IsVariableLength && RawData != null && RawData.Length >= 5 ? RawData[2] | RawData[3] << 8 : 0;
 
         public byte[] Payload
         {
             get
             {
-                if (!IsVariableLength || PayloadLength <= 0 ||
-                    RawData.Length < PayloadLength + 5)
+                if (!IsVariableLength || PayloadLength <= 0 || RawData.Length < PayloadLength + 5)
                 {
                     return new byte[0];
                 }
@@ -111,9 +105,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// Function 0x07:
         /// 열영상 카메라 Zoom / Focus 위치 상태
         /// </summary>
-        public bool IsIrCameraStatus =>
-            Function ==
-            0x07;
+        public bool IsIrCameraStatus => Function == 0x07;
 
         /// <summary>
         /// [IR Zoom Position]
@@ -133,11 +125,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public ushort IrZoomPosition =>
             IsIrCameraStatus &&
             RawData != null &&
-            RawData.Length >= 6
-                ? (ushort)(
-                    RawData[2] |
-                    RawData[3] << 8)
-                : (ushort)0;
+            RawData.Length >= 6 ? (ushort)(RawData[2] | RawData[3] << 8) : (ushort)0;
 
         /// <summary>
         /// [IR Focus Position]
@@ -155,11 +143,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public ushort IrFocusPosition =>
             IsIrCameraStatus &&
             RawData != null &&
-            RawData.Length >= 6
-                ? (ushort)(
-                    RawData[4] |
-                    RawData[5] << 8)
-                : (ushort)0;
+            RawData.Length >= 6 ? (ushort)(RawData[4] | RawData[5] << 8) : (ushort)0;
 
         /// <summary>
         /// [Packet] 유효성 여부
@@ -177,5 +161,4 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
     }
-
 }

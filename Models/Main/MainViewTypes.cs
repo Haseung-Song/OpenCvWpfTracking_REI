@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Models.Position;
+﻿using OpenCvWpfTracking.Models.Position;
 
 namespace OpenCvWpfTracking.Models.Main
 {
@@ -11,13 +11,11 @@ namespace OpenCvWpfTracking.Models.Main
         /// 기존 Control Agent TCP를 통한 장비 제어
         /// </summary>
         ControlAgent,
-
         /// <summary>
         /// XV-Z4850HC CTEC CGI를 통한 카메라 직접 제어
         /// </summary>
         CtecCgi
     }
-
     /// <summary>
     /// CURRENT STATUS 화면에 표시할 장비 구성
     /// </summary>
@@ -28,21 +26,18 @@ namespace OpenCvWpfTracking.Models.Main
         /// 한국씨텍 EO 직접 제어 + IR 제어 구성
         /// </summary>
         Rooftop,
-
         /// <summary>
         /// 환경장비
         /// Web Agent 기준 EO / IR Zoom 0 ~ 1000 구성
         /// </summary>
         Environment
     }
-
     /// <summary>CONNECT 창에서 선택되는 실제 제어 Agent. UI 모드의 단일 결정 기준이다.</summary>
     public enum ControlAgentType
     {
         LaAgent,
         WebAgent
     }
-
     /// <summary>
     /// [Pan Absolute] 이동 시 사용할 선회 방향 계산 모드
     ///
@@ -56,14 +51,12 @@ namespace OpenCvWpfTracking.Models.Main
         /// 0도 방향을 경유하는 정방향 회전을 수행한다.
         /// </summary>
         ViaZero,
-
         /// <summary>
         /// 현재 위치에서 목표 위치까지
         /// 가장 짧은 회전 방향을 계산한다.
         /// </summary>
         Short
     }
-
     public enum PresetScanOrderMode
     {
         SavedOrder,
@@ -91,20 +84,16 @@ namespace OpenCvWpfTracking.Models.Main
 
         public short Position { get; }
 
-        public string DisplayText =>
-            $"LEVEL {Level}  /  {Position}";
+        public string DisplayText => $"LEVEL {Level}  /  {Position}";
 
         /// <summary>
         /// ZoomSyncLevelOption 동작 수행 함수.
         /// </summary>
-        public ZoomSyncLevelOption(
-            int level,
-            short position)
+        public ZoomSyncLevelOption(int level, short position)
         {
             Level = level;
             Position = position;
         }
-
     }
 
     /// <summary>
@@ -169,20 +158,13 @@ namespace OpenCvWpfTracking.Models.Main
         /// <summary>
         /// ComboBox 한 줄 표시 문자열
         /// </summary>
-        public string DisplayText =>
-            $"P{Number:00}  |  PAN {Pan:F2}°  |  TILT {Tilt:F2}°";
+        public string DisplayText => $"P{Number:00}  |  PAN {Pan:F2}°  |  TILT {Tilt:F2}°";
 
         /// <summary>
         /// 선택된 프리셋 상세 표시 문자열
         /// </summary>
         public string DetailText =>
-            $"PAN      : {Pan:F2}°\n" +
-            $"TILT     : {Tilt:F2}°\n" +
-            $"EO ZOOM  : {EoZoomText} / 1000\n" +
-            $"EO FOCUS : {EoFocusText} / 1000\n" +
-            $"IR ZOOM  : {IrZoomText} / 1000\n" +
-            $"IR FOCUS : {IrFocusText} / 1000\n" +
-            $"POSITION : {(PositionSnapshot == null ? "LEGACY / N/A" : PositionSnapshot.PtzStatus.ToString().ToUpperInvariant())}";
+            $"PAN      : {Pan:F2}°\n" + $"TILT     : {Tilt:F2}°\n" + $"EO ZOOM  : {EoZoomText} / 1000\n" + $"EO FOCUS : {EoFocusText} / 1000\n" + $"IR ZOOM  : {IrZoomText} / 1000\n" + $"IR FOCUS : {IrFocusText} / 1000\n" + $"POSITION : {(PositionSnapshot == null ? "LEGACY / N/A" : PositionSnapshot.PtzStatus.ToString().ToUpperInvariant())}";
 
         /// <summary>
         /// PresetPointOption 동작 수행 함수.
@@ -197,39 +179,20 @@ namespace OpenCvWpfTracking.Models.Main
             string irFocusText,
             string name = null,
             int savedOrder = 0,
-            PositionSnapshot positionSnapshot = null)
+            PositionSnapshot positionSnapshot = null
+        )
         {
-            Number =
-                number;
-
-            Pan =
-                pan;
-
-            Tilt =
-                tilt;
-
-            EoZoomText =
-                eoZoomText ?? "-";
-
-            EoFocusText =
-                eoFocusText ?? "-";
-
-            IrZoomText =
-                irZoomText ?? "-";
-
-            IrFocusText =
-                irFocusText ?? "-";
-
-            Name =
-                string.IsNullOrWhiteSpace(name)
-                    ? $"P{number:00}"
-                    : name;
-
+            Number = number;
+            Pan = pan;
+            Tilt = tilt;
+            EoZoomText = eoZoomText ?? "-";
+            EoFocusText = eoFocusText ?? "-";
+            IrZoomText = irZoomText ?? "-";
+            IrFocusText = irFocusText ?? "-";
+            Name = string.IsNullOrWhiteSpace(name) ? $"P{number:00}" : name;
             SavedOrder = savedOrder;
-
             PositionSnapshot = positionSnapshot;
         }
-
     }
 
     /// <summary>
@@ -294,39 +257,22 @@ namespace OpenCvWpfTracking.Models.Main
         public RtspSourceOption(
             string displayName,
             string address,
-            CameraControlType controlType =
-                CameraControlType.ControlAgent,
+            CameraControlType controlType = CameraControlType.ControlAgent,
             string controlIp = null,
             string controlUserName = null,
             string controlPassword = null,
             bool useHttps = false,
-            bool isDirectInput = false)
+            bool isDirectInput = false
+        )
         {
-            DisplayName =
-                displayName;
-
-            Address =
-                address;
-
-            ControlType =
-                controlType;
-
-            ControlIp =
-                controlIp;
-
-            ControlUserName =
-                controlUserName;
-
-            ControlPassword =
-                controlPassword;
-
-            UseHttps =
-                useHttps;
-
-            IsDirectInput =
-                isDirectInput;
+            DisplayName = displayName;
+            Address = address;
+            ControlType = controlType;
+            ControlIp = controlIp;
+            ControlUserName = controlUserName;
+            ControlPassword = controlPassword;
+            UseHttps = useHttps;
+            IsDirectInput = isDirectInput;
         }
-
     }
-
 }

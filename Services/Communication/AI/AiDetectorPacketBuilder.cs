@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 
 namespace OpenCvWpfTracking.Services.Communication.AI
@@ -27,7 +27,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// </summary>
     public class AiDetectorPacketBuilder
     {
-        #region [Constants]
+        #region [상수]
 
         /// <summary>
         /// [Packet] 시작 문자 [STX]
@@ -41,7 +41,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
         #endregion
 
-        #region [Request Packet Builder]
+        #region [요청 패킷 생성]
 
         /// <summary>
         /// [AI Detector Info] 조회 요청 [Packet] 생성
@@ -61,16 +61,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// 
         /// [RTSP] 주소 목록은 [US] [Unit Separator] [0x1F] 기준으로 구분한다.
         /// </summary>
-        public byte[] BuildRtspAddressSetRequest(
-            string eoRtspAddress,
-            string irRtspAddress)
+        public byte[] BuildRtspAddressSetRequest(string eoRtspAddress, string irRtspAddress)
         {
-            string payload =
-                string.Join(
-                    ((char)0x1F).ToString(),
-                    eoRtspAddress,
-                    irRtspAddress);
-
+            string payload = string.Join(((char)0x1F).ToString(), eoRtspAddress, irRtspAddress);
             return BuildRequestPacket("02", payload);
         }
 
@@ -107,27 +100,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// 생성 [Payload] 예:
         /// 0:1^0.10^0.45[US]1:2^0.10^0.45
         /// </summary>
-        public byte[] BuildRtspOnnxMappingSetRequest(
-            int rtsp0OnnxIndex,
-            int rtsp1OnnxIndex,
-            double confidence,
-            double iou)
+        public byte[] BuildRtspOnnxMappingSetRequest(int rtsp0OnnxIndex, int rtsp1OnnxIndex, double confidence, double iou)
         {
-            string confidenceText =
-                confidence.ToString(
-                    "0.00",
-                    System.Globalization.CultureInfo.InvariantCulture);
-
-            string iouText =
-                iou.ToString(
-                    "0.00",
-                    System.Globalization.CultureInfo.InvariantCulture);
-
-            string payload =
-                $"0:{rtsp0OnnxIndex}^{confidenceText}^{iouText}" +
-                ((char)0x1F).ToString() +
-                $"1:{rtsp1OnnxIndex}^{confidenceText}^{iouText}";
-
+            string confidenceText = confidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+            string iouText = iou.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+            string payload = $"0:{rtsp0OnnxIndex}^{confidenceText}^{iouText}" + ((char)0x1F).ToString() + $"1:{rtsp1OnnxIndex}^{confidenceText}^{iouText}";
             return BuildRequestPacket("05", payload);
         }
 
@@ -153,20 +130,15 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         {
             if (rtspIndex < 0 || rtspIndex > 2)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(rtspIndex),
-                    rtspIndex,
-                    "RTSP Index는 0~2 범위여야 합니다.");
+                throw new ArgumentOutOfRangeException(nameof(rtspIndex), rtspIndex, "RTSP Index는 0~2 범위여야 합니다.");
             }
 
-            return BuildRequestPacket(
-                "07",
-                rtspIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            return BuildRequestPacket("07", rtspIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         #endregion
 
-        #region [Common Packet Builder]
+        #region [Common 패킷 생성]
 
         /// <summary>
         /// 공통 요청 [Packet] 생성
@@ -177,15 +149,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// 조회 요청의 경우 [Payload]가 비어 있을 수 있으므로
         /// [SIZE]는 [000]으로 생성된다.
         /// </summary>
-        private byte[] BuildRequestPacket(
-            string command,
-            string payload)
+        private byte[] BuildRequestPacket(string command, string payload)
         {
-            if (string.IsNullOrWhiteSpace(command) ||
-                command.Length != 2)
+            if (string.IsNullOrWhiteSpace(command) || command.Length != 2)
             {
-                throw new ArgumentException(
-                    "[AI PACKET BUILDER] Command must be 2 ASCII characters.");
+                throw new ArgumentException("[AI PACKET BUILDER] Command must be 2 ASCII characters.");
             }
 
             if (payload == null)
@@ -193,75 +161,29 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 payload = string.Empty;
             }
 
-            byte[] commandBytes =
-                Encoding.ASCII.GetBytes(command);
-
-            byte[] payloadBytes =
-                Encoding.UTF8.GetBytes(payload);
+            byte[] commandBytes = Encoding.ASCII.GetBytes(command);
+            byte[] payloadBytes = Encoding.UTF8.GetBytes(payload);
 
             if (payloadBytes.Length > 999)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(payload),
-                    "AI Payload의 UTF-8 바이트 길이는 999 이하여야 합니다.");
+                throw new ArgumentOutOfRangeException(nameof(payload), "AI Payload의 UTF-8 바이트 길이는 999 이하여야 합니다.");
             }
 
-            string sizeText =
-                payloadBytes.Length.ToString("D3");
-
-            byte[] sizeBytes =
-                Encoding.ASCII.GetBytes(sizeText);
-
-            byte checksum =
-                CalculateChecksum(
-                    commandBytes,
-                    payloadBytes);
-
-            int packetSize =
-                1 +
-                commandBytes.Length +
-                sizeBytes.Length +
-                payloadBytes.Length +
-                1 +
-                1;
-
-            byte[] packet =
-                new byte[packetSize];
-
+            string sizeText = payloadBytes.Length.ToString("D3");
+            byte[] sizeBytes = Encoding.ASCII.GetBytes(sizeText);
+            byte checksum = CalculateChecksum(commandBytes, payloadBytes);
+            int packetSize = 1 + commandBytes.Length + sizeBytes.Length + payloadBytes.Length + 1 + 1;
+            byte[] packet = new byte[packetSize];
             int index = 0;
-
             packet[index++] = Stx;
-
-            Array.Copy(
-                commandBytes,
-                0,
-                packet,
-                index,
-                commandBytes.Length);
-
+            Array.Copy(commandBytes, 0, packet, index, commandBytes.Length);
             index += commandBytes.Length;
-
-            Array.Copy(
-                sizeBytes,
-                0,
-                packet,
-                index,
-                sizeBytes.Length);
-
+            Array.Copy(sizeBytes, 0, packet, index, sizeBytes.Length);
             index += sizeBytes.Length;
-
-            Array.Copy(
-                payloadBytes,
-                0,
-                packet,
-                index,
-                payloadBytes.Length);
-
+            Array.Copy(payloadBytes, 0, packet, index, payloadBytes.Length);
             index += payloadBytes.Length;
-
             packet[index++] = checksum;
             packet[index] = Etx;
-
             return packet;
         }
 
@@ -273,9 +195,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// 
         /// [byte] 자료형이므로 자동으로 하위 1[byte]만 유지된다.
         /// </summary>
-        private byte CalculateChecksum(
-            byte[] commandBytes,
-            byte[] payloadBytes)
+        private byte CalculateChecksum(byte[] commandBytes, byte[] payloadBytes)
         {
             byte checksum = 0;
 
@@ -288,9 +208,10 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             {
                 checksum += payloadBytes[i];
             }
+
             return checksum;
         }
+
         #endregion
     }
-
 }

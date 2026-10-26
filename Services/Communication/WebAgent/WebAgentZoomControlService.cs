@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 
 namespace OpenCvWpfTracking.Services.Communication.WebAgent
 {
@@ -19,11 +19,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         /// <summary>
         /// WebAgentZoomControlService 동작 수행 함수.
         /// </summary>
-        public WebAgentZoomControlService(
-            ControlCommandService controlCommandService)
+        public WebAgentZoomControlService(ControlCommandService controlCommandService)
         {
-            _controlCommandService =
-                controlCommandService;
+            _controlCommandService = controlCommandService;
         }
 
         /// <summary>
@@ -31,9 +29,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         ///
         /// EO / IR 모두 Web Agent의 동일 방향 Position 0 ~ 1000을 사용한다.
         /// </summary>
-        public bool ApplyFovSynchronizedZoom(
-            short eoPosition,
-            short irRawPosition)
+        public bool ApplyFovSynchronizedZoom(short eoPosition, short irRawPosition)
         {
             // 2026-10-16: 잘못된 IR 위치에서 EO만 먼저 움직이지 않도록 사전 거절한다.
             if (!IsValidIrPosition(irRawPosition))
@@ -41,18 +37,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
                 return false;
             }
 
-            bool eoResult =
-                _controlCommandService
-                    .EoZoomGoPosition(
-                        ClampPosition(
-                            eoPosition));
-
-            bool irResult =
-                _controlCommandService
-                    .IrZoomGoPosition(irRawPosition);
-
-            return eoResult &&
-                   irResult;
+            bool eoResult = _controlCommandService.EoZoomGoPosition(ClampPosition(eoPosition));
+            bool irResult = _controlCommandService.IrZoomGoPosition(irRawPosition);
+            return eoResult && irResult;
         }
 
         /// <summary>
@@ -62,63 +49,42 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         /// PTZF 이동 제어 호환 기능에만 사용한다.
         /// FOV SYNC에서는 ApplyFovSynchronizedZoom을 사용한다.
         /// </summary>
-        public bool ApplySynchronizedZoom(
-            short position)
+        public bool ApplySynchronizedZoom(short position)
         {
             if (!IsValidIrPosition(position))
             {
                 return false;
             }
 
-            short safePosition =
-                ClampPosition(
-                    position);
-
-            bool eoResult =
-                _controlCommandService
-                    .EoZoomGoPosition(
-                        safePosition);
-
-            bool irResult =
-                _controlCommandService
-                    .IrZoomGoPosition(
-                        safePosition);
-
-            return eoResult &&
-                   irResult;
+            short safePosition = ClampPosition(position);
+            bool eoResult = _controlCommandService.EoZoomGoPosition(safePosition);
+            bool irResult = _controlCommandService.IrZoomGoPosition(safePosition);
+            return eoResult && irResult;
         }
 
         /// <summary>
         /// 환경장비 EO Zoom Position 이동
         /// </summary>
-        public bool SetEoZoomPosition(
-            short position)
+        public bool SetEoZoomPosition(short position)
         {
-            return _controlCommandService
-                .EoZoomGoPosition(
-                    ClampPosition(
-                        position));
+            return _controlCommandService.EoZoomGoPosition(ClampPosition(position));
         }
 
         /// <summary>
         /// 환경장비 IR Zoom Position 이동
         /// </summary>
-        public bool SetIrZoomPosition(
-            short position)
+        public bool SetIrZoomPosition(short position)
         {
-            return _controlCommandService
-                .IrZoomGoPosition(position);
+            return _controlCommandService.IrZoomGoPosition(position);
         }
 
         /// <summary>
         /// FOV 계산 결과인 IR Zoom Position을 Web Agent에 그대로 적용한다.
         /// 환경장비는 상태값과 명령값의 방향이 동일하다.
         /// </summary>
-        public bool SetIrZoomRawPosition(
-            short rawPosition)
+        public bool SetIrZoomRawPosition(short rawPosition)
         {
-            return _controlCommandService
-                .IrZoomGoPosition(rawPosition);
+            return _controlCommandService.IrZoomGoPosition(rawPosition);
         }
 
         /// <summary>
@@ -132,17 +98,14 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
                 return true;
             }
 
-            ConsoleLogHelper.Warning(
-                "WEB AGENT IR ZOOM",
-                $"RESULT=INVALID_POSITION / CMD2=0xB7 / POSITION={position} / RANGE=0~1000");
+            ConsoleLogHelper.Warning("WEB AGENT IR ZOOM", $"RESULT=INVALID_POSITION / CMD2=0xB7 / POSITION={position} / RANGE=0~1000");
             return false;
         }
 
         /// <summary>
         /// ClampPosition 동작 수행 함수.
         /// </summary>
-        private static short ClampPosition(
-            short position)
+        private static short ClampPosition(short position)
         {
             if (position < 0)
             {
@@ -153,9 +116,8 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             {
                 return 1000;
             }
+
             return position;
         }
-
     }
-
 }

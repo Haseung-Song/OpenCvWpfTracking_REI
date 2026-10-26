@@ -1,4 +1,4 @@
-namespace OpenCvWpfTracking.Models.AI
+﻿namespace OpenCvWpfTracking.Models.AI
 {
     /// <summary>
     /// [AI Detector] 객체 1개 [Bounding Box] 정보
@@ -53,10 +53,7 @@ namespace OpenCvWpfTracking.Models.AI
         /// 2026-08-26: AI Agent가 0~1000 정수 스케일로 보내는 Confidence를
         /// UI/이벤트 공통 0~1 범위로 변환한다. 기존 0~1 프로토콜 값도 호환한다.
         /// </summary>
-        public double NormalizedConfidence =>
-            Confidence > 1.0
-                ? Confidence / 1000.0
-                : Confidence;
+        public double NormalizedConfidence => Confidence > 1.0 ? Confidence / 1000.0 : Confidence;
 
         /// <summary>
         /// [Bounding Box] 좌측 X 좌표
@@ -90,15 +87,25 @@ namespace OpenCvWpfTracking.Models.AI
 
         // 2026-09-17: BBox와 Label의 레이아웃 폭을 분리한다.
         public int OverlayLeft { get; set; }
+
         public int OverlayTop { get; set; }
+
         public int OverlayWidth { get; set; }
+
         public int OverlayHeight { get; set; }
+
         public int BoxOffsetX { get; set; }
+
         public int BoxOffsetY { get; set; }
+
         public int RenderWidth { get; set; }
+
         public int RenderHeight { get; set; }
+
         public int LabelOffsetX { get; set; }
+
         public int LabelOffsetY { get; set; }
+
         public int LabelWidth { get; set; }
 
         /// <summary>
@@ -124,14 +131,11 @@ namespace OpenCvWpfTracking.Models.AI
                     case 0:
                         // [Drone] 탐지 클래스
                         return "Drone";
-
                     default:
                         // [Index] 탐지 클래스
                         return $"Class {ClassIndex}";
                 }
-
             }
-
         }
 
         /// <summary>
@@ -146,9 +150,7 @@ namespace OpenCvWpfTracking.Models.AI
             {
                 return $"AI E{DetectionEventId}-#{DisplayOrder} | {ClassName} {NormalizedConfidence * 100:F1}%";
             }
-
         }
-
     }
 
     /// <summary>
@@ -158,31 +160,47 @@ namespace OpenCvWpfTracking.Models.AI
     public sealed class VisionDetectionBox
     {
         public int DisplayOrder { get; set; }
+
         public string DetectionType { get; set; }
+
         public double ConfidencePercent { get; set; }
+
         public int Left { get; set; }
+
         public int Top { get; set; }
+
         public int Right { get; set; }
+
         public int Bottom { get; set; }
+
         public int Width => Right - Left;
 
         public int Height => Bottom - Top;
+
         /// <summary>
         /// 2026-09-17: 우측 경계의 작은 BBox에서 라벨이 영상 밖으로 잘리지 않도록
         /// 라벨을 BBox 오른쪽 기준으로 배치할지 나타낸다.
         /// </summary>
         public bool PlaceLabelOnRight { get; set; }
-        public int LabelOffsetX { get; set; }
-        public int LabelOffsetY { get; set; }
-        public int LabelWidth { get; set; } = 180;
-        public int OverlayLeft { get; set; }
-        public int OverlayTop { get; set; }
-        public int OverlayWidth { get; set; }
-        public int OverlayHeight { get; set; }
-        public int BoxOffsetX { get; set; }
-        public int BoxOffsetY { get; set; }
-        public string DisplayText =>
-            $"{DetectionType} #{DisplayOrder} | {ConfidencePercent:F1}%";
-    }
 
+        public int LabelOffsetX { get; set; }
+
+        public int LabelOffsetY { get; set; }
+
+        public int LabelWidth { get; set; } = 180;
+
+        public int OverlayLeft { get; set; }
+
+        public int OverlayTop { get; set; }
+
+        public int OverlayWidth { get; set; }
+
+        public int OverlayHeight { get; set; }
+
+        public int BoxOffsetX { get; set; }
+
+        public int BoxOffsetY { get; set; }
+
+        public string DisplayText => $"{DetectionType} #{DisplayOrder} | {ConfidencePercent:F1}%";
+    }
 }

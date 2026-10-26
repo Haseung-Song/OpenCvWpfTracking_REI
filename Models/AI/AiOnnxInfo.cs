@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace OpenCvWpfTracking.Models.AI
 {
@@ -20,8 +20,6 @@ namespace OpenCvWpfTracking.Models.AI
         /// <summary>
         /// 탐지 클래스 목록
         /// </summary>
-        public List<string> Classes { get; set; }
-            = new List<string>();
+        public List<string> Classes { get; set; } = new List<string>();
     }
-
 }

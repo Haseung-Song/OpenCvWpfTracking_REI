@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -14,7 +14,7 @@ namespace OpenCvWpfTracking
     /// </summary>
     public partial class App : Application
     {
-        #region [Windows API]
+        #region [창s 시스템 연동]
 
         /// <summary>
         /// [Windows] 콘솔 창 생성 함수
@@ -51,7 +51,8 @@ namespace OpenCvWpfTracking
             IntPtr securityAttributes,
             uint creationDisposition,
             uint flagsAndAttributes,
-            IntPtr templateFile);
+            IntPtr templateFile
+        );
 
         /// <summary>
         /// [Windows API]
@@ -62,13 +63,11 @@ namespace OpenCvWpfTracking
         /// [Console.WriteLine()]이 [Visual Studio] 출력창으로 갈 수 있다.
         /// </summary>
         [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool SetStdHandle(
-            int nStdHandle,
-            SafeFileHandle handle);
+        private static extern bool SetStdHandle(int nStdHandle, SafeFileHandle handle);
 
         #endregion
 
-        #region [Constants]
+        #region [상수]
 
         /// <summary>
         /// 표준 출력([stdout]) 핸들 번호
@@ -97,7 +96,7 @@ namespace OpenCvWpfTracking
 
         #endregion
 
-        #region [FFmpeg Initialize]
+        #region [FFmpeg 초기화]
 
         /// <summary>
         /// [FFmpeg] [Native DLL] 경로 설정
@@ -106,18 +105,14 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void InitializeFFmpeg()
         {
-            string ffmpegPath =
-                Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "FFmpeg");
+            string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FFmpeg");
             ffmpeg.RootPath = ffmpegPath;
-
             Console.WriteLine("[FFmpeg] RootPath : " + ffmpeg.RootPath);
         }
 
         #endregion
 
-        #region [Application Startup]
+        #region [프로그램 시작]
 
         /// <summary>
         /// [WPF] 프로그램 시작 시 최초 실행되는 함수
@@ -132,54 +127,38 @@ namespace OpenCvWpfTracking
              * OpenCV Native Runtime이 최초 초기화되기 전에 CPU 경로로 고정해야
              * Stitch 실행 및 Stitcher Dispose 양쪽에서 동일 예외가 발생하지 않는다.
              */
-            Environment.SetEnvironmentVariable(
-                "OPENCV_OPENCL_RUNTIME",
-                "disabled",
-                EnvironmentVariableTarget.Process);
-
-            Environment.SetEnvironmentVariable(
-                "OPENCV_OPENCL_DEVICE",
-                "disabled",
-                EnvironmentVariableTarget.Process);
-
-            Environment.SetEnvironmentVariable(
-                "OPENCV_OPENCL_CACHE_ENABLE",
-                "0",
-                EnvironmentVariableTarget.Process);
-
+            Environment.SetEnvironmentVariable("OPENCV_OPENCL_RUNTIME", "disabled", EnvironmentVariableTarget.Process);
+            Environment.SetEnvironmentVariable("OPENCV_OPENCL_DEVICE", "disabled", EnvironmentVariableTarget.Process);
+            Environment.SetEnvironmentVariable("OPENCV_OPENCL_CACHE_ENABLE", "0", EnvironmentVariableTarget.Process);
             /// <summary>
             /// [OpenCV] [FFmpeg] 디버그 로그 출력 비활성화
             /// </summary>
             Environment.SetEnvironmentVariable("OPENCV_FFMPEG_DEBUG", "0");
-
             /// <summary>
             /// [OpenCV] 경고 및 정보 로그 숨김
             /// 
             /// [ERROR] 로그만 출력한다.
             /// </summary>
             Environment.SetEnvironmentVariable("OPENCV_LOG_LEVEL", "ERROR");
-
             base.OnStartup(e);
-
             /*
              * Debug / Release 환경과 관계없이 Serilog 파일 로그를 먼저 초기화한다.
              * 이후 초기화 과정에서 발생하는 FFmpeg 및 장비 연결 로그도 Logs 폴더에 남는다.
              */
             AppLogger.Initialize();
-
             // 2026-09-18: 호출부에서 놓친 최상위 예외도 운용자용 오류 요약에 남긴다.
-            DispatcherUnhandledException += (sender, args) =>
-                ConsoleLogHelper.Error("APPLICATION UI", "처리되지 않은 UI 오류", args.Exception);
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-                ConsoleLogHelper.Error("APPLICATION PROCESS", "처리되지 않은 프로세스 오류", args.ExceptionObject as Exception);
+            DispatcherUnhandledException += (sender, args) => ConsoleLogHelper.Error("APPLICATION UI", "처리되지 않은 UI 오류", args.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) => ConsoleLogHelper.Error(
+                "APPLICATION PROCESS",
+                "처리되지 않은 프로세스 오류",
+                args.ExceptionObject as Exception
+            );
             System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (sender, args) =>
             {
                 ConsoleLogHelper.Error("APPLICATION TASK", "확인되지 않은 비동기 작업 오류", args.Exception);
                 args.SetObserved();
             };
-
             InitializeFFmpeg();
-
 #if DEBUG
 
             /// <summary>
@@ -265,12 +244,11 @@ namespace OpenCvWpfTracking
                 "OpenCV WPF Debug Console Start");
 
 #endif
-
         }
 
         #endregion
 
-        #region [Application Exit]
+        #region [프로그램 종료]
 
         /// <summary>
         /// [WPF] 프로그램 종료 시 호출 함수
@@ -279,10 +257,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         protected override void OnExit(ExitEventArgs e)
         {
-            ConsoleLogHelper.PrintSection(
-                "[CONSOLE]",
-                "OpenCV WPF Debug Console End");
-
+            ConsoleLogHelper.PrintSection("[CONSOLE]", "OpenCV WPF Debug Console End");
 #if DEBUG
 
             /// <summary>
@@ -290,13 +265,10 @@ namespace OpenCvWpfTracking
             /// </summary>
             FreeConsole();
 #endif
-
             AppLogger.Shutdown();
-
             base.OnExit(e);
-
         }
+
         #endregion
     }
-
 }

@@ -1,4 +1,4 @@
-using OpenCvSharp;
+﻿using OpenCvSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,8 +31,7 @@ namespace FireCandidateValidator
 
         private int _lastVerifiedVisibleCount;
 
-        private readonly List<SmokeCandidateTrack> _tracks =
-            new List<SmokeCandidateTrack>();
+        private readonly List<SmokeCandidateTrack> _tracks = new List<SmokeCandidateTrack>();
 
         internal SmokeCandidateAnalysis Analyze(
             Mat source,
@@ -43,7 +42,8 @@ namespace FireCandidateValidator
             bool compensateCameraMotion = false,
             SmokeDiagnosticCapture diagnostic = null,
             bool highZoomMode = false,
-            double highZoomStrength = 0.0)
+            double highZoomStrength = 0.0
+        )
         {
             if (source == null || source.Empty())
             {
@@ -56,7 +56,6 @@ namespace FireCandidateValidator
             _lastContinuityHeldCount = 0;
             _lastTrafficAggregateSuppressedCount = 0;
             _lastVerifiedVisibleCount = 0;
-
             Mat gray = new Mat();
             Mat blurred = new Mat();
             Mat candidateMask = new Mat();
@@ -82,33 +81,21 @@ namespace FireCandidateValidator
                 }
 
                 Cv2.GaussianBlur(gray, blurred, new Size(9, 9), 0);
-
-                bool hasReference =
-                    _previousGray != null &&
-                    !_previousGray.Empty() &&
-                    _previousGray.Size() == blurred.Size();
+                bool hasReference = _previousGray != null && !_previousGray.Empty() && _previousGray.Size() == blurred.Size();
 
                 if (!hasReference)
                 {
                     blurred.CopyTo(_previousGray);
-                    return new SmokeCandidateAnalysis(
-                        candidateMask,
-                        new List<Rect>(),
-                        false,
-                        0,
-                        0.0);
+                    return new SmokeCandidateAnalysis(candidateMask, new List<Rect>(), false, 0, 0.0);
                 }
 
                 // EO 영상은 고배율에서 수 픽셀의 미세 진동만으로도 창문과 외벽
                 // 경계가 연속 변화 후보가 된다. 자동 스캔 여부와 관계없이 EO에는
                 // 저해상도 위상 상관 정합을 적용하고, IR은 기존 조건을 유지한다.
-                bool shouldCompensateCameraMotion =
-                    compensateCameraMotion || !isInfrared;
+                bool shouldCompensateCameraMotion = compensateCameraMotion || !isInfrared;
                 Mat referenceFrame = _previousGray;
-                if (shouldCompensateCameraMotion &&
-                    TryCompensateCameraMotion(
-                        blurred,
-                        motionCompensatedReference))
+
+                if (shouldCompensateCameraMotion && TryCompensateCameraMotion(blurred, motionCompensatedReference))
                 {
                     referenceFrame = motionCompensatedReference;
                 }
@@ -120,62 +107,26 @@ namespace FireCandidateValidator
                  */
                 if (isInfrared || source.Channels() == 1)
                 {
-                    Cv2.Absdiff(
-                        blurred,
-                        referenceFrame,
-                        changeMask);
+                    Cv2.Absdiff(blurred, referenceFrame, changeMask);
                 }
                 else
                 {
-                    Cv2.Subtract(
-                        blurred,
-                        referenceFrame,
-                        brightChangeMask);
-                    Cv2.Subtract(
-                        referenceFrame,
-                        blurred,
-                        darkChangeMask);
+                    Cv2.Subtract(blurred, referenceFrame, brightChangeMask);
+                    Cv2.Subtract(referenceFrame, blurred, darkChangeMask);
                 }
-                int changeThreshold =
-                    Math.Max(
-                        4,
-                        Math.Min(
-                            40,
-                            (int)Math.Round(
-                                changeThresholdRatio *
-                                255.0)));
+
+                int changeThreshold = Math.Max(4, Math.Min(40, (int)Math.Round(changeThresholdRatio * 255.0)));
+
                 if (isInfrared || source.Channels() == 1)
                 {
-                    Cv2.Threshold(
-                        changeMask,
-                        changeMask,
-                        changeThreshold,
-                        255,
-                        ThresholdTypes.Binary);
+                    Cv2.Threshold(changeMask, changeMask, changeThreshold, 255, ThresholdTypes.Binary);
                 }
                 else
                 {
-                    int darkChangeThreshold =
-                        Math.Max(
-                            changeThreshold + 3,
-                            (int)Math.Round(changeThreshold * 1.35));
-
-                    Cv2.Threshold(
-                        brightChangeMask,
-                        brightChangeMask,
-                        changeThreshold,
-                        255,
-                        ThresholdTypes.Binary);
-                    Cv2.Threshold(
-                        darkChangeMask,
-                        darkChangeMask,
-                        darkChangeThreshold,
-                        255,
-                        ThresholdTypes.Binary);
-                    Cv2.BitwiseOr(
-                        brightChangeMask,
-                        darkChangeMask,
-                        changeMask);
+                    int darkChangeThreshold = Math.Max(changeThreshold + 3, (int)Math.Round(changeThreshold * 1.35));
+                    Cv2.Threshold(brightChangeMask, brightChangeMask, changeThreshold, 255, ThresholdTypes.Binary);
+                    Cv2.Threshold(darkChangeMask, darkChangeMask, darkChangeThreshold, 255, ThresholdTypes.Binary);
+                    Cv2.BitwiseOr(brightChangeMask, darkChangeMask, changeMask);
                 }
 
                 diagnostic?.CaptureStage("CHANGE", changeMask);
@@ -185,80 +136,41 @@ namespace FireCandidateValidator
                     // 2026-08-27: IR 연기 후보는 저대비 이동 영역만 사용한다.
                     // 프레임 평균보다 현저히 밝은 고온 핵과 주변부는 FIRE 판정을 우선하도록 제외한다.
                     changeMask.CopyTo(candidateMask);
-
-                    Cv2.MeanStdDev(
-                        blurred,
-                        out Scalar infraredMean,
-                        out Scalar infraredDeviation);
-
-                    double hotPixelThreshold =
-                        Math.Min(
-                            250.0,
-                            Math.Max(
-                                175.0,
-                                infraredMean.Val0 +
-                                Math.Max(
-                                    18.0,
-                                    infraredDeviation.Val0 * 1.35)));
-
-                    Cv2.Threshold(
-                        blurred,
-                        infraredHotMask,
-                        hotPixelThreshold,
-                        255,
-                        ThresholdTypes.Binary);
-
-                    using (Mat hotCoreKernel =
-                           Cv2.GetStructuringElement(
-                               MorphShapes.Ellipse,
-                               new Size(9, 9)))
+                    Cv2.MeanStdDev(blurred, out Scalar infraredMean, out Scalar infraredDeviation);
+                    double hotPixelThreshold = Math.Min(
+                        250.0,
+                        Math.Max(
+                        175.0,
+                        infraredMean.Val0 + Math.Max(
+                        18.0,
+                        infraredDeviation.Val0 * 1.35
+                    )
+                    )
+                    );
+                    Cv2.Threshold(blurred, infraredHotMask, hotPixelThreshold, 255, ThresholdTypes.Binary);
+                    using (Mat hotCoreKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(9, 9)))
                     {
-                        Cv2.Dilate(
-                            infraredHotMask,
-                            infraredHotMask,
-                            hotCoreKernel);
+                        Cv2.Dilate(infraredHotMask, infraredHotMask, hotCoreKernel);
                     }
 
-                    candidateMask.SetTo(
-                        Scalar.Black,
-                        infraredHotMask);
-
+                    candidateMask.SetTo(Scalar.Black, infraredHotMask);
                     diagnostic?.CaptureStage("COLOR", candidateMask);
                 }
                 else
                 {
                     Cv2.CvtColor(source, hsv, ColorConversionCodes.BGR2HSV);
-                    Cv2.InRange(
-                        hsv,
-                        new Scalar(0, 0, 35),
-                        new Scalar(179, 105, 245),
-                        neutralMask);
-                    Cv2.BitwiseAnd(
-                        brightChangeMask,
-                        neutralMask,
-                        candidateMask);
-
+                    Cv2.InRange(hsv, new Scalar(0, 0, 35), new Scalar(179, 105, 245), neutralMask);
+                    Cv2.BitwiseAnd(brightChangeMask, neutralMask, candidateMask);
                     /*
                      * 2026-08-31: 검은 연기는 현재 프레임이 장기 기준보다 어두워진
                      * 저채도 영역에서 추출한다. 완전 암부와 과도한 채도 영역은 제외하고,
                      * 이후 공통 형상·이동·확산·상향 지속성 검증을 그대로 통과시킨다.
                      */
-                    Cv2.InRange(
-                        hsv,
-                        new Scalar(0, 0, 15),
-                        new Scalar(179, 135, 210),
-                        darkNeutralMask);
-
+                    Cv2.InRange(hsv, new Scalar(0, 0, 15), new Scalar(179, 135, 210), darkNeutralMask);
                     using (Mat darkCandidateMask = new Mat())
                     {
-                        Cv2.BitwiseAnd(
-                            darkChangeMask,
-                            darkNeutralMask,
-                            darkCandidateMask);
-                        Cv2.BitwiseOr(
-                            candidateMask,
-                            darkCandidateMask,
-                            candidateMask);
+                        Cv2.BitwiseAnd(darkChangeMask, darkNeutralMask, darkCandidateMask);
+                        Cv2.BitwiseOr(candidateMask, darkCandidateMask, candidateMask);
                     }
 
                     /*
@@ -267,47 +179,21 @@ namespace FireCandidateValidator
                      * 후보에서 제외하되 연기 내부의 완만한 밝기 변화는 유지한다.
                      */
                     using (Mat expandedEdges = new Mat())
-                    using (Mat edgeKernel =
-                           Cv2.GetStructuringElement(
-                               MorphShapes.Ellipse,
-                               new Size(3, 3)))
+                    using (Mat edgeKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(3, 3)))
                     {
-                        Cv2.Canny(
-                            blurred,
-                            structureEdges,
-                            70.0,
-                            150.0);
-                        Cv2.Dilate(
-                            structureEdges,
-                            expandedEdges,
-                            edgeKernel);
-                        candidateMask.SetTo(
-                            Scalar.Black,
-                            expandedEdges);
+                        Cv2.Canny(blurred, structureEdges, 70.0, 150.0);
+                        Cv2.Dilate(structureEdges, expandedEdges, edgeKernel);
+                        candidateMask.SetTo(Scalar.Black, expandedEdges);
                     }
 
                     diagnostic?.CaptureStage("COLOR_EDGE", candidateMask);
                 }
 
-                using (Mat openKernel =
-                       Cv2.GetStructuringElement(
-                           MorphShapes.Ellipse,
-                           new Size(3, 3)))
-                using (Mat closeKernel =
-                       Cv2.GetStructuringElement(
-                           MorphShapes.Ellipse,
-                           new Size(13, 13)))
+                using (Mat openKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(3, 3)))
+                using (Mat closeKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(13, 13)))
                 {
-                    Cv2.MorphologyEx(
-                        candidateMask,
-                        candidateMask,
-                        MorphTypes.Open,
-                        openKernel);
-                    Cv2.MorphologyEx(
-                        candidateMask,
-                        candidateMask,
-                        MorphTypes.Close,
-                        closeKernel);
+                    Cv2.MorphologyEx(candidateMask, candidateMask, MorphTypes.Open, openKernel);
+                    Cv2.MorphologyEx(candidateMask, candidateMask, MorphTypes.Close, closeKernel);
                 }
 
                 diagnostic?.CaptureStage("MORPH", candidateMask);
@@ -317,36 +203,19 @@ namespace FireCandidateValidator
                  * 차분 마스크만 사용하면 BBox가 깜빡인다. 최근 후보를 감쇠 누적해
                  * 짧게 끊긴 몸통과 인접 조각을 유지하되 오래된 후보는 자동 소멸시킨다.
                  */
-                if (_temporalCandidateMask.Empty() ||
-                    _temporalCandidateMask.Size() != candidateMask.Size())
+                if (_temporalCandidateMask.Empty() || _temporalCandidateMask.Size() != candidateMask.Size())
                 {
                     _temporalCandidateMask.Dispose();
-                    _temporalCandidateMask =
-                        new Mat(candidateMask.Size(), MatType.CV_8UC1, Scalar.Black);
+                    _temporalCandidateMask = new Mat(candidateMask.Size(), MatType.CV_8UC1, Scalar.Black);
                 }
 
-                Cv2.AddWeighted(
-                    _temporalCandidateMask,
-                    0.82,
-                    candidateMask,
-                    1.0,
-                    0.0,
-                    _temporalCandidateMask);
-                Cv2.Threshold(
-                    _temporalCandidateMask,
-                    candidateMask,
-                    42.0,
-                    255.0,
-                    ThresholdTypes.Binary);
-
+                Cv2.AddWeighted(_temporalCandidateMask, 0.82, candidateMask, 1.0, 0.0, _temporalCandidateMask);
+                Cv2.Threshold(_temporalCandidateMask, candidateMask, 42.0, 255.0, ThresholdTypes.Binary);
                 diagnostic?.CaptureStage("TEMPORAL", candidateMask);
-
                 double frameArea = Math.Max(1.0, source.Width * source.Height);
                 double globalChangeRatio = Cv2.CountNonZero(changeMask) / frameArea;
-                double candidateCoverageRatio =
-                    Cv2.CountNonZero(candidateMask) / frameArea;
-                bool possibleLargePlumeFrame =
-                    !isInfrared &&
+                double candidateCoverageRatio = Cv2.CountNonZero(candidateMask) / frameArea;
+                bool possibleLargePlumeFrame = !isInfrared &&
                     globalChangeRatio <= 0.55 &&
                     candidateCoverageRatio >= 0.06 &&
                     candidateCoverageRatio <= 0.65;
@@ -356,21 +225,14 @@ namespace FireCandidateValidator
 
                 // 2026-08-28: 정합 후에도 장면 대부분이 변하면 프리셋 도착 또는
                 // Zoom 변화로 판단하고 현재 프레임을 새 장기 기준으로 사용한다.
-                if (shouldCompensateCameraMotion &&
-                    globalChangeRatio > 0.18 &&
-                    !possibleLargePlumeFrame)
+                if (shouldCompensateCameraMotion && globalChangeRatio > 0.18 && !possibleLargePlumeFrame)
                 {
                     blurred.CopyTo(_previousGray);
                     _referenceFrameAge = 0;
                     _tracks.Clear();
                     _temporalCandidateMask.SetTo(Scalar.Black);
                     candidateMask.SetTo(Scalar.Black);
-                    return new SmokeCandidateAnalysis(
-                        candidateMask,
-                        new List<Rect>(),
-                        false,
-                        0,
-                        0.0);
+                    return new SmokeCandidateAnalysis(candidateMask, new List<Rect>(), false, 0, 0.0);
                 }
 
                 // 2026-08-27: PTZ 잔진동·노출 변화처럼 화면 넓은 영역이 동시에
@@ -382,24 +244,19 @@ namespace FireCandidateValidator
                         out Point[][] contours,
                         out _,
                         RetrievalModes.External,
-                        ContourApproximationModes.ApproxSimple);
-
-                    double minimumArea =
-                        Math.Max(
-                            96.0,
-                            frameArea * Math.Max(0.0005, minimumAreaRatio));
-                    double maximumArea = frameArea *
-                        (isInfrared ? 0.45 : possibleLargePlumeFrame ? 0.60 : highZoomMode ? 0.40 + 0.06 * zoomStrength : 0.25);
+                        ContourApproximationModes.ApproxSimple
+                    );
+                    double minimumArea = Math.Max(96.0, frameArea * Math.Max(0.0005, minimumAreaRatio));
+                    double maximumArea = frameArea * (isInfrared ? 0.45 : possibleLargePlumeFrame ? 0.60 : highZoomMode ? 0.40 + 0.06 * zoomStrength : 0.25);
 
                     foreach (Point[] contour in contours)
                     {
                         double area = Cv2.ContourArea(contour);
                         Rect rect = Cv2.BoundingRect(contour);
+
                         if (area < minimumArea || area > maximumArea)
                         {
-                            diagnostic?.AddContour(
-                                rect, area, 0.0, 0.0, 0.0,
-                                "REJECT", "AREA_OUT_OF_RANGE");
+                            diagnostic?.AddContour(rect, area, 0.0, 0.0, 0.0, "REJECT", "AREA_OUT_OF_RANGE");
                             continue;
                         }
 
@@ -407,22 +264,20 @@ namespace FireCandidateValidator
                         double fillRatio = area / rectangleArea;
                         double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
                         double rectangleAreaRatio = rectangleArea / frameArea;
-
-                    double minimumFillRatio =
-                            isInfrared ? 0.035 : highZoomMode ? 0.075 - 0.005 * zoomStrength : 0.100;
-                    double maximumRectangleAreaRatio =
-                            isInfrared ? 0.35 : possibleLargePlumeFrame ? 0.70 : highZoomMode ? 0.32 + 0.05 * zoomStrength : 0.18;
+                        double minimumFillRatio = isInfrared ? 0.035 : highZoomMode ? 0.075 - 0.005 * zoomStrength : 0.100;
+                        double maximumRectangleAreaRatio = isInfrared ? 0.35 : possibleLargePlumeFrame ? 0.70 : highZoomMode ? 0.32 + 0.05 * zoomStrength : 0.18;
 
                         if (fillRatio < minimumFillRatio ||
                             fillRatio > 0.92 ||
                             aspectRatio < 0.08 ||
                             aspectRatio > (isInfrared ? 8.0 : highZoomMode ? 6.5 + 0.30 * zoomStrength : 5.0) ||
                             rectangleAreaRatio > maximumRectangleAreaRatio ||
-                            rect.Height < Math.Max(10, source.Height / 90))
+                            rect.Height < Math.Max(
+                            10,
+                            source.Height / 90
+                        ))
                         {
-                            diagnostic?.AddContour(
-                                rect, area, fillRatio, aspectRatio, 0.0,
-                                "REJECT", "SHAPE_OR_SCALE");
+                            diagnostic?.AddContour(rect, area, fillRatio, aspectRatio, 0.0, "REJECT", "SHAPE_OR_SCALE");
                             continue;
                         }
 
@@ -436,47 +291,30 @@ namespace FireCandidateValidator
                         {
                             using (Mat edgeRegion = new Mat(structureEdges, rect))
                             {
-                                double edgeDensity =
-                                    Cv2.CountNonZero(edgeRegion) / rectangleArea;
+                                double edgeDensity = Cv2.CountNonZero(edgeRegion) / rectangleArea;
 
                                 if (edgeDensity > 0.16 && fillRatio < 0.34)
                                 {
-                                    diagnostic?.AddContour(
-                                        rect, area, fillRatio, aspectRatio, edgeDensity,
-                                        "REJECT", "STRUCTURE_EDGE");
+                                    diagnostic?.AddContour(rect, area, fillRatio, aspectRatio, edgeDensity, "REJECT", "STRUCTURE_EDGE");
                                     continue;
                                 }
 
-                                diagnostic?.AddContour(
-                                    rect, area, fillRatio, aspectRatio, edgeDensity,
-                                    "PASS", "TRACK_INPUT");
+                                diagnostic?.AddContour(rect, area, fillRatio, aspectRatio, edgeDensity, "PASS", "TRACK_INPUT");
                             }
-
                         }
                         else
                         {
-                            diagnostic?.AddContour(
-                                rect, area, fillRatio, aspectRatio, 0.0,
-                                "PASS", "TRACK_INPUT");
+                            diagnostic?.AddContour(rect, area, fillRatio, aspectRatio, 0.0, "PASS", "TRACK_INPUT");
                         }
 
                         candidates.Add(rect);
-                        largestAreaRatio =
-                            Math.Max(
-                                largestAreaRatio,
-                                rectangleArea / frameArea);
+                        largestAreaRatio = Math.Max(largestAreaRatio, rectangleArea / frameArea);
                     }
-
                 }
 
-                candidates =
-                    MergeNearbyCandidates(
-                        candidates,
-                        source.Width,
-                        source.Height);
+                candidates = MergeNearbyCandidates(candidates, source.Width, source.Height);
+                candidates.Sort((left, right) => (right.Width * right.Height).CompareTo(left.Width * left.Height));
 
-                candidates.Sort((left, right) =>
-                    (right.Width * right.Height).CompareTo(left.Width * left.Height));
                 // 2026-09-02: 화면에 여러 연기 기둥이 동시에 존재할 때 큰 후보 몇 개가
                 // 작은 독립 플룸을 밀어내지 않도록 Track 입력 상한을 확장한다.
                 if (candidates.Count > 12)
@@ -484,25 +322,28 @@ namespace FireCandidateValidator
                     candidates.RemoveRange(12, candidates.Count - 12);
                 }
 
-                List<Rect> confirmedCandidates =
-                    UpdateCandidateTracks(
-                        candidates,
-                        Math.Max(1, confirmationFrameCount),
-                        source.Width,
-                        source.Height,
-                        isInfrared,
-                        ResolveFalsePositiveSuppressionLevel(
-                            isInfrared,
-                            minimumAreaRatio,
-                            changeThresholdRatio),
-                        highZoomMode,
-                        zoomStrength,
-                        diagnostic);
+                List<Rect> confirmedCandidates = UpdateCandidateTracks(
+                    candidates,
+                    Math.Max(
+                    1,
+                    confirmationFrameCount
+                ),
+                    source.Width,
+                    source.Height,
+                    isInfrared,
+                    ResolveFalsePositiveSuppressionLevel(
+                    isInfrared,
+                    minimumAreaRatio,
+                    changeThresholdRatio
+                ),
+                    highZoomMode,
+                    zoomStrength,
+                    diagnostic
+                );
 
                 if (diagnostic != null)
                 {
-                    using (Mat finalMask =
-                           new Mat(source.Size(), MatType.CV_8UC1, Scalar.Black))
+                    using (Mat finalMask = new Mat(source.Size(), MatType.CV_8UC1, Scalar.Black))
                     {
                         foreach (Rect confirmedCandidate in confirmedCandidates)
                         {
@@ -511,30 +352,26 @@ namespace FireCandidateValidator
 
                         diagnostic.CaptureStage("FINAL", finalMask);
                     }
-
                 }
 
                 _continuousCandidateFrames = 0;
+
                 foreach (SmokeCandidateTrack track in _tracks)
                 {
                     if (track.MissingFrames == 0)
                     {
-                        _continuousCandidateFrames =
-                            Math.Max(
-                                _continuousCandidateFrames,
-                                track.SeenFrames);
+                        _continuousCandidateFrames = Math.Max(_continuousCandidateFrames, track.SeenFrames);
                     }
-
                 }
 
                 bool isConfirmed = confirmedCandidates.Count > 0;
-
                 /*
                  * 2026-08-28: 바로 이전 프레임 대신 약 0.8초 범위의 장기 기준을
                  * 유지하여 천천히 퍼지는 흰 연기의 누적 밝기 변화를 확보한다.
                  * 기준 갱신 프레임은 Track의 짧은 Missing 허용으로 연속성을 유지한다.
                  */
                 _referenceFrameAge++;
+
                 if (_referenceFrameAge >= 60)
                 {
                     blurred.CopyTo(_previousGray);
@@ -551,7 +388,8 @@ namespace FireCandidateValidator
                     _lastMovingSourceSuppressedCount,
                     _lastContinuityHeldCount,
                     _lastTrafficAggregateSuppressedCount,
-                    _lastVerifiedVisibleCount);
+                    _lastVerifiedVisibleCount
+                );
             }
             catch
             {
@@ -572,71 +410,45 @@ namespace FireCandidateValidator
                 structureEdges.Dispose();
                 motionCompensatedReference.Dispose();
             }
-
         }
 
         /// <summary>
         /// 2026-08-28: AUTO SCAN 및 파노라마 촬영 중 인접 프레임의 전역 평행 이동을
         /// 위상 상관으로 추정하고, 두 이동 방향 중 실제 차이가 작은 정렬 결과를 사용한다.
         /// </summary>
-        private bool TryCompensateCameraMotion(
-            Mat currentGray,
-            Mat alignedPrevious)
+        private bool TryCompensateCameraMotion(Mat currentGray, Mat alignedPrevious)
         {
             const int AnalysisWidth = 480;
-            double scale =
-                Math.Min(
-                    1.0,
-                    AnalysisWidth / (double)currentGray.Width);
-            Size analysisSize =
-                new Size(
-                    Math.Max(1, (int)Math.Round(currentGray.Width * scale)),
-                    Math.Max(1, (int)Math.Round(currentGray.Height * scale)));
-
+            double scale = Math.Min(1.0, AnalysisWidth / (double)currentGray.Width);
+            Size analysisSize = new Size(
+                Math.Max(
+                1,
+                (int)Math.Round(currentGray.Width * scale)
+            ),
+                Math.Max(
+                1,
+                (int)Math.Round(currentGray.Height * scale)
+            )
+            );
             using (Mat previousSmall = new Mat())
             using (Mat currentSmall = new Mat())
             using (Mat previousFloat = new Mat())
             using (Mat currentFloat = new Mat())
-            using (Mat transform =
-                   Mat.Eye(2, 3, MatType.CV_64FC1).ToMat())
+            using (Mat transform = Mat.Eye(2, 3, MatType.CV_64FC1).ToMat())
             {
-                Cv2.Resize(
-                    _previousGray,
-                    previousSmall,
-                    analysisSize,
-                    0.0,
-                    0.0,
-                    InterpolationFlags.Area);
-                Cv2.Resize(
-                    currentGray,
-                    currentSmall,
-                    analysisSize,
-                    0.0,
-                    0.0,
-                    InterpolationFlags.Area);
-                previousSmall.ConvertTo(
-                    previousFloat,
-                    MatType.CV_32FC1);
-                currentSmall.ConvertTo(
-                    currentFloat,
-                    MatType.CV_32FC1);
-                if (_phaseWindow.Empty() ||
-                    _phaseWindow.Size() != analysisSize)
+                Cv2.Resize(_previousGray, previousSmall, analysisSize, 0.0, 0.0, InterpolationFlags.Area);
+                Cv2.Resize(currentGray, currentSmall, analysisSize, 0.0, 0.0, InterpolationFlags.Area);
+                previousSmall.ConvertTo(previousFloat, MatType.CV_32FC1);
+                currentSmall.ConvertTo(currentFloat, MatType.CV_32FC1);
+
+                if (_phaseWindow.Empty() || _phaseWindow.Size() != analysisSize)
                 {
                     _phaseWindow.Dispose();
                     _phaseWindow = new Mat();
-                    Cv2.CreateHanningWindow(
-                        _phaseWindow,
-                        analysisSize,
-                        MatType.CV_32FC1);
+                    Cv2.CreateHanningWindow(_phaseWindow, analysisSize, MatType.CV_32FC1);
                 }
 
-                Point2d shift =
-                    Cv2.PhaseCorrelate(
-                        previousFloat,
-                        currentFloat,
-                        _phaseWindow,
-                        out double response);
+                Point2d shift = Cv2.PhaseCorrelate(previousFloat, currentFloat, _phaseWindow, out double response);
 
                 if (response < 0.08 ||
                     double.IsNaN(shift.X) ||
@@ -649,17 +461,16 @@ namespace FireCandidateValidator
 
                 transform.Set(0, 2, shift.X / scale);
                 transform.Set(1, 2, shift.Y / scale);
-
                 Cv2.WarpAffine(
                     _previousGray,
                     alignedPrevious,
                     transform,
                     currentGray.Size(),
                     InterpolationFlags.Linear,
-                    BorderTypes.Reflect101);
+                    BorderTypes.Reflect101
+                );
                 return true;
             }
-
         }
 
         internal void Reset()
@@ -692,14 +503,9 @@ namespace FireCandidateValidator
         /// 2026-08-27: 같은 연기 덩어리가 작은 조각으로 분리된 경우
         /// 근접·중첩 후보를 하나로 병합하여 이벤트와 BBox 중복을 줄인다.
         /// </summary>
-        private static List<Rect> MergeNearbyCandidates(
-            IList<Rect> source,
-            int frameWidth,
-            int frameHeight)
+        private static List<Rect> MergeNearbyCandidates(IList<Rect> source, int frameWidth, int frameHeight)
         {
-            List<Rect> merged =
-                new List<Rect>();
-
+            List<Rect> merged = new List<Rect>();
             int horizontalGap = Math.Max(10, frameWidth / 60);
             int verticalGap = Math.Max(10, frameHeight / 45);
 
@@ -710,16 +516,9 @@ namespace FireCandidateValidator
                 for (int index = merged.Count - 1; index >= 0; index--)
                 {
                     Rect existing = merged[index];
-                    Rect expanded =
-                        ExpandRect(
-                            existing,
-                            horizontalGap,
-                            verticalGap,
-                            frameWidth,
-                            frameHeight);
+                    Rect expanded = ExpandRect(existing, horizontalGap, verticalGap, frameWidth, frameHeight);
 
-                    if (IntersectionOverUnion(existing, current) < 0.08 &&
-                        (expanded & current) == Rect.Empty)
+                    if (IntersectionOverUnion(existing, current) < 0.08 && (expanded & current) == Rect.Empty)
                     {
                         continue;
                     }
@@ -748,13 +547,15 @@ namespace FireCandidateValidator
             int falsePositiveSuppressionLevel,
             bool highZoomMode,
             double highZoomStrength,
-            SmokeDiagnosticCapture diagnostic)
+            SmokeDiagnosticCapture diagnostic
+        )
         {
             _lastRigidMotionSuppressedCount = 0;
             _lastMovingSourceSuppressedCount = 0;
             _lastContinuityHeldCount = 0;
             _lastTrafficAggregateSuppressedCount = 0;
             _lastVerifiedVisibleCount = 0;
+
             foreach (SmokeCandidateTrack track in _tracks)
             {
                 track.Matched = false;
@@ -773,25 +574,24 @@ namespace FireCandidateValidator
                         continue;
                     }
 
-                    double intersectionScore =
-                        IntersectionOverUnion(
-                            track.Rectangle,
-                            candidate);
-                    Point previousCenter =
-                        GetCenter(track.Rectangle);
-                    double centerDistance =
-                        Math.Sqrt(
-                            Math.Pow(candidateCenter.X - previousCenter.X, 2) +
-                            Math.Pow(candidateCenter.Y - previousCenter.Y, 2));
+                    double intersectionScore = IntersectionOverUnion(track.Rectangle, candidate);
+                    Point previousCenter = GetCenter(track.Rectangle);
+                    double centerDistance = Math.Sqrt(Math.Pow(
+                        candidateCenter.X - previousCenter.X,
+                        2
+                    ) + Math.Pow(
+                        candidateCenter.Y - previousCenter.Y,
+                        2
+                    ));
                     // 확정 Track은 가까운 다른 연기 기둥으로 ID가 넘어가지 않도록
                     // 신규 Track보다 좁은 중심점 게이트를 사용한다.
-                    double allowedDistance =
+                    double allowedDistance = Math.Max(
+                        18.0,
                         Math.Max(
-                            18.0,
-                            Math.Max(
-                                track.Rectangle.Width,
-                                track.Rectangle.Height) *
-                            (track.HasBeenConfirmed ? 0.55 : 0.85));
+                        track.Rectangle.Width,
+                        track.Rectangle.Height
+                    ) * (track.HasBeenConfirmed ? 0.55 : 0.85)
+                    );
                     double score = intersectionScore;
 
                     if (score < 0.08 && centerDistance <= allowedDistance)
@@ -802,8 +602,7 @@ namespace FireCandidateValidator
                     // 고배율에서는 플룸 상단이 크게 갈라져 중심/IoU가 끊겨도
                     // 굴뚝에 해당하는 하단 발생점은 좁은 범위에 남는다. 작은 후보와
                     // 짧은 누락에만 이 보조 매칭을 허용하여 창문 간 Track 점프를 막는다.
-                    if (highZoomMode && !isInfrared && score < 0.08 &&
-                        track.MissingFrames <= 12)
+                    if (highZoomMode && !isInfrared && score < 0.08 && track.MissingFrames <= 12)
                     {
                         Point matchPreviousSource = GetBottomCenter(track.Rectangle);
                         Point matchCurrentSource = GetBottomCenter(candidate);
@@ -811,19 +610,35 @@ namespace FireCandidateValidator
                         double sourceDy = Math.Abs(matchCurrentSource.Y - matchPreviousSource.Y);
                         double areaRatio = Math.Max(
                             track.Rectangle.Width * (double)track.Rectangle.Height,
-                            candidate.Width * (double)candidate.Height) /
-                            Math.Max(1.0, Math.Min(
-                                track.Rectangle.Width * (double)track.Rectangle.Height,
-                                candidate.Width * (double)candidate.Height));
+                            candidate.Width * (double)candidate.Height
+                        ) / Math.Max(
+                            1.0,
+                            Math.Min(
+                            track.Rectangle.Width * (double)track.Rectangle.Height,
+                            candidate.Width * (double)candidate.Height
+                        )
+                        );
                         double sourceXFactor = 0.25 + 0.03 * highZoomStrength;
                         double sourceYFactor = 0.15 + 0.03 * highZoomStrength;
-                        if (sourceDx <= Math.Max(10.0, Math.Min(track.Rectangle.Width, candidate.Width) * sourceXFactor) &&
-                            sourceDy <= Math.Max(8.0, Math.Min(track.Rectangle.Height, candidate.Height) * sourceYFactor) &&
+
+                        if (sourceDx <= Math.Max(
+                            10.0,
+                            Math.Min(
+                            track.Rectangle.Width,
+                            candidate.Width
+                        ) * sourceXFactor
+                        ) &&
+                            sourceDy <= Math.Max(
+                            8.0,
+                            Math.Min(
+                            track.Rectangle.Height,
+                            candidate.Height
+                        ) * sourceYFactor
+                        ) &&
                             areaRatio <= 3.0 + 0.25 * highZoomStrength)
                         {
                             score = 0.085;
                         }
-
                     }
 
                     if (score > bestScore)
@@ -831,30 +646,18 @@ namespace FireCandidateValidator
                         bestScore = score;
                         bestTrack = track;
                     }
-
                 }
 
                 if (bestTrack == null || bestScore < 0.08)
                 {
-                    _tracks.Add(
-                        new SmokeCandidateTrack(candidate));
+                    _tracks.Add(new SmokeCandidateTrack(candidate));
                     continue;
                 }
 
-                double previousArea =
-                    Math.Max(
-                        1.0,
-                        bestTrack.Rectangle.Width * bestTrack.Rectangle.Height);
-                double currentArea =
-                    Math.Max(
-                        1.0,
-                        candidate.Width * candidate.Height);
-                double areaChangeRatio =
-                    Math.Max(previousArea, currentArea) /
-                    Math.Min(previousArea, currentArea);
-
-                Point previousTrackCenter =
-                    GetCenter(bestTrack.Rectangle);
+                double previousArea = Math.Max(1.0, bestTrack.Rectangle.Width * bestTrack.Rectangle.Height);
+                double currentArea = Math.Max(1.0, candidate.Width * candidate.Height);
+                double areaChangeRatio = Math.Max(previousArea, currentArea) / Math.Min(previousArea, currentArea);
+                Point previousTrackCenter = GetCenter(bestTrack.Rectangle);
                 double deltaX = candidateCenter.X - previousTrackCenter.X;
                 double deltaY = candidateCenter.Y - previousTrackCenter.Y;
                 double motion = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -862,19 +665,11 @@ namespace FireCandidateValidator
                 Point currentSource = GetBottomCenter(candidate);
                 double sourceDeltaX = currentSource.X - previousSource.X;
                 double sourceDeltaY = currentSource.Y - previousSource.Y;
-                double sourceMotion = Math.Sqrt(
-                    sourceDeltaX * sourceDeltaX + sourceDeltaY * sourceDeltaY);
-                double areaDelta =
-                    Math.Abs(currentArea - previousArea) / previousArea;
-                double previousAspect =
-                    bestTrack.Rectangle.Width /
-                    (double)Math.Max(1, bestTrack.Rectangle.Height);
-                double currentAspect =
-                    candidate.Width /
-                    (double)Math.Max(1, candidate.Height);
-                double shapeDelta =
-                    Math.Abs(currentAspect - previousAspect) /
-                    Math.Max(0.25, previousAspect);
+                double sourceMotion = Math.Sqrt(sourceDeltaX * sourceDeltaX + sourceDeltaY * sourceDeltaY);
+                double areaDelta = Math.Abs(currentArea - previousArea) / previousArea;
+                double previousAspect = bestTrack.Rectangle.Width / (double)Math.Max(1, bestTrack.Rectangle.Height);
+                double currentAspect = candidate.Width / (double)Math.Max(1, candidate.Height);
+                double shapeDelta = Math.Abs(currentAspect - previousAspect) / Math.Max(0.25, previousAspect);
                 bestTrack.RecordRecentVerticalMotion(deltaY);
 
                 // 2026-09-02: 차량은 BBox 형태를 거의 유지한 채 한 방향으로
@@ -897,14 +692,12 @@ namespace FireCandidateValidator
 
                     if (bestTrack.HasMotionVector)
                     {
-                        double previousNorm = Math.Sqrt(
-                            bestTrack.LastMotionX * bestTrack.LastMotionX +
-                            bestTrack.LastMotionY * bestTrack.LastMotionY);
+                        double previousNorm = Math.Sqrt(bestTrack.LastMotionX * bestTrack.LastMotionX + bestTrack.LastMotionY * bestTrack.LastMotionY);
                         double currentNorm = Math.Max(0.001, motion);
-                        double cosine =
-                            (bestTrack.LastMotionX * deltaX +
-                             bestTrack.LastMotionY * deltaY) /
-                            Math.Max(0.001, previousNorm * currentNorm);
+                        double cosine = (bestTrack.LastMotionX * deltaX + bestTrack.LastMotionY * deltaY) / Math.Max(
+                            0.001,
+                            previousNorm * currentNorm
+                        );
 
                         if (cosine >= 0.70)
                         {
@@ -914,7 +707,6 @@ namespace FireCandidateValidator
                         {
                             bestTrack.DirectionChangeSamples++;
                         }
-
                     }
 
                     if (areaDelta < 0.100 && shapeDelta < 0.100)
@@ -936,13 +728,11 @@ namespace FireCandidateValidator
 
                     if (bestTrack.HasSourceMotionVector)
                     {
-                        double previousSourceNorm = Math.Sqrt(
-                            bestTrack.LastSourceMotionX * bestTrack.LastSourceMotionX +
-                            bestTrack.LastSourceMotionY * bestTrack.LastSourceMotionY);
-                        double cosine =
-                            (bestTrack.LastSourceMotionX * sourceDeltaX +
-                             bestTrack.LastSourceMotionY * sourceDeltaY) /
-                            Math.Max(0.001, previousSourceNorm * sourceMotion);
+                        double previousSourceNorm = Math.Sqrt(bestTrack.LastSourceMotionX * bestTrack.LastSourceMotionX + bestTrack.LastSourceMotionY * bestTrack.LastSourceMotionY);
+                        double cosine = (bestTrack.LastSourceMotionX * sourceDeltaX + bestTrack.LastSourceMotionY * sourceDeltaY) / Math.Max(
+                            0.001,
+                            previousSourceNorm * sourceMotion
+                        );
 
                         if (cosine >= 0.70)
                         {
@@ -952,7 +742,6 @@ namespace FireCandidateValidator
                         {
                             bestTrack.SourceDirectionChangeSamples++;
                         }
-
                     }
 
                     bestTrack.LastSourceMotionX = sourceDeltaX;
@@ -960,21 +749,12 @@ namespace FireCandidateValidator
                     bestTrack.HasSourceMotionVector = true;
                 }
 
-                bestTrack.MinimumSourceX = Math.Min(
-                    bestTrack.MinimumSourceX,
-                    currentSource.X);
-                bestTrack.MaximumSourceX = Math.Max(
-                    bestTrack.MaximumSourceX,
-                    currentSource.X);
-                bestTrack.MinimumSourceY = Math.Min(
-                    bestTrack.MinimumSourceY,
-                    currentSource.Y);
-                bestTrack.MaximumSourceY = Math.Max(
-                    bestTrack.MaximumSourceY,
-                    currentSource.Y);
-                if (sourceMotion >= Math.Max(
-                        10.0,
-                        Math.Max(candidate.Width, candidate.Height) * 0.18))
+                bestTrack.MinimumSourceX = Math.Min(bestTrack.MinimumSourceX, currentSource.X);
+                bestTrack.MaximumSourceX = Math.Max(bestTrack.MaximumSourceX, currentSource.X);
+                bestTrack.MinimumSourceY = Math.Min(bestTrack.MinimumSourceY, currentSource.Y);
+                bestTrack.MaximumSourceY = Math.Max(bestTrack.MaximumSourceY, currentSource.Y);
+
+                if (sourceMotion >= Math.Max(10.0, Math.Max(candidate.Width, candidate.Height) * 0.18))
                 {
                     bestTrack.AbruptSourceJumpSamples++;
                 }
@@ -989,6 +769,7 @@ namespace FireCandidateValidator
                 if (areaChangeRatio > 2.5)
                 {
                     bestTrack.DynamicSamples++;
+
                     if (currentArea > previousArea)
                     {
                         bestTrack.ExpansionSamples++;
@@ -998,8 +779,7 @@ namespace FireCandidateValidator
                 }
                 else
                 {
-                    double verticalThreshold =
-                        Math.Max(1.5, candidate.Height * 0.015);
+                    double verticalThreshold = Math.Max(1.5, candidate.Height * 0.015);
 
                     if (deltaY <= -verticalThreshold)
                     {
@@ -1022,53 +802,41 @@ namespace FireCandidateValidator
                         bestTrack.FreshEvidenceAge = 0;
                     }
 
-                    bestTrack.StationaryFrames =
-                        motion < 2.0 && areaDelta < 0.025
-                            ? bestTrack.StationaryFrames + 1
-                            : 0;
+                    bestTrack.StationaryFrames = motion < 2.0 && areaDelta < 0.025 ? bestTrack.StationaryFrames + 1 : 0;
                 }
 
-                bestTrack.Rectangle =
-                    SmoothRectangle(
-                        bestTrack.Rectangle,
-                        candidate,
-                        frameWidth,
-                        frameHeight);
+                bestTrack.Rectangle = SmoothRectangle(bestTrack.Rectangle, candidate, frameWidth, frameHeight);
                 // 2026-08-31: 작은 분할 조각만 표시하지 않고 같은 Track이 최근에
                 // 통과한 영역을 누적하여 실제 연기 기둥의 전체 외곽에 가깝게 복원한다.
                 // 장시간 누적 또는 화면의 22%를 넘는 경우 현재 외곽부터 다시 시작해
                 // 이동·오탐 때문에 BBox가 화면 전체로 계속 커지는 현상을 제한한다.
                 Rect envelope = bestTrack.EnvelopeRectangle | bestTrack.Rectangle;
-                double currentRectangleArea = Math.Max(
-                    1.0,
-                    bestTrack.Rectangle.Width * (double)bestTrack.Rectangle.Height);
+                double currentRectangleArea = Math.Max(1.0, bestTrack.Rectangle.Width * (double)bestTrack.Rectangle.Height);
                 double envelopeArea = envelope.Width * (double)envelope.Height;
-                double envelopeRatio =
-                    envelopeArea /
-                    Math.Max(1.0, frameWidth * (double)frameHeight);
-                bool translationDominant =
-                    bestTrack.SignificantMotionSamples >= 6 &&
-                    bestTrack.RigidTranslationSamples >=
-                        bestTrack.SignificantMotionSamples * 0.55 &&
-                    bestTrack.CoherentMotionSamples >=
-                        Math.Max(2, (bestTrack.SignificantMotionSamples - 1) / 2);
-                bool movingSourceDominant =
-                    bestTrack.SourceMotionSamples >= 6 &&
-                    bestTrack.CoherentSourceMotionSamples >=
-                        Math.Max(2, (bestTrack.SourceMotionSamples - 1) / 2);
-                double sourceSpanX =
-                    bestTrack.MaximumSourceX - bestTrack.MinimumSourceX;
-                double sourceSpanY =
-                    bestTrack.MaximumSourceY - bestTrack.MinimumSourceY;
-                bool sparseTrafficEnvelope =
-                    envelopeRatio >= 0.08 &&
+                double envelopeRatio = envelopeArea / Math.Max(1.0, frameWidth * (double)frameHeight);
+                bool translationDominant = bestTrack.SignificantMotionSamples >= 6 &&
+                    bestTrack.RigidTranslationSamples >= bestTrack.SignificantMotionSamples * 0.55 &&
+                    bestTrack.CoherentMotionSamples >= Math.Max(
+                    2,
+                    (bestTrack.SignificantMotionSamples - 1) / 2
+                );
+                bool movingSourceDominant = bestTrack.SourceMotionSamples >= 6 &&
+                    bestTrack.CoherentSourceMotionSamples >= Math.Max(
+                    2,
+                    (bestTrack.SourceMotionSamples - 1) / 2
+                );
+                double sourceSpanX = bestTrack.MaximumSourceX - bestTrack.MinimumSourceX;
+                double sourceSpanY = bestTrack.MaximumSourceY - bestTrack.MinimumSourceY;
+                bool sparseTrafficEnvelope = envelopeRatio >= 0.08 &&
                     envelopeArea / currentRectangleArea >= 2.40 &&
                     (sourceSpanX >= frameWidth * 0.045 ||
-                     sourceSpanY >= frameHeight * 0.040);
+                    sourceSpanY >= frameHeight * 0.040);
 
-                if (translationDominant || movingSourceDominant ||
+                if (translationDominant ||
+                    movingSourceDominant ||
                     sparseTrafficEnvelope ||
-                    bestTrack.EnvelopeFrames >= 120 || envelopeRatio > 0.22)
+                    bestTrack.EnvelopeFrames >= 120 ||
+                    envelopeRatio > 0.22)
                 {
                     bestTrack.EnvelopeRectangle = bestTrack.Rectangle;
                     bestTrack.EnvelopeFrames = 1;
@@ -1078,16 +846,20 @@ namespace FireCandidateValidator
                     bestTrack.EnvelopeRectangle = envelope;
                     bestTrack.EnvelopeFrames++;
                 }
+
                 bestTrack.MissingFrames = 0;
                 bestTrack.Matched = true;
             }
 
-            int ordinaryContinuityHoldFrames = isInfrared
-                ? Math.Max(24, confirmationFrameCount)
-                : Math.Max(30, confirmationFrameCount);
-            int verifiedContinuityHoldFrames = isInfrared
-                ? Math.Max(90, confirmationFrameCount * 4)
-                : Math.Max(150, confirmationFrameCount * 5);
+            int ordinaryContinuityHoldFrames = isInfrared ? Math.Max(24, confirmationFrameCount) : Math.Max(30, confirmationFrameCount);
+            int verifiedContinuityHoldFrames = isInfrared ? Math.Max(
+                90,
+                confirmationFrameCount * 4
+            ) : Math.Max(
+                150,
+                confirmationFrameCount * 5
+            );
+
             for (int index = _tracks.Count - 1; index >= 0; index--)
             {
                 SmokeCandidateTrack track = _tracks[index];
@@ -1098,188 +870,189 @@ namespace FireCandidateValidator
                     track.FreshEvidenceAge++;
                 }
 
-                int removalLimit = track.IsVerifiedPlume
-                    ? verifiedContinuityHoldFrames
-                    : track.HasBeenConfirmed
-                    ? ordinaryContinuityHoldFrames
-                    : Math.Max(24, confirmationFrameCount);
+                int removalLimit = track.IsVerifiedPlume ? verifiedContinuityHoldFrames : track.HasBeenConfirmed ? ordinaryContinuityHoldFrames : Math.Max(
+                    24,
+                    confirmationFrameCount
+                );
+
                 if (track.MissingFrames > removalLimit)
                 {
                     _tracks.RemoveAt(index);
                 }
-
             }
 
-            List<Rect> confirmed =
-                new List<Rect>();
-            int stationaryLimit =
-                Math.Max(18, confirmationFrameCount * 2);
+            List<Rect> confirmed = new List<Rect>();
+            int stationaryLimit = Math.Max(18, confirmationFrameCount * 2);
 
             foreach (SmokeCandidateTrack track in _tracks)
             {
-                int directionalSamples =
-                    track.UpwardSamples + track.DownwardSamples;
-                double trackRectangleAreaRatio =
-                    track.Rectangle.Width * (double)track.Rectangle.Height /
-                    Math.Max(1.0, frameWidth * (double)frameHeight);
-                int boundaryMargin =
-                    Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
-                bool touchesTopBoundary =
-                    track.Rectangle.Y <= boundaryMargin;
-                bool touchesLeftBoundary =
-                    track.Rectangle.X <= boundaryMargin;
-                bool touchesRightBoundary =
-                    track.Rectangle.Right >= frameWidth - boundaryMargin;
-                bool touchesSingleHorizontalBoundary =
-                    touchesLeftBoundary != touchesRightBoundary;
-                int fastConfirmationFrameCount =
-                    Math.Max(16, confirmationFrameCount - 6);
+                int directionalSamples = track.UpwardSamples + track.DownwardSamples;
+                double trackRectangleAreaRatio = track.Rectangle.Width * (double)track.Rectangle.Height / Math.Max(
+                    1.0,
+                    frameWidth * (double)frameHeight
+                );
+                int boundaryMargin = Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
+                bool touchesTopBoundary = track.Rectangle.Y <= boundaryMargin;
+                bool touchesLeftBoundary = track.Rectangle.X <= boundaryMargin;
+                bool touchesRightBoundary = track.Rectangle.Right >= frameWidth - boundaryMargin;
+                bool touchesSingleHorizontalBoundary = touchesLeftBoundary != touchesRightBoundary;
+                int fastConfirmationFrameCount = Math.Max(16, confirmationFrameCount - 6);
                 // 2026-09-23: 화면 좌우로 잘린 실제 대형 플룸은 나무 가림으로
                 // Track이 분리되어 기존 24프레임에 도달하기 전에 사라졌다.
                 // 면적뿐 아니라 동적 형상·변형·상승/확산 증거가 함께 누적된 경우만
                 // 강한 플룸으로 분류해 일반 후보보다 빠른 진입을 허용한다.
-                bool strongPlumeEvidence =
-                    !isInfrared &&
+                bool strongPlumeEvidence = !isInfrared &&
                     trackRectangleAreaRatio >= 0.015 &&
                     trackRectangleAreaRatio <= 0.45 &&
                     track.SeenFrames >= fastConfirmationFrameCount &&
-                    track.DynamicSamples >= Math.Max(6, fastConfirmationFrameCount / 3) &&
-                    track.DeformationSamples >= Math.Max(3, fastConfirmationFrameCount / 8) &&
-                    track.UpwardSamples + track.ExpansionSamples >=
-                        Math.Max(4, fastConfirmationFrameCount / 5);
-                bool borderPlumeCandidate =
-                    strongPlumeEvidence &&
-                    !touchesTopBoundary &&
-                    touchesSingleHorizontalBoundary;
-                int largePlumeEvidenceFrameCount =
-                    strongPlumeEvidence
-                        ? fastConfirmationFrameCount
-                        : confirmationFrameCount;
-                bool largePlumeCandidate =
-                    !isInfrared &&
+                    track.DynamicSamples >= Math.Max(
+                    6,
+                    fastConfirmationFrameCount / 3
+                ) &&
+                    track.DeformationSamples >= Math.Max(
+                    3,
+                    fastConfirmationFrameCount / 8
+                ) &&
+                    track.UpwardSamples + track.ExpansionSamples >= Math.Max(
+                    4,
+                    fastConfirmationFrameCount / 5
+                );
+                bool borderPlumeCandidate = strongPlumeEvidence && !touchesTopBoundary && touchesSingleHorizontalBoundary;
+                int largePlumeEvidenceFrameCount = strongPlumeEvidence ? fastConfirmationFrameCount : confirmationFrameCount;
+                bool largePlumeCandidate = !isInfrared &&
                     trackRectangleAreaRatio >= 0.06 &&
                     trackRectangleAreaRatio <= 0.60 &&
                     track.SeenFrames >= largePlumeEvidenceFrameCount &&
-                    track.DynamicSamples >= Math.Max(4, largePlumeEvidenceFrameCount / 3) &&
-                    track.DeformationSamples >= Math.Max(2, largePlumeEvidenceFrameCount / 8);
-                bool hyperDynamicBackground =
-                    !isInfrared &&
-                    track.SeenFrames >= Math.Max(90, confirmationFrameCount * 3) &&
+                    track.DynamicSamples >= Math.Max(
+                    4,
+                    largePlumeEvidenceFrameCount / 3
+                ) &&
+                    track.DeformationSamples >= Math.Max(
+                    2,
+                    largePlumeEvidenceFrameCount / 8
+                );
+                bool hyperDynamicBackground = !isInfrared &&
+                    track.SeenFrames >= Math.Max(
+                    90,
+                    confirmationFrameCount * 3
+                ) &&
                     trackRectangleAreaRatio <= 0.03 &&
                     track.DynamicSamples >= track.SeenFrames * 0.72 &&
                     track.DeformationSamples >= track.SeenFrames * 0.40;
-                bool weakBottomBoundary =
-                    !isInfrared &&
+                bool weakBottomBoundary = !isInfrared &&
                     !largePlumeCandidate &&
                     !borderPlumeCandidate &&
-                    TouchesBottomBoundary(track.Rectangle, frameWidth, frameHeight) &&
-                    (track.UpwardSamples < Math.Max(2, track.SeenFrames * 0.10) ||
-                     track.UpwardSamples + track.ExpansionSamples <
-                     Math.Max(4, track.SeenFrames * 0.25));
-                bool baseDirectionAccepted =
-                    directionalSamples < 3 ||
-                    track.UpwardSamples + 1 >= track.DownwardSamples;
-                bool accumulatedDirectionAccepted =
-                    highZoomMode && !isInfrared &&
+                    TouchesBottomBoundary(
+                    track.Rectangle,
+                    frameWidth,
+                    frameHeight
+                ) &&
+                    (track.UpwardSamples < Math.Max(
+                    2,
+                    track.SeenFrames * 0.10
+                ) ||
+                    track.UpwardSamples + track.ExpansionSamples < Math.Max(
+                    4,
+                    track.SeenFrames * 0.25
+                ));
+                bool baseDirectionAccepted = directionalSamples < 3 || track.UpwardSamples + 1 >= track.DownwardSamples;
+                bool accumulatedDirectionAccepted = highZoomMode &&
+                    !isInfrared &&
                     track.RecentVerticalMotionCount >= 10 &&
                     track.RecentUpwardSamples >= 3 &&
                     track.RecentUpwardSamples >= track.RecentDownwardSamples + 2;
-                bool heatShimmerOscillation =
-                    highZoomMode && !isInfrared &&
+                bool heatShimmerOscillation = highZoomMode &&
+                    !isInfrared &&
                     track.RecentVerticalMotionCount >= 12 &&
                     track.RecentDirectionChanges >= 7 &&
-                    Math.Abs(track.RecentVerticalNetMotion) <=
-                        track.RecentVerticalAbsoluteMotion * 0.12 &&
+                    Math.Abs(track.RecentVerticalNetMotion) <= track.RecentVerticalAbsoluteMotion * 0.12 &&
                     trackRectangleAreaRatio <= 0.08 &&
-                    track.DeformationSamples < Math.Max(4, track.SeenFrames / 5);
-                bool touchesFrameBoundary =
-                    !largePlumeCandidate &&
+                    track.DeformationSamples < Math.Max(
+                    4,
+                    track.SeenFrames / 5
+                );
+                bool touchesFrameBoundary = !largePlumeCandidate &&
                     !borderPlumeCandidate &&
-                    TouchesFrameBoundary(track.Rectangle, frameWidth, frameHeight);
-                bool maturePlumeEvidence =
-                    !isInfrared &&
+                    TouchesFrameBoundary(
+                    track.Rectangle,
+                    frameWidth,
+                    frameHeight
+                );
+                bool maturePlumeEvidence = !isInfrared &&
                     !touchesFrameBoundary &&
                     !hyperDynamicBackground &&
                     HasMaturePlumeEvidence(
-                        track,
-                        confirmationFrameCount,
-                        frameWidth,
-                        frameHeight);
+                    track,
+                    confirmationFrameCount,
+                    frameWidth,
+                    frameHeight
+                );
                 // 2026-09-22 V25: 진단 영상에서 창틀/벽면 경계가 폭 1~3%,
                 // 높이 30% 이상의 가는 세로 띠로 장시간 추적되었다. 기존 상승·확산
                 // 판정은 유지하고, 실제 플룸으로 성숙하기 전의 극단적 구조 띠만 제외한다.
-                bool narrowVerticalStructure =
-                    !isInfrared &&
+                bool narrowVerticalStructure = !isInfrared &&
                     !maturePlumeEvidence &&
                     track.Rectangle.Height >= frameHeight * 0.28 &&
                     track.Rectangle.Width <= frameWidth * 0.035 &&
-                    track.Rectangle.Width /
-                        (double)Math.Max(1, track.Rectangle.Height) <= 0.16;
-                bool directionAccepted =
-                    (baseDirectionAccepted || accumulatedDirectionAccepted ||
-                     maturePlumeEvidence || strongPlumeEvidence) &&
+                    track.Rectangle.Width / (double)Math.Max(
+                    1,
+                    track.Rectangle.Height
+                ) <= 0.16;
+                bool directionAccepted = (baseDirectionAccepted ||
+                    accumulatedDirectionAccepted ||
+                    maturePlumeEvidence ||
+                    strongPlumeEvidence) &&
                     !heatShimmerOscillation;
                 int requiredDynamicSamples = Math.Max(
                     4,
-                    confirmationFrameCount /
-                    (falsePositiveSuppressionLevel >= 2
-                        ? 3
-                        : falsePositiveSuppressionLevel == 1 ? 4 : 5));
+                    confirmationFrameCount / (falsePositiveSuppressionLevel >= 2 ? 3 : falsePositiveSuppressionLevel == 1 ? 4 : 5)
+                );
                 int requiredPlumeSamples = Math.Max(
                     2,
-                    confirmationFrameCount /
-                    (falsePositiveSuppressionLevel >= 2
-                        ? 6
-                        : falsePositiveSuppressionLevel == 1 ? 8 : 10));
-                bool plumeEvolutionAccepted =
-                    track.DynamicSamples >= requiredDynamicSamples &&
-                    track.UpwardSamples + track.ExpansionSamples >=
-                    requiredPlumeSamples;
-                bool sourceStabilityAccepted =
-                    isInfrared ||
+                    confirmationFrameCount / (falsePositiveSuppressionLevel >= 2 ? 6 : falsePositiveSuppressionLevel == 1 ? 8 : 10)
+                );
+                bool plumeEvolutionAccepted = track.DynamicSamples >= requiredDynamicSamples &&
+                    track.UpwardSamples + track.ExpansionSamples >= requiredPlumeSamples;
+                bool sourceStabilityAccepted = isInfrared ||
                     borderPlumeCandidate ||
                     maturePlumeEvidence ||
                     HasStableSmokeSource(
-                        track,
-                        falsePositiveSuppressionLevel,
-                        frameWidth,
-                        frameHeight);
-                bool plumeShapeAccepted =
-                    falsePositiveSuppressionLevel == 0 ||
+                    track,
+                    falsePositiveSuppressionLevel,
+                    frameWidth,
+                    frameHeight
+                );
+                bool plumeShapeAccepted = falsePositiveSuppressionLevel == 0 ||
                     track.UpwardSamples > 0 ||
-                    track.DeformationSamples >=
-                        (falsePositiveSuppressionLevel >= 2 ? 4 : 3);
-
-                bool rigidMovingObject =
-                    !isInfrared &&
+                    track.DeformationSamples >= (falsePositiveSuppressionLevel >= 2 ? 4 : 3);
+                bool rigidMovingObject = !isInfrared &&
                     IsRigidMovingObjectTrack(
-                        track,
-                        confirmationFrameCount,
-                        frameWidth,
-                        frameHeight);
-                bool movingSmokeSource =
-                    !isInfrared &&
+                    track,
+                    confirmationFrameCount,
+                    frameWidth,
+                    frameHeight
+                );
+                bool movingSmokeSource = !isInfrared &&
                     !maturePlumeEvidence &&
                     !borderPlumeCandidate &&
                     IsMovingSmokeSourceTrack(
-                        track,
-                        confirmationFrameCount,
-                        frameWidth,
-                        frameHeight);
-                bool roadTrafficAggregate =
-                    !isInfrared &&
+                    track,
+                    confirmationFrameCount,
+                    frameWidth,
+                    frameHeight
+                );
+                bool roadTrafficAggregate = !isInfrared &&
                     IsRoadTrafficAggregateTrack(
-                        track,
-                        confirmationFrameCount,
-                        frameWidth,
-                        frameHeight);
-
-                bool validationAccepted =
-                    track.MissingFrames <= Math.Max(12, confirmationFrameCount / 3) &&
-                    track.SeenFrames >=
-                        (strongPlumeEvidence
-                            ? fastConfirmationFrameCount
-                            : confirmationFrameCount) &&
+                    track,
+                    confirmationFrameCount,
+                    frameWidth,
+                    frameHeight
+                );
+                bool validationAccepted = track.MissingFrames <= Math.Max(
+                    12,
+                    confirmationFrameCount / 3
+                ) &&
+                    track.SeenFrames >= (strongPlumeEvidence ? fastConfirmationFrameCount : confirmationFrameCount) &&
                     !touchesFrameBoundary &&
                     !weakBottomBoundary &&
                     !hyperDynamicBackground &&
@@ -1304,74 +1077,36 @@ namespace FireCandidateValidator
                     track.ConsecutiveAcceptedFrames = 0;
                 }
 
-                int entryEvidenceFrames = isInfrared
-                    ? 3
-                    : strongPlumeEvidence ? 4 : 6;
-                bool currentlyAccepted =
-                    validationAccepted &&
-                    track.ConsecutiveAcceptedFrames >= entryEvidenceFrames;
+                int entryEvidenceFrames = isInfrared ? 3 : strongPlumeEvidence ? 4 : 6;
+                bool currentlyAccepted = validationAccepted && track.ConsecutiveAcceptedFrames >= entryEvidenceFrames;
+                int verifiedEvidenceFrames = maturePlumeEvidence || strongPlumeEvidence ? 12 : 45;
 
-                int verifiedEvidenceFrames =
-                    maturePlumeEvidence || strongPlumeEvidence
-                        ? 12
-                        : 45;
-                if (currentlyAccepted &&
-                    track.ConsecutiveAcceptedFrames >= verifiedEvidenceFrames)
+                if (currentlyAccepted && track.ConsecutiveAcceptedFrames >= verifiedEvidenceFrames)
                 {
                     track.IsVerifiedPlume = true;
                 }
 
                 // 강체·교통 특성이 뒤늦게 누적되면 장기 유지 자격을 즉시 취소한다.
-                if (rigidMovingObject || roadTrafficAggregate ||
-                    weakBottomBoundary || hyperDynamicBackground ||
-                    heatShimmerOscillation || track.FreshEvidenceAge > 45)
+                if (rigidMovingObject ||
+                    roadTrafficAggregate ||
+                    weakBottomBoundary ||
+                    hyperDynamicBackground ||
+                    heatShimmerOscillation ||
+                    track.FreshEvidenceAge > 45)
                 {
                     track.IsVerifiedPlume = false;
                 }
 
-                string trackReason = currentlyAccepted
-                    ? "ACCEPTED"
-                    : track.IsVerifiedPlume
-                        ? "VERIFIED_HOLD"
-                    : track.SeenFrames < confirmationFrameCount
-                        ? "CONFIRMING"
-                        : touchesFrameBoundary
-                            ? "FRAME_BOUNDARY"
-                            : weakBottomBoundary
-                                ? "BOTTOM_BOUNDARY_LOW_RISE"
-                                : hyperDynamicBackground
-                                    ? "DYNAMIC_BACKGROUND"
-                            : heatShimmerOscillation
-                                        ? "HEAT_SHIMMER_OSCILLATION"
-                            : narrowVerticalStructure
-                                ? "NARROW_VERTICAL_STRUCTURE"
-                            : validationAccepted
-                                ? "ACCEPTANCE_STABILIZING"
-                        : track.StationaryFrames >= Math.Min(confirmationFrameCount, stationaryLimit)
-                            ? "STATIONARY"
-                            : !directionAccepted
-                                ? "DOWNWARD_DOMINANT"
-                                : !plumeEvolutionAccepted
-                                    ? "INSUFFICIENT_PLUME_EVOLUTION"
-                                    : !sourceStabilityAccepted
-                                        ? "MOVING_SOURCE"
-                                        : !plumeShapeAccepted
-                                            ? "RIGID_SHAPE"
-                                            : rigidMovingObject
-                                                ? "RIGID_MOVING_OBJECT"
-                                                : movingSmokeSource
-                                                    ? "MOVING_SOURCE"
-                                                    : roadTrafficAggregate
-                                                        ? "ROAD_TRAFFIC_AGGREGATE"
-                                                        : track.MissingFrames > Math.Max(12, confirmationFrameCount / 3)
-                                                            ? "MISSING"
-                                                            : "TRACK_FILTER";
-
+                string trackReason = currentlyAccepted ? "ACCEPTED" : track.IsVerifiedPlume ? "VERIFIED_HOLD" : track.SeenFrames < confirmationFrameCount ? "CONFIRMING" : touchesFrameBoundary ? "FRAME_BOUNDARY" : weakBottomBoundary ? "BOTTOM_BOUNDARY_LOW_RISE" : hyperDynamicBackground ? "DYNAMIC_BACKGROUND" : heatShimmerOscillation ? "HEAT_SHIMMER_OSCILLATION" : narrowVerticalStructure ? "NARROW_VERTICAL_STRUCTURE" : validationAccepted ? "ACCEPTANCE_STABILIZING" : track.StationaryFrames >= Math.Min(
+                    confirmationFrameCount,
+                    stationaryLimit
+                ) ? "STATIONARY" : !directionAccepted ? "DOWNWARD_DOMINANT" : !plumeEvolutionAccepted ? "INSUFFICIENT_PLUME_EVOLUTION" : !sourceStabilityAccepted ? "MOVING_SOURCE" : !plumeShapeAccepted ? "RIGID_SHAPE" : rigidMovingObject ? "RIGID_MOVING_OBJECT" : movingSmokeSource ? "MOVING_SOURCE" : roadTrafficAggregate ? "ROAD_TRAFFIC_AGGREGATE" : track.MissingFrames > Math.Max(
+                    12,
+                    confirmationFrameCount / 3
+                ) ? "MISSING" : "TRACK_FILTER";
                 diagnostic?.AddTrack(
                     track.Rectangle,
-                    currentlyAccepted
-                        ? "PASS"
-                        : track.IsVerifiedPlume ? "HOLD" : "REJECT",
+                    currentlyAccepted ? "PASS" : track.IsVerifiedPlume ? "HOLD" : "REJECT",
                     trackReason,
                     track.SeenFrames,
                     track.MissingFrames,
@@ -1379,30 +1114,28 @@ namespace FireCandidateValidator
                     track.UpwardSamples,
                     track.ExpansionSamples,
                     track.DeformationSamples,
-                    track.StationaryFrames);
+                    track.StationaryFrames
+                );
 
                 if (currentlyAccepted)
                 {
                     track.HasBeenConfirmed = true;
                     track.LastConfirmedRectangle = track.EnvelopeRectangle;
                 }
-                else if (rigidMovingObject &&
-                         track.MissingFrames == 0 &&
-                         track.SeenFrames >= confirmationFrameCount)
+                else if (rigidMovingObject && track.MissingFrames == 0 && track.SeenFrames >= confirmationFrameCount)
                 {
                     _lastRigidMotionSuppressedCount++;
                 }
 
-                if ((movingSmokeSource || !sourceStabilityAccepted) &&
+                if ((movingSmokeSource ||
+                    !sourceStabilityAccepted) &&
                     track.MissingFrames == 0 &&
                     track.SeenFrames >= confirmationFrameCount)
                 {
                     _lastMovingSourceSuppressedCount++;
                 }
 
-                if (roadTrafficAggregate &&
-                    track.MissingFrames == 0 &&
-                    track.SeenFrames >= confirmationFrameCount)
+                if (roadTrafficAggregate && track.MissingFrames == 0 && track.SeenFrames >= confirmationFrameCount)
                 {
                     _lastTrafficAggregateSuppressedCount++;
                 }
@@ -1413,26 +1146,23 @@ namespace FireCandidateValidator
                  * 마지막 외곽을 유지하며, 실제 후보가 다시 매칭되면 즉시 갱신한다.
                  * 차량/이동 발생점으로 판정된 Track은 유지 대상에서 제외한다.
                  */
-                bool verifiedPersistence =
-                    track.IsVerifiedPlume &&
+                bool verifiedPersistence = track.IsVerifiedPlume &&
                     !rigidMovingObject &&
                     !roadTrafficAggregate &&
                     !weakBottomBoundary &&
                     !hyperDynamicBackground &&
                     !narrowVerticalStructure;
-                int trackContinuityLimit = track.IsVerifiedPlume
-                    ? verifiedContinuityHoldFrames
-                    : ordinaryContinuityHoldFrames;
+                int trackContinuityLimit = track.IsVerifiedPlume ? verifiedContinuityHoldFrames : ordinaryContinuityHoldFrames;
 
                 if (track.HasBeenConfirmed &&
                     track.MissingFrames <= trackContinuityLimit &&
                     (verifiedPersistence ||
-                     (sourceStabilityAccepted &&
-                      plumeShapeAccepted &&
-                      !rigidMovingObject &&
-                      !movingSmokeSource &&
-                      !roadTrafficAggregate &&
-                      !narrowVerticalStructure)))
+                    (sourceStabilityAccepted &&
+                    plumeShapeAccepted &&
+                    !rigidMovingObject &&
+                    !movingSmokeSource &&
+                    !roadTrafficAggregate &&
+                    !narrowVerticalStructure)))
                 {
                     if (track.Matched)
                     {
@@ -1440,22 +1170,22 @@ namespace FireCandidateValidator
                     }
 
                     Rect persistentRectangle = track.LastConfirmedRectangle;
+
                     if (persistentRectangle != Rect.Empty)
                     {
                         AddIndependentCandidate(confirmed, persistentRectangle);
+
                         if (track.IsVerifiedPlume)
                         {
                             _lastVerifiedVisibleCount++;
                         }
+
                         if (!currentlyAccepted)
                         {
                             _lastContinuityHeldCount++;
                         }
-
                     }
-
                 }
-
             }
 
             return confirmed;
@@ -1470,44 +1200,40 @@ namespace FireCandidateValidator
             SmokeCandidateTrack track,
             int confirmationFrameCount,
             int frameWidth,
-            int frameHeight)
+            int frameHeight
+        )
         {
             int seen = Math.Max(1, track.SeenFrames);
-            double rectangleAreaRatio =
-                track.Rectangle.Width * (double)track.Rectangle.Height /
-                Math.Max(1.0, frameWidth * (double)frameHeight);
-
+            double rectangleAreaRatio = track.Rectangle.Width * (double)track.Rectangle.Height / Math.Max(
+                1.0,
+                frameWidth * (double)frameHeight
+            );
             // 실영상 진단에서 짧은 창문/외벽 반사는 50~80프레임 구간에도
             // 플룸과 유사한 변형값을 보였다. 따라서 이동 발생점 예외는 단순히
             // 민감도를 낮추는 용도가 아니라, 3초 이상 누적된 비강체 플룸에만
             // 허용한다. 큰 하단 수목 후보도 면적 상한으로 제외한다.
-            return seen >= Math.Max(90, confirmationFrameCount * 3) &&
-                   rectangleAreaRatio <= 0.018 &&
-                   track.DynamicSamples >= seen * 0.60 &&
-                   track.DynamicSamples <= seen * 0.85 &&
-                   track.DeformationSamples >= seen * 0.22 &&
-                   track.DeformationSamples <= seen * 0.38 &&
-                   track.ExpansionSamples >= seen * 0.18 &&
-                   track.UpwardSamples + track.ExpansionSamples >= seen * 0.26;
+            return seen >= Math.Max(
+                90,
+                confirmationFrameCount * 3
+            ) &&
+                rectangleAreaRatio <= 0.018 &&
+                track.DynamicSamples >= seen * 0.60 &&
+                track.DynamicSamples <= seen * 0.85 &&
+                track.DeformationSamples >= seen * 0.22 &&
+                track.DeformationSamples <= seen * 0.38 &&
+                track.ExpansionSamples >= seen * 0.18 &&
+                track.UpwardSamples + track.ExpansionSamples >= seen * 0.26;
         }
 
-        private static bool TouchesFrameBoundary(
-            Rect rectangle,
-            int frameWidth,
-            int frameHeight)
+        private static bool TouchesFrameBoundary(Rect rectangle, int frameWidth, int frameHeight)
         {
             int margin = Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
             // 화면 하단은 차량 화재·근거리 발생점이 실제로 진입할 수 있으므로
             // 제외하지 않고, 영상 경계 잡음이 빈번한 상단과 좌우만 진입을 막는다.
-            return rectangle.X <= margin ||
-                   rectangle.Y <= margin ||
-                   rectangle.Right >= frameWidth - margin;
+            return rectangle.X <= margin || rectangle.Y <= margin || rectangle.Right >= frameWidth - margin;
         }
 
-        private static bool TouchesBottomBoundary(
-            Rect rectangle,
-            int frameWidth,
-            int frameHeight)
+        private static bool TouchesBottomBoundary(Rect rectangle, int frameWidth, int frameHeight)
         {
             int margin = Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
             return rectangle.Bottom >= frameHeight - margin;
@@ -1519,11 +1245,7 @@ namespace FireCandidateValidator
         /// 변형되어도 발생점이 비교적 고정되지만 차량·가림 변화는 하단까지 이동한다.
         /// SENSITIVE는 기존 판정을 유지한다.
         /// </summary>
-        private static bool HasStableSmokeSource(
-            SmokeCandidateTrack track,
-            int suppressionLevel,
-            int frameWidth,
-            int frameHeight)
+        private static bool HasStableSmokeSource(SmokeCandidateTrack track, int suppressionLevel, int frameWidth, int frameHeight)
         {
             if (suppressionLevel <= 0)
             {
@@ -1531,6 +1253,7 @@ namespace FireCandidateValidator
             }
 
             int minimumSamples = suppressionLevel >= 2 ? 4 : 5;
+
             if (track.SourceMotionSamples < minimumSamples)
             {
                 return true;
@@ -1539,25 +1262,17 @@ namespace FireCandidateValidator
             double spanX = track.MaximumSourceX - track.MinimumSourceX;
             double spanY = track.MaximumSourceY - track.MinimumSourceY;
             double sourceSpan = Math.Sqrt(spanX * spanX + spanY * spanY);
-            double frameDiagonal = Math.Max(
-                1.0,
-                Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
+            double frameDiagonal = Math.Max(1.0, Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
             double initialDiagonal = Math.Max(
                 1.0,
-                Math.Sqrt(
-                    track.InitialRectangle.Width * (double)track.InitialRectangle.Width +
-                    track.InitialRectangle.Height * (double)track.InitialRectangle.Height));
+                Math.Sqrt(track.InitialRectangle.Width * (double)track.InitialRectangle.Width + track.InitialRectangle.Height * (double)track.InitialRectangle.Height)
+            );
             double frameLimit = suppressionLevel >= 2 ? 0.010 : 0.016;
             double objectLimit = suppressionLevel >= 2 ? 0.55 : 0.80;
-
-            return sourceSpan / frameDiagonal <= frameLimit &&
-                   sourceSpan / initialDiagonal <= objectLimit;
+            return sourceSpan / frameDiagonal <= frameLimit && sourceSpan / initialDiagonal <= objectLimit;
         }
 
-        private static int ResolveFalsePositiveSuppressionLevel(
-            bool isInfrared,
-            double minimumAreaRatio,
-            double changeThresholdRatio)
+        private static int ResolveFalsePositiveSuppressionLevel(bool isInfrared, double minimumAreaRatio, double changeThresholdRatio)
         {
             if (isInfrared)
             {
@@ -1569,9 +1284,7 @@ namespace FireCandidateValidator
                 return 2;
             }
 
-            return minimumAreaRatio >= 0.0010 || changeThresholdRatio >= 0.030
-                ? 1
-                : 0;
+            return minimumAreaRatio >= 0.0010 || changeThresholdRatio >= 0.030 ? 1 : 0;
         }
 
         /// <summary>
@@ -1583,9 +1296,11 @@ namespace FireCandidateValidator
             SmokeCandidateTrack track,
             int confirmationFrameCount,
             int frameWidth,
-            int frameHeight)
+            int frameHeight
+        )
         {
             int minimumSamples = Math.Max(8, confirmationFrameCount / 4);
+
             if (track.SourceMotionSamples < minimumSamples)
             {
                 return false;
@@ -1593,24 +1308,17 @@ namespace FireCandidateValidator
 
             double spanX = track.MaximumSourceX - track.MinimumSourceX;
             double spanY = track.MaximumSourceY - track.MinimumSourceY;
-            double frameDiagonal = Math.Max(
-                1.0,
-                Math.Sqrt(frameWidth * (double)frameWidth +
-                          frameHeight * (double)frameHeight));
+            double frameDiagonal = Math.Max(1.0, Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
             double sourceSpan = Math.Sqrt(spanX * spanX + spanY * spanY);
-            double envelopeRatio =
-                track.EnvelopeRectangle.Width *
-                (double)track.EnvelopeRectangle.Height /
-                Math.Max(1.0, frameWidth * (double)frameHeight);
+            double envelopeRatio = track.EnvelopeRectangle.Width * (double)track.EnvelopeRectangle.Height / Math.Max(
+                1.0,
+                frameWidth * (double)frameHeight
+            );
             bool wideMovingSource = sourceSpan / frameDiagonal >= 0.055;
-            bool erraticDirection =
-                track.SourceDirectionChangeSamples >=
-                Math.Max(3, track.SourceMotionSamples / 5);
+            bool erraticDirection = track.SourceDirectionChangeSamples >= Math.Max(3, track.SourceMotionSamples / 5);
             bool repeatedJumps = track.AbruptSourceJumpSamples >= 3;
             bool oversizedFootprint = envelopeRatio >= 0.080;
-
-            return wideMovingSource &&
-                   (erraticDirection || repeatedJumps || oversizedFootprint);
+            return wideMovingSource && (erraticDirection || repeatedJumps || oversizedFootprint);
         }
 
         /// <summary>
@@ -1623,21 +1331,20 @@ namespace FireCandidateValidator
             {
                 Rect existing = target[index];
                 Rect intersection = existing & candidate;
-                double intersectionArea =
-                    Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
+                double intersectionArea = Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
                 double smallerArea = Math.Max(
                     1.0,
                     Math.Min(
-                        existing.Width * (double)existing.Height,
-                        candidate.Width * (double)candidate.Height));
+                    existing.Width * (double)existing.Height,
+                    candidate.Width * (double)candidate.Height
+                )
+                );
 
-                if (IntersectionOverUnion(existing, candidate) >= 0.18 ||
-                    intersectionArea / smallerArea >= 0.55)
+                if (IntersectionOverUnion(existing, candidate) >= 0.18 || intersectionArea / smallerArea >= 0.55)
                 {
                     target[index] = existing | candidate;
                     return;
                 }
-
             }
 
             target.Add(candidate);
@@ -1652,161 +1359,155 @@ namespace FireCandidateValidator
             SmokeCandidateTrack track,
             int confirmationFrameCount,
             int frameWidth,
-            int frameHeight)
+            int frameHeight
+        )
         {
-            int minimumMotionSamples =
-                Math.Max(8, confirmationFrameCount / 4);
+            int minimumMotionSamples = Math.Max(8, confirmationFrameCount / 4);
+
             if (track.SignificantMotionSamples < minimumMotionSamples)
             {
                 return false;
             }
 
-            double rigidRatio =
-                track.RigidTranslationSamples /
-                (double)Math.Max(1, track.SignificantMotionSamples);
-            double coherentRatio =
-                track.CoherentMotionSamples /
-                (double)Math.Max(1, track.SignificantMotionSamples - 1);
-            double deformationRatio =
-                track.DeformationSamples /
-                (double)Math.Max(1, track.SeenFrames - 1);
-
+            double rigidRatio = track.RigidTranslationSamples / (double)Math.Max(1, track.SignificantMotionSamples);
+            double coherentRatio = track.CoherentMotionSamples / (double)Math.Max(1, track.SignificantMotionSamples - 1);
+            double deformationRatio = track.DeformationSamples / (double)Math.Max(1, track.SeenFrames - 1);
             Point currentCenter = GetCenter(track.Rectangle);
-            double netDisplacement = Math.Sqrt(
-                Math.Pow(currentCenter.X - track.InitialCenter.X, 2) +
-                Math.Pow(currentCenter.Y - track.InitialCenter.Y, 2));
-            double frameDiagonal = Math.Max(
-                1.0,
-                Math.Sqrt(frameWidth * (double)frameWidth +
-                          frameHeight * (double)frameHeight));
+            double netDisplacement = Math.Sqrt(Math.Pow(
+                currentCenter.X - track.InitialCenter.X,
+                2
+            ) + Math.Pow(
+                currentCenter.Y - track.InitialCenter.Y,
+                2
+            ));
+            double frameDiagonal = Math.Max(1.0, Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
             double initialDiagonal = Math.Max(
                 1.0,
-                Math.Sqrt(track.InitialRectangle.Width *
-                              (double)track.InitialRectangle.Width +
-                          track.InitialRectangle.Height *
-                              (double)track.InitialRectangle.Height));
-
-            bool trajectoryIsMaterial =
-                netDisplacement / frameDiagonal >= 0.006 &&
+                Math.Sqrt(track.InitialRectangle.Width * (double)track.InitialRectangle.Width + track.InitialRectangle.Height * (double)track.InitialRectangle.Height)
+            );
+            bool trajectoryIsMaterial = netDisplacement / frameDiagonal >= 0.006 &&
                 netDisplacement / initialDiagonal >= 0.32 &&
                 track.TotalMotion / initialDiagonal >= 0.70;
-            bool directionIsCoherent =
-                coherentRatio >= 0.55 &&
-                track.DirectionChangeSamples <=
-                    Math.Max(2, track.SignificantMotionSamples / 4);
-
-            return trajectoryIsMaterial &&
-                   directionIsCoherent &&
-                   rigidRatio >= 0.55 &&
-                   deformationRatio <= 0.35;
+            bool directionIsCoherent = coherentRatio >= 0.55 &&
+                track.DirectionChangeSamples <= Math.Max(
+                2,
+                track.SignificantMotionSamples / 4
+            );
+            return trajectoryIsMaterial && directionIsCoherent && rigidRatio >= 0.55 && deformationRatio <= 0.35;
         }
 
         private static bool IsMovingSmokeSourceTrack(
             SmokeCandidateTrack track,
             int confirmationFrameCount,
             int frameWidth,
-            int frameHeight)
+            int frameHeight
+        )
         {
             int minimumSamples = Math.Max(8, confirmationFrameCount / 4);
+
             if (track.SourceMotionSamples < minimumSamples)
             {
                 return false;
             }
 
             Point currentSource = GetBottomCenter(track.Rectangle);
-            double netDisplacement = Math.Sqrt(
-                Math.Pow(currentSource.X - track.InitialSourcePoint.X, 2) +
-                Math.Pow(currentSource.Y - track.InitialSourcePoint.Y, 2));
-            double frameDiagonal = Math.Max(1.0,
-                Math.Sqrt(frameWidth * (double)frameWidth +
-                          frameHeight * (double)frameHeight));
-            double initialDiagonal = Math.Max(1.0,
-                Math.Sqrt(track.InitialRectangle.Width *
-                              (double)track.InitialRectangle.Width +
-                          track.InitialRectangle.Height *
-                              (double)track.InitialRectangle.Height));
-            double coherentRatio =
-                track.CoherentSourceMotionSamples /
-                (double)Math.Max(1, track.SourceMotionSamples - 1);
-
+            double netDisplacement = Math.Sqrt(Math.Pow(
+                currentSource.X - track.InitialSourcePoint.X,
+                2
+            ) + Math.Pow(
+                currentSource.Y - track.InitialSourcePoint.Y,
+                2
+            ));
+            double frameDiagonal = Math.Max(1.0, Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
+            double initialDiagonal = Math.Max(
+                1.0,
+                Math.Sqrt(track.InitialRectangle.Width * (double)track.InitialRectangle.Width + track.InitialRectangle.Height * (double)track.InitialRectangle.Height)
+            );
+            double coherentRatio = track.CoherentSourceMotionSamples / (double)Math.Max(1, track.SourceMotionSamples - 1);
             return netDisplacement / frameDiagonal >= 0.004 &&
-                   netDisplacement / initialDiagonal >= 0.25 &&
-                   track.SourceTotalMotion / initialDiagonal >= 0.65 &&
-                   coherentRatio >= 0.55 &&
-                   track.SourceDirectionChangeSamples <=
-                       Math.Max(2, track.SourceMotionSamples / 4);
+                netDisplacement / initialDiagonal >= 0.25 &&
+                track.SourceTotalMotion / initialDiagonal >= 0.65 &&
+                coherentRatio >= 0.55 &&
+                track.SourceDirectionChangeSamples <= Math.Max(
+                2,
+                track.SourceMotionSamples / 4
+            );
         }
 
         /// <summary>
         /// 2026-08-31: 프레임별 연기 분할 변화가 화면 BBox 진동으로 전달되지 않도록
         /// 이전 Track과 현재 후보의 위치·크기를 가중 평균한다.
         /// </summary>
-        private static Rect SmoothRectangle(
-            Rect previous,
-            Rect current,
-            int frameWidth,
-            int frameHeight)
+        private static Rect SmoothRectangle(Rect previous, Rect current, int frameWidth, int frameHeight)
         {
             const double CurrentWeight = 0.58;
             int x = (int)Math.Round(previous.X * (1.0 - CurrentWeight) + current.X * CurrentWeight);
             int y = (int)Math.Round(previous.Y * (1.0 - CurrentWeight) + current.Y * CurrentWeight);
             int width = (int)Math.Round(previous.Width * (1.0 - CurrentWeight) + current.Width * CurrentWeight);
             int height = (int)Math.Round(previous.Height * (1.0 - CurrentWeight) + current.Height * CurrentWeight);
-
             return new Rect(
-                Math.Max(0, Math.Min(x, frameWidth - 1)),
-                Math.Max(0, Math.Min(y, frameHeight - 1)),
-                Math.Max(1, Math.Min(width, frameWidth - Math.Max(0, x))),
-                Math.Max(1, Math.Min(height, frameHeight - Math.Max(0, y))));
+                Math.Max(
+                0,
+                Math.Min(
+                x,
+                frameWidth - 1
+            )
+            ),
+                Math.Max(
+                0,
+                Math.Min(
+                y,
+                frameHeight - 1
+            )
+            ),
+                Math.Max(
+                1,
+                Math.Min(
+                width,
+                frameWidth - Math.Max(
+                0,
+                x
+            )
+            )
+            ),
+                Math.Max(
+                1,
+                Math.Min(
+                height,
+                frameHeight - Math.Max(
+                0,
+                y
+            )
+            )
+            )
+            );
         }
 
         private static Point GetCenter(Rect rectangle)
         {
-            return new Point(
-                rectangle.X + rectangle.Width / 2,
-                rectangle.Y + rectangle.Height / 2);
+            return new Point(rectangle.X + rectangle.Width / 2, rectangle.Y + rectangle.Height / 2);
         }
 
         private static Point GetBottomCenter(Rect rectangle)
         {
-            return new Point(
-                rectangle.X + rectangle.Width / 2,
-                rectangle.Bottom);
+            return new Point(rectangle.X + rectangle.Width / 2, rectangle.Bottom);
         }
 
         private static double IntersectionOverUnion(Rect left, Rect right)
         {
             Rect intersection = left & right;
-            double intersectionArea =
-                Math.Max(0, intersection.Width) *
-                Math.Max(0, intersection.Height);
-            double unionArea =
-                Math.Max(
-                    1.0,
-                    left.Width * left.Height +
-                    right.Width * right.Height -
-                    intersectionArea);
-
+            double intersectionArea = Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
+            double unionArea = Math.Max(1.0, left.Width * left.Height + right.Width * right.Height - intersectionArea);
             return intersectionArea / unionArea;
         }
 
-        private static Rect ExpandRect(
-            Rect rectangle,
-            int horizontal,
-            int vertical,
-            int frameWidth,
-            int frameHeight)
+        private static Rect ExpandRect(Rect rectangle, int horizontal, int vertical, int frameWidth, int frameHeight)
         {
             int left = Math.Max(0, rectangle.X - horizontal);
             int top = Math.Max(0, rectangle.Y - vertical);
             int right = Math.Min(frameWidth, rectangle.Right + horizontal);
             int bottom = Math.Min(frameHeight, rectangle.Bottom + vertical);
-
-            return new Rect(
-                left,
-                top,
-                Math.Max(1, right - left),
-                Math.Max(1, bottom - top));
+            return new Rect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
         }
 
         private sealed class SmokeCandidateTrack
@@ -1925,25 +1626,29 @@ namespace FireCandidateValidator
                 {
                     int changes = 0;
                     int previousSign = 0;
+
                     foreach (double value in _recentVerticalMotion)
                     {
                         int sign = value <= -1.0 ? -1 : value >= 1.0 ? 1 : 0;
-                        if (sign != 0 && previousSign != 0 && sign != previousSign) changes++;
-                        if (sign != 0) previousSign = sign;
+
+                        if (sign != 0 && previousSign != 0 && sign != previousSign)
+                            changes++;
+
+                        if (sign != 0)
+                            previousSign = sign;
                     }
+
                     return changes;
                 }
-
             }
 
             internal void RecordRecentVerticalMotion(double value)
             {
                 _recentVerticalMotion.Enqueue(value);
-                while (_recentVerticalMotion.Count > 20) _recentVerticalMotion.Dequeue();
+                while (_recentVerticalMotion.Count > 20)
+                    _recentVerticalMotion.Dequeue();
             }
-
         }
-
     }
 
     /// <summary>
@@ -1961,7 +1666,8 @@ namespace FireCandidateValidator
             int movingSourceSuppressedCount = 0,
             int continuityHeldCount = 0,
             int trafficAggregateSuppressedCount = 0,
-            int verifiedVisibleCount = 0)
+            int verifiedVisibleCount = 0
+        )
         {
             Mask = mask;
             Candidates = candidates;
@@ -1997,19 +1703,13 @@ namespace FireCandidateValidator
 
         internal static SmokeCandidateAnalysis Empty()
         {
-            return new SmokeCandidateAnalysis(
-                new Mat(),
-                new List<Rect>(),
-                false,
-                0,
-                0.0);
+            return new SmokeCandidateAnalysis(new Mat(), new List<Rect>(), false, 0, 0.0);
         }
 
         public void Dispose()
         {
             Mask?.Dispose();
         }
-
     }
 
     /// <summary>
@@ -2022,11 +1722,9 @@ namespace FireCandidateValidator
 
         private readonly bool _captureStageImages;
 
-        private readonly Dictionary<string, Mat> _stageMasks =
-            new Dictionary<string, Mat>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Mat> _stageMasks = new Dictionary<string, Mat>(StringComparer.OrdinalIgnoreCase);
 
-        private readonly List<SmokeDiagnosticRecord> _records =
-            new List<SmokeDiagnosticRecord>();
+        private readonly List<SmokeDiagnosticRecord> _records = new List<SmokeDiagnosticRecord>();
 
         private int _areaRejectRecordCount;
 
@@ -2063,15 +1761,13 @@ namespace FireCandidateValidator
             double aspectRatio,
             double edgeDensity,
             string result,
-            string reason)
+            string reason
+        )
         {
             // 면적 탈락 외곽선은 한 프레임에 수백~수천 개가 생길 수 있다.
             // 대표 8개와 누락 개수 요약만 남겨 장시간 실영상 진단 CSV가
             // 수백 MB로 커지는 것을 막고, TRACK/구조 탈락 자료는 전부 보존한다.
-            if (string.Equals(
-                    reason,
-                    "AREA_OUT_OF_RANGE",
-                    StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(reason, "AREA_OUT_OF_RANGE", StringComparison.OrdinalIgnoreCase))
             {
                 if (_areaRejectRecordCount >= MaximumAreaRejectRecords)
                 {
@@ -2093,18 +1789,7 @@ namespace FireCandidateValidator
                 _areaRejectRecordCount++;
             }
 
-            _records.Add(
-                new SmokeDiagnosticRecord
-                {
-                    Stage = "CONTOUR",
-                    Rectangle = rectangle,
-                    Area = area,
-                    FillRatio = fillRatio,
-                    AspectRatio = aspectRatio,
-                    EdgeDensity = edgeDensity,
-                    Result = result,
-                    Reason = reason
-                });
+            _records.Add(new SmokeDiagnosticRecord { Stage = "CONTOUR", Rectangle = rectangle, Area = area, FillRatio = fillRatio, AspectRatio = aspectRatio, EdgeDensity = edgeDensity, Result = result, Reason = reason });
         }
 
         internal void AddTrack(
@@ -2117,23 +1802,10 @@ namespace FireCandidateValidator
             int upwardSamples,
             int expansionSamples,
             int deformationSamples,
-            int stationaryFrames)
+            int stationaryFrames
+        )
         {
-            _records.Add(
-                new SmokeDiagnosticRecord
-                {
-                    Stage = "TRACK",
-                    Rectangle = rectangle,
-                    Result = result,
-                    Reason = reason,
-                    SeenFrames = seenFrames,
-                    MissingFrames = missingFrames,
-                    DynamicSamples = dynamicSamples,
-                    UpwardSamples = upwardSamples,
-                    ExpansionSamples = expansionSamples,
-                    DeformationSamples = deformationSamples,
-                    StationaryFrames = stationaryFrames
-                });
+            _records.Add(new SmokeDiagnosticRecord { Stage = "TRACK", Rectangle = rectangle, Result = result, Reason = reason, SeenFrames = seenFrames, MissingFrames = missingFrames, DynamicSamples = dynamicSamples, UpwardSamples = upwardSamples, ExpansionSamples = expansionSamples, DeformationSamples = deformationSamples, StationaryFrames = stationaryFrames });
         }
 
         public void Dispose()
@@ -2145,7 +1817,6 @@ namespace FireCandidateValidator
 
             _stageMasks.Clear();
         }
-
     }
 
     internal sealed class SmokeDiagnosticRecord
@@ -2180,5 +1851,4 @@ namespace FireCandidateValidator
 
         internal string Reason { get; set; }
     }
-
 }

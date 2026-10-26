@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Services.Communication;
 using System;
 using System.Collections.Generic;
@@ -40,31 +40,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _isIrRtspAddressValid;
 
-        #region [LA Communication]
+        #region [LA 통신]
 
-        #region [LA Connect]
+        #region [LA 연결]
 
         /// <summary>
         /// Control Agent TCP 연결 상태 UI 갱신
         /// </summary>
         private void SetControlAgentConnectionStatus(
             string statusText,
-            string statusColor, CancellationToken token = default(CancellationToken))
+            string statusColor,
+            CancellationToken token = default(CancellationToken)
+        )
         {
-            if(token.IsCancellationRequested) return;
-            var dispatcher=App.Current?.Dispatcher;
-            if(dispatcher!=null && !dispatcher.CheckAccess())
+            if (token.IsCancellationRequested)
+                return;
+
+            var dispatcher = App.Current?.Dispatcher;
+
+            if (dispatcher != null && !dispatcher.CheckAccess())
             {
-                if(!dispatcher.HasShutdownStarted) dispatcher.Invoke(()=>SetControlAgentConnectionStatus(statusText,statusColor,token));
+                if (!dispatcher.HasShutdownStarted)
+                    dispatcher.Invoke(() => SetControlAgentConnectionStatus(statusText, statusColor, token));
+
                 return;
             }
-            bool isConnected = string.Equals(
-                statusText,
-                "Connected",
-                StringComparison.OrdinalIgnoreCase);
 
-            SetPositionConnectionState(
-                isConnected);
+            bool isConnected = string.Equals(statusText, "Connected", StringComparison.OrdinalIgnoreCase);
+            SetPositionConnectionState(isConnected);
 
             if (isConnected)
             {
@@ -83,39 +86,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 자동 재연결 Loop는 백그라운드 Task에서 실행되므로
              * UI Dispatcher를 통해 바인딩 값을 변경한다.
              */
-            if (App.Current?.Dispatcher ==
-                null)
+            if (App.Current?.Dispatcher == null)
             {
-                ControlAgentConnectionStatusText =
-                    statusText;
-
-                ControlAgentConnectionStatusColor =
-                    statusColor;
-
+                ControlAgentConnectionStatusText = statusText;
+                ControlAgentConnectionStatusColor = statusColor;
                 return;
             }
 
-            if (App.Current.Dispatcher
-                .CheckAccess())
+            if (App.Current.Dispatcher.CheckAccess())
             {
-                ControlAgentConnectionStatusText =
-                    statusText;
-
-                ControlAgentConnectionStatusColor =
-                    statusColor;
-
+                ControlAgentConnectionStatusText = statusText;
+                ControlAgentConnectionStatusColor = statusColor;
                 return;
             }
 
-            App.Current.Dispatcher.Invoke(
-                () =>
-                {
-                    ControlAgentConnectionStatusText =
-                        statusText;
-
-                    ControlAgentConnectionStatusColor =
-                        statusColor;
-                });
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                ControlAgentConnectionStatusText = statusText;
+                ControlAgentConnectionStatusColor = statusColor;
+            });
         }
 
         /// <summary>
@@ -130,30 +119,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "CONTROL AGENT",
                 "TCP connect workflow started",
                 string.Empty,
-                $"TARGET : {ControlAgentIp}:{ControlAgentPortText}");
-
+                $"TARGET : {ControlAgentIp}:{ControlAgentPortText}"
+            );
             Console.WriteLine();
-
             /*
             * Connecting 상태가 시작된 시각을 기록한다.
             *
             * 실제 TCP 연결이 너무 빨리 완료되더라도
             * 최소 표시시간을 계산하기 위해 사용한다.
             */
-            Stopwatch connectingStopwatch =
-                Stopwatch.StartNew();
-
+            Stopwatch connectingStopwatch = Stopwatch.StartNew();
             /*
              * 연결 버튼 클릭 즉시
              * UI 상태를 Connecting으로 변경한다.
              */
-            SetControlAgentConnectionStatus(
-                "Connecting",
-                "#FFD166");
-
-            ConsoleLogHelper.PrintSection(
-                "[CONTROL AGENT]",
-                "Connect Start");
+            SetControlAgentConnectionStatus("Connecting", "#FFD166");
+            ConsoleLogHelper.PrintSection("[CONTROL AGENT]", "Connect Start");
 
             /*
              * UI 입력값 검증
@@ -161,14 +142,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * IP 빈값, Port 문자 입력,
              * Port 범위 오류 등을 검사한다.
              */
-            if (!TryGetControlAgentEndpoint(
-                    out string targetIp,
-                    out int targetPort))
+            if (!TryGetControlAgentEndpoint(out string targetIp, out int targetPort))
             {
-                SetControlAgentConnectionStatus(
-                    "Disconnected",
-                    "#FF6B6B");
-
+                SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
                 return false;
             }
 
@@ -178,31 +154,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
              */
             _controlAgentReconnectCts?.Cancel();
             _controlAgentReconnectCts?.Dispose();
-
-            _controlAgentReconnectCts =
-                null;
+            _controlAgentReconnectCts = null;
 
             try
             {
-                bool result =
-                    await _laTcpService.ConnectAsync(
-                        targetIp,
-                        targetPort);
-
+                bool result = await _laTcpService.ConnectAsync(targetIp, targetPort);
                 /*
                 * 실제 TCP 연결에 걸린 시간을 제외하고
                 * Connecting 상태 최소 표시시간이 남아 있으면 기다린다.
                 *
                 * Task.Delay를 await하므로 UI Thread를 막지 않는다.
                 */
-                int remainingDisplayMs =
-                    ControlAgentConnectingMinimumDisplayMs -
-                    (int)connectingStopwatch.ElapsedMilliseconds;
+                int remainingDisplayMs = ControlAgentConnectingMinimumDisplayMs - (int)connectingStopwatch.ElapsedMilliseconds;
 
                 if (remainingDisplayMs > 0)
                 {
-                    await Task.Delay(
-                        remainingDisplayMs);
+                    await Task.Delay(remainingDisplayMs);
                 }
 
                 /*
@@ -210,25 +177,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  */
                 if (result)
                 {
-                    SetControlAgentConnectionStatus(
-                        "Connected",
-                        "#55D187");
+                    SetControlAgentConnectionStatus("Connected", "#55D187");
                 }
                 else
                 {
                     if (_isDeviceConnectionRequested)
                     {
-                        SetControlAgentConnectionStatus(
-                            "Reconnecting",
-                            "#FFD166");
+                        SetControlAgentConnectionStatus("Reconnecting", "#FFD166");
                     }
                     else
                     {
-                        SetControlAgentConnectionStatus(
-                            "Disconnected",
-                            "#FF6B6B");
+                        SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
                     }
-
                 }
 
                 ConsoleLogHelper.StateSection(
@@ -236,20 +196,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "Connect completed",
                     string.Empty,
                     $"RESULT : {result}",
-                    $"TARGET : {targetIp}:{targetPort}");
+                    $"TARGET : {targetIp}:{targetPort}"
+                );
 
                 /*
                  * 연결 실패 상태이지만
                  * 사용자가 장비 연결 유지를 요청한 경우
                  * 자동 재연결을 시작한다.
                  */
-                if (!result &&
-                    _isDeviceConnectionRequested)
+                if (!result && _isDeviceConnectionRequested)
                 {
-                    StartControlAgentReconnect(
-                        targetIp,
-                        targetPort);
+                    StartControlAgentReconnect(targetIp, targetPort);
                 }
+
                 return result;
             }
             catch (Exception ex)
@@ -260,35 +219,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  */
                 if (_isDeviceConnectionRequested)
                 {
-                    SetControlAgentConnectionStatus(
-                        "Reconnecting",
-                        "#FFD166");
+                    SetControlAgentConnectionStatus("Reconnecting", "#FFD166");
                 }
                 else
                 {
-                    SetControlAgentConnectionStatus(
-                        "Disconnected",
-                        "#FF6B6B");
+                    SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
                 }
 
                 Console.WriteLine();
-                Console.WriteLine(
-                    "[CONTROL AGENT] Connect Exception");
-
-                Console.WriteLine(
-                    $"[CONTROL AGENT] {ex.Message}");
-
+                Console.WriteLine("[CONTROL AGENT] Connect Exception");
+                Console.WriteLine($"[CONTROL AGENT] {ex.Message}");
                 ConsoleLogHelper.PrintLine();
 
                 if (_isDeviceConnectionRequested)
                 {
-                    StartControlAgentReconnect(
-                        targetIp,
-                        targetPort);
+                    StartControlAgentReconnect(targetIp, targetPort);
                 }
+
                 return false;
             }
-
         }
 
         /// <summary>
@@ -297,79 +246,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 선택값이 없거나 rtsp / rtsps 형식이 아닌 주소는
         /// 실제 FFmpeg 연결 전에 차단한다.
         /// </summary>
-        private bool TryGetRtspEndpoints(
-            out string eoRtspAddress,
-            out string irRtspAddress)
+        private bool TryGetRtspEndpoints(out string eoRtspAddress, out string irRtspAddress)
         {
-            eoRtspAddress =
-                EoSourceAddress?.Trim();
-
-            irRtspAddress =
-                IrSourceAddress?.Trim();
-
-            _isEoRtspAddressValid =
-                IsValidRtspAddress(eoRtspAddress);
-
-            _isIrRtspAddressValid =
-                IsValidRtspAddress(irRtspAddress);
+            eoRtspAddress = EoSourceAddress?.Trim();
+            irRtspAddress = IrSourceAddress?.Trim();
+            _isEoRtspAddressValid = IsValidRtspAddress(eoRtspAddress);
+            _isIrRtspAddressValid = IsValidRtspAddress(irRtspAddress);
 
             if (!_isEoRtspAddressValid)
             {
-                EoStatusText =
-                    string.IsNullOrWhiteSpace(eoRtspAddress)
-                        ? "[EO] Not Configured"
-                        : "[EO] Invalid RTSP Address";
-
+                EoStatusText = string.IsNullOrWhiteSpace(eoRtspAddress) ? "[EO] Not Configured" : "[EO] Invalid RTSP Address";
                 Console.WriteLine();
-                Console.WriteLine(
-                    "[EO RTSP] Connect Failed : " +
-                    "Invalid RTSP address.");
-
-                Console.WriteLine(
-                    $"[EO RTSP] INPUT : " +
-                    $"{ConsoleLogHelper.MaskRtspPassword(EoSourceAddress)}");
-
+                Console.WriteLine("[EO RTSP] Connect Failed : " + "Invalid RTSP address.");
+                Console.WriteLine($"[EO RTSP] INPUT : " + $"{ConsoleLogHelper.MaskRtspPassword(EoSourceAddress)}");
                 ConsoleLogHelper.PrintLine();
-
             }
 
             if (!_isIrRtspAddressValid)
             {
-                IrStatusText =
-                    string.IsNullOrWhiteSpace(irRtspAddress)
-                        ? "[IR] Not Configured"
-                        : "[IR] Invalid RTSP Address";
-
+                IrStatusText = string.IsNullOrWhiteSpace(irRtspAddress) ? "[IR] Not Configured" : "[IR] Invalid RTSP Address";
                 Console.WriteLine();
-                Console.WriteLine(
-                    "[IR RTSP] Connect Failed : " +
-                    "Invalid RTSP address.");
-
-                Console.WriteLine(
-                    $"[IR RTSP] INPUT : " +
-                    $"{ConsoleLogHelper.MaskRtspPassword(IrSourceAddress)}");
-
+                Console.WriteLine("[IR RTSP] Connect Failed : " + "Invalid RTSP address.");
+                Console.WriteLine($"[IR RTSP] INPUT : " + $"{ConsoleLogHelper.MaskRtspPassword(IrSourceAddress)}");
                 ConsoleLogHelper.PrintLine();
-
             }
 
             if (_isEoRtspAddressValid &&
                 _isIrRtspAddressValid &&
-                string.Equals(eoRtspAddress, irRtspAddress,
-                    StringComparison.OrdinalIgnoreCase))
+                string.Equals(
+                eoRtspAddress,
+                irRtspAddress,
+                StringComparison.OrdinalIgnoreCase
+            ))
             {
                 _isEoRtspAddressValid = false;
                 _isIrRtspAddressValid = false;
                 EoStatusText = "[EO] RTSP Config Error";
                 IrStatusText = "[IR] RTSP Config Error";
-                ConsoleLogHelper.Warning(
-                    "RTSP CONFIG ERROR",
-                    "EO and IR RTSP URLs must be different");
+                ConsoleLogHelper.Warning("RTSP CONFIG ERROR", "EO and IR RTSP URLs must be different");
                 return false;
             }
 
-            return _isEoRtspAddressValid ||
-                   _isIrRtspAddressValid;
+            return _isEoRtspAddressValid || _isIrRtspAddressValid;
         }
 
         /// <summary>
@@ -378,41 +296,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 절대 URI이며 Scheme이 rtsp 또는 rtsps인 경우만
         /// 유효한 영상 주소로 처리한다.
         /// </summary>
-        private static bool IsValidRtspAddress(
-            string address)
+        private static bool IsValidRtspAddress(string address)
         {
-            if (string.IsNullOrWhiteSpace(
-                    address))
+            if (string.IsNullOrWhiteSpace(address))
             {
                 return false;
             }
 
-            if (!Uri.TryCreate(
-                    address,
-                    UriKind.Absolute,
-                    out Uri uri))
+            if (!Uri.TryCreate(address, UriKind.Absolute, out Uri uri))
             {
                 return false;
             }
 
             bool supportedScheme = string.Equals(
-                       uri.Scheme,
-                       "rtsp",
-                       StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(
-                       uri.Scheme,
-                       "rtsps",
-                       StringComparison.OrdinalIgnoreCase);
-
+                uri.Scheme,
+                "rtsp",
+                StringComparison.OrdinalIgnoreCase
+            ) ||
+                string.Equals(
+                uri.Scheme,
+                "rtsps",
+                StringComparison.OrdinalIgnoreCase
+            );
             // RTSP는 표준 포트 554를 생략할 수 있다. .NET Uri는 RTSP의
             // 기본 포트를 내장하지 않아 생략 시 Port=-1을 반환하므로 허용한다.
-            bool validPort =
-                uri.Port == -1 ||
-                (uri.Port > 0 && uri.Port <= 65535);
-
-            return supportedScheme &&
-                   !string.IsNullOrWhiteSpace(uri.Host) &&
-                   validPort;
+            bool validPort = uri.Port == -1 || (uri.Port > 0 && uri.Port <= 65535);
+            return supportedScheme && !string.IsNullOrWhiteSpace(uri.Host) && validPort;
         }
 
         /// <summary>
@@ -421,57 +330,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// Port는 문자열로 관리한 뒤 연결 시점에 TryParse하여
         /// 빈값이나 문자 입력으로 인한 바인딩 예외를 방지한다.
         /// </summary>
-        private bool TryGetControlAgentEndpoint(
-            out string ipAddress,
-            out int port)
+        private bool TryGetControlAgentEndpoint(out string ipAddress, out int port)
         {
-            ipAddress =
-                SessionControlIp?.Trim();
+            ipAddress = SessionControlIp?.Trim();
+            port = 0;
 
-            port =
-                0;
-
-            if (string.IsNullOrWhiteSpace(
-                    ipAddress))
+            if (string.IsNullOrWhiteSpace(ipAddress))
             {
-                SetControlAgentConnectionStatus(
-                    "Disconnected",
-                    "#FF6B6B");
-
-                Console.WriteLine(
-                    "[CONTROL AGENT] Connect Failed : IP is empty.");
-
+                SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
+                Console.WriteLine("[CONTROL AGENT] Connect Failed : IP is empty.");
                 return false;
             }
 
-            if (!int.TryParse(
-                    SessionControlPort?.Trim(),
-                    out port))
+            if (!int.TryParse(SessionControlPort?.Trim(), out port))
             {
-                SetControlAgentConnectionStatus(
-                    "Disconnected",
-                    "#FF6B6B");
-
-                Console.WriteLine(
-                    "[CONTROL AGENT] Connect Failed : " +
-                    "Port must be a number.");
-
+                SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
+                Console.WriteLine("[CONTROL AGENT] Connect Failed : " + "Port must be a number.");
                 return false;
             }
 
-            if (port < 1 ||
-                port > 65535)
+            if (port < 1 || port > 65535)
             {
-                SetControlAgentConnectionStatus(
-                    "Disconnected",
-                    "#FF6B6B");
-
-                Console.WriteLine(
-                    "[CONTROL AGENT] Connect Failed : " +
-                    "Port range must be 1 ~ 65535.");
-
+                SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
+                Console.WriteLine("[CONTROL AGENT] Connect Failed : " + "Port range must be 1 ~ 65535.");
                 return false;
             }
+
             return true;
         }
 
@@ -483,50 +367,35 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void OnControlAgentConnectionClosed()
         {
-            // 2026-10-08: never replay held keys into a reconnected session.
-            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => { ReleaseAllControlInputs("Control TCP lost"); ResetDigitalZoomSession(); }));
+            // 재연결된 세션에 이전에 누른 키 입력을 재전송하지 않는다.
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ReleaseAllControlInputs("Control TCP lost");
+                ResetDigitalZoomSession();
+            }));
+
             if (!_isDeviceConnectionRequested)
             {
-                SetControlAgentConnectionStatus(
-                    "Disconnected",
-                    "#FF6B6B");
-
+                SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
                 return;
             }
 
-            SetControlAgentConnectionStatus(
-                "Reconnecting",
-                "#FFD166");
+            SetControlAgentConnectionStatus("Reconnecting", "#FFD166");
+            string targetIp = SessionControlIp?.Trim();
 
-            string targetIp =
-                SessionControlIp?.Trim();
-
-            if (string.IsNullOrWhiteSpace(
-                    targetIp))
+            if (string.IsNullOrWhiteSpace(targetIp))
             {
-                SetControlAgentConnectionStatus(
-                    "Disconnected",
-                    "#FF6B6B");
-
+                SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
                 return;
             }
 
-            if (!int.TryParse(
-                    SessionControlPort?.Trim(),
-                    out int targetPort) ||
-                targetPort < 1 ||
-                targetPort > 65535)
+            if (!int.TryParse(SessionControlPort?.Trim(), out int targetPort) || targetPort < 1 || targetPort > 65535)
             {
-                SetControlAgentConnectionStatus(
-                    "Disconnected",
-                    "#FF6B6B");
-
+                SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
                 return;
             }
 
-            StartControlAgentReconnect(
-                targetIp,
-                targetPort);
+            StartControlAgentReconnect(targetIp, targetPort);
         }
 
         /// <summary>
@@ -535,66 +404,42 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 최초 연결 실패 또는 운용 중 연결 종료 시
         /// 연결 해제 요청 전까지 일정 간격으로 재연결한다.
         /// </summary>
-        private void StartControlAgentReconnect(
-            string ipAddress,
-            int port)
+        private void StartControlAgentReconnect(string ipAddress, int port)
         {
-            if (_controlAgentReconnectCts != null &&
-                !_controlAgentReconnectCts.IsCancellationRequested)
+            if (_controlAgentReconnectCts != null && !_controlAgentReconnectCts.IsCancellationRequested)
             {
                 return;
             }
 
             _controlAgentReconnectCts?.Dispose();
-
-            _controlAgentReconnectCts =
-                new CancellationTokenSource();
-
+            _controlAgentReconnectCts = new CancellationTokenSource();
             CancellationTokenSource reconnectCts = _controlAgentReconnectCts;
             CancellationToken token = reconnectCts.Token;
-
             _ = Task.Run(async () =>
             {
-                const int reconnectDelayMs =
-                    1500;
-
-                int retryCount =
-                    0;
+                const int reconnectDelayMs = 1500;
+                int retryCount = 0;
 
                 try
                 {
-                    while (_isDeviceConnectionRequested &&
-                           !token.IsCancellationRequested &&
-                           !_laTcpService.IsConnected)
+                    while (_isDeviceConnectionRequested && !token.IsCancellationRequested && !_laTcpService.IsConnected)
                     {
                         retryCount++;
+                        SetControlAgentConnectionStatus("Reconnecting", "#FFD166", token);
+                        Console.WriteLine($"[CONTROL AGENT] Reconnect Try " + $"({retryCount}) : " + $"{ipAddress}:{port}");
+                        bool connected = await _laTcpService.ConnectAsync(ipAddress, port);
 
-                        SetControlAgentConnectionStatus(
-                            "Reconnecting",
-                            "#FFD166", token);
-
-                        Console.WriteLine(
-                            $"[CONTROL AGENT] Reconnect Try " +
-                            $"({retryCount}) : " +
-                            $"{ipAddress}:{port}");
-
-                        bool connected =
-                            await _laTcpService.ConnectAsync(
-                                ipAddress,
-                                port);
-
-                        // V31_4: canceled reconnects must not restore Connected or clear a newer session.
-                        if (token.IsCancellationRequested || !_isDeviceConnectionRequested) return;
+                        // 취소된 재연결이 연결 상태를 복원하거나 새 세션 상태를 지우지 못하게 한다.
+                        if (token.IsCancellationRequested || !_isDeviceConnectionRequested)
+                            return;
 
                         if (connected)
                         {
-                            SetControlAgentConnectionStatus(
-                                "Connected",
-                                "#55D187", token);
-
+                            SetControlAgentConnectionStatus("Connected", "#55D187", token);
                             // 재접속한 TCP 연결은 호환 모드에서 시작하므로 지원 조회부터 다시 수행한다.
                             string reconnectedSession = _connectionSessionId;
                             var reconnectDispatcher = App.Current?.Dispatcher;
+
                             if (reconnectDispatcher != null && !reconnectDispatcher.HasShutdownStarted)
                             {
                                 _ = reconnectDispatcher.BeginInvoke(new Action(() =>
@@ -608,46 +453,36 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 }));
                             }
 
-                            Console.WriteLine(
-                                "[CONTROL AGENT] Reconnect Success");
-
+                            Console.WriteLine("[CONTROL AGENT] Reconnect Success");
                             return;
                         }
 
-                        await Task.Delay(
-                            reconnectDelayMs,
-                            token);
+                        await Task.Delay(reconnectDelayMs, token);
                     }
-
                 }
                 catch (OperationCanceledException)
                 {
-                    // The explicit Disconnect/new session owns the current UI state.
+                    // 명시적 연결 해제 또는 새 세션이 현재 화면 상태의 소유권을 가진다.
                 }
                 catch (Exception ex)
                 {
-                    if(token.IsCancellationRequested) return;
-                    SetControlAgentConnectionStatus(
-                        "Disconnected",
-                        "#FF6B6B", token);
+                    if (token.IsCancellationRequested)
+                        return;
 
-                    Console.WriteLine(
-                        "[CONTROL AGENT] Reconnect Exception : " +
-                        ex.Message);
+                    SetControlAgentConnectionStatus("Disconnected", "#FF6B6B", token);
+                    Console.WriteLine("[CONTROL AGENT] Reconnect Exception : " + ex.Message);
                 }
                 finally
                 {
-                    if (ReferenceEquals(Interlocked.CompareExchange(ref _controlAgentReconnectCts,null,reconnectCts),reconnectCts)) reconnectCts.Dispose();
-
+                    if (ReferenceEquals(Interlocked.CompareExchange(ref _controlAgentReconnectCts, null, reconnectCts), reconnectCts))
+                        reconnectCts.Dispose();
                 }
-
             });
-
         }
 
         #endregion
 
-        #region [LA Receive]
+        #region [LA 수신]
 
         /// <summary>
         /// [CONTROL AGENT] [TCP] 수신 데이터 처리 함수
@@ -655,9 +490,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [TcpClientService]에서 byte[] 원본 데이터를 받으면,
         /// [LaPacketParser]를 통해 12byte [Packet] 단위로 분리한다.
         /// </summary>
-        private void OnLaMessageReceived(
-            byte[] data,
-            DateTime receiveTime)
+        private void OnLaMessageReceived(byte[] data, DateTime receiveTime)
         {
             /// <summary>
             /// 수신된 [byte[] 데이터]를 [CONTROL AGENT] 응답 [Packet] 목록으로 변환.
@@ -671,12 +504,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 HandleLaPacket(packet);
             }
-
         }
 
         #endregion
 
-        #region [LA Packet Handling]
+        #region [LA 패킷 처리]
 
         /// <summary>
         /// [CONTROL AGENT] 응답 [Packet] 처리 함수
@@ -699,13 +531,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool canPrintLog = CanPrintLaLog();
             bool canPrintExtendedStatusLog = CanPrintLaExtendedStatusLog();
-
             switch (packet.Function)
             {
                 case 0x02:
                     ParseWebAgentTiltLimitPacket(packet.RawData);
                     break;
-
                 case 0x01:
                     /// <summary>
                     /// [Pan] / [Tilt] / [Zoom] / [Focus] 상태 정보
@@ -720,17 +550,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine("[LA PACKET] [Pan] / [Tilt] / [Zoom] / [Focus] Status");
                     Console.WriteLine();
                     ParseLaStatusPacket(packet.RawData, true);
-
                     ConsoleLogHelper.PrintLine();
                     break;
-
                 case 0x31:
                     // 2026-10-06: 기존 0x01 PTZF와 동일한 위치값에
                     // MCB/SCB 원본 상태 바이트를 추가한 고정 13Byte 응답.
                     ParseLaStatusPacket(packet.RawData, canPrintLog, false);
                     ApplyDevicePowerStatus(packet.RawData[10], packet.RawData[11]);
                     break;
-
                 case 0x07:
                     /// <summary>
                     /// [Function] [0x07]
@@ -755,24 +582,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// D6 03 → 982
                     /// E8 03 → 1000
                     /// </summary>
-                    ParseLaIrCameraStatusPacket(
-                        packet,
-                        canPrintExtendedStatusLog);
-
+                    ParseLaIrCameraStatusPacket(packet, canPrintExtendedStatusLog);
                     break;
-
                 case 0xA1:
-
                     /// <summary>
                     /// 상태값은 모든 Packet마다 파싱하고,
                     /// Console 로그만 설정된 주기로 제한한다.
                     /// </summary>
-                    ParseLaExtendedStatusPacket(
-                        packet.RawData,
-                        canPrintExtendedStatusLog);
-
+                    ParseLaExtendedStatusPacket(packet.RawData, canPrintExtendedStatusLog);
                     break;
-
                 case 0xA3:
                     /// <summary>
                     /// [Function] [0xA3]
@@ -784,20 +602,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// Console 출력 생략
                     /// </summary>
                     break;
-
                 case 0x04:
                     /// <summary>
                     /// [LRF] 거리측정 응답 Packet
                     /// </summary>
-
                     ConsoleLogHelper.PrintLine();
                     Console.WriteLine("[LA PACKET] [LRF] Distance Packet");
                     Console.WriteLine();
                     ParseLrfDistancePacket(packet.RawData);
-
                     ConsoleLogHelper.PrintLine();
                     break;
-
                 case 0x23:
                 case 0x24:
                 case 0x25:
@@ -817,7 +631,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 case 0x34:
                     ParseWebAgentV18Packet(packet);
                     break;
-
                 default:
                     /// <summary>
                     /// 정의되지 않은 [Function] 번호
@@ -825,21 +638,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// [LRF] / [GPS] / 기타 확장 [Packet] 확인용으로
                     /// 로그 제한 없이 출력한다.
                     /// </summary>
-
                     ConsoleLogHelper.PrintLine();
                     Console.WriteLine($"[LA PACKET] Unknown Function: 0x{packet.Function:X2}");
                     Console.WriteLine();
-
                     foreach (byte b in packet.RawData)
                     {
                         Console.Write($"{b:X2} ");
                     }
-                    Console.WriteLine();
 
+                    Console.WriteLine();
                     ConsoleLogHelper.PrintLine();
                     break;
             }
-
         }
 
         /// <summary>
@@ -851,26 +661,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (_controlCommandService == null ||
                 !_controlCommandService.UseUnsignedWebAgentTiltCoordinates ||
                 Interlocked.Exchange(
-                    ref _webAgentTiltLimitQueryRequested,
-                    1) != 0)
+                ref _webAgentTiltLimitQueryRequested,
+                1
+            ) != 0)
             {
                 return;
             }
 
-            bool sent =
-                _controlCommandService.RequestWebAgentTiltLimits();
-
+            bool sent = _controlCommandService.RequestWebAgentTiltLimits();
             ConsoleLogHelper.Command(
                 "WEB AGENT TILT LIMIT",
-                "Query requested / " +
-                "PACKET=FF 01 00 B5 02 00 B8 / " +
-                "RESULT=" + sent);
+                "Query requested / " + "PACKET=FF 01 00 B5 02 00 B8 / " + "RESULT=" + sent
+            );
 
             if (!sent)
             {
-                Interlocked.Exchange(
-                    ref _webAgentTiltLimitQueryRequested,
-                    0);
+                Interlocked.Exchange(ref _webAgentTiltLimitQueryRequested, 0);
             }
         }
 
@@ -878,38 +684,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// WebAgent Function 0x02 응답에서 TILT 음수/양수 한계를 해석한다.
         /// POS/NEG는 각각 unsigned LE16이며 단위는 0.01°이다.
         /// </summary>
-        private void ParseWebAgentTiltLimitPacket(
-            byte[] packet)
+        private void ParseWebAgentTiltLimitPacket(byte[] packet)
         {
-            if (_controlCommandService == null ||
-                !_controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            if (_controlCommandService == null || !_controlCommandService.UseUnsignedWebAgentTiltCoordinates)
             {
-                ConsoleLogHelper.Warning(
-                    "WEB AGENT TILT LIMIT",
-                    "Function 0x02 ignored outside WebAgent mode");
+                ConsoleLogHelper.Warning("WEB AGENT TILT LIMIT", "Function 0x02 ignored outside WebAgent mode");
                 return;
             }
 
-            if (packet == null ||
-                packet.Length != 12)
+            if (packet == null || packet.Length != 12)
             {
-                ConsoleLogHelper.Warning(
-                    "WEB AGENT TILT LIMIT",
-                    "Invalid response length");
+                ConsoleLogHelper.Warning("WEB AGENT TILT LIMIT", "Invalid response length");
                 return;
             }
 
-            ushort positiveRaw =
-                (ushort)(packet[2] | packet[3] << 8);
-
-            ushort negativeRaw =
-                (ushort)(packet[4] | packet[5] << 8);
-
-            double positiveLimit =
-                positiveRaw / 100.0;
-
-            double negativeLimit =
-                -(negativeRaw / 100.0);
+            ushort positiveRaw = (ushort)(packet[2] | packet[3] << 8);
+            ushort negativeRaw = (ushort)(packet[4] | packet[5] << 8);
+            double positiveLimit = positiveRaw / 100.0;
+            double negativeLimit = -(negativeRaw / 100.0);
 
             // 손상되거나 다른 의미의 Function 0x02 패킷이 UI 이동 범위를
             // 비정상적으로 확장하지 않도록 TILT 물리 범위 내에서 검증한다.
@@ -921,44 +713,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Warning(
                     "WEB AGENT TILT LIMIT",
-                    "Invalid limit values / " +
-                    $"POS_RAW={positiveRaw} / NEG_RAW={negativeRaw}");
+                    "Invalid limit values / " + $"POS_RAW={positiveRaw} / NEG_RAW={negativeRaw}"
+                );
                 return;
             }
 
             Action applyLimits = () =>
             {
-                _webAgentTiltMinimum =
-                    negativeLimit;
-
-                _webAgentTiltMaximum =
-                    positiveLimit;
-
-                _hasWebAgentTiltLimits =
-                    true;
+                _webAgentTiltMinimum = negativeLimit;
+                _webAgentTiltMaximum = positiveLimit;
+                _hasWebAgentTiltLimits = true;
 
                 if (TiltAbsoluteValue.HasValue)
                 {
-                    TiltAbsoluteValue = Clamp(
-                        TiltAbsoluteValue.Value,
-                        CurrentMoveControlTiltMinimum,
-                        CurrentMoveControlTiltMaximum);
+                    TiltAbsoluteValue = Clamp(TiltAbsoluteValue.Value, CurrentMoveControlTiltMinimum, CurrentMoveControlTiltMaximum);
                 }
 
                 OnPropertyChanged(nameof(PanTiltCoordinateRangeText));
                 OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
             };
 
-            if (App.Current?.Dispatcher == null ||
-                App.Current.Dispatcher.CheckAccess())
+            if (App.Current?.Dispatcher == null || App.Current.Dispatcher.CheckAccess())
             {
                 applyLimits();
             }
             else
             {
-                App.Current.Dispatcher.BeginInvoke(
-                    applyLimits,
-                    DispatcherPriority.DataBind);
+                App.Current.Dispatcher.BeginInvoke(applyLimits, DispatcherPriority.DataBind);
             }
 
             ConsoleLogHelper.StateSection(
@@ -967,7 +748,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string.Empty,
                 $"NEGATIVE={negativeLimit:F2}deg",
                 $"POSITIVE={positiveLimit:F2}deg",
-                "SOURCE=FUNCTION_0x02");
+                "SOURCE=FUNCTION_0x02"
+            );
         }
 
         /// <summary>
@@ -975,9 +757,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ResetWebAgentTiltLimits()
         {
-            Interlocked.Exchange(
-                ref _webAgentTiltLimitQueryRequested,
-                0);
+            Interlocked.Exchange(ref _webAgentTiltLimitQueryRequested, 0);
 
             if (!_hasWebAgentTiltLimits)
             {
@@ -986,35 +766,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Action resetLimits = () =>
             {
-                _webAgentTiltMinimum =
-                    MoveControlTiltMinimum;
-
-                _webAgentTiltMaximum =
-                    MoveControlTiltMaximum;
-
-                _hasWebAgentTiltLimits =
-                    false;
-
+                _webAgentTiltMinimum = MoveControlTiltMinimum;
+                _webAgentTiltMaximum = MoveControlTiltMaximum;
+                _hasWebAgentTiltLimits = false;
                 OnPropertyChanged(nameof(PanTiltCoordinateRangeText));
                 OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
             };
 
-            if (App.Current?.Dispatcher == null ||
-                App.Current.Dispatcher.CheckAccess())
+            if (App.Current?.Dispatcher == null || App.Current.Dispatcher.CheckAccess())
             {
                 resetLimits();
             }
             else
             {
-                App.Current.Dispatcher.BeginInvoke(
-                    resetLimits,
-                    DispatcherPriority.DataBind);
+                App.Current.Dispatcher.BeginInvoke(resetLimits, DispatcherPriority.DataBind);
             }
         }
 
         #endregion
 
-        #region [LA Log Helpers]
+        #region [LA 로그 보조 함수]
 
         /// <summary>
         /// [CONTROL AGENT] 상태 로그 출력 여부 확인
@@ -1027,15 +798,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private bool CanPrintLaLog()
         {
-            if ((DateTime.Now -
-                 _lastLaStatusLogTime)
-                .TotalSeconds
-                < LaLogIntervalSeconds)
+            if ((DateTime.Now - _lastLaStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
             {
                 return false;
             }
-            _lastLaStatusLogTime = DateTime.Now;
 
+            _lastLaStatusLogTime = DateTime.Now;
             return true;
         }
 
@@ -1050,21 +818,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private bool CanPrintLaExtendedStatusLog()
         {
-            if ((DateTime.Now -
-                 _lastLaExtendedStatusLogTime)
-                .TotalSeconds
-                < LaLogIntervalSeconds)
+            if ((DateTime.Now - _lastLaExtendedStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
             {
                 return false;
             }
-            _lastLaExtendedStatusLogTime = DateTime.Now;
 
+            _lastLaExtendedStatusLogTime = DateTime.Now;
             return true;
         }
 
         #endregion
 
-        #region [LA Packet Parsing]
+        #region [LA 패킷 해석]
 
         /// <summary>
         /// [CONTROL AGENT] [Status Packet] 파싱
@@ -1075,22 +840,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 응답 Packet의 2Byte 이상 값은
         /// Little Endian 방식으로 처리한다.
         /// </summary>
-        private void ParseLaStatusPacket(
-            byte[] packet,
-            bool printLog,
-            bool countFunction01 = true)
+        private void ParseLaStatusPacket(byte[] packet, bool printLog, bool countFunction01 = true)
         {
-            const int requiredLength =
-                12;
+            const int requiredLength = 12;
 
-            if (packet == null ||
-                packet.Length < requiredLength)
+            if (packet == null || packet.Length < requiredLength)
             {
                 if (printLog)
                 {
-                    //Console.WriteLine(
-                    //    "[LA STATUS] Invalid Packet Length : " +
-                    //    (packet?.Length ?? 0));
                 }
 
                 return;
@@ -1100,67 +857,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 Interlocked.Increment(ref _function01ReceiveCount);
             }
+
             Interlocked.Increment(ref _ptzfStatusUpdateCount);
-
-            ushort panUnsignedRaw =
-                BitConverter.ToUInt16(
-                    packet,
-                    2);
-
-            short panSignedRaw =
-                unchecked((short)panUnsignedRaw);
-
-            ushort tiltUnsignedRaw =
-                BitConverter.ToUInt16(
-                    packet,
-                    4);
-
-            short tiltSignedRaw =
-                unchecked((short)tiltUnsignedRaw);
-
-            short zoomRaw =
-                BitConverter.ToInt16(
-                    packet,
-                    6);
-
-            short focusRaw =
-                BitConverter.ToInt16(
-                    packet,
-                    8);
-
-            byte powerStatus =
-                packet[10];
-
+            ushort panUnsignedRaw = BitConverter.ToUInt16(packet, 2);
+            short panSignedRaw = unchecked((short)panUnsignedRaw);
+            ushort tiltUnsignedRaw = BitConverter.ToUInt16(packet, 4);
+            short tiltSignedRaw = unchecked((short)tiltUnsignedRaw);
+            short zoomRaw = BitConverter.ToInt16(packet, 6);
+            short focusRaw = BitConverter.ToInt16(packet, 8);
+            byte powerStatus = packet[10];
             // 2026-09-15: Web Agent 환경에서는 Function 0x01의 PT/EO Lens 값을
             // 실제 장비 상태의 기준으로 사용하고, 신규 0x28과의 충돌을 차단한다.
-            MarkLegacyWebAgentStatusReceived(
-                panUnsignedRaw,
-                tiltUnsignedRaw);
-
+            MarkLegacyWebAgentStatusReceived(panUnsignedRaw, tiltUnsignedRaw);
             /*
             * Focus 변화 비교용 이전값 저장
             *
             * _currentEoFocus를 갱신하기 전에
             * 반드시 기존 값을 먼저 보관한다.
             */
-            short previousFocus =
-                _currentEoFocus;
+            short previousFocus = _currentEoFocus;
             double previousPan = _currentPan;
             double previousTilt = _currentTilt;
             short previousZoom = _currentEoZoom;
             byte previousPower = _currentPowerStatus;
-
-            double panDegree =
-                _controlCommandService.UseUnsignedWebAgentPanCoordinates
-                    ? ConvertWebAgentPanToGuiAngle(panUnsignedRaw / 100.0)
-                    : panSignedRaw / 100.0;
-
-            double tiltDegree =
-                _controlCommandService.UseUnsignedWebAgentTiltCoordinates
-                    ? NormalizeUnsignedWebAgentTilt(
-                        tiltUnsignedRaw / 100.0,
-                        _currentTilt)
-                    : tiltSignedRaw / 100.0;
+            double panDegree = _controlCommandService.UseUnsignedWebAgentPanCoordinates ? ConvertWebAgentPanToGuiAngle(panUnsignedRaw / 100.0) : panSignedRaw / 100.0;
+            double tiltDegree = _controlCommandService.UseUnsignedWebAgentTiltCoordinates ? NormalizeUnsignedWebAgentTilt(
+                tiltUnsignedRaw / 100.0,
+                _currentTilt
+            ) : tiltSignedRaw / 100.0;
 
             /// <summary>
             /// -180도와 +180도는 동일한 물리 위치다.
@@ -1171,81 +895,42 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ///
             /// 일반 위치에서는 수신 상태값을 그대로 사용한다.
             /// </summary>
-            if (Math.Abs(
-                    Math.Abs(
-                        panDegree) -
-                    180.0) <= 0.05 &&
+            if (Math.Abs(Math.Abs(panDegree) - 180.0) <= 0.05 &&
                 _lastPanAbsoluteTarget.HasValue &&
-                Math.Abs(
-                    Math.Abs(
-                        _lastPanAbsoluteTarget.Value) -
-                    180.0) <= 0.05)
+                Math.Abs(Math.Abs(_lastPanAbsoluteTarget.Value) - 180.0) <= 0.05)
             {
-                panDegree =
-                    _lastPanAbsoluteTarget.Value < 0.0
-                        ? -180.0
-                        : 180.0;
+                panDegree = _lastPanAbsoluteTarget.Value < 0.0 ? -180.0 : 180.0;
             }
 
             /*
              * 모든 0x01 패킷에서 상태값 갱신
              */
-            _currentPan =
-                panDegree;
-
-            _currentTilt =
-                tiltDegree;
-            // 2026-10-12: immutable received pose snapshot for guarded click-to-center.
+            _currentPan = panDegree;
+            _currentTilt = tiltDegree;
+            // 클릭 이동 보호에 사용할 수신 위치를 불변 스냅샷으로 보관한다.
             Interlocked.Exchange(ref _videoCenterPose, Tuple.Create(panDegree, tiltDegree, DateTime.UtcNow.Ticks));
-
             // 이동이 완료된 축은 더 이상 Slider 변경 시 목표를 재송신하지 않는다.
-            double? activePanTarget =
-                _activePanAbsoluteTarget;
+            double? activePanTarget = _activePanAbsoluteTarget;
+            double? activeTiltTarget = _activeTiltAbsoluteTarget;
 
-            double? activeTiltTarget =
-                _activeTiltAbsoluteTarget;
-
-            if (activePanTarget.HasValue &&
-                Math.Abs(
-                    _currentPan -
-                    activePanTarget.Value) <= 0.03)
+            if (activePanTarget.HasValue && Math.Abs(_currentPan - activePanTarget.Value) <= 0.03)
             {
-                _activePanAbsoluteTarget =
-                    null;
+                _activePanAbsoluteTarget = null;
             }
 
-            if (activeTiltTarget.HasValue &&
-                Math.Abs(
-                    GetTiltDifference(
-                        _currentTilt,
-                        activeTiltTarget.Value)) <= 0.03)
+            if (activeTiltTarget.HasValue && Math.Abs(GetTiltDifference(_currentTilt, activeTiltTarget.Value)) <= 0.03)
             {
-                _activeTiltAbsoluteTarget =
-                    null;
+                _activeTiltAbsoluteTarget = null;
             }
 
-            Interlocked.Increment(
-                ref _panTiltStatusVersion);
-
-            _currentEoZoom =
-                zoomRaw;
-
-            _currentEoFocus =
-                focusRaw;
-
-            UpdatePositionPtzAndEoLens(
-                _currentPan,
-                _currentTilt,
-                _currentEoZoom,
-                _currentEoFocus);
+            Interlocked.Increment(ref _panTiltStatusVersion);
+            _currentEoZoom = zoomRaw;
+            _currentEoFocus = focusRaw;
+            UpdatePositionPtzAndEoLens(_currentPan, _currentTilt, _currentEoZoom, _currentEoFocus);
             MarkLensEvidence(false);
-            MarkPresetLensEvidence(false,zoomRaw>=0 && zoomRaw<=1000,focusRaw>=0 && focusRaw<=1000);
-
-            Interlocked.Increment(
-                ref _eoLensStatusVersion);
-
-            _currentPowerStatus =
-                powerStatus;
+            MarkPresetLensEvidence(false, zoomRaw >= 0 && zoomRaw <= 1000, focusRaw >= 0 && focusRaw <= 1000);
+            Interlocked.Increment(ref _eoLensStatusVersion);
+            _currentPowerStatus = powerStatus;
 
             /*
              * Focus 상태값 변화 상세 로그
@@ -1253,39 +938,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 기존 전체 상태 로그는 1초마다 제한되지만,
              * Focus 변화 로그는 값이 실제로 바뀔 때마다 출력한다.
              */
-            if (focusRaw !=
-                previousFocus)
+            if (focusRaw != previousFocus)
             {
-                int receiveSequence =
-                    Interlocked.Increment(
-                        ref _eoFocusReceiveSequence);
-
-                long receiveElapsedMs =
-                    _focusLogStopwatch
-                        .ElapsedMilliseconds;
-
-                long afterCommandMs =
-                    _lastEoFocusCommandElapsedMs > 0
-                        ? receiveElapsedMs -
-                          _lastEoFocusCommandElapsedMs
-                        : -1;
-
-                int difference =
-                    focusRaw -
-                    previousFocus;
-
+                int receiveSequence = Interlocked.Increment(ref _eoFocusReceiveSequence);
+                long receiveElapsedMs = _focusLogStopwatch.ElapsedMilliseconds;
+                long afterCommandMs = _lastEoFocusCommandElapsedMs > 0 ? receiveElapsedMs - _lastEoFocusCommandElapsedMs : -1;
+                int difference = focusRaw - previousFocus;
                 Console.WriteLine();
-                Console.WriteLine(
-                    $"[{DateTime.Now:HH:mm:ss.fff}] " +
-                    $"[FOCUS RECEIVE #{receiveSequence}] " +
-                    $"RAW={packet[8]:X2} {packet[9]:X2} / " +
-                    $"PREV={previousFocus} / " +
-                    $"CURRENT={focusRaw} / " +
-                    $"DELTA={difference:+#;-#;0} / " +
-                    $"LAST_CMD={_lastEoFocusCommandName} / " +
-                    $"AFTER_CMD=" +
-                    $"{(afterCommandMs >= 0 ? afterCommandMs + "ms" : "N/A")}");
-
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS RECEIVE #{receiveSequence}] " + $"RAW={packet[8]:X2} {packet[9]:X2} / " + $"PREV={previousFocus} / " + $"CURRENT={focusRaw} / " + $"DELTA={difference:+#;-#;0} / " + $"LAST_CMD={_lastEoFocusCommandName} / " + $"AFTER_CMD=" + $"{(afterCommandMs >= 0 ? afterCommandMs + "ms" : "N/A")}");
                 ConsoleLogHelper.PrintLine();
             }
 
@@ -1298,7 +958,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Math.Abs(previousTilt - _currentTilt) > 0.0001,
                 previousZoom != _currentEoZoom,
                 previousFocus != _currentEoFocus,
-                previousPower != _currentPowerStatus);
+                previousPower != _currentPowerStatus
+            );
 
             /*
              * 아래부터 Console 로그만 1초 간격으로 제한
@@ -1310,31 +971,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "WEB AGENT PAN/TILT POSITION",
-                $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " +
-                $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " +
-                $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " +
-                $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " +
-                $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " +
-                $"MODE={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}");
-
-            //Console.WriteLine(
-            //    $"[LA PT RAW] " +
-            //    $"PAN BYTE={packet[2]:X2} {packet[3]:X2}, " +
-            //    $"TILT BYTE={packet[4]:X2} {packet[5]:X2}");
-
-            //Console.WriteLine(
-            //    $"[LA PT PARSED] " +
-            //    $"PAN RAW={panRaw}, PAN={panDegree:F2}°, " +
-            //    $"TILT RAW={tiltRaw}, TILT={tiltDegree:F2}°");
-
-            //Console.WriteLine(
-            //    $"[LA STATUS] [EO Zoom]  : {_currentEoZoom}");
-
-            //Console.WriteLine(
-            //    $"[LA STATUS] [EO Focus] : {_currentEoFocus}");
-
-            //Console.WriteLine(
-            //    $"[LA STATUS] [Power]    : 0x{_currentPowerStatus:X2}");
+                $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " + $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " + $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " + $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " + $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " + $"MODE={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}"
+            );
         }
 
         /// <summary>
@@ -1376,22 +1014,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// GUI와 파노라마/프리셋 계산에서는 위쪽 양수, 아래쪽 음수(-90 ~ 90)를 사용한다.
         /// 물리 가동범위 밖의 값은 마지막 정상값을 유지하여 잘못된 상태가 제어 계산에 섞이지 않게 한다.
         /// </summary>
-        private static double NormalizeUnsignedWebAgentTilt(
-            double angle,
-            double fallbackTilt)
+        private static double NormalizeUnsignedWebAgentTilt(double angle, double fallbackTilt)
         {
             double normalizedAngle = NormalizeUnsignedWebAgentAngle(angle);
-            double signedTilt = normalizedAngle > 180.0
-                ? normalizedAngle - 360.0
-                : normalizedAngle;
+            double signedTilt = normalizedAngle > 180.0 ? normalizedAngle - 360.0 : normalizedAngle;
 
             if (signedTilt < -90.0 || signedTilt > 90.0)
             {
                 ConsoleLogHelper.Warning(
                     "WEB AGENT TILT",
-                    $"Out-of-range status ignored / RAW={normalizedAngle:F2} / " +
-                    $"SIGNED={signedTilt:F2} / KEEP={fallbackTilt:F2}");
-
+                    $"Out-of-range status ignored / RAW={normalizedAngle:F2} / " + $"SIGNED={signedTilt:F2} / KEEP={fallbackTilt:F2}"
+                );
                 return fallbackTilt;
             }
 
@@ -1403,20 +1036,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool tiltChanged = true,
             bool zoomChanged = true,
             bool focusChanged = true,
-            bool powerChanged = true)
+            bool powerChanged = true
+        )
         {
-            // 2026-10-08 V30_0: reception evidence, not predicted target values.
-            if (panChanged) Interlocked.Exchange(ref _eoPanNotificationDirty, 1);
-            if (tiltChanged) Interlocked.Exchange(ref _eoTiltNotificationDirty, 1);
-            if (zoomChanged) Interlocked.Exchange(ref _eoZoomNotificationDirty, 1);
-            if (focusChanged) Interlocked.Exchange(ref _eoFocusNotificationDirty, 1);
-            if (powerChanged) Interlocked.Exchange(ref _eoPowerNotificationDirty, 1);
-            if (!panChanged && !tiltChanged && !zoomChanged && !focusChanged && !powerChanged) return;
+            // 예상 목표값이 아니라 실제 수신한 값을 근거로 사용한다.
+            if (panChanged)
+                Interlocked.Exchange(ref _eoPanNotificationDirty, 1);
 
-            Dispatcher dispatcher =
-                System.Windows.Application
-                    .Current?
-                    .Dispatcher;
+            if (tiltChanged)
+                Interlocked.Exchange(ref _eoTiltNotificationDirty, 1);
+
+            if (zoomChanged)
+                Interlocked.Exchange(ref _eoZoomNotificationDirty, 1);
+
+            if (focusChanged)
+                Interlocked.Exchange(ref _eoFocusNotificationDirty, 1);
+
+            if (powerChanged)
+                Interlocked.Exchange(ref _eoPowerNotificationDirty, 1);
+
+            if (!panChanged && !tiltChanged && !zoomChanged && !focusChanged && !powerChanged)
+                return;
+
+            Dispatcher dispatcher = System.Windows.Application.Current?.Dispatcher;
 
             if (dispatcher == null)
             {
@@ -1430,8 +1072,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 bool notifyZoom = Interlocked.Exchange(ref _eoZoomNotificationDirty, 0) != 0;
                 bool notifyFocus = Interlocked.Exchange(ref _eoFocusNotificationDirty, 0) != 0;
                 bool notifyPower = Interlocked.Exchange(ref _eoPowerNotificationDirty, 0) != 0;
-                if (notifyPan) OnPropertyChanged(nameof(CurrentPanText));
-                if (notifyTilt) OnPropertyChanged(nameof(CurrentTiltText));
+
+                if (notifyPan)
+                    OnPropertyChanged(nameof(CurrentPanText));
+
+                if (notifyTilt)
+                    OnPropertyChanged(nameof(CurrentTiltText));
+
                 if (notifyZoom)
                 {
                     OnPropertyChanged(nameof(CurrentEoZoomText));
@@ -1440,36 +1087,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     OnPropertyChanged(nameof(EffectivePanTiltSpeedLevel));
                     OnPropertyChanged(nameof(PanTiltSpeedDisplayText));
                 }
+
                 if (notifyFocus)
                 {
                     OnPropertyChanged(nameof(CurrentEoFocusText));
                     OnPropertyChanged(nameof(RooftopEoFocusStatusText));
                     OnPropertyChanged(nameof(EnvironmentEoFocusStatusText));
                 }
+
                 if (notifyPan || notifyTilt || notifyZoom || notifyFocus)
                 {
                     OnPropertyChanged(nameof(CurrentPresetSnapshotText));
                     OnPropertyChanged(nameof(CurrentLaPresetSnapshotText));
                 }
-                if (notifyPower) OnPropertyChanged(nameof(CurrentPowerText));
+
+                if (notifyPower)
+                    OnPropertyChanged(nameof(CurrentPowerText));
 
                 /*
                 * XAML에서 개별 Run으로 바인딩 중이므로
                 * CONTROL 상태 프로퍼티도 별도로 갱신해야 한다.
                 */
-                if (notifyPower) OnPropertyChanged(nameof(CurrentControlPowerText));
+                if (notifyPower)
+                    OnPropertyChanged(nameof(CurrentControlPowerText));
             }
 
             // 2026-09-23 TEST A: 장비 상태 수신값은 즉시 내부 필드에 반영하되,
             // Text Binding 알림만 100ms 단위 최신값으로 합쳐 영상 Render와 분리한다.
-            if (Interlocked.CompareExchange(ref _eoStatusNotificationPending, 1, 0) != 0) return;
+            if (Interlocked.CompareExchange(ref _eoStatusNotificationPending, 1, 0) != 0)
+                return;
+
             _ = Task.Run(async () =>
             {
                 bool queued = false;
+
                 try
                 {
                     await Task.Delay(StatusUiCoalesceMilliseconds).ConfigureAwait(false);
-                    if (dispatcher.HasShutdownStarted) return;
+
+                    if (dispatcher.HasShutdownStarted)
+                        return;
+
                     _ = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                     {
                         Interlocked.Exchange(ref _eoStatusNotificationPending, 0);
@@ -1479,7 +1137,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 finally
                 {
-                    if (!queued) Interlocked.Exchange(ref _eoStatusNotificationPending, 0);
+                    if (!queued)
+                        Interlocked.Exchange(ref _eoStatusNotificationPending, 0);
                 }
             });
         }
@@ -1489,12 +1148,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// CURRENT STATUS UI 갱신
         /// </summary>
         private string _lastIrUiStatusSignature;
+
         private void NotifyIrCurrentStatusChanged()
         {
-            Dispatcher dispatcher =
-                System.Windows.Application
-                    .Current?
-                    .Dispatcher;
+            Dispatcher dispatcher = System.Windows.Application.Current?.Dispatcher;
 
             if (dispatcher == null)
             {
@@ -1503,50 +1160,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             void Notify()
             {
-                // 2026-10-12: identical periodic telemetry must not repaint all IR/status bindings.
-                string signature = CurrentIrZoomText + "|" + CurrentIrFocusText + "|" + RooftopIrZoomStatusText + "|" +
-                    EnvironmentIrZoomStatusText + "|" + RooftopIrFocusStatusText + "|" + EnvironmentIrFocusStatusText + "|" + PanTiltSpeedDisplayText;
-                if (_lastIrUiStatusSignature == signature) return;
+                // 동일한 주기 상태는 IR·상태 바인딩 전체를 다시 그리지 않는다.
+                string signature = CurrentIrZoomText + "|" + CurrentIrFocusText + "|" + RooftopIrZoomStatusText + "|" + EnvironmentIrZoomStatusText + "|" + RooftopIrFocusStatusText + "|" + EnvironmentIrFocusStatusText + "|" + PanTiltSpeedDisplayText;
+
+                if (_lastIrUiStatusSignature == signature)
+                    return;
+
                 _lastIrUiStatusSignature = signature;
-                OnPropertyChanged(
-                    nameof(CurrentIrZoomText));
-
-                OnPropertyChanged(
-                    nameof(RooftopIrZoomStatusText));
-
-                OnPropertyChanged(
-                    nameof(EnvironmentIrZoomStatusText));
-
-                OnPropertyChanged(
-                    nameof(EffectivePanTiltSpeedLevel));
-
-                OnPropertyChanged(
-                    nameof(PanTiltSpeedDisplayText));
-
-                OnPropertyChanged(
-                    nameof(CurrentIrFocusText));
-
-                OnPropertyChanged(
-                    nameof(RooftopIrFocusStatusText));
-
-                OnPropertyChanged(
-                    nameof(EnvironmentIrFocusStatusText));
-
-                OnPropertyChanged(
-                    nameof(CurrentPresetSnapshotText));
-
-                OnPropertyChanged(
-                    nameof(CurrentLaPresetSnapshotText));
+                OnPropertyChanged(nameof(CurrentIrZoomText));
+                OnPropertyChanged(nameof(RooftopIrZoomStatusText));
+                OnPropertyChanged(nameof(EnvironmentIrZoomStatusText));
+                OnPropertyChanged(nameof(EffectivePanTiltSpeedLevel));
+                OnPropertyChanged(nameof(PanTiltSpeedDisplayText));
+                OnPropertyChanged(nameof(CurrentIrFocusText));
+                OnPropertyChanged(nameof(RooftopIrFocusStatusText));
+                OnPropertyChanged(nameof(EnvironmentIrFocusStatusText));
+                OnPropertyChanged(nameof(CurrentPresetSnapshotText));
+                OnPropertyChanged(nameof(CurrentLaPresetSnapshotText));
             }
 
-            if (Interlocked.CompareExchange(ref _irStatusNotificationPending, 1, 0) != 0) return;
+            if (Interlocked.CompareExchange(ref _irStatusNotificationPending, 1, 0) != 0)
+                return;
+
             _ = Task.Run(async () =>
             {
                 bool queued = false;
+
                 try
                 {
                     await Task.Delay(StatusUiCoalesceMilliseconds).ConfigureAwait(false);
-                    if (dispatcher.HasShutdownStarted) return;
+
+                    if (dispatcher.HasShutdownStarted)
+                        return;
+
                     _ = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                     {
                         Interlocked.Exchange(ref _irStatusNotificationPending, 0);
@@ -1556,7 +1202,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 finally
                 {
-                    if (!queued) Interlocked.Exchange(ref _irStatusNotificationPending, 0);
+                    if (!queued)
+                        Interlocked.Exchange(ref _irStatusNotificationPending, 0);
                 }
             });
         }
@@ -1566,33 +1213,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 성공한 명령값 기반 UI 상태 보완이다. 실제 Function 0x07 패킷이
         /// 수신되면 실측값으로 다시 덮어쓴다.
         /// </summary>
-        private void ApplyEnvironmentIrCommandedPosition(
-            int? zoomPosition,
-            int? focusPosition,
-            string reason)
+        private void ApplyEnvironmentIrCommandedPosition(int? zoomPosition, int? focusPosition, string reason)
         {
             // V31_5: 실제 상태가 이미 수신되는 장비의 현재값을 명령값으로 덮어쓰지 않는다.
-            if (Interlocked.Read(ref _irLensStatusVersion)>0) return;
+            if (Interlocked.Read(ref _irLensStatusVersion) > 0)
+                return;
+
             if (zoomPosition.HasValue)
             {
-                _currentIrZoom =
-                    (ushort)Math.Max(0, Math.Min(1000, zoomPosition.Value));
+                _currentIrZoom = (ushort)Math.Max(0, Math.Min(1000, zoomPosition.Value));
             }
 
             if (focusPosition.HasValue)
             {
-                _currentIrFocus =
-                    (ushort)Math.Max(0, Math.Min(1000, focusPosition.Value));
+                _currentIrFocus = (ushort)Math.Max(0, Math.Min(1000, focusPosition.Value));
             }
 
             NotifyIrCurrentStatusChanged();
-
             ConsoleLogHelper.State(
                 "IR LENS STATUS",
-                "Commanded-position fallback applied" +
-                $" / ZOOM={_currentIrZoom}" +
-                $" / FOCUS={_currentIrFocus}" +
-                $" / REASON={reason}");
+                "Commanded-position fallback applied" + $" / ZOOM={_currentIrZoom}" + $" / FOCUS={_currentIrFocus}" + $" / REASON={reason}"
+            );
         }
 
         /// <summary>
@@ -1621,87 +1262,42 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 범위를 벗어난 값은 상태값에 반영하지 않고
         /// 원본 Packet과 함께 Console에 출력한다.
         /// </summary>
-        private void ParseLaIrCameraStatusPacket(
-            LaResponsePacket packet,
-            bool printLog)
+        private void ParseLaIrCameraStatusPacket(LaResponsePacket packet, bool printLog)
         {
-            if (packet == null ||
-                packet.RawData == null ||
-                packet.RawData.Length < 12)
+            if (packet == null || packet.RawData == null || packet.RawData.Length < 12)
             {
                 if (printLog)
                 {
-                    Console.WriteLine(
-                        "[LA IR STATUS] Invalid Packet Length : " +
-                        (packet?.RawData?.Length ?? 0));
+                    Console.WriteLine("[LA IR STATUS] Invalid Packet Length : " + (packet?.RawData?.Length ?? 0));
                 }
 
                 return;
             }
 
-            ushort irZoomPosition =
-                packet.IrZoomPosition;
+            ushort irZoomPosition = packet.IrZoomPosition;
+            ushort irFocusPosition = packet.IrFocusPosition;
+            bool isZoomInRange = irZoomPosition <= 1000;
+            bool isFocusInRange = irFocusPosition <= 1000;
 
-            ushort irFocusPosition =
-                packet.IrFocusPosition;
-
-            bool isZoomInRange =
-                irZoomPosition <=
-                1000;
-
-            bool isFocusInRange =
-                irFocusPosition <=
-                1000;
-
-            if (!isZoomInRange ||
-                !isFocusInRange)
+            if (!isZoomInRange || !isFocusInRange)
             {
                 ConsoleLogHelper.PrintLine();
-
-                Console.WriteLine(
-                    "[LA IR STATUS] Invalid Position Range");
-
-                Console.WriteLine(
-                    $"[LA IR STATUS] Zoom  : {irZoomPosition} / 1000");
-
-                Console.WriteLine(
-                    $"[LA IR STATUS] Focus : {irFocusPosition} / 1000");
-
-                Console.WriteLine(
-                    "[LA IR STATUS RAW] " +
-                    BitConverter
-                        .ToString(
-                            packet.RawData)
-                        .Replace(
-                            "-",
-                            " "));
-
+                Console.WriteLine("[LA IR STATUS] Invalid Position Range");
+                Console.WriteLine($"[LA IR STATUS] Zoom  : {irZoomPosition} / 1000");
+                Console.WriteLine($"[LA IR STATUS] Focus : {irFocusPosition} / 1000");
+                Console.WriteLine("[LA IR STATUS RAW] " + BitConverter.ToString(packet.RawData).Replace("-", " "));
                 ConsoleLogHelper.PrintLine();
-
                 return;
             }
 
-            ushort previousIrZoom =
-                _currentIrZoom;
-
-            ushort previousIrFocus =
-                _currentIrFocus;
-
-            _currentIrZoom =
-                irZoomPosition;
-
-            _currentIrFocus =
-                irFocusPosition;
-
-            UpdatePositionIrLens(
-                _currentIrZoom,
-                _currentIrFocus);
+            ushort previousIrZoom = _currentIrZoom;
+            ushort previousIrFocus = _currentIrFocus;
+            _currentIrZoom = irZoomPosition;
+            _currentIrFocus = irFocusPosition;
+            UpdatePositionIrLens(_currentIrZoom, _currentIrFocus);
             MarkLensEvidence(true);
-            MarkPresetLensEvidence(true,true,true);
-
-            Interlocked.Increment(
-                ref _irLensStatusVersion);
-
+            MarkPresetLensEvidence(true, true, true);
+            Interlocked.Increment(ref _irLensStatusVersion);
             /// <summary>
             /// IR 상태값은 CONTROL AGENT TCP 수신 Thread에서 갱신된다.
             ///
@@ -1716,21 +1312,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// 장비 시험 시 어떤 값이 Zoom이고 Focus인지
             /// 조작 방향과 함께 바로 확인할 수 있다.
             /// </summary>
-            if (previousIrZoom !=
-                    _currentIrZoom ||
-                previousIrFocus !=
-                    _currentIrFocus)
+            if (previousIrZoom != _currentIrZoom || previousIrFocus != _currentIrFocus)
             {
                 Console.WriteLine();
-
-                Console.WriteLine(
-                    $"[{DateTime.Now:HH:mm:ss.fff}] " +
-                    "[IR STATUS CHANGED] " +
-                    $"ZOOM_RAW={previousIrZoom}→{_currentIrZoom} / " +
-                    $"ZOOM_STD={GetCurrentIrZoomStandardPosition()} / " +
-                    $"FOCUS_RAW={previousIrFocus}→{_currentIrFocus} / " +
-                    $"FOCUS_STD={GetCurrentIrFocusStandardPosition()}");
-
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + "[IR STATUS CHANGED] " + $"ZOOM_RAW={previousIrZoom}→{_currentIrZoom} / " + $"ZOOM_STD={GetCurrentIrZoomStandardPosition()} / " + $"FOCUS_RAW={previousIrFocus}→{_currentIrFocus} / " + $"FOCUS_STD={GetCurrentIrFocusStandardPosition()}");
                 ConsoleLogHelper.PrintLine();
             }
 
@@ -1740,29 +1325,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             ConsoleLogHelper.PrintLine();
-
-            Console.WriteLine(
-                "[LA PACKET] [IR] Zoom / Focus Status");
-
+            Console.WriteLine("[LA PACKET] [IR] Zoom / Focus Status");
             Console.WriteLine();
-
-            Console.WriteLine(
-                $"[LA IR STATUS] [Zoom]  : {_currentIrZoom} / 1000");
-
-            Console.WriteLine(
-                $"[LA IR STATUS] [Focus] : {_currentIrFocus} / 1000");
-
+            Console.WriteLine($"[LA IR STATUS] [Zoom]  : {_currentIrZoom} / 1000");
+            Console.WriteLine($"[LA IR STATUS] [Focus] : {_currentIrFocus} / 1000");
             Console.WriteLine();
-
-            Console.WriteLine(
-                "[LA IR STATUS RAW] " +
-                BitConverter
-                    .ToString(
-                        packet.RawData)
-                    .Replace(
-                        "-",
-                        " "));
-
+            Console.WriteLine("[LA IR STATUS RAW] " + BitConverter.ToString(packet.RawData).Replace("-", " "));
             ConsoleLogHelper.PrintLine();
         }
 
@@ -1777,9 +1345,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 의미가 확정되지 않은 Packet 값을 IR 상태에 넣으면
         /// 정상적으로 파싱된 Function 0x07 값이 잘못 덮어써질 수 있다.
         /// </summary>
-        private void ParseLaExtendedStatusPacket(
-            byte[] packet,
-            bool printLog)
+        private void ParseLaExtendedStatusPacket(byte[] packet, bool printLog)
         {
             if (!printLog)
             {
@@ -1787,26 +1353,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             ConsoleLogHelper.PrintLine();
-
-            Console.WriteLine(
-                "[LA PACKET] Unconfirmed Extended Status : 0xA1");
-
+            Console.WriteLine("[LA PACKET] Unconfirmed Extended Status : 0xA1");
             Console.WriteLine();
-
-            Console.WriteLine(
-                "[LA EXT STATUS RAW] " +
-                BitConverter
-                    .ToString(
-                        packet)
-                    .Replace(
-                        "-",
-                        " "));
-
+            Console.WriteLine("[LA EXT STATUS RAW] " + BitConverter.ToString(packet).Replace("-", " "));
             Console.WriteLine();
-
-            Console.WriteLine(
-                "[LA EXT STATUS] CURRENT STATUS not updated.");
-
+            Console.WriteLine("[LA EXT STATUS] CURRENT STATUS not updated.");
             ConsoleLogHelper.PrintLine();
         }
 
@@ -1822,15 +1373,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ParseLrfDistancePacket(byte[] packet)
         {
-            if (packet == null ||
-                packet.Length < 10)
+            if (packet == null || packet.Length < 10)
             {
                 Console.WriteLine("[LRF] Invalid Distance Packet");
                 return;
             }
+
             double distance = BitConverter.ToDouble(packet, 2);
             LrfDistanceText = $"DISTANCE : {distance:F1} m";
-
             Console.WriteLine($"[LRF] Distance : {distance:F1} m");
         }
 
@@ -1838,5 +1388,4 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
     }
-
 }

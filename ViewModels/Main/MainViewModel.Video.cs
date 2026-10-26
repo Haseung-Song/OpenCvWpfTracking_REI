@@ -1,4 +1,4 @@
-using OpenCvSharp;
+﻿using OpenCvSharp;
 using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Converters;
 using OpenCvWpfTracking.Services.Video;
@@ -29,6 +29,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public Mat LatestFrame;
 
             public OpenCvWpfTracking.Services.Position.ZoneFrameContext LatestZoneFrame;
+
             public OpenCvWpfTracking.Services.Position.ZoneFrameContext ResultZoneFrame;
 
             public Mat ReusableFrame;
@@ -42,8 +43,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public SmokeDetectionResult SmokeResult;
 
             public long ResultVersion;
-            public int SettingsGeneration;
 
+            public int SettingsGeneration;
         }
 
         private sealed class DisplayFrameSlot
@@ -56,11 +57,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             public int WorkerRunning;
 
-            public readonly Queue<BufferedDisplayFrame> BufferedFrames =
-                new Queue<BufferedDisplayFrame>();
+            public readonly Queue<BufferedDisplayFrame> BufferedFrames = new Queue<BufferedDisplayFrame>();
 
-            public readonly Queue<Mat> BufferedReusableFrames =
-                new Queue<Mat>();
+            public readonly Queue<Mat> BufferedReusableFrames = new Queue<Mat>();
 
             public int BufferedWorkerRunning;
 
@@ -73,7 +72,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public int OverlayDispatchPending;
 
             public long LastOverlayVersion;
-
         }
 
         private sealed class BufferedDisplayFrame
@@ -81,7 +79,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public Mat Frame;
 
             public long DecodedTicks;
-
         }
 
         private sealed class RtspChannelPerformance
@@ -227,7 +224,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public long LastFramePts;
 
             public long LastFrameDts;
-
         }
 
         private readonly DetectionFrameSlot _eoDetectionSlot = new DetectionFrameSlot();
@@ -242,61 +238,72 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly RtspChannelPerformance _irRtspPerformance = new RtspChannelPerformance();
 
-        private static readonly long DetectionMinimumIntervalTicks =
-            Stopwatch.Frequency / 10;
+        private static readonly long DetectionMinimumIntervalTicks = Stopwatch.Frequency / 10;
 
         // 2026-09-29: 옥상 EO RTSP는 평균 30fps이지만 70~100ms 단위로
         // 패킷이 몰려 들어오는 구간이 있다. 30fps 기준 3 Frame은 경계값이므로
         // 기본 4 Frame으로 한 단계만 늘려 입력 Burst를 흡수한다.
         // 분석/알람/파노라마 입력은 이 버퍼를 거치지 않는다.
-        private static readonly int EoJitterDisplayFramesPerSecond =
-            ReadBoundedEnvironmentInteger("TORUSS_EO_JITTER_FPS", 30, 20, 60);
+        private static readonly int EoJitterDisplayFramesPerSecond = ReadBoundedEnvironmentInteger("TORUSS_EO_JITTER_FPS", 30, 20, 60);
 
-        private static readonly int EoJitterBufferCapacity =
-            ReadBoundedEnvironmentInteger("TORUSS_EO_JITTER_FRAMES", 4, 2, 6);
+        private static readonly int EoJitterBufferCapacity = ReadBoundedEnvironmentInteger("TORUSS_EO_JITTER_FRAMES", 4, 2, 6);
 
-        private static readonly long EoJitterDisplayIntervalTicks =
-            Math.Max(1L, Stopwatch.Frequency / EoJitterDisplayFramesPerSecond);
+        private static readonly long EoJitterDisplayIntervalTicks = Math.Max(1L, Stopwatch.Frequency / EoJitterDisplayFramesPerSecond);
 
         // 메인 EO 표시 크기(약 950px)에 1920px 원본을 매 프레임 복사하지 않도록
         // 표시 전용 복사본만 축소한다. 분석/파노라마 원본은 그대로 유지한다.
-        private static readonly int EoDisplayMaximumWidth =
-            ReadBoundedEnvironmentInteger("TORUSS_EO_DISPLAY_MAX_WIDTH", 1280, 640, 1920);
+        private static readonly int EoDisplayMaximumWidth = ReadBoundedEnvironmentInteger(
+            "TORUSS_EO_DISPLAY_MAX_WIDTH",
+            1280,
+            640,
+            1920
+        );
 
-        private static readonly bool UseLegacyImmediateRtspDisplay =
-            string.Equals(
-                Environment.GetEnvironmentVariable("TORUSS_RTSP_DISPLAY"),
-                "LEGACY",
-                StringComparison.OrdinalIgnoreCase);
+        private static readonly bool UseLegacyImmediateRtspDisplay = string.Equals(
+            Environment.GetEnvironmentVariable("TORUSS_RTSP_DISPLAY"),
+            "LEGACY",
+            StringComparison.OrdinalIgnoreCase
+        );
 
         // 2026-09-17: 장비 Connect/Disconnect 생명주기를 직렬화한다.
         private readonly SemaphoreSlim _deviceConnectionLifecycleLock = new SemaphoreSlim(1, 1);
 
         private long _deviceSessionGeneration;
+
         private int _deviceDisconnectRequested;
 
         private Task _eoCaptureTask = Task.CompletedTask;
 
         private Task _irCaptureTask = Task.CompletedTask;
 
-        #region [Video Connect / Disconnect]
+        #region [영상 연결 및 해제]
 
-        #region [Connect]
+        #region [연결]
 
         /// <summary>
-        /// 영상 연결 함수
+        /// 장비 연결 버튼의 진입점이다.
         ///
-        /// [VD] / [EO RTSP] / [IR RTSP] 연결을 시도하고,
-        /// 연결 성공한 영상만 각각의 [CaptureLoop]로 출력한다.
-        ///
-        /// [FFmpeg RTSP Open]은 지연될 수 있으므로
-        /// 백그라운드 [Task]에서 연결을 시도한다.
+        /// 중복 연결·해제 요청을 확인하고 연결 생명주기 잠금 안에서
+        /// 제어 TCP와 EO/IR RTSP 연결을 시작한다.
+        /// 지연될 수 있는 영상 열기는 내부 비동기 연결 경로에서 처리한다.
         /// </summary>
         public async void Connect()
         {
-            if(Volatile.Read(ref _deviceDisconnectRequested)!=0 || IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _deviceConnectRequested,1,0)!=0) { ShowAlreadyConnected();return; }
+            if (Volatile.Read(ref _deviceDisconnectRequested) != 0 ||
+                IsDeviceSettingsLocked ||
+                Interlocked.CompareExchange(
+                ref _deviceConnectRequested,
+                1,
+                0
+            ) != 0)
+            {
+                ShowAlreadyConnected();
+                return;
+            }
+
             await _deviceConnectionLifecycleLock.WaitAsync();
             long session = Interlocked.Increment(ref _deviceSessionGeneration);
+
             try
             {
                 ConsoleLogHelper.State("DEVICE CONNECT", $"SESSION={session} / STATE=Connecting");
@@ -310,12 +317,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error("DEVICE CONNECT", $"SESSION={session} / RESULT=FAULTED", ex);
             }
-            finally { Interlocked.Exchange(ref _deviceConnectRequested,0);_deviceConnectionLifecycleLock.Release(); }
+            finally
+            {
+                Interlocked.Exchange(ref _deviceConnectRequested, 0);
+                _deviceConnectionLifecycleLock.Release();
+            }
         }
 
+        /// <summary>
+        /// 고정한 연결 대상과 세션 번호로 제어 TCP·EO/IR 영상을 연결하고 초기 동작을 시작한다.
+        /// </summary>
         private async Task ConnectCoreAsync(long session)
         {
-            if(HasActiveDeviceSession) {ShowAlreadyConnected();return;}
+            if (HasActiveDeviceSession)
+            {
+                ShowAlreadyConnected();
+                return;
+            }
+
             /*
              * TODO(COMMAND-NEXT):
              * 현재 XAML Command가 RelayCommand(Action)에 연결되어 있어 async void를 유지한다.
@@ -328,7 +347,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string.Empty,
                 $"CONTROL : {ControlAgentIp}:{ControlAgentPortText}",
                 $"EO      : {ConsoleLogHelper.MaskRtspPassword(EoSourceAddress)}",
-                $"IR      : {ConsoleLogHelper.MaskRtspPassword(IrSourceAddress)}");
+                $"IR      : {ConsoleLogHelper.MaskRtspPassword(IrSourceAddress)}"
+            );
 
             /// <summary>
             /// 현재 [Connect] 시도 중이면
@@ -338,7 +358,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 Console.WriteLine();
                 Console.WriteLine("[VIDEO] Connecting...");
-
                 ConsoleLogHelper.PrintLine();
                 return;
             }
@@ -351,9 +370,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * FFmpeg Open을 수행하지 않고 즉시 종료하여
              * 불필요한 연결 지연과 예외 로그를 방지한다.
              */
-            if (!TryGetRtspEndpoints(
-                    out string eoRtspAddress,
-                    out string irRtspAddress))
+            if (!TryGetRtspEndpoints(out string eoRtspAddress, out string irRtspAddress))
             {
                 return;
             }
@@ -362,42 +379,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * Trim 처리된 검증 완료 주소를
              * 실제 영상 연결 주소로 다시 반영한다.
              */
-            EoSourceAddress=eoRtspAddress;IrSourceAddress=irRtspAddress;
-
+            EoSourceAddress = eoRtspAddress;
+            IrSourceAddress = irRtspAddress;
             // 2026-09-08: 검증을 통과한 직접 입력/프리셋 주소를 다음 실행에 복원한다.
             SaveRtspCommunicationSettings();
-
-            // Freeze retry endpoints. ComboBox changes only configure the next explicit connection.
+            // 재시도 연결 주소를 고정하고 선택 상자 변경은 다음 명시적 연결에 적용한다.
             _requestedControlProfile = SelectedControlAgentProfile;
             _requestedControlIp = ControlAgentIp;
             _requestedControlPort = ControlAgentPortText;
             _requestedEoAddress = eoRtspAddress;
             _requestedIrAddress = irRtspAddress;
-
             // 이전 연결 중 선택한 다음 장비는 아직 이전 좌표계를 사용했을 수 있다.
             // 새 TCP 수신과 자동 HOME 전에 송신·수신 좌표계를 새 요청에 맞춘다.
             ApplyControlAgentPanCoordinateMode(_requestedControlProfile);
-
             // 2026-08-18: 한 채널만 연결된 상태에서 다시 연결해도
             // 정상 채널의 프레임과 CaptureLoop는 유지하고 실패 채널만 초기화한다.
-            bool isEoStreamActive =
-                _eoDecoder.IsOpened || _isEoFrameDisplayed;
+            bool isEoStreamActive = _eoDecoder.IsOpened || _isEoFrameDisplayed;
+            bool isIrStreamActive = _irDecoder.IsOpened || _isIrFrameDisplayed;
 
-            bool isIrStreamActive =
-                _irDecoder.IsOpened || _isIrFrameDisplayed;
-
-            if (_isEoRtspAddressValid &&
-                !isEoStreamActive)
+            if (_isEoRtspAddressValid && !isEoStreamActive)
             {
-                _isEoFrameDisplayed =
-                    false;
+                _isEoFrameDisplayed = false;
             }
 
-            if (_isIrRtspAddressValid &&
-                !isIrStreamActive)
+            if (_isIrRtspAddressValid && !isIrStreamActive)
             {
-                _isIrFrameDisplayed =
-                    false;
+                _isIrFrameDisplayed = false;
             }
 
             App.Current.Dispatcher.Invoke(() =>
@@ -415,9 +422,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     IrFireSmokeDetectionBoxes.Clear();
                     SetLocalFireSmokeDetectionState(1, false, false);
                 }
-
             });
-
             _isVideoConnecting = true; // 연결 시도 중 상태 설정
 
             /*
@@ -426,11 +431,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 현재 실제 [EO / IR] RTSP 영상만 사용하므로
              * VD 연결 상태는 갱신하지 않는다.
              */
-            if (_isEoRtspAddressValid &&
-                !isEoStreamActive)
+            if (_isEoRtspAddressValid && !isEoStreamActive)
             {
-                EoStatusText =
-                    "[EO] Connecting...";
+                EoStatusText = "[EO] Connecting...";
             }
 
             /*
@@ -440,34 +443,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * IR 연결을 시작하므로, 초기 상태 표시 순서가
              * EO -> IR 순서로 명확하게 유지된다.
              */
-            if (_isIrRtspAddressValid &&
-                !isIrStreamActive)
+            if (_isIrRtspAddressValid && !isIrStreamActive)
             {
-                IrStatusText =
-                    "[IR] Waiting for EO...";
+                IrStatusText = "[IR] Waiting for EO...";
             }
 
             try
             {
                 // 2026-08-18: 살아 있는 채널의 CaptureLoop가 사용하는 Token은
                 // 취소하지 않는다. 최초 연결 또는 명시적 연결 해제 후에만 새로 만든다.
-                if (_cts == null ||
-                    _cts.IsCancellationRequested)
+                if (_cts == null || _cts.IsCancellationRequested)
                 {
                     ResetCancellationToken();
                 }
 
-                _isDeviceConnectionRequested =
-                    true;
-
+                _isDeviceConnectionRequested = true;
                 /// <summary>
                 /// [Control Agent] 최초 연결을 바로 시도한다.
                 ///
                 /// 최초 연결에 실패하더라도 내부 Auto Reconnect Loop가
                 /// 일정 간격으로 연결을 다시 시도한다.
                 /// </summary>
-                bool isControlAgentConnected =
-                    await ConnectLaAsync();
+                bool isControlAgentConnected = await ConnectLaAsync();
 
                 if (isControlAgentConnected)
                 {
@@ -483,23 +480,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 /// Port 9000 연결은 명령 처리 결과 및 위치 조회 응답 수신에 사용한다.
                 /// </summary>
                 await StartSelectedEoCtecResponseAsync();
-
                 /*
                  * AI Detector 연결은 하단 AI CONNECT 버튼의 독립 흐름에서 수행한다.
                  * 장비 연결 버튼은 Control Agent와 EO/IR RTSP 연결만 담당한다.
                  */
-
                 /*
                  * 로컬 VD/OpenCV 테스트 경로는 현재 제품 흐름에서 사용하지 않아 제거했다.
                  * 영상 연결은 EO -> IR 순서의 FFmpeg RTSP 경로만 사용한다.
                  */
+                VideoConnectResult result = await OpenVideoSourcesAsync();
 
-                VideoConnectResult result =
-                    await OpenVideoSourcesAsync();
-
-                if (!_isDeviceConnectionRequested ||
-                    _cts == null ||
-                    _cts.IsCancellationRequested)
+                if (!_isDeviceConnectionRequested || _cts == null || _cts.IsCancellationRequested)
                 {
                     await Task.WhenAll(Task.Run(() => _eoDecoder.Close()), Task.Run(() => _irDecoder.Close()));
                     return;
@@ -507,7 +498,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 // EO / IR 개별 상태 Console 출력
                 WriteVideoConnectLog(result);
-
                 /*
                  * LA/WEB AGENT 최초 장비 연결 완료 후 HOME POSITION 자동 실행
                  *
@@ -527,9 +517,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 전체 우측 UI, 탭, 버튼, 방향키, WASD, Zoom/Focus 단축키가 잠기며,
                  * 정상 완료/송신 실패/예외/30초 Timeout 후 반드시 자동 해제된다.
                  */
-                bool areBothCamerasConnected =
-                    result.EoResult &&
-                    result.IrResult;
+                bool areBothCamerasConnected = result.EoResult && result.IrResult;
 
                 if (isControlAgentConnected &&
                     _laTcpService.IsConnected &&
@@ -538,42 +526,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     ConsoleLogHelper.Info(
                         "CONNECT / AUTO HOME",
-                        $"Eligibility passed / CONTROL AGENT + EO and IR connected / MODE={(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")}");
-
+                        $"Eligibility passed / CONTROL AGENT + EO and IR connected / MODE={(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")}"
+                    );
                     Console.WriteLine();
-                    Console.WriteLine(
-                        $"[CONNECT] {(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")} + EO/IR VIDEO AVAILABLE " +
-                        "/ AUTO HOME POSITION START");
+                    Console.WriteLine($"[CONNECT] {(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")} + EO/IR VIDEO AVAILABLE " + "/ AUTO HOME POSITION START");
                     ConsoleLogHelper.PrintLine();
-
                     await MoveHomePositionAsync();
-
-                    ConsoleLogHelper.State(
-                        "CONNECT / AUTO HOME",
-                        $"Completed / STATUS={HomeZeroStatusText}");
-
+                    ConsoleLogHelper.State("CONNECT / AUTO HOME", $"Completed / STATUS={HomeZeroStatusText}");
                     Console.WriteLine();
-                    Console.WriteLine(
-                        $"[CONNECT] {(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")} AUTO HOME POSITION END " +
-                        $"/ STATUS={HomeZeroStatusText}");
+                    Console.WriteLine($"[CONNECT] {(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")} AUTO HOME POSITION END " + $"/ STATUS={HomeZeroStatusText}");
                     ConsoleLogHelper.PrintLine();
                 }
                 else
                 {
-                    string autoHomeSkipReason =
-                        $"CONTROL_AGENT_CONNECTED={isControlAgentConnected} " +
-                        $"/ EO_CONNECTED={result.EoResult} " +
-                        $"/ IR_CONNECTED={result.IrResult} " +
-                        $"/ MODE={(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")}";
-
-                    ConsoleLogHelper.Info(
-                        "CONNECT / AUTO HOME",
-                        "Skipped / " + autoHomeSkipReason);
-
+                    string autoHomeSkipReason = $"CONTROL_AGENT_CONNECTED={isControlAgentConnected} " + $"/ EO_CONNECTED={result.EoResult} " + $"/ IR_CONNECTED={result.IrResult} " + $"/ MODE={(IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")}";
+                    ConsoleLogHelper.Info("CONNECT / AUTO HOME", "Skipped / " + autoHomeSkipReason);
                     Console.WriteLine();
-                    Console.WriteLine(
-                        "[CONNECT] AUTO HOME POSITION SKIPPED / " +
-                        autoHomeSkipReason);
+                    Console.WriteLine("[CONNECT] AUTO HOME POSITION SKIPPED / " + autoHomeSkipReason);
                     ConsoleLogHelper.PrintLine();
                 }
 
@@ -587,11 +556,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 /// 자동 활성화는 연결 성공 시 한 번만 수행하며,
                 /// 이후에는 [DISPLAY OVERLAY] 버튼을 통한 수동 조작값을 유지한다.
                 /// </summary>
-                if (result.EoResult ||
-                    result.IrResult)
+                if (result.EoResult || result.IrResult)
                 {
-                    IsCrosshairVisible =
-                        true;
+                    IsCrosshairVisible = true;
                 }
 
                 /*
@@ -603,16 +570,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 둘 다 최초 연결에 실패했더라도
                  * 자동 재연결은 계속 수행한다.
                  */
-                if (!result.EoResult &&
-                    !result.IrResult)
+                if (!result.EoResult && !result.IrResult)
                 {
-                    Console.WriteLine(
-                        "[VIDEO] EO / IR All Connect Failed. " +
-                        "Reconnect Loop Started.");
-
+                    Console.WriteLine("[VIDEO] EO / IR All Connect Failed. " + "Reconnect Loop Started.");
                     ConsoleLogHelper.PrintLine();
                 }
-
                 /// <summary>
                 /// [AI Detector] 다중 객체 [Bounding Box] 표시 테스트
                 ///
@@ -621,18 +583,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 /// 테스트 완료 후 주석 처리한다.
                 /// </summary>
                 /// 
-                //TestDummyAiDetectionResult();
             }
             finally
             {
                 _isVideoConnecting = false;
             }
-
         }
 
         #endregion
 
-        #region [Disconnect]
+        #region [연결 해제]
 
         /// <summary>
         /// 영상 연결 해제 함수
@@ -644,14 +604,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void Disconnect()
         {
-            // V31_4: ignore duplicate teardown requests and invalidate callbacks immediately.
-            if (Interlocked.CompareExchange(ref _deviceDisconnectRequested, 1, 0) != 0) return;
+            // 중복 종료 요청을 무시하고 이전 비동기 콜백은 즉시 무효화한다.
+            if (Interlocked.CompareExchange(ref _deviceDisconnectRequested, 1, 0) != 0)
+                return;
+
             Interlocked.Increment(ref _deviceSessionGeneration);
             _isDeviceConnectionRequested = false;
             ResetDigitalZoomSession();
             _controlAgentReconnectCts?.Cancel();
             _videoReconnectCts?.Cancel();
-
             // 2026-10-01: native RTSP 자원 정리가 끝날 때까지 기존 Connected/Waiting
             // 문구가 남지 않도록 해제 요청을 UI에 즉시 표시한다.
             EoStatusText = "[EO] Disconnecting...";
@@ -659,21 +620,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // V28_1: 명시적 연결 해제는 전원 명령 대기도 즉시 취소한다.
             // 네이티브 자원 정리 동안 WAIT 잠금이 남지 않도록 상태를 먼저 초기화한다.
             ResetDevicePowerStatus();
-            SetControlAgentConnectionStatus(
-                "Disconnecting...",
-                "#FFD166");
+            SetControlAgentConnectionStatus("Disconnecting...", "#FFD166");
             _cts?.Cancel();
-
             await _deviceConnectionLifecycleLock.WaitAsync();
             long session = Interlocked.Increment(ref _deviceSessionGeneration);
+
             try
             {
                 ConsoleLogHelper.State("DEVICE DISCONNECT", $"SESSION={session} / STATE=Disconnecting");
                 await DisconnectCoreAsync(session);
-                ConsoleLogHelper.State("DEVICE DISCONNECT",
-                    $"SESSION={session} / CONTROL_RX_STOPPED=True / TCP_DISPOSED=True / " +
-                    "EO_RTSP_DISPOSED=True / IR_RTSP_DISPOSED=True / CTS_DISPOSED=True / " +
-                    "FRAME_STATE_RESET=True / RESULT=COMPLETE");
+                ConsoleLogHelper.State(
+                    "DEVICE DISCONNECT",
+                    $"SESSION={session} / CONTROL_RX_STOPPED=True / TCP_DISPOSED=True / " + "EO_RTSP_DISPOSED=True / IR_RTSP_DISPOSED=True / CTS_DISPOSED=True / " + "FRAME_STATE_RESET=True / RESULT=COMPLETE"
+                );
             }
             catch (OperationCanceledException)
             {
@@ -683,199 +642,132 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error("DEVICE DISCONNECT", $"SESSION={session} / RESULT=FAULTED", ex);
             }
-            finally { Interlocked.Exchange(ref _deviceDisconnectRequested,0); _deviceConnectionLifecycleLock.Release(); }
+            finally
+            {
+                Interlocked.Exchange(ref _deviceDisconnectRequested, 0);
+                _deviceConnectionLifecycleLock.Release();
+            }
         }
 
+        /// <summary>
+        /// 현재 세션의 입력·수신·표시 작업을 정리하고 장비 연결을 해제한다.
+        /// </summary>
         private async Task DisconnectCoreAsync(long session)
         {
             StopRoute();
-            ConsoleLogHelper.Command(
-                "DEVICE CONNECT",
-                "Disconnect requested");
-
+            ConsoleLogHelper.Command("DEVICE CONNECT", "Disconnect requested");
             /*
              * 2026-08-21: 상위 장비 연결 해제는 현재 연결된 AI Agent도 함께 종료한다.
              * AI 연결 시작은 기존 정책대로 AI CONNECT 버튼에서만 수행한다.
              */
             DisconnectAiAgent();
-
             Console.WriteLine("[VIDEO] Disconnect Try...");
-
             Console.WriteLine();
-
             /// <summary>
             /// 연결 시도 / 자동 재연결 진행 중에도
             /// 사용자가 즉시 연결 해제할 수 있도록 모든 Token을 먼저 종료한다.
             /// </summary>
-            _isDeviceConnectionRequested =
-                false;
-
+            _isDeviceConnectionRequested = false;
             _controlAgentReconnectCts?.Cancel();
             _videoReconnectCts?.Cancel();
-
             /*
              * CTEC EO Zoom / Focus 버튼을 누르고 있던 상태에서
              * Disconnect하더라도 CGI Inquiry가 계속 송신되지 않도록 종료한다.
              */
             StopCtecEoPositionPolling();
-
             /// <summary>
             /// 진행 중인 이동 제어 VIA 0 Pan 작업 종료
             /// </summary>
             CancelMoveControlPanOperation();
-
             /// <summary>
             /// 진행 중인 EO / IR Zoom Sync 작업 종료
             /// </summary>
             await StopZoomSyncAsync();
-
             /// <summary>
             /// 진행 중인 EO / IR Focus Sync 작업 종료
             /// </summary>
             await StopFocusSyncAsync();
-
             // 1. 먼저 [Loop] 종료 요청
             _cts?.Cancel();
-
-            Interlocked.Exchange(
-                ref _isEoFrameDispatchPending,
-                0);
-
-            Interlocked.Exchange(
-                ref _isIrFrameDispatchPending,
-                0);
-
+            Interlocked.Exchange(ref _isEoFrameDispatchPending, 0);
+            Interlocked.Exchange(ref _isIrFrameDispatchPending, 0);
             /// <summary>
             /// 2-1. [EO] 영상 표시 상태 초기화
             /// </summary>
             _isEoFrameDisplayed = false;
-
             /// <summary>
             /// 2-2. [IR] 영상 표시 상태 초기화
             /// </summary>
             _isIrFrameDisplayed = false;
-
             /*
              * [VD] 로컬 테스트 영상 연결 기능 비활성화
              *
              * 현재 VD Decoder를 Open하지 않으므로
              * Release 처리도 함께 비활성화한다.
              */
-            await Task.WhenAll(
-                Task.Run(() => _eoDecoder.Close()),
-                Task.Run(() => _irDecoder.Close()));
-
+            await Task.WhenAll(Task.Run(() => _eoDecoder.Close()), Task.Run(() => _irDecoder.Close()));
             await WaitForCaptureWorkersAsync();
-
             /// <summary>
             /// [Control Agent] 제어 TCP 연결 해제
             /// </summary>
             await _laTcpService.DisconnectAsync();
-
             /// <summary>
             /// [옥상 MR300 EO] CTEC Response TCP Port 9000 연결 해제
             /// </summary>
             _ctecCameraResponseService.Stop();
-
-            _connectedEoCtecSource =
-                null;
-
+            _connectedEoCtecSource = null;
             _requestedControlProfile = null;
             _requestedControlIp = _requestedControlPort = _requestedEoAddress = _requestedIrAddress = null;
-
-            _activeEoCtecSource =
-                null;
-
-            _currentCtecEoZoomPosition =
-                0;
-
-            _currentCtecEoFocusPosition =
-                0;
-
-            _currentCtecEoFocusMode =
-                0;
-
-            SetControlAgentConnectionStatus(
-                "Disconnected",
-                "#FF6B6B");
-
+            _activeEoCtecSource = null;
+            _currentCtecEoZoomPosition = 0;
+            _currentCtecEoFocusPosition = 0;
+            _currentCtecEoFocusMode = 0;
+            SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
             /// <summary>
             /// 장비 연결 해제 시 중앙 십자선 비활성화
             ///
             /// 다음 연결 전까지 검은 화면에 십자선이 남지 않도록
             /// 기본 상태인 [DISABLED]로 초기화한다.
             /// </summary>
-            IsCrosshairVisible =
-                false;
-
+            IsCrosshairVisible = false;
             /// <summary>
             /// [CURRENT STATUS] 상태값 초기화
             ///
             /// Control Agent 연결 해제 후에는
             /// 마지막 수신 상태값이 화면에 남지 않도록 초기화한다.
             /// </summary>
-            _currentPan =
-                0.0;
-
-            _lastPanAbsoluteTarget =
-                null;
-
+            _currentPan = 0.0;
+            _lastPanAbsoluteTarget = null;
             ClearActivePanTiltAbsoluteMove();
-
-            IsPresetScanRunning =
-                false;
-
-            PresetCommandStatusText =
-                "CONTROL AGENT DISCONNECTED";
-
-            _currentTilt =
-                0.0;
-
-            _currentEoZoom =
-                0;
-
-            _currentEoFocus =
-                0;
-
-            _currentIrZoom =
-                0;
-
-            _currentIrFocus =
-                0;
+            IsPresetScanRunning = false;
+            PresetCommandStatusText = "CONTROL AGENT DISCONNECTED";
+            _currentTilt = 0.0;
+            _currentEoZoom = 0;
+            _currentEoFocus = 0;
+            _currentIrZoom = 0;
+            _currentIrFocus = 0;
             System.Threading.Interlocked.Exchange(ref _eoLensReceivedTicks, 0);
             System.Threading.Interlocked.Exchange(ref _irLensReceivedTicks, 0);
-
             /// <summary>
             /// CONTROL AGENT TCP 연결에서 남아 있을 수 있는
             /// 분할 수신 Packet Buffer 초기화
             /// </summary>
             _laPacketParser.Reset();
-
-            _currentPowerStatus =
-                0x00;
-
+            _currentPowerStatus = 0x00;
             // 2026-10-06: 재연결 전에는 0x31 상태를 OFF로 오인하지 않는다.
             ResetDevicePowerStatus();
-
-            _currentMoveType =
-                ContinuousMoveType.None;
-
+            _currentMoveType = ContinuousMoveType.None;
             ClearKeyboardPanTiltPressedState();
-
-            _currentKeyboardPanTiltDirection =
-                KeyboardPanTiltDirection.None;
-
+            _currentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
             /// <summary>
             /// CURRENT STATUS UI Binding 갱신
             /// </summary>
             NotifyEoCurrentStatusChanged();
             NotifyIrCurrentStatusChanged();
-
             // 4. [UI] [Thread]에서 마지막으로 검은 화면 덮어쓰기
             App.Current.Dispatcher.Invoke(() =>
             {
                 ClearVideoView(); // [VD] / [EO] / [IR] Viewer 화면을 검은 화면으로 초기화
-
                 /// <summary>
                 /// [EO / IR] [AI Detector] 탐지 결과 초기화
                 ///
@@ -891,17 +783,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 EoStatusText = "Disconnected";
                 IrStatusText = "Disconnected";
             });
-
             ResetLatestVideoFrameState();
             _cts?.Dispose();
             _cts = null;
-
             // 5. [VIDEO] 연결 해제 완료 [Log] 출력
             Console.WriteLine("[VIDEO] Disconnect Complete.");
-
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// 최근 표시·검출 프레임 상태를 비워 이전 세션 영상이 새 연결에 남지 않게 한다.
+        /// </summary>
         private void ResetLatestVideoFrameState()
         {
             ResetDisplayFrameSlot(_eoDisplaySlot);
@@ -910,6 +802,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ResetDetectionFrameSlot(_irDetectionSlot);
         }
 
+        /// <summary>
+        /// 영상 취득 작업의 종료를 기다려 디코더 자원 해제와 읽기 작업의 충돌을 피한다.
+        /// </summary>
         private async Task WaitForCaptureWorkersAsync()
         {
             Task eoDisplayWorker;
@@ -918,6 +813,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 eoDisplayWorker = _eoDisplaySlot.BufferedWorkerTask ?? Task.CompletedTask;
             }
+
             lock (_irDisplaySlot.Sync)
             {
                 irDisplayWorker = _irDisplaySlot.BufferedWorkerTask ?? Task.CompletedTask;
@@ -927,17 +823,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _eoCaptureTask ?? Task.CompletedTask,
                 _irCaptureTask ?? Task.CompletedTask,
                 eoDisplayWorker,
-                irDisplayWorker);
+                irDisplayWorker
+            );
             Task completed = await Task.WhenAny(workers, Task.Delay(2000));
             ConsoleLogHelper.State(
                 "DEVICE DISCONNECT",
-                $"EO_CAPTURE_STOPPED={_eoCaptureTask == null || _eoCaptureTask.IsCompleted} / " +
-                $"IR_CAPTURE_STOPPED={_irCaptureTask == null || _irCaptureTask.IsCompleted} / " +
-                $"EO_DISPLAY_STOPPED={eoDisplayWorker.IsCompleted} / " +
-                $"IR_DISPLAY_STOPPED={irDisplayWorker.IsCompleted} / " +
-                $"WAIT_TIMEOUT={completed != workers}");
+                $"EO_CAPTURE_STOPPED={_eoCaptureTask == null || _eoCaptureTask.IsCompleted} / " + $"IR_CAPTURE_STOPPED={_irCaptureTask == null || _irCaptureTask.IsCompleted} / " + $"EO_DISPLAY_STOPPED={eoDisplayWorker.IsCompleted} / " + $"IR_DISPLAY_STOPPED={irDisplayWorker.IsCompleted} / " + $"WAIT_TIMEOUT={completed != workers}"
+            );
         }
 
+        /// <summary>
+        /// 표시용 최신 프레임 보관 슬롯을 초기화하고 소유한 버퍼를 정리한다.
+        /// </summary>
         private static void ResetDisplayFrameSlot(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -950,10 +847,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     slot.BufferedFrames.Dequeue().Frame?.Dispose();
                 }
+
                 while (slot.BufferedReusableFrames.Count > 0)
                 {
                     slot.BufferedReusableFrames.Dequeue()?.Dispose();
                 }
+
                 slot.BufferedWorkerTask = Task.CompletedTask;
                 slot.Bitmap = null;
                 slot.LatestFrameDecodedTicks = 0;
@@ -964,6 +863,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 검출용 최신 프레임 보관 슬롯을 초기화하고 이전 결과를 정리한다.
+        /// </summary>
         private static void ResetDetectionFrameSlot(DetectionFrameSlot slot)
         {
             lock (slot.Sync)
@@ -983,7 +885,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Video View Clear]
+        #region [영상 화면 지우기]
 
         /// <summary>
         /// 지정한 크기의 검은색 [BitmapSource] 생성
@@ -991,32 +893,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [Disconnect] 시 기존 마지막 프레임이 남지 않도록
         /// [Viewer] 화면을 검은 화면으로 초기화할 때 사용
         /// </summary>
-        private BitmapSource CreateBlackBitmap(
-            int width,
-            int height)
+        private BitmapSource CreateBlackBitmap(int width, int height)
         {
             /// <summary>
             /// [BGR24] 기준 1픽셀당 [3byte]
             /// 전체 [byte] 배열을 0으로 유지하면 검은색 화면이 된다.
             /// </summary>
             int stride = width * 3;
-
-            byte[] pixels =
-                new byte[height * stride];
-
-            BitmapSource bitmap =
-                BitmapSource.Create(
-                    width,
-                    height,
-                    96,
-                    96,
-                    System.Windows.Media.PixelFormats.Bgr24,
-                    null,
-                    pixels,
-                    stride);
-
+            byte[] pixels = new byte[height * stride];
+            BitmapSource bitmap = BitmapSource.Create(
+                width,
+                height,
+                96,
+                96,
+                System.Windows.Media.PixelFormats.Bgr24,
+                null,
+                pixels,
+                stride
+            );
             bitmap.Freeze();
-
             return bitmap;
         }
 
@@ -1031,28 +926,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// 현재 [Viewer] 크기와 유사한 기본 검은 화면 생성
             /// 실제 출력은 [Image Stretch="Uniform"] 설정에 따라 자동 맞춤
             /// </summary>
-            BitmapSource blackBitmap =
-                CreateBlackBitmap(
-                    1280,
-                    720);
-
+            BitmapSource blackBitmap = CreateBlackBitmap(1280, 720);
             /// <summary>
             /// [UI Thread]에서 [Image Source] 초기화
             /// </summary>
             App.Current.Dispatcher.Invoke(() =>
             {
-                EOCameraImage =
-                    blackBitmap;
-
-                IRCameraImage =
-                    blackBitmap;
+                EOCameraImage = blackBitmap;
+                IRCameraImage = blackBitmap;
             });
-
         }
 
         #endregion
 
-        #region [Video State Helpers]
+        #region [영상 상태 보조 함수]
 
         /// <summary>
         /// [EO / IR] 전체 영상 연결 여부 확인
@@ -1068,13 +955,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             _cts?.Cancel();
             _cts?.Dispose();
-
             _cts = new CancellationTokenSource();
         }
 
         #endregion
 
-        #region [Video Open Helpers]
+        #region [영상 열기 보조 함수]
 
         /// <summary>
         /// [EO / IR] 영상 연결 시도
@@ -1084,19 +970,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task<VideoConnectResult> OpenVideoSourcesAsync()
         {
-            ConsoleLogHelper.Info(
-                "RTSP",
-                "Sequential open started / ORDER=EO -> IR");
-
-            bool eoResult =
-                false;
-
-            bool irResult =
-                false;
-
-            CancellationToken captureToken =
-                _cts?.Token ?? CancellationToken.None;
-
+            ConsoleLogHelper.Info("RTSP", "Sequential open started / ORDER=EO -> IR");
+            bool eoResult = false;
+            bool irResult = false;
+            CancellationToken captureToken = _cts?.Token ?? CancellationToken.None;
             /*
              * [1] EO RTSP 우선 연결
              *
@@ -1104,37 +981,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 첫 번째 장비의 Connect 결과가 확정되기 전에는
              * 다음 장비 연결을 시작하지 않는다.
              */
-            bool wasEoAlreadyOpen =
-                _eoDecoder.IsOpened;
-
-            eoResult =
-                _isEoRtspAddressValid &&
+            bool wasEoAlreadyOpen = _eoDecoder.IsOpened;
+            eoResult = _isEoRtspAddressValid &&
                 (wasEoAlreadyOpen ||
-                 await Task.Run(() =>
-                     _eoDecoder.Open(
-                         SessionEoAddress, captureToken)));
+                await Task.Run(() => _eoDecoder.Open(
+                SessionEoAddress,
+                captureToken
+            )));
 
-            if (!_isDeviceConnectionRequested ||
-                captureToken.IsCancellationRequested)
+            if (!_isDeviceConnectionRequested || captureToken.IsCancellationRequested)
             {
                 return new VideoConnectResult
                 {
                     EoResult = false,
                     IrResult = false
                 };
-
             }
 
             if (eoResult)
             {
-                EoVideoWidth =
-                    _eoDecoder.VideoWidth;
-
-                EoVideoHeight =
-                    _eoDecoder.VideoHeight;
-
-                EoStatusText =
-                    "[EO] Waiting Frame...";
+                EoVideoWidth = _eoDecoder.VideoWidth;
+                EoVideoHeight = _eoDecoder.VideoHeight;
+                EoStatusText = "[EO] Waiting Frame...";
 
                 /*
                  * EO 연결 완료 직후 Capture Loop를 먼저 시작한다.
@@ -1144,29 +1012,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  */
                 if (!wasEoAlreadyOpen)
                 {
-                    _eoCaptureTask = Task.Run(() =>
-                        FFmpegCaptureLoop(
-                            _eoDecoder,
-                            SessionEoAddress,
-                            "EO",
-                            bitmap =>
-                            {
-                                EOCameraImage =
-                                    bitmap;
-
-                                _isEoFrameDisplayed =
-                                    true;
-                            },
-                            captureToken));
+                    _eoCaptureTask = Task.Run(() => FFmpegCaptureLoop(_eoDecoder, SessionEoAddress, "EO", bitmap =>
+                    {
+                        EOCameraImage = bitmap;
+                        _isEoFrameDisplayed = true;
+                    }, captureToken));
                 }
-
             }
             else if (_isEoRtspAddressValid)
             {
-                EoStatusText =
-                    _eoDecoder.IsAuthenticationFailure
-                        ? "[EO] RTSP 인증 실패 (401)"
-                        : "[EO] Connect Failed";
+                EoStatusText = _eoDecoder.IsAuthenticationFailure ? "[EO] RTSP 인증 실패 (401)" : "[EO] Connect Failed";
             }
 
             /*
@@ -1177,9 +1032,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
              */
             try
             {
-                await Task.Delay(
-                    500,
-                    captureToken);
+                await Task.Delay(500, captureToken);
             }
             catch (OperationCanceledException)
             {
@@ -1188,18 +1041,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     EoResult = eoResult,
                     IrResult = false
                 };
-
             }
 
-            if (!_isDeviceConnectionRequested ||
-                captureToken.IsCancellationRequested)
+            if (!_isDeviceConnectionRequested || captureToken.IsCancellationRequested)
             {
                 return new VideoConnectResult
                 {
                     EoResult = eoResult,
                     IrResult = false
                 };
-
             }
 
             /*
@@ -1207,67 +1057,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
              */
             if (_isIrRtspAddressValid)
             {
-                IrStatusText =
-                    "[IR] Connecting...";
+                IrStatusText = "[IR] Connecting...";
             }
 
-            bool wasIrAlreadyOpen =
-                _irDecoder.IsOpened;
-
-            irResult =
-                _isIrRtspAddressValid &&
+            bool wasIrAlreadyOpen = _irDecoder.IsOpened;
+            irResult = _isIrRtspAddressValid &&
                 (wasIrAlreadyOpen ||
-                 await Task.Run(() =>
-                     _irDecoder.Open(
-                         SessionIrAddress, captureToken)));
+                await Task.Run(() => _irDecoder.Open(
+                SessionIrAddress,
+                captureToken
+            )));
 
-            if (!_isDeviceConnectionRequested ||
-                captureToken.IsCancellationRequested)
+            if (!_isDeviceConnectionRequested || captureToken.IsCancellationRequested)
             {
                 return new VideoConnectResult
                 {
                     EoResult = eoResult,
                     IrResult = false
                 };
-
             }
 
             if (irResult)
             {
-                IrVideoWidth =
-                    _irDecoder.VideoWidth;
-
-                IrVideoHeight =
-                    _irDecoder.VideoHeight;
-
-                IrStatusText =
-                    "[IR] Waiting Frame...";
+                IrVideoWidth = _irDecoder.VideoWidth;
+                IrVideoHeight = _irDecoder.VideoHeight;
+                IrStatusText = "[IR] Waiting Frame...";
 
                 if (!wasIrAlreadyOpen)
                 {
-                    _irCaptureTask = Task.Run(() =>
-                        FFmpegCaptureLoop(
-                            _irDecoder,
-                            SessionIrAddress,
-                            "IR",
-                            bitmap =>
-                            {
-                                IRCameraImage =
-                                    bitmap;
-
-                                _isIrFrameDisplayed =
-                                    true;
-                            },
-                            captureToken));
+                    _irCaptureTask = Task.Run(() => FFmpegCaptureLoop(_irDecoder, SessionIrAddress, "IR", bitmap =>
+                    {
+                        IRCameraImage = bitmap;
+                        _isIrFrameDisplayed = true;
+                    }, captureToken));
                 }
-
             }
             else if (_isIrRtspAddressValid)
             {
-                IrStatusText =
-                    _irDecoder.IsAuthenticationFailure
-                        ? "[IR] RTSP 인증 실패 (401)"
-                        : "[IR] Connect Failed";
+                IrStatusText = _irDecoder.IsAuthenticationFailure ? "[IR] RTSP 인증 실패 (401)" : "[IR] Connect Failed";
             }
 
             return new VideoConnectResult
@@ -1275,7 +1102,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 EoResult = eoResult,
                 IrResult = irResult
             };
-
         }
 
         /// <summary>
@@ -1285,48 +1111,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 장비 전원 인가 직후 Camera가 아직 Ready 상태가 아닌 경우에도
         /// 연결 해제 요청 전까지 일정 간격으로 재시도한다.
         /// </summary>
-        private void StartVideoReconnectLoops(
-            VideoConnectResult result)
+        private void StartVideoReconnectLoops(VideoConnectResult result)
         {
             _videoReconnectCts?.Cancel();
             _videoReconnectCts?.Dispose();
+            _videoReconnectCts = new CancellationTokenSource();
+            CancellationToken token = _videoReconnectCts.Token;
 
-            _videoReconnectCts =
-                new CancellationTokenSource();
-
-            CancellationToken token =
-                _videoReconnectCts.Token;
-
-            if (_isEoRtspAddressValid &&
-                !result.EoResult)
+            if (_isEoRtspAddressValid && !result.EoResult)
             {
-                _ = ReconnectVideoAsync(
-                    _eoDecoder,
-                    SessionEoAddress,
-                    "EO",
-                    bitmap =>
-                    {
-                        EOCameraImage = bitmap;
-                        _isEoFrameDisplayed = true;
-                    },
-                    token);
+                _ = ReconnectVideoAsync(_eoDecoder, SessionEoAddress, "EO", bitmap =>
+                {
+                    EOCameraImage = bitmap;
+                    _isEoFrameDisplayed = true;
+                }, token);
             }
 
-            if (_isIrRtspAddressValid &&
-                !result.IrResult)
+            if (_isIrRtspAddressValid && !result.IrResult)
             {
-                _ = ReconnectVideoAsync(
-                    _irDecoder,
-                    SessionIrAddress,
-                    "IR",
-                    bitmap =>
-                    {
-                        IRCameraImage = bitmap;
-                        _isIrFrameDisplayed = true;
-                    },
-                    token);
+                _ = ReconnectVideoAsync(_irDecoder, SessionIrAddress, "IR", bitmap =>
+                {
+                    IRCameraImage = bitmap;
+                    _isIrFrameDisplayed = true;
+                }, token);
             }
-
         }
 
         /// <summary>
@@ -1341,60 +1149,50 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string sourceAddress,
             string streamName,
             Action<BitmapSource> setImageAction,
-            CancellationToken token)
+            CancellationToken token
+        )
         {
             long session = Interlocked.Read(ref _deviceSessionGeneration);
-            const int reconnectDelayMs =
-                5000;
-
-            TimeSpan maximumReconnectDuration =
-                TimeSpan.FromMinutes(5);
-
-            Stopwatch reconnectStopwatch =
-                Stopwatch.StartNew();
-
-            int retryCount =
-                0;
-
+            const int reconnectDelayMs = 5000;
+            TimeSpan maximumReconnectDuration = TimeSpan.FromMinutes(5);
+            Stopwatch reconnectStopwatch = Stopwatch.StartNew();
+            int retryCount = 0;
             while (_isDeviceConnectionRequested &&
-                   session == Interlocked.Read(ref _deviceSessionGeneration) &&
-                   !token.IsCancellationRequested &&
-                   !decoder.IsOpened &&
-                   reconnectStopwatch.Elapsed < maximumReconnectDuration)
+                session == Interlocked.Read(ref _deviceSessionGeneration) &&
+                !token.IsCancellationRequested &&
+                !decoder.IsOpened &&
+                reconnectStopwatch.Elapsed < maximumReconnectDuration)
             {
                 retryCount++;
-
                 App.Current.Dispatcher.Invoke(() =>
                 {
-                    if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
+                    if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration))
+                        return;
+
                     if (streamName == "EO")
                     {
-                        EoStatusText =
-                            $"[EO] Reconnecting... ({retryCount})";
+                        EoStatusText = $"[EO] Reconnecting... ({retryCount})";
                     }
                     else
                     {
-                        IrStatusText =
-                            $"[IR] Reconnecting... ({retryCount})";
+                        IrStatusText = $"[IR] Reconnecting... ({retryCount})";
                     }
-
                 });
+                Console.WriteLine($"[{streamName}] RTSP Reconnect Try : {retryCount}");
+                bool connected = await Task.Run(() => decoder.Open(sourceAddress, token));
 
-                Console.WriteLine(
-                    $"[{streamName}] RTSP Reconnect Try : {retryCount}");
-
-                bool connected =
-                    await Task.Run(() =>
-                        decoder.Open(
-                            sourceAddress, token));
-
-                if (token.IsCancellationRequested || !_isDeviceConnectionRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
+                if (token.IsCancellationRequested ||
+                    !_isDeviceConnectionRequested ||
+                    session != Interlocked.Read(ref _deviceSessionGeneration))
+                    return;
 
                 if (connected)
                 {
                     App.Current.Dispatcher.Invoke(() =>
                     {
-                        if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
+                        if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration))
+                            return;
+
                         if (streamName == "EO")
                         {
                             EoVideoWidth = decoder.VideoWidth;
@@ -1413,31 +1211,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         /// EO 또는 IR 영상이 정상 연결된 경우에도
                         /// 중앙 십자선을 자동 활성화한다.
                         /// </summary>
-                        IsCrosshairVisible =
-                            true;
-
+                        IsCrosshairVisible = true;
                     });
 
-                    if (_cts != null &&
-                        !token.IsCancellationRequested)
+                    if (_cts != null && !token.IsCancellationRequested)
                     {
-                        CancellationToken captureToken =
-                            _cts.Token;
+                        CancellationToken captureToken = _cts.Token;
+                        Task captureTask = Task.Run(() => FFmpegCaptureLoop(
+                            decoder,
+                            sourceAddress,
+                            streamName,
+                            setImageAction,
+                            captureToken
+                        ));
 
-                        Task captureTask = Task.Run(() =>
-                            FFmpegCaptureLoop(
-                                decoder,
-                                sourceAddress,
-                                streamName,
-                                setImageAction,
-                                captureToken));
-                        if (streamName == "EO") _eoCaptureTask = captureTask;
-                        else _irCaptureTask = captureTask;
+                        if (streamName == "EO")
+                            _eoCaptureTask = captureTask;
+                        else
+                            _irCaptureTask = captureTask;
                     }
 
-                    Console.WriteLine(
-                        $"[{streamName}] RTSP Reconnect Success");
-
+                    Console.WriteLine($"[{streamName}] RTSP Reconnect Success");
                     return;
                 }
 
@@ -1445,23 +1239,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     App.Current.Dispatcher.Invoke(() =>
                     {
-                        if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
-                        if (streamName == "EO") EoStatusText = "[EO] RTSP 인증 실패 (401)";
-                        else IrStatusText = "[IR] RTSP 인증 실패 (401)";
+                        if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration))
+                            return;
+
+                        if (streamName == "EO")
+                            EoStatusText = "[EO] RTSP 인증 실패 (401)";
+                        else
+                            IrStatusText = "[IR] RTSP 인증 실패 (401)";
                     });
                 }
 
                 try
                 {
-                    await Task.Delay(
-                        reconnectDelayMs,
-                        token);
+                    await Task.Delay(reconnectDelayMs, token);
                 }
                 catch (OperationCanceledException)
                 {
                     return;
                 }
-
             }
 
             reconnectStopwatch.Stop();
@@ -1476,53 +1271,36 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             // 2026-08-18: 5분 재연결 제한에 도달한 채널만 최종 해제한다.
             decoder.Close();
-
             App.Current.Dispatcher.Invoke(() =>
             {
-                if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration)) return;
+                if (token.IsCancellationRequested || session != Interlocked.Read(ref _deviceSessionGeneration))
+                    return;
+
                 if (streamName == "EO")
                 {
-                    EoStatusText =
-                        "[EO] Disconnected";
-
-                    _isEoFrameDisplayed =
-                        false;
+                    EoStatusText = "[EO] Disconnected";
+                    _isEoFrameDisplayed = false;
                 }
                 else
                 {
-                    IrStatusText =
-                        "[IR] Disconnected";
-
-                    _isIrFrameDisplayed =
-                        false;
+                    IrStatusText = "[IR] Disconnected";
+                    _isIrFrameDisplayed = false;
                 }
-
             });
-
-            Console.WriteLine(
-                $"[{streamName}] RTSP Reconnect Timeout / " +
-                $"ELAPSED={reconnectStopwatch.Elapsed.TotalSeconds:F1}s / " +
-                $"COUNT={retryCount}");
-
+            Console.WriteLine($"[{streamName}] RTSP Reconnect Timeout / " + $"ELAPSED={reconnectStopwatch.Elapsed.TotalSeconds:F1}s / " + $"COUNT={retryCount}");
         }
 
         #endregion
 
-        #region [Video Result Helpers]
+        #region [영상 결과 보조 함수]
 
         /// <summary>
         /// 영상 연결 결과 [Console Log] 출력
         /// </summary>
         private void WriteVideoConnectLog(VideoConnectResult result)
         {
-            Console.WriteLine(
-                "[EO] "
-                + (result.EoResult ? "Connect Success" : "Connect Failure"));
-
-            Console.WriteLine(
-                "[IR] "
-                + (result.IrResult ? "Connect Success" : "Connect Failure"));
-
+            Console.WriteLine("[EO] " + (result.EoResult ? "Connect Success" : "Connect Failure"));
+            Console.WriteLine("[IR] " + (result.IrResult ? "Connect Success" : "Connect Failure"));
             ConsoleLogHelper.PrintLine();
         }
 
@@ -1530,9 +1308,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Video Capture Loop]
+        #region [영상 영상 취득 반복]
 
-        #region [FFmpeg Capture Loop]
+        #region [FFmpeg 영상 취득 반복]
 
         /// <summary>
         /// 해당 Stream의 Frame을 Dispatcher에 등록할 수 있는지 확인한다.
@@ -1543,23 +1321,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이를 통해 Dispatcher Queue에 과거 Frame이 누적되어
         /// 영상이 늦게 따라오는 현상을 방지한다.
         /// </summary>
-        private bool TryReserveFrameDispatch(
-            string streamName)
+        private bool TryReserveFrameDispatch(string streamName)
         {
             if (streamName == "EO")
             {
-                return Interlocked.CompareExchange(
-                    ref _isEoFrameDispatchPending,
-                    1,
-                    0) == 0;
+                return Interlocked.CompareExchange(ref _isEoFrameDispatchPending, 1, 0) == 0;
             }
 
             if (streamName == "IR")
             {
-                return Interlocked.CompareExchange(
-                    ref _isIrFrameDispatchPending,
-                    1,
-                    0) == 0;
+                return Interlocked.CompareExchange(ref _isIrFrameDispatchPending, 1, 0) == 0;
             }
 
             return false;
@@ -1568,25 +1339,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 해당 Stream의 Dispatcher 예약 상태를 해제한다.
         /// </summary>
-        private void ReleaseFrameDispatch(
-            string streamName)
+        private void ReleaseFrameDispatch(string streamName)
         {
             if (streamName == "EO")
             {
-                Interlocked.Exchange(
-                    ref _isEoFrameDispatchPending,
-                    0);
-
+                Interlocked.Exchange(ref _isEoFrameDispatchPending, 0);
                 return;
             }
 
             if (streamName == "IR")
             {
-                Interlocked.Exchange(
-                    ref _isIrFrameDispatchPending,
-                    0);
+                Interlocked.Exchange(ref _isIrFrameDispatchPending, 0);
             }
-
         }
 
         /// <summary>
@@ -1595,8 +1359,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// EO 영상은 1920 x 1080이며 메인 화면에서 크게 표시되므로
         /// IR보다 높은 Render 우선순위를 적용한다.
         /// </summary>
-        private DispatcherPriority GetFrameDispatcherPriority(
-            string streamName)
+        private DispatcherPriority GetFrameDispatcherPriority(string streamName)
         {
             if (streamName == "EO")
             {
@@ -1606,26 +1369,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return DispatcherPriority.Background;
         }
 
-        private DetectionFrameSlot GetDetectionSlot(string streamName) =>
-            streamName == "EO" ? _eoDetectionSlot : _irDetectionSlot;
+        /// <summary>
+        /// EO/IR 채널에 해당하는 검출 프레임 보관 슬롯을 선택한다.
+        /// </summary>
+        private DetectionFrameSlot GetDetectionSlot(string streamName) => streamName == "EO" ? _eoDetectionSlot : _irDetectionSlot;
 
-        private DisplayFrameSlot GetDisplaySlot(string streamName) =>
-            streamName == "EO" ? _eoDisplaySlot : _irDisplaySlot;
+        /// <summary>
+        /// EO/IR 채널에 해당하는 표시 프레임 보관 슬롯을 선택한다.
+        /// </summary>
+        private DisplayFrameSlot GetDisplaySlot(string streamName) => streamName == "EO" ? _eoDisplaySlot : _irDisplaySlot;
 
-        private RtspChannelPerformance GetRtspPerformance(string streamName) =>
-            streamName == "EO" ? _eoRtspPerformance : _irRtspPerformance;
+        /// <summary>
+        /// EO/IR 채널별 수신·표시 성능 측정 상태를 선택한다.
+        /// </summary>
+        private RtspChannelPerformance GetRtspPerformance(string streamName) => streamName == "EO" ? _eoRtspPerformance : _irRtspPerformance;
 
-        private static void RecordDisplayInterval(
-            RtspChannelPerformance performance,
-            long intervalTicks)
+        /// <summary>
+        /// 연속 표시 프레임 사이의 시간 간격을 성능 통계에 기록한다.
+        /// </summary>
+        private static void RecordDisplayInterval(RtspChannelPerformance performance, long intervalTicks)
         {
             performance.DisplayIntervalTicks += intervalTicks;
-            performance.DisplayIntervalMaxTicks = Math.Max(
-                performance.DisplayIntervalMaxTicks,
-                intervalTicks);
-
-            double intervalMilliseconds =
-                intervalTicks * 1000.0 / Stopwatch.Frequency;
+            performance.DisplayIntervalMaxTicks = Math.Max(performance.DisplayIntervalMaxTicks, intervalTicks);
+            double intervalMilliseconds = intervalTicks * 1000.0 / Stopwatch.Frequency;
 
             if (intervalMilliseconds >= 50.0)
             {
@@ -1643,13 +1409,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private static int ReadBoundedEnvironmentInteger(
-            string variableName,
-            int defaultValue,
-            int minimum,
-            int maximum)
+        /// <summary>
+        /// 환경변수의 정수 값을 읽고 허용 범위 밖이면 안전한 기본값 또는 제한값을 사용한다.
+        /// </summary>
+        private static int ReadBoundedEnvironmentInteger(string variableName, int defaultValue, int minimum, int maximum)
         {
             string value = Environment.GetEnvironmentVariable(variableName);
+
             if (!int.TryParse(value, out int parsed))
             {
                 return defaultValue;
@@ -1658,6 +1424,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return Math.Max(minimum, Math.Min(maximum, parsed));
         }
 
+        /// <summary>
+        /// 표시 프레임에 필요한 크기의 버퍼를 풀에서 확보한다.
+        /// </summary>
         private static Mat RentDisplayFrameBuffer(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1668,9 +1437,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 표시가 끝난 프레임 버퍼를 풀로 돌려 재사용한다.
+        /// </summary>
         private static void ReturnDisplayFrameBuffer(DisplayFrameSlot slot, Mat frame)
         {
-            if (frame == null) return;
+            if (frame == null)
+                return;
 
             lock (slot.Sync)
             {
@@ -1685,6 +1458,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 검출 프레임에 필요한 버퍼를 풀에서 확보한다.
+        /// </summary>
         private static Mat RentDetectionFrameBuffer(DetectionFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1695,9 +1471,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 검출이 끝난 프레임 버퍼를 풀로 돌려 재사용한다.
+        /// </summary>
         private static void ReturnDetectionFrameBuffer(DetectionFrameSlot slot, Mat frame)
         {
-            if (frame == null) return;
+            if (frame == null)
+                return;
 
             lock (slot.Sync)
             {
@@ -1712,49 +1492,52 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private static void CopyDisplayFrame(
-            string streamName,
-            Mat sourceFrame,
-            Mat destinationFrame)
+        /// <summary>
+        /// 디코더 프레임을 표시용 버퍼에 복사해 화면 작업과 원본 버퍼 수명을 분리한다.
+        /// </summary>
+        private static void CopyDisplayFrame(string streamName, Mat sourceFrame, Mat destinationFrame)
         {
-            if (streamName == "EO" &&
-                EoDisplayMaximumWidth > 0 &&
-                sourceFrame.Width > EoDisplayMaximumWidth)
+            if (streamName == "EO" && EoDisplayMaximumWidth > 0 && sourceFrame.Width > EoDisplayMaximumWidth)
             {
                 int targetHeight = Math.Max(
                     1,
-                    (int)Math.Round(
-                        sourceFrame.Height *
-                        (EoDisplayMaximumWidth / (double)sourceFrame.Width)));
-
+                    (int)Math.Round(sourceFrame.Height * (EoDisplayMaximumWidth / (double)sourceFrame.Width))
+                );
                 Cv2.Resize(
                     sourceFrame,
                     destinationFrame,
-                    new OpenCvSharp.Size(EoDisplayMaximumWidth, targetHeight),
+                    new OpenCvSharp.Size(
+                    EoDisplayMaximumWidth,
+                    targetHeight
+                ),
                     0,
                     0,
-                    InterpolationFlags.Linear);
+                    InterpolationFlags.Linear
+                );
                 return;
             }
 
             sourceFrame.CopyTo(destinationFrame);
         }
 
+        /// <summary>
+        /// 지연 표시 대기열에서 사용할 프레임 버퍼를 확보한다.
+        /// </summary>
         private static Mat RentBufferedDisplayFrameBuffer(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
             {
-                return slot.BufferedReusableFrames.Count > 0
-                    ? slot.BufferedReusableFrames.Dequeue()
-                    : new Mat();
+                return slot.BufferedReusableFrames.Count > 0 ? slot.BufferedReusableFrames.Dequeue() : new Mat();
             }
         }
 
-        private static void ReturnBufferedDisplayFrameBuffer(
-            DisplayFrameSlot slot,
-            Mat frame)
+        /// <summary>
+        /// 지연 표시 대기열에서 사용한 프레임 버퍼를 반환한다.
+        /// </summary>
+        private static void ReturnBufferedDisplayFrameBuffer(DisplayFrameSlot slot, Mat frame)
         {
-            if (frame == null) return;
+            if (frame == null)
+                return;
 
             lock (slot.Sync)
             {
@@ -1778,12 +1561,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string streamName,
             Mat sourceFrame,
             Action<BitmapSource> setImageAction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             DisplayFrameSlot slot = GetDisplaySlot(streamName);
             RtspChannelPerformance performance = GetRtspPerformance(streamName);
             Stopwatch copyTimer = Stopwatch.StartNew();
             Mat displayFrame = RentBufferedDisplayFrameBuffer(slot);
+
             try
             {
                 CopyDisplayFrame(streamName, sourceFrame, displayFrame);
@@ -1793,8 +1578,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ReturnBufferedDisplayFrameBuffer(slot, displayFrame);
                 throw;
             }
-            copyTimer.Stop();
 
+            copyTimer.Stop();
             BufferedDisplayFrame droppedFrame = null;
             int bufferDepth;
             lock (slot.Sync)
@@ -1804,11 +1589,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     droppedFrame = slot.BufferedFrames.Dequeue();
                 }
 
-                slot.BufferedFrames.Enqueue(new BufferedDisplayFrame
-                {
-                    Frame = displayFrame,
-                    DecodedTicks = Stopwatch.GetTimestamp()
-                });
+                slot.BufferedFrames.Enqueue(new BufferedDisplayFrame { Frame = displayFrame, DecodedTicks = Stopwatch.GetTimestamp() });
                 bufferDepth = slot.BufferedFrames.Count;
             }
 
@@ -1821,13 +1602,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 performance.FrameCopyCount++;
                 performance.FrameCopyTicks += copyTimer.ElapsedTicks;
-                performance.FrameCopyMaxTicks = Math.Max(
-                    performance.FrameCopyMaxTicks,
-                    copyTimer.ElapsedTicks);
+                performance.FrameCopyMaxTicks = Math.Max(performance.FrameCopyMaxTicks, copyTimer.ElapsedTicks);
                 performance.JitterBufferCurrentDepth = bufferDepth;
-                performance.JitterBufferMaximumDepth = Math.Max(
-                    performance.JitterBufferMaximumDepth,
-                    bufferDepth);
+                performance.JitterBufferMaximumDepth = Math.Max(performance.JitterBufferMaximumDepth, bufferDepth);
+
                 if (droppedFrame != null)
                 {
                     performance.DisplayDropped++;
@@ -1837,12 +1615,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (Interlocked.CompareExchange(ref slot.BufferedWorkerRunning, 1, 0) == 0)
             {
-                Task workerTask = Task.Run(() =>
-                    RunEoBufferedDisplayLoopAsync(
-                        streamName,
-                        slot,
-                        setImageAction,
-                        cancellationToken));
+                Task workerTask = Task.Run(() => RunEoBufferedDisplayLoopAsync(streamName, slot, setImageAction, cancellationToken));
                 lock (slot.Sync)
                 {
                     slot.BufferedWorkerTask = workerTask;
@@ -1850,6 +1623,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 지연 표시 대기열에 쌓인 프레임 수를 확인한다.
+        /// </summary>
         private static int GetBufferedFrameCount(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1858,49 +1634,51 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private async Task WaitForInitialEoDisplayBufferAsync(
-            DisplayFrameSlot slot,
-            CancellationToken cancellationToken)
+        /// <summary>
+        /// EO 표시 시작에 필요한 초기 프레임을 모으되 세션 취소를 확인한다.
+        /// </summary>
+        private async Task WaitForInitialEoDisplayBufferAsync(DisplayFrameSlot slot, CancellationToken cancellationToken)
         {
             Stopwatch wait = Stopwatch.StartNew();
             while (!cancellationToken.IsCancellationRequested &&
-                   GetBufferedFrameCount(slot) < EoJitterBufferCapacity &&
-                   wait.ElapsedMilliseconds < 200)
+                GetBufferedFrameCount(slot) < EoJitterBufferCapacity &&
+                wait.ElapsedMilliseconds < 200)
             {
                 await Task.Delay(2, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        private static async Task DelayUntilDisplayTickAsync(
-            long targetTicks,
-            CancellationToken cancellationToken)
+        /// <summary>
+        /// 목표 표시 시각까지 비동기로 기다려 표시 주기를 맞춘다.
+        /// </summary>
+        private static async Task DelayUntilDisplayTickAsync(long targetTicks, CancellationToken cancellationToken)
         {
             while (true)
             {
                 long remainingTicks = targetTicks - Stopwatch.GetTimestamp();
-                if (remainingTicks <= 0) return;
 
-                int delayMilliseconds = Math.Max(
-                    1,
-                    (int)Math.Floor(
-                        remainingTicks * 1000.0 / Stopwatch.Frequency));
-                await Task.Delay(delayMilliseconds, cancellationToken)
-                    .ConfigureAwait(false);
+                if (remainingTicks <= 0)
+                    return;
+
+                int delayMilliseconds = Math.Max(1, (int)Math.Floor(remainingTicks * 1000.0 / Stopwatch.Frequency));
+                await Task.Delay(delayMilliseconds, cancellationToken).ConfigureAwait(false);
             }
         }
 
+        /// <summary>
+        /// EO 프레임 대기열을 순서대로 표시하며 취소 시 남은 버퍼를 정리한다.
+        /// </summary>
         private async Task RunEoBufferedDisplayLoopAsync(
             string streamName,
             DisplayFrameSlot slot,
             Action<BitmapSource> setImageAction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             try
             {
-                await WaitForInitialEoDisplayBufferAsync(slot, cancellationToken)
-                    .ConfigureAwait(false);
+                await WaitForInitialEoDisplayBufferAsync(slot, cancellationToken).ConfigureAwait(false);
                 long nextDisplayTicks = Stopwatch.GetTimestamp();
-
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     BufferedDisplayFrame bufferedFrame = null;
@@ -1911,6 +1689,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         {
                             bufferedFrame = slot.BufferedFrames.Dequeue();
                         }
+
                         bufferDepth = slot.BufferedFrames.Count;
                     }
 
@@ -1918,6 +1697,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     lock (performance.Sync)
                     {
                         performance.JitterBufferCurrentDepth = bufferDepth;
+
                         if (bufferedFrame == null)
                         {
                             performance.JitterBufferUnderrun++;
@@ -1929,12 +1709,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         try
                         {
                             await RenderBufferedDisplayFrameAsync(
-                                    streamName,
-                                    slot,
-                                    bufferedFrame,
-                                    setImageAction,
-                                    cancellationToken)
-                                .ConfigureAwait(false);
+                                streamName,
+                                slot,
+                                bufferedFrame,
+                                setImageAction,
+                                cancellationToken
+                            ).ConfigureAwait(false);
                         }
                         finally
                         {
@@ -1944,13 +1724,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     nextDisplayTicks += EoJitterDisplayIntervalTicks;
                     long nowTicks = Stopwatch.GetTimestamp();
+
                     if (nowTicks > nextDisplayTicks + EoJitterDisplayIntervalTicks)
                     {
                         // UI가 한 주기 이상 멈춘 경우 밀린 Tick을 연속 실행하지 않는다.
                         nextDisplayTicks = nowTicks;
                     }
-                    await DelayUntilDisplayTickAsync(nextDisplayTicks, cancellationToken)
-                        .ConfigureAwait(false);
+
+                    await DelayUntilDisplayTickAsync(nextDisplayTicks, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -1959,10 +1740,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Error(
-                    "RTSP DISPLAY " + streamName,
-                    "Bounded jitter buffer worker failed",
-                    ex);
+                ConsoleLogHelper.Error("RTSP DISPLAY " + streamName, "Bounded jitter buffer worker failed", ex);
             }
             finally
             {
@@ -1971,38 +1749,56 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     BufferedDisplayFrame remainingFrame;
                     lock (slot.Sync)
                     {
-                        remainingFrame = slot.BufferedFrames.Count > 0
-                            ? slot.BufferedFrames.Dequeue()
-                            : null;
+                        remainingFrame = slot.BufferedFrames.Count > 0 ? slot.BufferedFrames.Dequeue() : null;
                     }
-                    if (remainingFrame == null) break;
+
+                    if (remainingFrame == null)
+                        break;
+
                     ReturnBufferedDisplayFrameBuffer(slot, remainingFrame.Frame);
                 }
+
                 Interlocked.Exchange(ref slot.BufferedWorkerRunning, 0);
             }
         }
 
+        /// <summary>
+        /// 실제로 표시한 프레임 시각을 기록해 정지 영상과 최신 영상을 구분한다.
+        /// </summary>
         private void ConfirmDisplayedVideoFrame(string streamName)
         {
             bool isEo = string.Equals(streamName, "EO", StringComparison.OrdinalIgnoreCase);
-            // 2026-10-12: click centering must not operate on an old/frozen displayed frame.
-            Interlocked.Exchange(ref _videoCenterFrameTicks[isEo?0:1],DateTime.UtcNow.Ticks);
+            // 오래되거나 멈춘 표시 프레임으로 클릭 이동을 수행하지 않는다.
+            Interlocked.Exchange(ref _videoCenterFrameTicks[isEo ? 0 : 1], DateTime.UtcNow.Ticks);
             string connected = isEo ? "[EO] Connected" : "[IR] Connected";
-            if ((isEo ? EoStatusText : IrStatusText) == connected) return;
-            if (isEo) EoStatusText = connected;
-            else IrStatusText = connected;
-            ConsoleLogHelper.State("DEVICE CONNECT",
-                $"SESSION={Interlocked.Read(ref _deviceSessionGeneration)} / {streamName}_DISPLAY_FRAME=True / {streamName}_STREAMING=True");
+
+            if ((isEo ? EoStatusText : IrStatusText) == connected)
+                return;
+
+            if (isEo)
+                EoStatusText = connected;
+            else
+                IrStatusText = connected;
+
+            ConsoleLogHelper.State(
+                "DEVICE CONNECT",
+                $"SESSION={Interlocked.Read(ref _deviceSessionGeneration)} / {streamName}_DISPLAY_FRAME=True / {streamName}_STREAMING=True"
+            );
         }
 
+        /// <summary>
+        /// 대기열 프레임을 화면 스레드에서 표시하고 사용한 버퍼를 반환한다.
+        /// </summary>
         private async Task RenderBufferedDisplayFrameAsync(
             string streamName,
             DisplayFrameSlot slot,
             BufferedDisplayFrame bufferedFrame,
             Action<BitmapSource> setImageAction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             Dispatcher dispatcher = App.Current?.Dispatcher;
+
             if (cancellationToken.IsCancellationRequested ||
                 dispatcher == null ||
                 dispatcher.HasShutdownStarted ||
@@ -2014,53 +1810,49 @@ namespace OpenCvWpfTracking.ViewModels.Main
             long dispatchQueuedTicks = Stopwatch.GetTimestamp();
             DispatcherOperation operation = dispatcher.InvokeAsync(
                 new Action(() =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
+                long displayTicks = Stopwatch.GetTimestamp();
+                Stopwatch bitmapTimer = Stopwatch.StartNew();
+                slot.Bitmap = MatToBitmapSourceConverter.UpdateOrCreate(bufferedFrame.Frame, slot.Bitmap);
+                bitmapTimer.Stop();
+                // 재연결 시 비워진 Image Source에 재사용 Bitmap을 다시 연결한다.
+                setImageAction(slot.Bitmap);
+                ConfirmDisplayedVideoFrame(streamName);
+                RtspChannelPerformance performance = GetRtspPerformance(streamName);
+                lock (performance.Sync)
                 {
-                    if (cancellationToken.IsCancellationRequested) return;
+                    performance.Displayed++;
+                    performance.ConvertCount++;
+                    performance.ConvertTicks += bitmapTimer.ElapsedTicks;
+                    performance.DispatchCount++;
+                    performance.DispatchTicks += displayTicks - dispatchQueuedTicks;
+                    performance.DispatchMaxTicks = Math.Max(performance.DispatchMaxTicks, displayTicks - dispatchQueuedTicks);
+                    performance.FrameAgeCount++;
+                    performance.FrameAgeTicks += Math.Max(0, displayTicks - bufferedFrame.DecodedTicks);
+                    performance.FrameAgeMaxTicks = Math.Max(
+                        performance.FrameAgeMaxTicks,
+                        Math.Max(
+                        0,
+                        displayTicks - bufferedFrame.DecodedTicks
+                    )
+                    );
 
-                    long displayTicks = Stopwatch.GetTimestamp();
-                    Stopwatch bitmapTimer = Stopwatch.StartNew();
-                    slot.Bitmap = MatToBitmapSourceConverter.UpdateOrCreate(
-                        bufferedFrame.Frame,
-                        slot.Bitmap);
-                    bitmapTimer.Stop();
-
-                    // 재연결 시 비워진 Image Source에 재사용 Bitmap을 다시 연결한다.
-                    setImageAction(slot.Bitmap);
-                    ConfirmDisplayedVideoFrame(streamName);
-
-                    RtspChannelPerformance performance = GetRtspPerformance(streamName);
-                    lock (performance.Sync)
+                    if (performance.LastDisplayTicks > 0)
                     {
-                        performance.Displayed++;
-                        performance.ConvertCount++;
-                        performance.ConvertTicks += bitmapTimer.ElapsedTicks;
-                        performance.DispatchCount++;
-                        performance.DispatchTicks += displayTicks - dispatchQueuedTicks;
-                        performance.DispatchMaxTicks = Math.Max(
-                            performance.DispatchMaxTicks,
-                            displayTicks - dispatchQueuedTicks);
-                        performance.FrameAgeCount++;
-                        performance.FrameAgeTicks += Math.Max(
-                            0,
-                            displayTicks - bufferedFrame.DecodedTicks);
-                        performance.FrameAgeMaxTicks = Math.Max(
-                            performance.FrameAgeMaxTicks,
-                            Math.Max(0, displayTicks - bufferedFrame.DecodedTicks));
-                        if (performance.LastDisplayTicks > 0)
-                        {
-                            long intervalTicks = displayTicks - performance.LastDisplayTicks;
-
-                            RecordDisplayInterval(
-                                performance,
-                                intervalTicks);
-                        }
-                        performance.LastDisplayTicks = displayTicks;
+                        long intervalTicks = displayTicks - performance.LastDisplayTicks;
+                        RecordDisplayInterval(performance, intervalTicks);
                     }
 
-                    QueueLatestOverlayUpdate(streamName, slot, cancellationToken);
-                }),
-                GetFrameDispatcherPriority(streamName));
+                    performance.LastDisplayTicks = displayTicks;
+                }
 
+                QueueLatestOverlayUpdate(streamName, slot, cancellationToken);
+            }),
+                GetFrameDispatcherPriority(streamName)
+            );
             await operation.Task.ConfigureAwait(false);
         }
 
@@ -2074,13 +1866,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string streamName,
             Mat sourceFrame,
             Action<BitmapSource> setImageAction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             DisplayFrameSlot slot = GetDisplaySlot(streamName);
             RtspChannelPerformance performance = GetRtspPerformance(streamName);
             long decodedTicks = Stopwatch.GetTimestamp();
             Stopwatch copyTimer = Stopwatch.StartNew();
             Mat displayFrame = RentDisplayFrameBuffer(slot);
+
             try
             {
                 CopyDisplayFrame(streamName, sourceFrame, displayFrame);
@@ -2090,6 +1884,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ReturnDisplayFrameBuffer(slot, displayFrame);
                 throw;
             }
+
             copyTimer.Stop();
             lock (performance.Sync)
             {
@@ -2122,13 +1917,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 화면 갱신이 누적되지 않도록 최신 프레임 표시 작업을 예약한다.
+        /// </summary>
         private void ScheduleLatestFrameRender(
             string streamName,
             DisplayFrameSlot slot,
             Action<BitmapSource> setImageAction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             Dispatcher dispatcher = App.Current?.Dispatcher;
+
             if (cancellationToken.IsCancellationRequested ||
                 dispatcher == null ||
                 dispatcher.HasShutdownStarted ||
@@ -2139,73 +1939,70 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             long dispatchQueuedTicks = Stopwatch.GetTimestamp();
+
             try
             {
-                dispatcher.BeginInvoke(
-                    GetFrameDispatcherPriority(streamName),
-                    new Action(() =>
+                dispatcher.BeginInvoke(GetFrameDispatcherPriority(streamName), new Action(() =>
+                {
+                    Mat frame = null;
+                    long decodedTicks = 0;
+
+                    try
                     {
-                        Mat frame = null;
-                        long decodedTicks = 0;
-                        try
+                        if (cancellationToken.IsCancellationRequested)
+                            return;
+
+                        lock (slot.Sync)
                         {
-                            if (cancellationToken.IsCancellationRequested) return;
-                            lock (slot.Sync)
+                            frame = slot.LatestFrame;
+                            decodedTicks = slot.LatestFrameDecodedTicks;
+                            slot.LatestFrame = null;
+                            slot.LatestFrameDecodedTicks = 0;
+                        }
+
+                        if (frame == null)
+                            return;
+
+                        long displayTicks = Stopwatch.GetTimestamp();
+                        Stopwatch bitmapTimer = Stopwatch.StartNew();
+                        slot.Bitmap = MatToBitmapSourceConverter.UpdateOrCreate(frame, slot.Bitmap);
+                        bitmapTimer.Stop();
+                        setImageAction(slot.Bitmap);
+                        ConfirmDisplayedVideoFrame(streamName);
+                        RtspChannelPerformance perf = GetRtspPerformance(streamName);
+                        lock (perf.Sync)
+                        {
+                            perf.Displayed++;
+                            perf.ConvertCount++;
+                            perf.ConvertTicks += bitmapTimer.ElapsedTicks;
+                            perf.DispatchCount++;
+                            perf.DispatchTicks += displayTicks - dispatchQueuedTicks;
+                            perf.DispatchMaxTicks = Math.Max(perf.DispatchMaxTicks, displayTicks - dispatchQueuedTicks);
+                            perf.FrameAgeCount++;
+                            perf.FrameAgeTicks += Math.Max(0, displayTicks - decodedTicks);
+                            perf.FrameAgeMaxTicks = Math.Max(perf.FrameAgeMaxTicks, Math.Max(0, displayTicks - decodedTicks));
+
+                            if (perf.LastDisplayTicks > 0)
                             {
-                                frame = slot.LatestFrame;
-                                decodedTicks = slot.LatestFrameDecodedTicks;
-                                slot.LatestFrame = null;
-                                slot.LatestFrameDecodedTicks = 0;
+                                long intervalTicks = displayTicks - perf.LastDisplayTicks;
+                                RecordDisplayInterval(perf, intervalTicks);
                             }
 
-                            if (frame == null) return;
-
-                            long displayTicks = Stopwatch.GetTimestamp();
-                            Stopwatch bitmapTimer = Stopwatch.StartNew();
-                            slot.Bitmap = MatToBitmapSourceConverter.UpdateOrCreate(frame, slot.Bitmap);
-                            bitmapTimer.Stop();
-
-                            setImageAction(slot.Bitmap);
-                            ConfirmDisplayedVideoFrame(streamName);
-
-                            RtspChannelPerformance perf = GetRtspPerformance(streamName);
-                            lock (perf.Sync)
-                            {
-                                perf.Displayed++;
-                                perf.ConvertCount++;
-                                perf.ConvertTicks += bitmapTimer.ElapsedTicks;
-                                perf.DispatchCount++;
-                                perf.DispatchTicks += displayTicks - dispatchQueuedTicks;
-                                perf.DispatchMaxTicks = Math.Max(perf.DispatchMaxTicks, displayTicks - dispatchQueuedTicks);
-                                perf.FrameAgeCount++;
-                                perf.FrameAgeTicks += Math.Max(0, displayTicks - decodedTicks);
-                                perf.FrameAgeMaxTicks = Math.Max(perf.FrameAgeMaxTicks, Math.Max(0, displayTicks - decodedTicks));
-                                if (perf.LastDisplayTicks > 0)
-                                {
-                                    long intervalTicks = displayTicks - perf.LastDisplayTicks;
-
-                                    RecordDisplayInterval(
-                                        perf,
-                                        intervalTicks);
-                                }
-                                perf.LastDisplayTicks = displayTicks;
-                            }
-
-                            QueueLatestOverlayUpdate(streamName, slot, cancellationToken);
+                            perf.LastDisplayTicks = displayTicks;
                         }
-                        catch (Exception ex)
-                        {
-                            ConsoleLogHelper.Error(
-                                "RTSP DISPLAY " + streamName,
-                                "Event-driven render failed",
-                                ex);
-                        }
-                        finally
-                        {
-                            ReturnDisplayFrameBuffer(slot, frame);
-                            CompleteLatestFrameRender(streamName, slot, setImageAction, cancellationToken);
-                        }
-                    }));
+
+                        QueueLatestOverlayUpdate(streamName, slot, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        ConsoleLogHelper.Error("RTSP DISPLAY " + streamName, "Event-driven render failed", ex);
+                    }
+                    finally
+                    {
+                        ReturnDisplayFrameBuffer(slot, frame);
+                        CompleteLatestFrameRender(streamName, slot, setImageAction, cancellationToken);
+                    }
+                }));
             }
             catch (Exception ex)
             {
@@ -2214,6 +2011,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 예약된 프레임 표시 작업을 취소하고 사용 자원을 정리한다.
+        /// </summary>
         private static void AbortLatestFrameRender(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -2224,20 +2024,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 slot.ReusableFrame = null;
                 slot.LatestFrameDecodedTicks = 0;
             }
+
             Interlocked.Exchange(ref slot.WorkerRunning, 0);
         }
 
+        /// <summary>
+        /// 프레임 표시 완료 후 예약 상태와 버퍼 소유권을 정리한다.
+        /// </summary>
         private void CompleteLatestFrameRender(
             string streamName,
             DisplayFrameSlot slot,
             Action<BitmapSource> setImageAction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 AbortLatestFrameRender(slot);
                 return;
             }
+
             Interlocked.Exchange(ref slot.WorkerRunning, 0);
             bool hasLatest;
             lock (slot.Sync)
@@ -2245,19 +2051,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 hasLatest = slot.LatestFrame != null;
             }
 
-            if (hasLatest &&
-                Interlocked.CompareExchange(ref slot.WorkerRunning, 1, 0) == 0)
+            if (hasLatest && Interlocked.CompareExchange(ref slot.WorkerRunning, 1, 0) == 0)
             {
                 ScheduleLatestFrameRender(streamName, slot, setImageAction, cancellationToken);
             }
         }
 
-        private void QueueLatestOverlayUpdate(
-            string streamName,
-            DisplayFrameSlot displaySlot,
-            CancellationToken cancellationToken)
+        /// <summary>
+        /// 화면 스레드에 최신 검출 오버레이 갱신을 예약한다.
+        /// </summary>
+        private void QueueLatestOverlayUpdate(string streamName, DisplayFrameSlot displaySlot, CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested) return;
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
             DetectionFrameSlot detectionSlot = GetDetectionSlot(streamName);
             long version;
             lock (detectionSlot.Sync)
@@ -2266,51 +2073,63 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             if (version <= displaySlot.LastOverlayVersion ||
-                Interlocked.CompareExchange(ref displaySlot.OverlayDispatchPending, 1, 0) != 0)
+                Interlocked.CompareExchange(
+                ref displaySlot.OverlayDispatchPending,
+                1,
+                0
+            ) != 0)
             {
                 return;
             }
 
             Dispatcher dispatcher = App.Current?.Dispatcher;
+
             if (dispatcher == null || dispatcher.HasShutdownStarted)
             {
                 Interlocked.Exchange(ref displaySlot.OverlayDispatchPending, 0);
                 return;
             }
 
-            dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() =>
             {
                 try
                 {
-                    if (cancellationToken.IsCancellationRequested) return;
+                    if (cancellationToken.IsCancellationRequested)
+                        return;
+
                     GetLatestDetectionResult(
                         streamName,
                         out ThermalFireDetectionResult thermalResult,
                         out SmokeDetectionResult smokeResult,
                         out long latestVersion,
-                        out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame);
-
+                        out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame
+                    );
                     // 2026-10-06: 화재 후보 상태/경고는 IR뿐 아니라 원본 EO 영상에도 동일하게 반영한다.
                     UpdateThermalFireCandidateState(streamName, thermalResult, zoneFrame);
-
                     UpdateVisionBBoxEvents(
                         streamName,
                         smokeResult.IsInfraredSupport ? "IR SMOKE" : "SMOKE",
                         smokeResult.CandidateRects,
                         smokeResult.CandidateScores,
-                        smokeResult.IsInfraredSupport ? "IR SMOKE CANDIDATE" : "IMAGE PROCESSING", zoneFrame);
+                        smokeResult.IsInfraredSupport ? "IR SMOKE CANDIDATE" : "IMAGE PROCESSING",
+                        zoneFrame
+                    );
                     UpdateFireSmokeDetectionOverlay(streamName, thermalResult, smokeResult);
                     displaySlot.LastOverlayVersion = latestVersion;
                 }
                 finally
                 {
                     Interlocked.Exchange(ref displaySlot.OverlayDispatchPending, 0);
+
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         QueueLatestOverlayUpdate(streamName, displaySlot, cancellationToken);
                     }
                 }
-            }));
+            })
+            );
         }
 
         /// <summary>
@@ -2322,6 +2141,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DetectionFrameSlot slot = GetDetectionSlot(streamName);
             long now = Stopwatch.GetTimestamp();
             long previous = Interlocked.Read(ref slot.LastQueuedTicks);
+
             if (now - previous < DetectionMinimumIntervalTicks)
             {
                 return;
@@ -2329,6 +2149,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Interlocked.Exchange(ref slot.LastQueuedTicks, now);
             Mat detectionFrame = RentDetectionFrameBuffer(slot);
+
             try
             {
                 sourceFrame.CopyTo(detectionFrame);
@@ -2338,6 +2159,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ReturnDetectionFrameBuffer(slot, detectionFrame);
                 throw;
             }
+
             Mat replacedFrame;
             var zoneFrame = CaptureZoneFrame(streamName);
             zoneFrame.Width = sourceFrame.Width;
@@ -2348,6 +2170,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 slot.LatestFrame = detectionFrame;
                 slot.LatestZoneFrame = zoneFrame;
             }
+
             ReturnDetectionFrameBuffer(slot, replacedFrame);
 
             if (Interlocked.CompareExchange(ref slot.WorkerRunning, 1, 0) == 0)
@@ -2356,6 +2179,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 채널별 최신 프레임만 검출에 사용해 처리 지연과 이전 결과 누적을 줄인다.
+        /// </summary>
         private void ProcessLatestDetectionFrames(string streamName, DetectionFrameSlot slot)
         {
             try
@@ -2376,30 +2202,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         return;
                     }
 
-                    int settingsGeneration=Volatile.Read(ref _visionSettingsGeneration);
+                    int settingsGeneration = Volatile.Read(ref _visionSettingsGeneration);
                     Stopwatch stopwatch = Stopwatch.StartNew();
+
                     try
                     {
                         bool isInfraredFire = string.Equals(streamName, "IR", StringComparison.OrdinalIgnoreCase);
-                        ThermalFireDetectionService fireService = isInfraredFire
-                            ? _irFireDetectionService : _eoFireDetectionService;
+                        ThermalFireDetectionService fireService = isInfraredFire ? _irFireDetectionService : _eoFireDetectionService;
                         ThermalFireDetectionResult thermalResult = fireService.Process(
-                                frame,
-                                IsThermalFireDetectionEnabled && IsFireSourceEnabled(isInfraredFire) && IsFireSmokeFrameAnalysisAllowed(),
-                                ThermalHotThresholdRatio,
-                                ThermalMinimumAreaRatio,
-                                ThermalFireBoxGroupingMode,
-                                GetRecentAiFireCandidates(isInfraredFire));
-
-                        SmokeDetectionResult smokeResult = ProcessSmokeFrame(
                             frame,
-                            streamName,
-                            thermalResult.CandidateRect);
-
+                            IsThermalFireDetectionEnabled &&
+                            IsFireSourceEnabled(isInfraredFire) &&
+                            IsFireSmokeFrameAnalysisAllowed(),
+                            ThermalHotThresholdRatio,
+                            ThermalMinimumAreaRatio,
+                            ThermalFireBoxGroupingMode,
+                            GetRecentAiFireCandidates(isInfraredFire)
+                        );
+                        SmokeDetectionResult smokeResult = ProcessSmokeFrame(frame, streamName, thermalResult.CandidateRect);
                         lock (slot.Sync)
                         {
-                            if(settingsGeneration!=Volatile.Read(ref _visionSettingsGeneration)) continue;
-                            slot.SettingsGeneration=settingsGeneration;
+                            if (settingsGeneration != Volatile.Read(ref _visionSettingsGeneration))
+                                continue;
+
+                            slot.SettingsGeneration = settingsGeneration;
                             slot.ThermalResult = thermalResult;
                             slot.SmokeResult = smokeResult;
                             slot.ResultZoneFrame = zoneFrame;
@@ -2428,8 +2254,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Interlocked.Exchange(ref slot.WorkerRunning, 0);
                 lock (slot.Sync)
                 {
-                    if (slot.LatestFrame != null &&
-                        Interlocked.CompareExchange(ref slot.WorkerRunning, 1, 0) == 0)
+                    if (slot.LatestFrame != null && Interlocked.CompareExchange(ref slot.WorkerRunning, 1, 0) == 0)
                     {
                         Task.Run(() => ProcessLatestDetectionFrames(streamName, slot));
                     }
@@ -2437,20 +2262,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 해당 채널에 보관된 최신 검출 결과를 가져온다.
+        /// </summary>
         private void GetLatestDetectionResult(
             string streamName,
             out ThermalFireDetectionResult thermalResult,
             out SmokeDetectionResult smokeResult,
             out long resultVersion,
-            out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame)
+            out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame
+        )
         {
             DetectionFrameSlot slot = GetDetectionSlot(streamName);
             lock (slot.Sync)
             {
                 thermalResult = slot.ThermalResult;
                 smokeResult = slot.SmokeResult;
-                if(slot.SettingsGeneration!=Volatile.Read(ref _visionSettingsGeneration))
-                { thermalResult=default(ThermalFireDetectionResult); smokeResult=default(SmokeDetectionResult); }
+
+                if (slot.SettingsGeneration != Volatile.Read(ref _visionSettingsGeneration))
+                {
+                    thermalResult = default(ThermalFireDetectionResult);
+                    smokeResult = default(SmokeDetectionResult);
+                }
+
                 resultVersion = slot.ResultVersion;
                 zoneFrame = slot.ResultZoneFrame;
             }
@@ -2463,21 +2297,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private static void UpdateFrameTimingDiagnostics(
             RtspChannelPerformance performance,
             FFmpegDecoderService.FrameTimingSnapshot timing,
-            Mat frame)
+            Mat frame
+        )
         {
-            if (performance.LastDiagnosticArrivalTicks > 0 &&
-                timing.DecodedTicks > performance.LastDiagnosticArrivalTicks)
+            if (performance.LastDiagnosticArrivalTicks > 0 && timing.DecodedTicks > performance.LastDiagnosticArrivalTicks)
             {
-                long intervalTicks =
-                    timing.DecodedTicks - performance.LastDiagnosticArrivalTicks;
+                long intervalTicks = timing.DecodedTicks - performance.LastDiagnosticArrivalTicks;
                 performance.DecodeIntervalTicks += intervalTicks;
                 performance.DecodeIntervalCount++;
-                performance.DecodeIntervalMaxTicks = Math.Max(
-                    performance.DecodeIntervalMaxTicks,
-                    intervalTicks);
-
-                double intervalMilliseconds =
-                    intervalTicks * 1000.0 / Stopwatch.Frequency;
+                performance.DecodeIntervalMaxTicks = Math.Max(performance.DecodeIntervalMaxTicks, intervalTicks);
+                double intervalMilliseconds = intervalTicks * 1000.0 / Stopwatch.Frequency;
 
                 if (intervalMilliseconds >= 70.0)
                 {
@@ -2503,9 +2332,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (performance.HasLastTimestamp)
                 {
-                    double deltaMilliseconds =
-                        timing.TimestampMilliseconds -
-                        performance.LastTimestampMilliseconds;
+                    double deltaMilliseconds = timing.TimestampMilliseconds - performance.LastTimestampMilliseconds;
 
                     if (deltaMilliseconds <= 0.0)
                     {
@@ -2517,12 +2344,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         performance.TimestampDeltaCount++;
                         performance.TimestampDeltaMaximumMilliseconds = Math.Max(
                             performance.TimestampDeltaMaximumMilliseconds,
-                            deltaMilliseconds);
+                            deltaMilliseconds
+                        );
                     }
                 }
 
-                performance.LastTimestampMilliseconds =
-                    timing.TimestampMilliseconds;
+                performance.LastTimestampMilliseconds = timing.TimestampMilliseconds;
                 performance.HasLastTimestamp = true;
             }
             else
@@ -2541,22 +2368,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             for (int row = 0; row < sampleGridSize; row++)
             {
-                int y = Math.Min(
-                    frame.Rows - 1,
-                    ((row * 2 + 1) * frame.Rows) / (sampleGridSize * 2));
+                int y = Math.Min(frame.Rows - 1, ((row * 2 + 1) * frame.Rows) / (sampleGridSize * 2));
 
                 for (int column = 0; column < sampleGridSize; column++)
                 {
-                    int x = Math.Min(
-                        frame.Cols - 1,
-                        ((column * 2 + 1) * frame.Cols) / (sampleGridSize * 2));
+                    int x = Math.Min(frame.Cols - 1, ((column * 2 + 1) * frame.Cols) / (sampleGridSize * 2));
                     Vec3b pixel = frame.At<Vec3b>(y, x);
                     byte luminance = (byte)((pixel.Item0 + pixel.Item1 + pixel.Item2) / 3);
 
                     if (performance.HasPreviousFrameSamples)
                     {
-                        differenceTotal += Math.Abs(
-                            luminance - performance.PreviousFrameSamples[sampleIndex]);
+                        differenceTotal += Math.Abs(luminance - performance.PreviousFrameSamples[sampleIndex]);
                     }
 
                     performance.PreviousFrameSamples[sampleIndex] = luminance;
@@ -2566,8 +2388,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (performance.HasPreviousFrameSamples)
             {
-                double averageDifference =
-                    differenceTotal / (double)performance.PreviousFrameSamples.Length;
+                double averageDifference = differenceTotal / (double)performance.PreviousFrameSamples.Length;
                 performance.SampleDifferenceTotal += averageDifference;
                 performance.SampleDifferenceCount++;
 
@@ -2577,7 +2398,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     performance.ConsecutiveDuplicateFrameCount++;
                     performance.MaximumConsecutiveDuplicateFrameCount = Math.Max(
                         performance.MaximumConsecutiveDuplicateFrameCount,
-                        performance.ConsecutiveDuplicateFrameCount);
+                        performance.ConsecutiveDuplicateFrameCount
+                    );
                 }
                 else
                 {
@@ -2593,6 +2415,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             performance.HasPreviousFrameSamples = true;
         }
 
+        /// <summary>
+        /// 채널별 수신·표시 성능 요약을 진단 로그에 남긴다.
+        /// </summary>
         private void WriteRtspPerformanceSummary(string streamName, FFmpegDecoderService decoder)
         {
             RtspChannelPerformance performance = GetRtspPerformance(streamName);
@@ -2604,39 +2429,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 double seconds = Math.Max(0.001, performance.Interval.Elapsed.TotalSeconds);
-                double detectionMs = performance.DetectionCount > 0
-                    ? performance.DetectionTicks * 1000.0 / Stopwatch.Frequency / performance.DetectionCount
-                    : 0.0;
-                double convertMs = performance.ConvertCount > 0
-                    ? performance.ConvertTicks * 1000.0 / Stopwatch.Frequency / performance.ConvertCount
-                    : 0.0;
-                double dispatchMs = performance.DispatchCount > 0
-                    ? performance.DispatchTicks * 1000.0 / Stopwatch.Frequency / performance.DispatchCount
-                    : 0.0;
+                double detectionMs = performance.DetectionCount > 0 ? performance.DetectionTicks * 1000.0 / Stopwatch.Frequency / performance.DetectionCount : 0.0;
+                double convertMs = performance.ConvertCount > 0 ? performance.ConvertTicks * 1000.0 / Stopwatch.Frequency / performance.ConvertCount : 0.0;
+                double dispatchMs = performance.DispatchCount > 0 ? performance.DispatchTicks * 1000.0 / Stopwatch.Frequency / performance.DispatchCount : 0.0;
                 double dispatchMaxMs = performance.DispatchMaxTicks * 1000.0 / Stopwatch.Frequency;
-                double frameCopyMs = performance.FrameCopyCount > 0
-                    ? performance.FrameCopyTicks * 1000.0 / Stopwatch.Frequency / performance.FrameCopyCount
-                    : 0.0;
+                double frameCopyMs = performance.FrameCopyCount > 0 ? performance.FrameCopyTicks * 1000.0 / Stopwatch.Frequency / performance.FrameCopyCount : 0.0;
                 double frameCopyMaxMs = performance.FrameCopyMaxTicks * 1000.0 / Stopwatch.Frequency;
-                double frameAgeMs = performance.FrameAgeCount > 0
-                    ? performance.FrameAgeTicks * 1000.0 / Stopwatch.Frequency / performance.FrameAgeCount
-                    : 0.0;
+                double frameAgeMs = performance.FrameAgeCount > 0 ? performance.FrameAgeTicks * 1000.0 / Stopwatch.Frequency / performance.FrameAgeCount : 0.0;
                 double frameAgeMaxMs = performance.FrameAgeMaxTicks * 1000.0 / Stopwatch.Frequency;
-                double intervalAverageMs = performance.Displayed > 1
-                    ? performance.DisplayIntervalTicks * 1000.0 / Stopwatch.Frequency / (performance.Displayed - 1)
-                    : 0.0;
+                double intervalAverageMs = performance.Displayed > 1 ? performance.DisplayIntervalTicks * 1000.0 / Stopwatch.Frequency / (performance.Displayed - 1) : 0.0;
                 double intervalMaximumMs = performance.DisplayIntervalMaxTicks * 1000.0 / Stopwatch.Frequency;
-                double decodeIntervalAverageMs = performance.DecodeIntervalCount > 0
-                    ? performance.DecodeIntervalTicks * 1000.0 / Stopwatch.Frequency / performance.DecodeIntervalCount
-                    : 0.0;
-                double decodeIntervalMaximumMs =
-                    performance.DecodeIntervalMaxTicks * 1000.0 / Stopwatch.Frequency;
-                double timestampDeltaAverageMs = performance.TimestampDeltaCount > 0
-                    ? performance.TimestampDeltaMilliseconds / performance.TimestampDeltaCount
-                    : 0.0;
-                double sampleDifferenceAverage = performance.SampleDifferenceCount > 0
-                    ? performance.SampleDifferenceTotal / performance.SampleDifferenceCount
-                    : 0.0;
+                double decodeIntervalAverageMs = performance.DecodeIntervalCount > 0 ? performance.DecodeIntervalTicks * 1000.0 / Stopwatch.Frequency / performance.DecodeIntervalCount : 0.0;
+                double decodeIntervalMaximumMs = performance.DecodeIntervalMaxTicks * 1000.0 / Stopwatch.Frequency;
+                double timestampDeltaAverageMs = performance.TimestampDeltaCount > 0 ? performance.TimestampDeltaMilliseconds / performance.TimestampDeltaCount : 0.0;
+                double sampleDifferenceAverage = performance.SampleDifferenceCount > 0 ? performance.SampleDifferenceTotal / performance.SampleDifferenceCount : 0.0;
                 int gen0 = GC.CollectionCount(0);
                 int gen1 = GC.CollectionCount(1);
                 int gen2 = GC.CollectionCount(2);
@@ -2661,39 +2467,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 long tiltStopTx = Interlocked.Read(ref _tiltStopTxCount);
                 long zoomStartTx = Interlocked.Read(ref _zoomStartTxCount);
                 long zoomStopTx = Interlocked.Read(ref _zoomStopTxCount);
-
                 // 2026-09-18: Capture Thread에서 동기 파일 로그를 쓰면 다음 Frame
                 // 표시 예약이 늦어진다. 문자열을 확정한 뒤 실제 I/O만 ThreadPool로 넘긴다.
                 string performanceCategory = "RTSP PERF " + streamName;
-                string performanceMessage =
-                    $"SCENARIO={_ptzPerformanceScenario} / RTSP_BITRATE_MBPS={d.PacketBytes * 8.0 / seconds / 1000000.0:F2} / PACKET_RATE={d.PacketCount / seconds:F1} / " +
-                    $"READ_FRAME_AVG_MS={readAvgMs:F1} / READ_FRAME_MAX_MS={readMaxMs:F1} / RX_FPS={performance.Received / seconds:F1} / DECODE_FPS={performance.Received / seconds:F1} / " +
-                    $"DECODE_AVG_MS={decodeAvgMs:F1} / DECODE_MAX_MS={decodeMaxMs:F1} / SWS_SCALE_AVG_MS={scaleAvgMs:F1} / SWS_SCALE_MAX_MS={scaleMaxMs:F1} / " +
-                    $"DISPLAY_FPS={performance.Displayed / seconds:F1} / DISPLAY_DROP={performance.DisplayDropped} / " +
-                    $"DISPLAY_QUEUE_REPLACE={performance.DisplayQueueReplaced} / UI_DISPATCH_WAIT_AVG_MS={dispatchMs:F1} / UI_DISPATCH_WAIT_MAX_MS={dispatchMaxMs:F1} / " +
-                    $"JITTER_BUFFER_DEPTH={performance.JitterBufferCurrentDepth} / JITTER_BUFFER_MAX={performance.JitterBufferMaximumDepth} / " +
-                    $"JITTER_BUFFER_UNDERRUN={performance.JitterBufferUnderrun} / JITTER_BUFFER_DROP={performance.JitterBufferDropped} / " +
-                    $"FRAME_COPY_AVG_MS={frameCopyMs:F1} / FRAME_COPY_MAX_MS={frameCopyMaxMs:F1} / DISPLAY_INTERVAL_AVG_MS={intervalAverageMs:F1} / " +
-                    $"DISPLAY_INTERVAL_MAX_MS={intervalMaximumMs:F1} / FRAME_AGE_AVG_MS={frameAgeMs:F1} / FRAME_AGE_MAX_MS={frameAgeMaxMs:F1} / " +
-                    $"DECODE_INTERVAL_AVG_MS={decodeIntervalAverageMs:F1} / DECODE_INTERVAL_MAX_MS={decodeIntervalMaximumMs:F1} / " +
-                    $"INPUT_STALL_70MS_COUNT={performance.InputStall70MillisecondsCount} / INPUT_STALL_80MS_COUNT={performance.InputStall80MillisecondsCount} / " +
-                    $"INPUT_STALL_100MS_COUNT={performance.InputStall100MillisecondsCount} / DISPLAY_STALL_50MS_COUNT={performance.DisplayStall50MillisecondsCount} / " +
-                    $"DISPLAY_STALL_60MS_COUNT={performance.DisplayStall60MillisecondsCount} / DISPLAY_STALL_70MS_COUNT={performance.DisplayStall70MillisecondsCount} / " +
-                    $"SOURCE_PTS={performance.LastFramePts} / SOURCE_DTS={performance.LastFrameDts} / PTS_DELTA_AVG_MS={timestampDeltaAverageMs:F2} / " +
-                    $"PTS_DELTA_MAX_MS={performance.TimestampDeltaMaximumMilliseconds:F2} / PTS_MISSING={performance.TimestampMissingCount} / " +
-                    $"PTS_NON_MONOTONIC={performance.TimestampNonMonotonicCount} / SAMPLE_DIFF_AVG={sampleDifferenceAverage:F2} / " +
-                    $"EXACT_DUPLICATE_FRAMES={performance.ExactDuplicateFrameCount} / MAX_CONSECUTIVE_DUPLICATE_FRAMES={performance.MaximumConsecutiveDuplicateFrameCount} / " +
-                    $"NEAR_STATIC_FRAMES={performance.NearStaticFrameCount} / " +
-                    $"FUNCTION_01_RX_COUNT={function01 - performance.LastFunction01Count} / PTZF_STATUS_UPDATE_COUNT={ptzfStatus - performance.LastPtzfStatusCount} / " +
-                    $"PROPERTY_CHANGED_COUNT={propertyChanged - performance.LastPropertyChangedCount} / PAN_PROPERTY_CHANGED_COUNT={panChanged - performance.LastPanPropertyChangedCount} / " +
-                    $"TILT_PROPERTY_CHANGED_COUNT={tiltChanged - performance.LastTiltPropertyChangedCount} / ZOOM_PROPERTY_CHANGED_COUNT={zoomChanged - performance.LastZoomPropertyChangedCount} / " +
-                    $"FOCUS_PROPERTY_CHANGED_COUNT={focusChanged - performance.LastFocusPropertyChangedCount} / LOG_WRITE_COUNT={logWrites - performance.LastLogWriteCount} / " +
-                    $"PAN_START_TX_COUNT={panStartTx - performance.LastPanStartTxCount} / PAN_STOP_TX_COUNT={panStopTx - performance.LastPanStopTxCount} / " +
-                    $"TILT_START_TX_COUNT={tiltStartTx - performance.LastTiltStartTxCount} / TILT_STOP_TX_COUNT={tiltStopTx - performance.LastTiltStopTxCount} / " +
-                    $"ZOOM_START_TX_COUNT={zoomStartTx - performance.LastZoomStartTxCount} / ZOOM_STOP_TX_COUNT={zoomStopTx - performance.LastZoomStopTxCount} / " +
-                    $"DETECT_MS={detectionMs:F1} / CONVERT_MS={convertMs:F1} / " +
-                    $"LAST_FRAME_MS={performance.LastFrame.ElapsedMilliseconds} / " +
-                    $"GC={gen0 - performance.LastGen0},{gen1 - performance.LastGen1},{gen2 - performance.LastGen2}";
+                string performanceMessage = $"SCENARIO={_ptzPerformanceScenario} / RTSP_BITRATE_MBPS={d.PacketBytes * 8.0 / seconds / 1000000.0:F2} / PACKET_RATE={d.PacketCount / seconds:F1} / " + $"READ_FRAME_AVG_MS={readAvgMs:F1} / READ_FRAME_MAX_MS={readMaxMs:F1} / RX_FPS={performance.Received / seconds:F1} / DECODE_FPS={performance.Received / seconds:F1} / " + $"DECODE_AVG_MS={decodeAvgMs:F1} / DECODE_MAX_MS={decodeMaxMs:F1} / SWS_SCALE_AVG_MS={scaleAvgMs:F1} / SWS_SCALE_MAX_MS={scaleMaxMs:F1} / " + $"DISPLAY_FPS={performance.Displayed / seconds:F1} / DISPLAY_DROP={performance.DisplayDropped} / " + $"DISPLAY_QUEUE_REPLACE={performance.DisplayQueueReplaced} / UI_DISPATCH_WAIT_AVG_MS={dispatchMs:F1} / UI_DISPATCH_WAIT_MAX_MS={dispatchMaxMs:F1} / " + $"JITTER_BUFFER_DEPTH={performance.JitterBufferCurrentDepth} / JITTER_BUFFER_MAX={performance.JitterBufferMaximumDepth} / " + $"JITTER_BUFFER_UNDERRUN={performance.JitterBufferUnderrun} / JITTER_BUFFER_DROP={performance.JitterBufferDropped} / " + $"FRAME_COPY_AVG_MS={frameCopyMs:F1} / FRAME_COPY_MAX_MS={frameCopyMaxMs:F1} / DISPLAY_INTERVAL_AVG_MS={intervalAverageMs:F1} / " + $"DISPLAY_INTERVAL_MAX_MS={intervalMaximumMs:F1} / FRAME_AGE_AVG_MS={frameAgeMs:F1} / FRAME_AGE_MAX_MS={frameAgeMaxMs:F1} / " + $"DECODE_INTERVAL_AVG_MS={decodeIntervalAverageMs:F1} / DECODE_INTERVAL_MAX_MS={decodeIntervalMaximumMs:F1} / " + $"INPUT_STALL_70MS_COUNT={performance.InputStall70MillisecondsCount} / INPUT_STALL_80MS_COUNT={performance.InputStall80MillisecondsCount} / " + $"INPUT_STALL_100MS_COUNT={performance.InputStall100MillisecondsCount} / DISPLAY_STALL_50MS_COUNT={performance.DisplayStall50MillisecondsCount} / " + $"DISPLAY_STALL_60MS_COUNT={performance.DisplayStall60MillisecondsCount} / DISPLAY_STALL_70MS_COUNT={performance.DisplayStall70MillisecondsCount} / " + $"SOURCE_PTS={performance.LastFramePts} / SOURCE_DTS={performance.LastFrameDts} / PTS_DELTA_AVG_MS={timestampDeltaAverageMs:F2} / " + $"PTS_DELTA_MAX_MS={performance.TimestampDeltaMaximumMilliseconds:F2} / PTS_MISSING={performance.TimestampMissingCount} / " + $"PTS_NON_MONOTONIC={performance.TimestampNonMonotonicCount} / SAMPLE_DIFF_AVG={sampleDifferenceAverage:F2} / " + $"EXACT_DUPLICATE_FRAMES={performance.ExactDuplicateFrameCount} / MAX_CONSECUTIVE_DUPLICATE_FRAMES={performance.MaximumConsecutiveDuplicateFrameCount} / " + $"NEAR_STATIC_FRAMES={performance.NearStaticFrameCount} / " + $"FUNCTION_01_RX_COUNT={function01 - performance.LastFunction01Count} / PTZF_STATUS_UPDATE_COUNT={ptzfStatus - performance.LastPtzfStatusCount} / " + $"PROPERTY_CHANGED_COUNT={propertyChanged - performance.LastPropertyChangedCount} / PAN_PROPERTY_CHANGED_COUNT={panChanged - performance.LastPanPropertyChangedCount} / " + $"TILT_PROPERTY_CHANGED_COUNT={tiltChanged - performance.LastTiltPropertyChangedCount} / ZOOM_PROPERTY_CHANGED_COUNT={zoomChanged - performance.LastZoomPropertyChangedCount} / " + $"FOCUS_PROPERTY_CHANGED_COUNT={focusChanged - performance.LastFocusPropertyChangedCount} / LOG_WRITE_COUNT={logWrites - performance.LastLogWriteCount} / " + $"PAN_START_TX_COUNT={panStartTx - performance.LastPanStartTxCount} / PAN_STOP_TX_COUNT={panStopTx - performance.LastPanStopTxCount} / " + $"TILT_START_TX_COUNT={tiltStartTx - performance.LastTiltStartTxCount} / TILT_STOP_TX_COUNT={tiltStopTx - performance.LastTiltStopTxCount} / " + $"ZOOM_START_TX_COUNT={zoomStartTx - performance.LastZoomStartTxCount} / ZOOM_STOP_TX_COUNT={zoomStopTx - performance.LastZoomStopTxCount} / " + $"DETECT_MS={detectionMs:F1} / CONVERT_MS={convertMs:F1} / " + $"LAST_FRAME_MS={performance.LastFrame.ElapsedMilliseconds} / " + $"GC={gen0 - performance.LastGen0},{gen1 - performance.LastGen1},{gen2 - performance.LastGen2}";
                 ThreadPool.QueueUserWorkItem(_ =>
                 {
                     try
@@ -2705,7 +2482,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         Debug.WriteLine("[RTSP PERF LOG ERROR] " + ex.Message);
                     }
                 });
-
                 performance.Received = 0;
                 performance.Displayed = 0;
                 performance.DisplayDropped = 0;
@@ -2745,8 +2521,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 performance.SampleDifferenceTotal = 0.0;
                 performance.SampleDifferenceCount = 0;
                 performance.ExactDuplicateFrameCount = 0;
-                performance.MaximumConsecutiveDuplicateFrameCount =
-                    performance.ConsecutiveDuplicateFrameCount;
+                performance.MaximumConsecutiveDuplicateFrameCount = performance.ConsecutiveDuplicateFrameCount;
                 performance.NearStaticFrameCount = 0;
                 performance.LastGen0 = gen0;
                 performance.LastGen1 = gen1;
@@ -2784,19 +2559,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-09-23 옥상 EO는 최대 3 Frame 제한 버퍼와 절대 시간 기준
         /// 30Hz Render Clock을 사용한다. IR은 기존 최신 Frame 즉시 표시를 유지한다.
         /// </summary>
-        /// <param name="decoder">
+        /// <param name = "decoder">
         /// EO 또는 IR FFmpeg Decoder
         /// </param>
-        /// <param name="sourceAddress">
+        /// <param name = "sourceAddress">
         /// 채널 자동 재연결에 재사용할 RTSP 주소
         /// </param>
-        /// <param name="streamName">
+        /// <param name = "streamName">
         /// EO / IR Stream 구분
         /// </param>
-        /// <param name="setImageAction">
+        /// <param name = "setImageAction">
         /// EOCameraImage 또는 IRCameraImage 설정 함수
         /// </param>
-        /// <param name="cancellationToken">
+        /// <param name = "cancellationToken">
         /// 영상 수신 중지 Token
         /// </param>
         private void FFmpegCaptureLoop(
@@ -2804,27 +2579,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string sourceAddress,
             string streamName,
             Action<BitmapSource> setImageAction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
-            string displayMode = streamName == "EO"
-                ? $"BOUNDED_JITTER_BUFFER / CAPACITY={EoJitterBufferCapacity} / " +
-                  $"TARGET_FPS={EoJitterDisplayFramesPerSecond}"
-                : "DIRECT_LATEST_FRAME / NO_TIMER_DELAY";
-
-            double frameIntervalMilliseconds = streamName == "EO"
-                ? 1000.0 / EoJitterDisplayFramesPerSecond
-                : 0.0;
-
+            string displayMode = streamName == "EO" ? $"BOUNDED_JITTER_BUFFER / CAPACITY={EoJitterBufferCapacity} / " + $"TARGET_FPS={EoJitterDisplayFramesPerSecond}" : "DIRECT_LATEST_FRAME / NO_TIMER_DELAY";
+            double frameIntervalMilliseconds = streamName == "EO" ? 1000.0 / EoJitterDisplayFramesPerSecond : 0.0;
             ConsoleLogHelper.Info(
                 "RTSP DISPLAY " + streamName,
-                displayMode + " / SINGLE_PENDING_RENDER / " +
-                "WRITEABLE_BITMAP_REUSE / MAT_BUFFER_REUSE / OVERLAY_DECOUPLED / " +
-                $"BUFFER_CAPACITY={(streamName == "EO" ? EoJitterBufferCapacity : 1)} / " +
-                $"FRAME_INTERVAL_MS={frameIntervalMilliseconds:F1} / " +
-                $"PACING_MODE={(streamName == "EO" ? "ABSOLUTE_MONOTONIC" : "ARRIVAL_DRIVEN")} / " +
-                "LATEST_FRAME_PRIORITY=True / STALE_FRAME_DROP_ENABLED=True / " +
-                $"MAX_BUFFER_LIMIT={(streamName == "EO" ? EoJitterBufferCapacity : 1)} / " +
-                $"EO_DISPLAY_MAX_WIDTH={EoDisplayMaximumWidth}");
+                displayMode + " / SINGLE_PENDING_RENDER / " + "WRITEABLE_BITMAP_REUSE / MAT_BUFFER_REUSE / OVERLAY_DECOUPLED / " + $"BUFFER_CAPACITY={(streamName == "EO" ? EoJitterBufferCapacity : 1)} / " + $"FRAME_INTERVAL_MS={frameIntervalMilliseconds:F1} / " + $"PACING_MODE={(streamName == "EO" ? "ABSOLUTE_MONOTONIC" : "ARRIVAL_DRIVEN")} / " + "LATEST_FRAME_PRIORITY=True / STALE_FRAME_DROP_ENABLED=True / " + $"MAX_BUFFER_LIMIT={(streamName == "EO" ? EoJitterBufferCapacity : 1)} / " + $"EO_DISPLAY_MAX_WIDTH={EoDisplayMaximumWidth}"
+            );
             RtspChannelPerformance watchdogPerformance = GetRtspPerformance(streamName);
             lock (watchdogPerformance.Sync)
             {
@@ -2837,7 +2600,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: 운용 중 Frame 정지 시 기존 Capture Loop를 먼저 끝낸 뒤
             // 동일 채널만 재연결하기 위한 Watchdog 요청 Flag이다.
             int watchdogReconnectRequested = 0;
-
             // 2026-09-17: Decoder Open 상태와 실제 영상 수신을 분리 판정한다.
             // 전원 차단/RTSP 정지로 5초간 프레임이 없으면 백그라운드에서
             // Decoder를 닫아 ReadFrame을 해제하고 UI를 Disconnected로 전환한다.
@@ -2851,30 +2613,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         noFrameMs = watchdogPerformance.LastFrame.ElapsedMilliseconds;
                     }
-                    if (noFrameMs < 5000) continue;
+
+                    if (noFrameMs < 5000)
+                        continue;
 
                     Interlocked.Exchange(ref watchdogReconnectRequested, 1);
                     ConsoleLogHelper.Warning(
                         streamName + " VIDEO",
-                        $"Frame watchdog timeout / LAST_FRAME_MS={noFrameMs} / AUTO_RECONNECT=True");
-                    try { decoder.Close(); } catch (Exception closeException)
+                        $"Frame watchdog timeout / LAST_FRAME_MS={noFrameMs} / AUTO_RECONNECT=True"
+                    );
+
+                    try
+                    {
+                        decoder.Close();
+                    }
+                    catch (Exception closeException)
                     {
                         ConsoleLogHelper.Error(streamName + " VIDEO", "Watchdog decoder close failed", closeException);
                     }
 
                     Dispatcher dispatcher = App.Current?.Dispatcher;
+
                     if (dispatcher != null && !dispatcher.HasShutdownStarted)
                     {
                         _ = dispatcher.BeginInvoke(new Action(() =>
                         {
-                            if (cancellationToken.IsCancellationRequested) return;
+                            if (cancellationToken.IsCancellationRequested)
+                                return;
+
                             HandleRtspFrameLossOnUiThread(streamName);
                         }));
                     }
+
                     break;
                 }
             });
-
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (Volatile.Read(ref watchdogReconnectRequested) != 0)
@@ -2889,8 +2662,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// <summary>
                     /// FFmpeg Decoder에서 다음 Frame 획득
                     /// </summary>
-                    frame =
-                        decoder.ReadFrame();
+                    frame = decoder.ReadFrame();
 
                     if (Volatile.Read(ref watchdogReconnectRequested) != 0)
                     {
@@ -2905,24 +2677,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// <summary>
                     /// Frame 수신 실패 시 짧게 대기 후 재시도
                     /// </summary>
-                    if (frame == null ||
-                        frame.Empty())
+                    if (frame == null || frame.Empty())
                     {
                         Thread.Sleep(5);
-
                         continue;
                     }
 
-                    RtspChannelPerformance channelPerformance =
-                        GetRtspPerformance(streamName);
+                    RtspChannelPerformance channelPerformance = GetRtspPerformance(streamName);
                     lock (channelPerformance.Sync)
                     {
                         channelPerformance.Received++;
                         channelPerformance.LastFrame.Restart();
-                        UpdateFrameTimingDiagnostics(
-                            channelPerformance,
-                            decoder.GetLastFrameTiming(),
-                            frame);
+                        UpdateFrameTimingDiagnostics(channelPerformance, decoder.GetLastFrameTiming(), frame);
                     }
 
                     QueueLatestDetectionFrame(streamName, frame);
@@ -2934,13 +2700,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         if (streamName == "EO" && IsPanoramaCaptureRunning)
                         {
-                            BitmapSource rawPanoramaFrame =
-                                MatToBitmapSourceConverter.Convert(frame);
+                            BitmapSource rawPanoramaFrame = MatToBitmapSourceConverter.Convert(frame);
 
                             if (rawPanoramaFrame != null)
                             {
-                                if (rawPanoramaFrame.CanFreeze &&
-                                    !rawPanoramaFrame.IsFrozen)
+                                if (rawPanoramaFrame.CanFreeze && !rawPanoramaFrame.IsFrozen)
                                 {
                                     rawPanoramaFrame.Freeze();
                                 }
@@ -2951,19 +2715,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         if (streamName == "EO")
                         {
-                            QueueEoBufferedDisplayFrame(
-                                streamName,
-                                frame,
-                                setImageAction,
-                                cancellationToken);
+                            QueueEoBufferedDisplayFrame(streamName, frame, setImageAction, cancellationToken);
                         }
                         else
                         {
-                            QueueLatestDisplayFrame(
-                                streamName,
-                                frame,
-                                setImageAction,
-                                cancellationToken);
+                            QueueLatestDisplayFrame(streamName, frame, setImageAction, cancellationToken);
                         }
 
                         continue;
@@ -2976,18 +2732,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                      * 특히 EO 1920 x 1080 Frame의 Bitmap 변환 비용이 크므로,
                      * 불필요한 변환 작업을 줄이는 효과도 있다.
                      */
-                    if (!TryReserveFrameDispatch(
-                            streamName))
+                    if (!TryReserveFrameDispatch(streamName))
                     {
                         lock (channelPerformance.Sync)
                         {
                             channelPerformance.DisplayDropped++;
                         }
+
                         continue;
                     }
 
-                    bool dispatchQueued =
-                        false;
+                    bool dispatchQueued = false;
 
                     try
                     {
@@ -2998,39 +2753,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
                          */
                         if (streamName == "EO" && IsPanoramaCaptureRunning)
                         {
-                            BitmapSource rawPanoramaFrame =
-                                MatToBitmapSourceConverter.Convert(frame);
+                            BitmapSource rawPanoramaFrame = MatToBitmapSourceConverter.Convert(frame);
 
                             if (rawPanoramaFrame != null)
                             {
-                                if (rawPanoramaFrame.CanFreeze &&
-                                    !rawPanoramaFrame.IsFrozen)
+                                if (rawPanoramaFrame.CanFreeze && !rawPanoramaFrame.IsFrozen)
                                 {
                                     rawPanoramaFrame.Freeze();
                                 }
 
                                 SetRawEoPanoramaFrame(rawPanoramaFrame);
                             }
-
                         }
 
                         // 2026-09-16: 탐지 결과는 별도 최신 프레임 Worker가 갱신한다.
                         // 표시 경로는 탐지 완료를 기다리지 않는다.
-                        int overlaySettingsGeneration=Volatile.Read(ref _visionSettingsGeneration);
+                        int overlaySettingsGeneration = Volatile.Read(ref _visionSettingsGeneration);
                         GetLatestDetectionResult(
                             streamName,
                             out ThermalFireDetectionResult thermalResult,
                             out SmokeDetectionResult smokeResult,
                             out long _,
-                            out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame);
-
+                            out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame
+                        );
                         /// <summary>
                         /// OpenCV Mat → WPF BitmapSource 변환
                         /// </summary>
                         Stopwatch convertStopwatch = Stopwatch.StartNew();
-                        BitmapSource bitmap =
-                            MatToBitmapSourceConverter
-                                .Convert(frame);
+                        BitmapSource bitmap = MatToBitmapSourceConverter.Convert(frame);
                         convertStopwatch.Stop();
                         lock (channelPerformance.Sync)
                         {
@@ -3049,8 +2799,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                          * Freeze 처리하면 변경 불가능한 객체가 되어
                          * UI Thread에서 안전하게 참조할 수 있다.
                          */
-                        if (bitmap.CanFreeze &&
-                            !bitmap.IsFrozen)
+                        if (bitmap.CanFreeze && !bitmap.IsFrozen)
                         {
                             bitmap.Freeze();
                         }
@@ -3060,12 +2809,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             break;
                         }
 
-                        Dispatcher dispatcher =
-                            App.Current?.Dispatcher;
+                        Dispatcher dispatcher = App.Current?.Dispatcher;
 
-                        if (dispatcher == null ||
-                            dispatcher.HasShutdownStarted ||
-                            dispatcher.HasShutdownFinished)
+                        if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
                         {
                             break;
                         }
@@ -3080,86 +2826,72 @@ namespace OpenCvWpfTracking.ViewModels.Main
                          * 메인 고해상도 EO 영상의 화면 반영을
                          * 우선적으로 처리한다.
                          */
-                        DispatcherPriority priority =
-                            GetFrameDispatcherPriority(
-                                streamName);
-
+                        DispatcherPriority priority = GetFrameDispatcherPriority(streamName);
                         long dispatchQueuedTicks = Stopwatch.GetTimestamp();
                         dispatcher.BeginInvoke(
                             priority,
                             new Action(() =>
+                        {
+                            try
                             {
-                                try
+                                if (cancellationToken.IsCancellationRequested)
                                 {
-                                    if (cancellationToken
-                                        .IsCancellationRequested)
-                                    {
-                                        return;
-                                    }
-
-                                    if (dispatcher
-                                            .HasShutdownStarted ||
-                                        dispatcher
-                                            .HasShutdownFinished)
-                                    {
-                                        return;
-                                    }
-
-                                    /// <summary>
-                                    /// Binding 대상 영상 Property 갱신
-                                    /// </summary>
-                                    setImageAction(
-                                        bitmap);
-                                    ConfirmDisplayedVideoFrame(streamName);
-
-                                    long dispatchElapsedTicks =
-                                        Stopwatch.GetTimestamp() - dispatchQueuedTicks;
-                                    lock (channelPerformance.Sync)
-                                    {
-                                        channelPerformance.Displayed++;
-                                        channelPerformance.DispatchCount++;
-                                        channelPerformance.DispatchTicks += dispatchElapsedTicks;
-                                        channelPerformance.DispatchMaxTicks = Math.Max(channelPerformance.DispatchMaxTicks, dispatchElapsedTicks);
-                                    }
-
-                                    // 2026-10-06: 라이브 EO 원본 프레임에서도 화재 BBOX/경고 상태를 갱신한다.
-                                    if(overlaySettingsGeneration!=Volatile.Read(ref _visionSettingsGeneration)) return;
-                                    UpdateThermalFireCandidateState(streamName, thermalResult, zoneFrame);
-
-                                    UpdateVisionBBoxEvents(
-                                        streamName,
-                                        // 2026-09-08: 이벤트 표에는 의미를 유지한 간결한 TYPE을 표시한다.
-                                        smokeResult.IsInfraredSupport ? "IR SMOKE" : "SMOKE",
-                                        smokeResult.CandidateRects,
-                                        smokeResult.CandidateScores,
-                                        smokeResult.IsInfraredSupport
-                                            ? "IR SMOKE CANDIDATE"
-                                            : "IMAGE PROCESSING", zoneFrame);
-
-                                    UpdateFireSmokeDetectionOverlay(streamName, thermalResult, smokeResult);
-
+                                    return;
                                 }
-                                catch (Exception ex)
+
+                                if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
                                 {
-                                    Console.WriteLine(
-                                        $"[{streamName}] " +
-                                        $"[UI FRAME UPDATE ERROR] " +
-                                        ex.Message);
+                                    return;
                                 }
-                                finally
+
+                                /// <summary>
+                                /// Binding 대상 영상 Property 갱신
+                                /// </summary>
+                                setImageAction(bitmap);
+                                ConfirmDisplayedVideoFrame(streamName);
+                                long dispatchElapsedTicks = Stopwatch.GetTimestamp() - dispatchQueuedTicks;
+                                lock (channelPerformance.Sync)
                                 {
-                                    /*
+                                    channelPerformance.Displayed++;
+                                    channelPerformance.DispatchCount++;
+                                    channelPerformance.DispatchTicks += dispatchElapsedTicks;
+                                    channelPerformance.DispatchMaxTicks = Math.Max(
+                                        channelPerformance.DispatchMaxTicks,
+                                        dispatchElapsedTicks
+                                    );
+                                }
+
+                                // 2026-10-06: 라이브 EO 원본 프레임에서도 화재 BBOX/경고 상태를 갱신한다.
+                                if (overlaySettingsGeneration != Volatile.Read(ref _visionSettingsGeneration))
+                                    return;
+
+                                UpdateThermalFireCandidateState(streamName, thermalResult, zoneFrame);
+                                UpdateVisionBBoxEvents(
+                                    streamName,
+                                // 2026-09-08: 이벤트 표에는 의미를 유지한 간결한 TYPE을 표시한다.
+                                smokeResult.IsInfraredSupport ? "IR SMOKE" : "SMOKE",
+                                    smokeResult.CandidateRects,
+                                    smokeResult.CandidateScores,
+                                    smokeResult.IsInfraredSupport ? "IR SMOKE CANDIDATE" : "IMAGE PROCESSING",
+                                    zoneFrame
+                                );
+                                UpdateFireSmokeDetectionOverlay(streamName, thermalResult, smokeResult);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[{streamName}] " + $"[UI FRAME UPDATE ERROR] " + ex.Message);
+                            }
+                            finally
+                            {
+                                /*
                                      * UI 반영이 완료되었으므로
                                      * 다음 Frame의 Dispatcher 등록을 허용한다.
                                      */
-                                    ReleaseFrameDispatch(
-                                        streamName);
-                                }
-
-                            }));
-
-                        dispatchQueued =
-                            true;
+                                ReleaseFrameDispatch(streamName);
+                            }
+                        })
+                        );
+                        dispatchQueued = true;
                     }
                     finally
                     {
@@ -3170,22 +2902,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                          */
                         if (!dispatchQueued)
                         {
-                            ReleaseFrameDispatch(
-                                streamName);
+                            ReleaseFrameDispatch(streamName);
                         }
-
                     }
-
                 }
                 catch (Exception ex)
                 {
-                    if (!cancellationToken
-                        .IsCancellationRequested)
+                    if (!cancellationToken.IsCancellationRequested)
                     {
-                        ConsoleLogHelper.Error(
-                            $"{streamName} VIDEO",
-                            "FFmpeg Capture Error",
-                            ex);
+                        ConsoleLogHelper.Error($"{streamName} VIDEO", "FFmpeg Capture Error", ex);
                     }
 
                     break;
@@ -3194,18 +2919,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     frame?.Dispose();
                 }
-
             }
 
             /*
              * Loop 종료 시 예약값이 남아 있지 않도록 초기화한다.
              */
-            ReleaseFrameDispatch(
-                streamName);
-
-            ConsoleLogHelper.Info(
-                $"{streamName} VIDEO",
-                "FFmpeg Capture Loop End");
+            ReleaseFrameDispatch(streamName);
+            ConsoleLogHelper.Info($"{streamName} VIDEO", "FFmpeg Capture Loop End");
 
             // 2026-10-01: Watchdog가 종료시킨 채널만 새 Decoder/Capture Loop로 복구한다.
             // 기존 Loop가 완전히 끝난 뒤 시작하므로 하나의 RTSP를 두 Loop가 동시에
@@ -3216,20 +2936,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _videoReconnectCts != null &&
                 !_videoReconnectCts.IsCancellationRequested)
             {
-                ConsoleLogHelper.Info(
-                    streamName + " VIDEO",
-                    "Runtime frame stall recovery started");
-
+                ConsoleLogHelper.Info(streamName + " VIDEO", "Runtime frame stall recovery started");
                 CancellationToken reconnectToken;
-                try { reconnectToken=_videoReconnectCts.Token; }
-                catch(ObjectDisposedException) { return; }
-                catch(NullReferenceException) { return; }
-                _ = ReconnectVideoAsync(
-                    decoder,
-                    sourceAddress,
-                    streamName,
-                    setImageAction,
-                    reconnectToken);
+
+                try
+                {
+                    reconnectToken = _videoReconnectCts.Token;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                catch (NullReferenceException)
+                {
+                    return;
+                }
+
+                _ = ReconnectVideoAsync(decoder, sourceAddress, streamName, setImageAction, reconnectToken);
             }
         }
 
@@ -3240,10 +2963,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void HandleRtspFrameLossOnUiThread(string streamName)
         {
-            bool isEo = string.Equals(
-                streamName,
-                "EO",
-                StringComparison.OrdinalIgnoreCase);
+            bool isEo = string.Equals(streamName, "EO", StringComparison.OrdinalIgnoreCase);
 
             if (isEo)
             {
@@ -3265,34 +2985,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             ResetFireSmokeFrameAnalysis(streamName + " RTSP frame loss");
-
-            bool allVideoFramesLost =
-                !_isEoFrameDisplayed &&
-                !_isIrFrameDisplayed;
+            bool allVideoFramesLost = !_isEoFrameDisplayed && !_isIrFrameDisplayed;
 
             if (allVideoFramesLost)
             {
                 IsCrosshairVisible = false;
 
-                if (AiPowerStatusText == "ON" ||
-                    IsThermalFireDetectionEnabled ||
-                    IsSmokeDetectionEnabled)
+                if (AiPowerStatusText == "ON" || IsThermalFireDetectionEnabled || IsSmokeDetectionEnabled)
                 {
                     DisconnectAiAgent();
                 }
 
-                ConsoleLogHelper.State(
-                    "DEVICE STATE SYNC",
-                    "EO_FRAME=False / IR_FRAME=False / AI=OFF / FIRE=OFF / SMOKE=OFF");
+                ConsoleLogHelper.State("DEVICE STATE SYNC", "EO_FRAME=False / IR_FRAME=False / AI=OFF / FIRE=OFF / SMOKE=OFF");
             }
 
             ConsoleLogHelper.State(
                 streamName + " VIDEO",
-                "Frame loss UI synchronized / STATUS=Reconnecting / " +
-                "IMAGE_CLEARED=True / DETECTION_CLEARED=True");
+                "Frame loss UI synchronized / STATUS=Reconnecting / " + "IMAGE_CLEARED=True / DETECTION_CLEARED=True"
+            );
         }
 
-        #region [Video Result Type]
+        #region [영상 결과 구분]
 
         /// <summary>
         /// 영상 연결 결과 저장 구조체.
@@ -3305,7 +3018,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public bool EoResult;
 
             public bool IrResult;
-
         }
 
         #endregion
@@ -3314,5 +3026,4 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
     }
-
 }

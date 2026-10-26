@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Services.Video;
+﻿using OpenCvWpfTracking.Services.Video;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
@@ -15,6 +15,7 @@ namespace FireCandidateValidator
     internal sealed class FireCandidateAnalyzer
     {
         private readonly StaticStructureFilter _staticStructures = new StaticStructureFilter();
+
         private int _continuousCandidateFrames;
 
         // 2026-08-25: REI/MOE 검증 프로그램도 동일한 화재 후보 알고리즘과
@@ -93,7 +94,7 @@ namespace FireCandidateValidator
                 Math.Max(16.0, frameArea * safeAreaRatio);
             double minimumArea = 24.0;
             // 2026-08-14: 큰 화염도 하나의 검출 영역으로 유지한다.
-            // 2026-08-14: Accept a fire covering almost the entire still image.
+            // 정지 영상 대부분을 차지하는 큰 화재도 검출 대상으로 허용한다.
             double maximumArea = frameArea * 0.95;
 
             Mat mask = CreateCandidateMask(source, threshold);
@@ -237,7 +238,7 @@ namespace FireCandidateValidator
                       shapeChangeRatio >= 0.012));
 
                 // 넓은 건물 외벽, 수평 띠 및 작은 점 노이즈를 후보에서 제외한다.
-                // 2026-08-14: The former 60% size limit rejected the real large fire.
+                // 이전의 면적 60% 제한 때문에 실제 대형 화재가 제외되던 문제를 피한다.
                 if (fillRatio < 0.005 ||
                     (rectangleAreaRatio > 0.75 && fillRatio > 0.30) ||
                     (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 &&
@@ -810,12 +811,19 @@ namespace FireCandidateValidator
             }
 
             internal Rect Rectangle { get; set; }
+
             internal int SeenFrames { get; set; }
+
             internal int MissingFrames { get; set; }
+
             internal int DynamicFrames { get; set; }
+
             internal int DynamicStreak { get; set; }
+
             internal int StableFrames { get; set; }
+
             internal bool Matched { get; set; }
+
             internal bool Suppressed { get; set; }
         }
 
@@ -833,7 +841,7 @@ namespace FireCandidateValidator
                 return new List<Rect>();
             }
 
-            // 2026-08-14: Mode 1 encloses all detected flame candidates in one BBox.
+            // 모드 1에서는 모든 불꽃 후보를 하나의 검출 상자로 묶는다.
             if (fireBoxGroupingMode == 1)
             {
                 Rect unified = source[0];
@@ -1013,17 +1021,17 @@ namespace FireCandidateValidator
                 Cv2.Threshold(grayscale, intensityMask, threshold, 255, ThresholdTypes.Binary);
 
                 // 팔레트 색상과 무관하게 원본 IR의 상대 밝기와 국부 대비만 분석한다.
-                // Offline validation must work without a device connection:
-                // retain locally bright targets even when they are not above
-                // the absolute threshold selected for another palette.
+                // 장비에 연결하지 않은 오프라인 검증도 지원해야 한다.
+                // 다른 팔레트용 절대 임계값보다 낮더라도 주변보다 밝은 표적은 유지한다.
+                // 팔레트마다 밝기 기준이 다르므로 하나의 절대 임계값만으로 제외하지 않는다.
                 Cv2.BitwiseOr(intensityMask, contrastMask, colorMask);
 
-                // BLACK HOT target: dark compared with its local background.
+                // 검정 고온 팔레트의 표적은 주변 배경보다 어두운 영역으로 판단한다.
                 Cv2.Subtract(blurred, grayscale, localContrast);
                 Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
                 Cv2.BitwiseOr(colorMask, contrastMask, colorMask);
 
-                // RAINBOW and other colour thermal images: red/orange target.
+                // 무지개 등 컬러 열상에서는 빨강·주황 계열 표적을 확인한다.
                 Cv2.CvtColor(bgr, hsv, ColorConversionCodes.BGR2HSV);
                 Cv2.InRange(hsv, new Scalar(0, 90, 120), new Scalar(12, 255, 255), redLow);
                 Cv2.InRange(hsv, new Scalar(165, 90, 120), new Scalar(179, 255, 255), redHigh);
@@ -1041,8 +1049,8 @@ namespace FireCandidateValidator
                     Cv2.BitwiseOr(colorMask, intensityMask, colorMask);
                 }
 
-                // 2026-08-14: For grayscale IR, select the sparser hot polarity.
-                // This prevents a bright or dark background from becoming one full-frame box.
+                // 회색조 IR 영상은 고온 후보가 더 드물게 나타나는 극성을 선택한다.
+                // 밝거나 어두운 배경 전체가 하나의 검출 상자가 되는 현상을 방지한다.
                 if (Cv2.Mean(hsv).Val1 < 35)
                 {
                     Cv2.Subtract(grayscale, blurred, localContrast);
@@ -1149,9 +1157,13 @@ namespace FireCandidateValidator
         }
 
         internal Mat Mask { get; private set; }
+
         internal IList<Rect> Candidates { get; private set; }
+
         internal bool IsConfirmed { get; private set; }
+
         internal int ContinuousFrames { get; private set; }
+
         internal double LargestAreaRatio { get; private set; }
 
         /// <summary>

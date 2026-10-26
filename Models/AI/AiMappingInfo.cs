@@ -1,4 +1,4 @@
-namespace OpenCvWpfTracking.Models.AI
+﻿namespace OpenCvWpfTracking.Models.AI
 {
     /// <summary>
     /// [RTSP] / [ONNX] Mapping 정보
@@ -25,5 +25,4 @@ namespace OpenCvWpfTracking.Models.AI
         /// </summary>
         public double Iou { get; set; }
     }
-
 }

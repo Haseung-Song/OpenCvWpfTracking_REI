@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -16,25 +16,26 @@ namespace OpenCvWpfTracking.Common
     /// </summary>
     public static class ConsoleLogHelper
     {
-        private static readonly object ConsoleLock =
-            new object();
+        private static readonly object ConsoleLock = new object();
 
-        // 2026-10-13 V31_1: IndexOfAny reads this immutable boundary table without per-log allocation.
-        private static readonly char[] RtspAuthorityBoundaries = { '/', '?', '#' };
+        // 로그 경계 문자는 불변 테이블을 재사용해 로그마다 새 배열을 만들지 않는다.
+        private static readonly char[] RtspAuthorityBoundaries =
+        {
+            '/',
+            '?',
+            '#'
+        };
 
         /// <summary>
         /// 연속 로그의 시각적 그룹을 구분하기 위한 마지막 Category.
         /// MOVE/FRAME처럼 반복 빈도가 높은 로그는 별도 공백을 넣지 않고,
         /// 작업 종류가 바뀔 때만 한 줄을 띄운다.
         /// </summary>
-        private static string _lastConsoleCategory =
-            string.Empty;
+        private static string _lastConsoleCategory = string.Empty;
 
-        private static string _lastConsoleRootCategory =
-            string.Empty;
+        private static string _lastConsoleRootCategory = string.Empty;
 
-        private static string _lastConsoleMessage =
-            string.Empty;
+        private static string _lastConsoleMessage = string.Empty;
 
         /// <summary>
         /// Console 출력 가능 여부.
@@ -42,19 +43,16 @@ namespace OpenCvWpfTracking.Common
         /// 프로그램 종료 또는 Console 창이 먼저 닫힌 경우
         /// 잘못된 출력 Handle에 반복 접근하지 않도록 사용한다.
         /// </summary>
-        private static bool _isConsoleOutputAvailable =
-            true;
+        private static bool _isConsoleOutputAvailable = true;
 
         private static long _totalWriteCount;
 
-        public static long TotalWriteCount =>
-            Interlocked.Read(ref _totalWriteCount);
+        public static long TotalWriteCount => Interlocked.Read(ref _totalWriteCount);
 
         /// <summary>
         /// Console 로그 구분선.
         /// </summary>
-        public const string LogLine =
-            "=======================================================================================================================";
+        public const string LogLine = "=======================================================================================================================";
 
         static ConsoleLogHelper()
         {
@@ -62,17 +60,13 @@ namespace OpenCvWpfTracking.Common
             {
                 if (!(Console.Out is NormalizedConsoleTextWriter))
                 {
-                    Console.SetOut(
-                        new NormalizedConsoleTextWriter(
-                            Console.Out));
+                    Console.SetOut(new NormalizedConsoleTextWriter(Console.Out));
                 }
-
             }
             catch (IOException)
             {
                 _isConsoleOutputAvailable = false;
             }
-
         }
 
         /// <summary>
@@ -82,61 +76,40 @@ namespace OpenCvWpfTracking.Common
         {
             lock (ConsoleLock)
             {
-                WriteConsoleSafe(
-                    LogLine);
+                WriteConsoleSafe(LogLine);
             }
-
         }
 
         /// <summary>
         /// 시간 / 레벨이 없는 일반 제목과 본문을 구분선 안에 출력한다.
         /// </summary>
-        public static void PrintSection(
-            string header,
-            params string[] lines)
+        public static void PrintSection(string header, params string[] lines)
         {
-            WriteSection(
-                header ?? string.Empty,
-                lines);
+            WriteSection(header ?? string.Empty, lines);
         }
 
         /// <summary>
         /// 일반 실행 흐름을 제목과 본문으로 분리하여 출력한다.
         /// </summary>
-        public static void InfoSection(
-            string category,
-            params string[] lines)
+        public static void InfoSection(string category, params string[] lines)
         {
-            WriteStructuredSection(
-                "INFO",
-                category,
-                lines);
+            WriteStructuredSection("INFO", category, lines);
         }
 
         /// <summary>
         /// 장비 명령 흐름을 제목과 본문으로 분리하여 출력한다.
         /// </summary>
-        public static void CommandSection(
-            string category,
-            params string[] lines)
+        public static void CommandSection(string category, params string[] lines)
         {
-            WriteStructuredSection(
-                "CMD ",
-                category,
-                lines);
+            WriteStructuredSection("CMD ", category, lines);
         }
 
         /// <summary>
         /// 상태 변경을 제목과 본문으로 분리하여 출력한다.
         /// </summary>
-        public static void StateSection(
-            string category,
-            params string[] lines)
+        public static void StateSection(string category, params string[] lines)
         {
-            WriteStructuredSection(
-                "STATE",
-                category,
-                lines);
+            WriteStructuredSection("STATE", category, lines);
         }
 
         /// <summary>
@@ -144,150 +117,205 @@ namespace OpenCvWpfTracking.Common
         /// </summary>
         public static string MaskRtspPassword(string rtspAddress)
         {
-            if (string.IsNullOrWhiteSpace(rtspAddress)) return string.Empty;
-            int scheme=rtspAddress.IndexOf("://",StringComparison.Ordinal);
-            if(scheme<0) return rtspAddress;
-            int authority=scheme+3, end=rtspAddress.IndexOfAny(RtspAuthorityBoundaries,authority);
-            if(end<0) end=rtspAddress.Length;
-            int at=rtspAddress.LastIndexOf('@',end-1,end-authority);
-            return at<authority ? rtspAddress : rtspAddress.Substring(0,authority)+"**:**"+rtspAddress.Substring(at);
+            if (string.IsNullOrWhiteSpace(rtspAddress))
+                return string.Empty;
+
+            int scheme = rtspAddress.IndexOf("://", StringComparison.Ordinal);
+
+            if (scheme < 0)
+                return rtspAddress;
+
+            int authority = scheme + 3, end = rtspAddress.IndexOfAny(RtspAuthorityBoundaries, authority);
+
+            if (end < 0)
+                end = rtspAddress.Length;
+
+            int at = rtspAddress.LastIndexOf('@', end - 1, end - authority);
+            return at < authority ? rtspAddress : rtspAddress.Substring(0, authority) + "**:**" + rtspAddress.Substring(at);
         }
 
         /// <summary>로그 본문에 포함된 RTSP 주소의 인증 정보를 마스킹한다.</summary>
         public static string MaskRtspInLog(string message) =>
-            System.Text.RegularExpressions.Regex.Replace(message ?? string.Empty,
-                @"rtsp://[^\s""'<>]+", m => MaskRtspPassword(m.Value),
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            System.Text.RegularExpressions.Regex.Replace(
+            message ?? string.Empty,
+            @"rtsp://[^\s""'<>]+",
+            m => MaskRtspPassword(m.Value),
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+        );
 
         /// <summary>
         /// 일반 실행 흐름 로그.
         /// </summary>
-        public static void Info(
-            string category,
-            string message)
+        public static void Info(string category, string message)
         {
-            Write(
-                "INFO",
-                category,
-                message);
+            Write("INFO", category, message);
         }
 
         /// <summary>
         /// 장비 명령 송신 및 사용자 제어 흐름 로그.
         /// </summary>
-        public static void Command(
-            string category,
-            string message)
+        public static void Command(string category, string message)
         {
-            Write(
-                "CMD ",
-                category,
-                message);
+            Write("CMD ", category, message);
         }
 
         /// <summary>
         /// 상태 변경 로그.
         /// </summary>
-        public static void State(
-            string category,
-            string message)
+        public static void State(string category, string message)
         {
-            Write(
-                "STATE",
-                category,
-                message);
+            Write("STATE", category, message);
         }
 
         /// <summary>
         /// 복구 가능한 경고 로그.
         /// </summary>
-        public static void Warning(
-            string category,
-            string message)
+        public static void Warning(string category, string message)
         {
-            Write(
-                "WARN",
-                category,
-                "[운영 경고] " + GetFriendlyFeatureName(category) +
-                " | 내용=" + (message ?? string.Empty));
+            Write("WARN", category, "[운영 경고] " + GetFriendlyFeatureName(category) + " | 내용=" + (message ?? string.Empty));
         }
 
         /// <summary>
         /// 예외 및 실패 로그.
         /// </summary>
-        public static void Error(
-            string category,
-            string message,
-            Exception exception = null)
+        public static void Error(string category, string message, Exception exception = null)
         {
             string code = GetOperationalErrorCode(category);
             string feature = GetFriendlyFeatureName(category);
             string cause = GetFriendlyCause(message, exception);
             string action = GetRecommendedAction(category);
-            string detail =
-                $"[장애 요약] 코드={code} | 기능={feature} | 원인={cause} | 조치={action}" +
-                Environment.NewLine +
-                "    [기술 상세] " + (message ?? string.Empty) +
-                (exception == null ? string.Empty : Environment.NewLine + "    [예외] " + exception);
-
-            Write(
-                "ERROR",
-                category,
-                detail);
+            string detail = $"[장애 요약] 코드={code} | 기능={feature} | 원인={cause} | 조치={action}" + Environment.NewLine + "    [기술 상세] " + (message ?? string.Empty) + (exception == null ? string.Empty : Environment.NewLine + "    [예외] " + exception);
+            Write("ERROR", category, detail);
         }
 
         private static string GetOperationalErrorCode(string category)
         {
             string value = (category ?? string.Empty).ToUpperInvariant();
-            if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY")) return "E-VIDEO-001";
-            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT")) return "E-COMM-001";
-            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE")) return "E-PTZF-001";
-            if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE")) return "E-DETECT-001";
-            if (value.Contains("PANORAMA")) return "E-PANO-001";
-            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE")) return "E-DATA-001";
+
+            if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY"))
+                return "E-VIDEO-001";
+
+            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT"))
+                return "E-COMM-001";
+
+            if (value.Contains("ZOOM") ||
+                value.Contains("FOCUS") ||
+                value.Contains("PAN") ||
+                value.Contains("TILT") ||
+                value.Contains("SYNC") ||
+                value.Contains("MOVE"))
+                return "E-PTZF-001";
+
+            if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE"))
+                return "E-DETECT-001";
+
+            if (value.Contains("PANORAMA"))
+                return "E-PANO-001";
+
+            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE"))
+                return "E-DATA-001";
+
             return "E-SYSTEM-001";
         }
 
         private static string GetFriendlyFeatureName(string category)
         {
             string value = (category ?? string.Empty).ToUpperInvariant();
-            if (value.Contains("RTSP") || value.Contains("VIDEO")) return "실시간 영상";
-            if (value.Contains("DISPLAY")) return "화면 표시";
-            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT")) return "장비 통신";
-            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE")) return "카메라 PTZF 제어";
-            if (value.Contains("FIRE") || value.Contains("SMOKE") || value.Contains("DETECTION") || value.Contains("AI")) return "화재·연기 감지";
-            if (value.Contains("PANORAMA")) return "파노라마 생성";
-            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE")) return "설정·데이터 저장";
+
+            if (value.Contains("RTSP") || value.Contains("VIDEO"))
+                return "실시간 영상";
+
+            if (value.Contains("DISPLAY"))
+                return "화면 표시";
+
+            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT"))
+                return "장비 통신";
+
+            if (value.Contains("ZOOM") ||
+                value.Contains("FOCUS") ||
+                value.Contains("PAN") ||
+                value.Contains("TILT") ||
+                value.Contains("SYNC") ||
+                value.Contains("MOVE"))
+                return "카메라 PTZF 제어";
+
+            if (value.Contains("FIRE") || value.Contains("SMOKE") || value.Contains("DETECTION") || value.Contains("AI"))
+                return "화재·연기 감지";
+
+            if (value.Contains("PANORAMA"))
+                return "파노라마 생성";
+
+            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE"))
+                return "설정·데이터 저장";
+
             return string.IsNullOrWhiteSpace(category) ? "프로그램" : category;
         }
 
         private static string GetFriendlyCause(string message, Exception exception)
         {
-            // 2026-10-13 V31_2: sharing/byte-range locks are not AI or network failures.
+            // 파일 공유·바이트 범위 잠금 오류를 AI 또는 네트워크 장애로 분류하지 않는다.
             if (exception is IOException && ((exception.HResult & 0xFFFF) == 32 || (exception.HResult & 0xFFFF) == 33))
                 return "다른 작업 또는 프로그램이 파일을 잠그고 있습니다";
+
             string value = ((message ?? string.Empty) + " " + (exception?.Message ?? string.Empty)).ToUpperInvariant();
-            if (value.Contains("TIMEOUT")) return "장비 응답 시간이 초과되었습니다";
-            if (value.Contains("DISCONNECT") || value.Contains("CONNECTION")) return "장비 또는 영상 연결이 끊겼습니다";
-            if (value.Contains("CANCEL")) return "작업이 취소되었습니다";
-            if (value.Contains("ACCESS") || value.Contains("UNAUTHORIZED")) return "접근 권한 또는 인증 정보가 올바르지 않습니다";
-            if (value.Contains("FILE") || value.Contains("DIRECTORY") || value.Contains("CSV")) return "파일을 읽거나 저장하지 못했습니다";
-            if (value.Contains("DECODE")) return "영상 디코딩에 실패했습니다";
-            if (value.Contains("RENDER") || value.Contains("DISPLAY")) return "영상 화면 갱신에 실패했습니다";
-            if (value.Contains("COMMAND") || value.Contains("SEND") || value.Contains("PACKET")) return "제어 명령을 전송하거나 처리하지 못했습니다";
+
+            if (value.Contains("TIMEOUT"))
+                return "장비 응답 시간이 초과되었습니다";
+
+            if (value.Contains("DISCONNECT") || value.Contains("CONNECTION"))
+                return "장비 또는 영상 연결이 끊겼습니다";
+
+            if (value.Contains("CANCEL"))
+                return "작업이 취소되었습니다";
+
+            if (value.Contains("ACCESS") || value.Contains("UNAUTHORIZED"))
+                return "접근 권한 또는 인증 정보가 올바르지 않습니다";
+
+            if (value.Contains("FILE") || value.Contains("DIRECTORY") || value.Contains("CSV"))
+                return "파일을 읽거나 저장하지 못했습니다";
+
+            if (value.Contains("DECODE"))
+                return "영상 디코딩에 실패했습니다";
+
+            if (value.Contains("RENDER") || value.Contains("DISPLAY"))
+                return "영상 화면 갱신에 실패했습니다";
+
+            if (value.Contains("COMMAND") || value.Contains("SEND") || value.Contains("PACKET"))
+                return "제어 명령을 전송하거나 처리하지 못했습니다";
+
             return exception == null ? "요청한 작업을 완료하지 못했습니다" : exception.GetType().Name + ": " + exception.Message;
         }
 
         private static string GetRecommendedAction(string category)
         {
             string value = (category ?? string.Empty).ToUpperInvariant();
-            if (value == "CSV AUDIT") return "CSV를 연 프로그램·중복 Viewer를 닫고 저장 경로·권한을 확인. 실패한 감사 행은 자동 복구되지 않으므로 화면 목록을 CSV로 저장";
-            if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY")) return "카메라 전원·RTSP 주소·네트워크 상태를 확인 후 재연결";
-            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT")) return "Agent IP/Port와 장비 전원을 확인 후 CONNECT 재시도";
-            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE")) return "장비 연결과 현재 상태값 수신 여부를 확인 후 STOP→재시도";
-            if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE")) return "AI 연결·입력 영상·모델 설정을 확인";
-            if (value.Contains("PANORAMA")) return "EO 영상 연결과 저장 경로를 확인 후 다시 촬영";
-            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE")) return "파일 경로·권한·남은 디스크 공간을 확인";
+
+            if (value == "CSV AUDIT")
+                return "CSV를 연 프로그램·중복 Viewer를 닫고 저장 경로·권한을 확인. 실패한 감사 행은 자동 복구되지 않으므로 화면 목록을 CSV로 저장";
+
+            if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY"))
+                return "카메라 전원·RTSP 주소·네트워크 상태를 확인 후 재연결";
+
+            if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT"))
+                return "Agent IP/Port와 장비 전원을 확인 후 CONNECT 재시도";
+
+            if (value.Contains("ZOOM") ||
+                value.Contains("FOCUS") ||
+                value.Contains("PAN") ||
+                value.Contains("TILT") ||
+                value.Contains("SYNC") ||
+                value.Contains("MOVE"))
+                return "장비 연결과 현재 상태값 수신 여부를 확인 후 STOP→재시도";
+
+            if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE"))
+                return "AI 연결·입력 영상·모델 설정을 확인";
+
+            if (value.Contains("PANORAMA"))
+                return "EO 영상 연결과 저장 경로를 확인 후 다시 촬영";
+
+            if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE"))
+                return "파일 경로·권한·남은 디스크 공간을 확인";
+
             return "오류 코드와 기술 상세를 담당자에게 전달";
         }
 
@@ -295,55 +323,23 @@ namespace OpenCvWpfTracking.Common
         /// 작업 시작과 종료 시간을 한 묶음으로 출력한다.
         /// using 블록에서 사용하면 예외나 조기 return이 있어도 종료 로그가 남는다.
         /// </summary>
-        public static IDisposable BeginScope(
-            string category,
-            string operation)
+        public static IDisposable BeginScope(string category, string operation)
         {
-            return new ConsoleLogScope(
-                category,
-                operation);
+            return new ConsoleLogScope(category, operation);
         }
 
         /// <summary>
         /// Write 저장 함수.
         /// </summary>
-        private static void Write(
-            string level,
-            string category,
-            string message)
+        private static void Write(string level, string category, string message)
         {
-            string safeCategory =
-                string.IsNullOrWhiteSpace(category)
-                    ? "GENERAL"
-                    : category.Trim();
-
-            string safeMessage =
-                message ??
-                string.Empty;
-
-            int threadId =
-                Thread.CurrentThread.ManagedThreadId;
-
-            string rootCategory =
-                GetRootCategory(
-                    safeCategory);
-
-            bool isHighFrequency =
-                IsHighFrequencyCategory(
-                    safeCategory);
-
-            bool shouldInsertBlankLine =
-                ShouldInsertBlankLine(
-                    safeCategory,
-                    rootCategory,
-                    isHighFrequency);
-
-            string consoleMessage =
-                FormatReadableMessage(
-                    safeCategory,
-                    safeMessage,
-                    isHighFrequency);
-
+            string safeCategory = string.IsNullOrWhiteSpace(category) ? "GENERAL" : category.Trim();
+            string safeMessage = message ?? string.Empty;
+            int threadId = Thread.CurrentThread.ManagedThreadId;
+            string rootCategory = GetRootCategory(safeCategory);
+            bool isHighFrequency = IsHighFrequencyCategory(safeCategory);
+            bool shouldInsertBlankLine = ShouldInsertBlankLine(safeCategory, rootCategory, isHighFrequency);
+            string consoleMessage = FormatReadableMessage(safeCategory, safeMessage, isHighFrequency);
             lock (ConsoleLock)
             {
                 if (shouldInsertBlankLine)
@@ -351,80 +347,48 @@ namespace OpenCvWpfTracking.Common
                     WriteConsoleSafe();
                 }
 
-                string formattedMessage =
-                    $"[{DateTime.Now:HH:mm:ss.fff}] " +
-                    $"[{level}] " +
-                    $"[T{threadId:00}] " +
-                    $"[{safeCategory}] " +
-                    consoleMessage;
-
-                WriteConsoleSafe(
-                    formattedMessage);
-
-                _lastConsoleCategory =
-                    safeCategory;
-
-                _lastConsoleRootCategory =
-                    rootCategory;
-
-                _lastConsoleMessage =
-                    safeMessage;
-
+                string formattedMessage = $"[{DateTime.Now:HH:mm:ss.fff}] " + $"[{level}] " + $"[T{threadId:00}] " + $"[{safeCategory}] " + consoleMessage;
+                WriteConsoleSafe(formattedMessage);
+                _lastConsoleCategory = safeCategory;
+                _lastConsoleRootCategory = rootCategory;
+                _lastConsoleMessage = safeMessage;
                 /*
                  * Serilog 자체가 Timestamp/Level을 붙이므로
                  * Console용 Timestamp/Level을 Message 안에 다시 넣지 않는다.
                  * 상세값이 많은 주요 이벤트는 줄바꿈/들여쓰기를 유지한다.
                  */
-                WriteSerilog(
-                    level,
-                    $"[T{threadId:00}] " +
-                    $"[{safeCategory}] " +
-                    consoleMessage);
+                WriteSerilog(level, $"[T{threadId:00}] " + $"[{safeCategory}] " + consoleMessage);
             }
-
         }
 
         /// <summary>
         /// Category의 최상위 그룹을 반환한다.
         /// "EO PANORAMA / MOVE" -> "EO PANORAMA"
         /// </summary>
-        private static string GetRootCategory(
-            string category)
+        private static string GetRootCategory(string category)
         {
             if (string.IsNullOrWhiteSpace(category))
             {
                 return "GENERAL";
             }
 
-            int separatorIndex =
-                category.IndexOf(
-                    " / ",
-                    StringComparison.Ordinal);
-
-            return separatorIndex < 0
-                ? category.Trim()
-                : category.Substring(
-                    0,
-                    separatorIndex).Trim();
+            int separatorIndex = category.IndexOf(" / ", StringComparison.Ordinal);
+            return separatorIndex < 0 ? category.Trim() : category.Substring(0, separatorIndex).Trim();
         }
 
         /// <summary>
         /// 프레임/이동처럼 초당 또는 반복 횟수가 많은 로그는
         /// 각 줄 사이에 공백을 넣지 않아 세로 길이가 과도하게 늘어나는 것을 막는다.
         /// </summary>
-        private static bool IsHighFrequencyCategory(
-            string category)
+        private static bool IsHighFrequencyCategory(string category)
         {
             if (string.IsNullOrWhiteSpace(category))
             {
                 return false;
             }
 
-            string upper =
-                category.ToUpperInvariant();
-
-            return
-                upper.Contains("/ MOVE") ||
+            string upper = category.ToUpperInvariant();
+            return upper.Contains("/ MOVE") ||
                 upper.Contains("/ FRAME") ||
                 upper.Contains("/ STATUS") ||
                 upper.Contains("/ RX") ||
@@ -435,13 +399,9 @@ namespace OpenCvWpfTracking.Common
         /// 작업 그룹이 바뀌거나 주요 이벤트가 시작될 때만 한 줄 공백을 추가한다.
         /// 같은 Panorama MOVE/FRAME 반복 구간에는 공백을 추가하지 않는다.
         /// </summary>
-        private static bool ShouldInsertBlankLine(
-            string category,
-            string rootCategory,
-            bool isHighFrequency)
+        private static bool ShouldInsertBlankLine(string category, string rootCategory, bool isHighFrequency)
         {
-            if (string.IsNullOrEmpty(
-                _lastConsoleCategory))
+            if (string.IsNullOrEmpty(_lastConsoleCategory))
             {
                 return false;
             }
@@ -460,52 +420,36 @@ namespace OpenCvWpfTracking.Common
              * MOVE 내부의 sent/stable/arrived 사이에는 공백을 넣지 않는다.
              */
             if (string.Equals(
-                    rootCategory,
-                    "EO PANORAMA",
-                    StringComparison.Ordinal) &&
+                rootCategory,
+                "EO PANORAMA",
+                StringComparison.Ordinal
+            ) &&
                 string.Equals(
-                    _lastConsoleRootCategory,
-                    "EO PANORAMA",
-                    StringComparison.Ordinal))
+                _lastConsoleRootCategory,
+                "EO PANORAMA",
+                StringComparison.Ordinal
+            ))
             {
-                bool previousWasFrame =
-                    _lastConsoleCategory.IndexOf(
-                        "/ FRAME",
-                        StringComparison.OrdinalIgnoreCase) >= 0;
+                bool previousWasFrame = _lastConsoleCategory.IndexOf("/ FRAME", StringComparison.OrdinalIgnoreCase) >= 0;
+                bool currentIsMove = category.IndexOf("/ MOVE", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                bool currentIsMove =
-                    category.IndexOf(
-                        "/ MOVE",
-                        StringComparison.OrdinalIgnoreCase) >= 0;
-
-                if (previousWasFrame &&
-                    currentIsMove)
+                if (previousWasFrame && currentIsMove)
                 {
                     return true;
                 }
-
             }
 
             if (isHighFrequency)
             {
-                return !string.Equals(
-                    _lastConsoleRootCategory,
-                    rootCategory,
-                    StringComparison.Ordinal);
+                return !string.Equals(_lastConsoleRootCategory, rootCategory, StringComparison.Ordinal);
             }
 
-            if (!string.Equals(
-                _lastConsoleRootCategory,
-                rootCategory,
-                StringComparison.Ordinal))
+            if (!string.Equals(_lastConsoleRootCategory, rootCategory, StringComparison.Ordinal))
             {
                 return true;
             }
 
-            return !string.Equals(
-                _lastConsoleCategory,
-                category,
-                StringComparison.Ordinal);
+            return !string.Equals(_lastConsoleCategory, category, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -513,21 +457,14 @@ namespace OpenCvWpfTracking.Common
         /// 첫 문장 + 들여쓴 상세값 형태로 바꾼다.
         /// MOVE/FRAME 같은 고빈도 로그는 기존 한 줄 형태를 유지한다.
         /// </summary>
-        private static string FormatReadableMessage(
-            string category,
-            string message,
-            bool isHighFrequency)
+        private static string FormatReadableMessage(string category, string message, bool isHighFrequency)
         {
             if (string.IsNullOrWhiteSpace(message))
             {
-                return message ??
-                    string.Empty;
+                return message ?? string.Empty;
             }
 
-            string[] parts =
-                message.Split(
-                    new[] { " / " },
-                    StringSplitOptions.None);
+            string[] parts = message.Split(new[] { " / " }, StringSplitOptions.None);
 
             if (parts.Length < 4)
             {
@@ -538,29 +475,19 @@ namespace OpenCvWpfTracking.Common
              * 첫 부분은 이벤트 설명, 나머지는 KEY=VALUE 상세값으로 본다.
              * KEY=VALUE가 2개 미만이면 일반 문장일 가능성이 높아 원문 유지.
              */
-            int detailCount =
-                parts
-                    .Skip(1)
-                    .Count(
-                        part => part.Contains("="));
+            int detailCount = parts.Skip(1).Count(part => part.Contains("="));
 
             if (detailCount < 2)
             {
                 return message;
             }
 
-            StringBuilder builder =
-                new StringBuilder();
+            StringBuilder builder = new StringBuilder();
+            builder.Append(parts[0].Trim());
 
-            builder.Append(
-                parts[0].Trim());
-
-            for (int index = 1;
-                 index < parts.Length;
-                 index++)
+            for (int index = 1; index < parts.Length; index++)
             {
-                string part =
-                    parts[index].Trim();
+                string part = parts[index].Trim();
 
                 if (part.Length == 0)
                 {
@@ -578,106 +505,52 @@ namespace OpenCvWpfTracking.Common
         /// <summary>
         /// WriteStructuredSection 저장 함수.
         /// </summary>
-        private static void WriteStructuredSection(
-            string level,
-            string category,
-            params string[] lines)
+        private static void WriteStructuredSection(string level, string category, params string[] lines)
         {
-            string safeCategory =
-                string.IsNullOrWhiteSpace(category)
-                    ? "GENERAL"
-                    : category.Trim();
-
-            string header =
-                $"[{DateTime.Now:HH:mm:ss.fff}] " +
-                $"[{level}] " +
-                $"[T{Thread.CurrentThread.ManagedThreadId:00}] " +
-                $"[{safeCategory}]";
-
-            WriteSection(
-                header,
-                lines,
-                level,
-                safeCategory);
+            string safeCategory = string.IsNullOrWhiteSpace(category) ? "GENERAL" : category.Trim();
+            string header = $"[{DateTime.Now:HH:mm:ss.fff}] " + $"[{level}] " + $"[T{Thread.CurrentThread.ManagedThreadId:00}] " + $"[{safeCategory}]";
+            WriteSection(header, lines, level, safeCategory);
         }
 
         /// <summary>
         /// WriteSection 저장 함수.
         /// </summary>
-        private static void WriteSection(
-            string header,
-            params string[] lines)
+        private static void WriteSection(string header, params string[] lines)
         {
-            WriteSection(
-                header,
-                lines,
-                "INFO",
-                null);
+            WriteSection(header, lines, "INFO", null);
         }
 
         /// <summary>
         /// Console에는 사람이 읽기 좋은 Section Header를 출력하고,
         /// Serilog에는 중복 Timestamp/Level이 없는 정리된 Section을 기록한다.
         /// </summary>
-        private static void WriteSection(
-            string header,
-            string[] lines,
-            string level,
-            string category)
+        private static void WriteSection(string header, string[] lines, string level, string category)
         {
             lock (ConsoleLock)
             {
-                WriteConsoleSafe(
-                    LogLine);
-
-                WriteConsoleSafe(
-                    header);
+                WriteConsoleSafe(LogLine);
+                WriteConsoleSafe(header);
 
                 if (lines != null)
                 {
                     foreach (string line in lines)
                     {
-                        WriteConsoleSafe(
-                            "    " +
-                            (line ?? string.Empty));
+                        WriteConsoleSafe("    " + (line ?? string.Empty));
                     }
-
                 }
 
-                WriteConsoleSafe(
-                    LogLine);
-
+                WriteConsoleSafe(LogLine);
                 WriteConsoleSafe();
-
-                string serilogHeader =
-                    string.IsNullOrWhiteSpace(category)
-                        ? header
-                        : $"[{category}]";
-
-                string sectionMessage =
-                    serilogHeader +
-                    (lines == null || lines.Length == 0
-                        ? string.Empty
-                        : Environment.NewLine +
-                          string.Join(
-                              Environment.NewLine,
-                              lines.Select(
-                                  line => "    " + (line ?? string.Empty))));
-
-                WriteSerilog(
-                    level,
-                    sectionMessage);
-
-                _lastConsoleCategory =
-                    category ??
-                    string.Empty;
-
-                _lastConsoleRootCategory =
-                    string.IsNullOrWhiteSpace(category)
-                        ? string.Empty
-                        : GetRootCategory(category);
+                string serilogHeader = string.IsNullOrWhiteSpace(category) ? header : $"[{category}]";
+                string sectionMessage = serilogHeader + (lines == null ||
+                    lines.Length == 0 ? string.Empty : Environment.NewLine + string.Join(
+                    Environment.NewLine,
+                    lines.Select(line => "    " + (line ?? string.Empty))
+                ));
+                WriteSerilog(level, sectionMessage);
+                _lastConsoleCategory = category ?? string.Empty;
+                _lastConsoleRootCategory = string.IsNullOrWhiteSpace(category) ? string.Empty : GetRootCategory(category);
             }
-
         }
 
         /// <summary>
@@ -687,8 +560,7 @@ namespace OpenCvWpfTracking.Common
         /// 프로그램 종료 시점에 로그를 출력하더라도
         /// IOException이 작업 Thread 밖으로 전파되지 않도록 처리한다.
         /// </summary>
-        private static void WriteConsoleSafe(
-            string message = null)
+        private static void WriteConsoleSafe(string message = null)
         {
             if (!_isConsoleOutputAvailable)
             {
@@ -698,9 +570,7 @@ namespace OpenCvWpfTracking.Common
             try
             {
                 Interlocked.Increment(ref _totalWriteCount);
-                Console.WriteLine(
-                    message ??
-                    string.Empty);
+                Console.WriteLine(message ?? string.Empty);
             }
             catch (IOException)
             {
@@ -709,23 +579,14 @@ namespace OpenCvWpfTracking.Common
                  * 영상 및 통신 동작과 무관한 로그 출력 오류이므로
                  * 이후 Console 출력을 중지한다.
                  */
-                _isConsoleOutputAvailable =
-                    false;
-
-                Debug.WriteLine(
-                    message ??
-                    string.Empty);
+                _isConsoleOutputAvailable = false;
+                Debug.WriteLine(message ?? string.Empty);
             }
             catch (ObjectDisposedException)
             {
-                _isConsoleOutputAvailable =
-                    false;
-
-                Debug.WriteLine(
-                    message ??
-                    string.Empty);
+                _isConsoleOutputAvailable = false;
+                Debug.WriteLine(message ?? string.Empty);
             }
-
         }
 
         /// <summary>
@@ -734,35 +595,24 @@ namespace OpenCvWpfTracking.Common
         /// 기존 ViewModel과 Service의 호출부는 변경하지 않고,
         /// 이 Helper를 통과하는 운용 로그를 날짜별 파일에도 함께 남긴다.
         /// </summary>
-        private static void WriteSerilog(
-            string level,
-            string message)
+        private static void WriteSerilog(string level, string message)
         {
             message = MaskRtspInLog(message);
             switch (level)
             {
                 case "WARN":
-                    Log.Warning(
-                        "{LogMessage}",
-                        message);
+                    Log.Warning("{LogMessage}", message);
                     break;
-
                 case "ERROR":
-                    Log.Error(
-                        "{LogMessage}",
-                        message);
+                    Log.Error("{LogMessage}", message);
                     break;
-
                 case "CMD ":
                 case "STATE":
                 case "INFO":
                 default:
-                    Log.Information(
-                        "{LogMessage}",
-                        message);
+                    Log.Information("{LogMessage}", message);
                     break;
             }
-
         }
 
         private sealed class ConsoleLogScope : IDisposable
@@ -778,17 +628,12 @@ namespace OpenCvWpfTracking.Common
             /// <summary>
             /// ConsoleLogScope 동작 수행 함수.
             /// </summary>
-            public ConsoleLogScope(
-                string category,
-                string operation)
+            public ConsoleLogScope(string category, string operation)
             {
                 _category = category;
                 _operation = operation;
                 _startedAt = DateTime.Now;
-
-                Info(
-                    _category,
-                    $"START / {_operation}");
+                Info(_category, $"START / {_operation}");
             }
 
             /// <summary>
@@ -802,16 +647,9 @@ namespace OpenCvWpfTracking.Common
                 }
 
                 _isDisposed = true;
-
-                TimeSpan elapsed =
-                    DateTime.Now -
-                    _startedAt;
-
-                Info(
-                    _category,
-                    $"END / {_operation} / ELAPSED={elapsed.TotalMilliseconds:F0}ms");
+                TimeSpan elapsed = DateTime.Now - _startedAt;
+                Info(_category, $"END / {_operation} / ELAPSED={elapsed.TotalMilliseconds:F0}ms");
             }
-
         }
 
         /// <summary>
@@ -836,20 +674,17 @@ namespace OpenCvWpfTracking.Common
             /// <summary>
             /// NormalizedConsoleTextWriter 동작 수행 함수.
             /// </summary>
-            public NormalizedConsoleTextWriter(
-                TextWriter inner)
+            public NormalizedConsoleTextWriter(TextWriter inner)
             {
                 _inner = inner ?? TextWriter.Null;
             }
 
-            public override Encoding Encoding =>
-                _inner.Encoding;
+            public override Encoding Encoding => _inner.Encoding;
 
             /// <summary>
             /// Write 저장 함수.
             /// </summary>
-            public override void Write(
-                char value)
+            public override void Write(char value)
             {
                 lock (_writeLock)
                 {
@@ -866,14 +701,12 @@ namespace OpenCvWpfTracking.Common
 
                     _pendingLine.Append(value);
                 }
-
             }
 
             /// <summary>
             /// Write 저장 함수.
             /// </summary>
-            public override void Write(
-                string value)
+            public override void Write(string value)
             {
                 if (value == null)
                 {
@@ -897,25 +730,20 @@ namespace OpenCvWpfTracking.Common
                         {
                             _pendingLine.Append(character);
                         }
-
                     }
-
                 }
-
             }
 
             /// <summary>
             /// WriteLine 저장 함수.
             /// </summary>
-            public override void WriteLine(
-                string value)
+            public override void WriteLine(string value)
             {
                 lock (_writeLock)
                 {
                     Write(value);
                     FlushPendingLine();
                 }
-
             }
 
             /// <summary>
@@ -927,7 +755,6 @@ namespace OpenCvWpfTracking.Common
                 {
                     FlushPendingLine();
                 }
-
             }
 
             /// <summary>
@@ -939,7 +766,6 @@ namespace OpenCvWpfTracking.Common
                 {
                     SafeFlush();
                 }
-
             }
 
             /// <summary>
@@ -949,11 +775,8 @@ namespace OpenCvWpfTracking.Common
             {
                 string line = MaskRtspInLog(_pendingLine.ToString());
                 _pendingLine.Clear();
-
                 string trimmed = line.Trim();
-                bool isSeparator =
-                    trimmed.Length >= 20 &&
-                    trimmed.All(character => character == '=');
+                bool isSeparator = trimmed.Length >= 20 && trimmed.All(character => character == '=');
 
                 if (isSeparator)
                 {
@@ -970,8 +793,7 @@ namespace OpenCvWpfTracking.Common
 
                 if (trimmed.Length == 0)
                 {
-                    if (!_separatorSinceContent &&
-                        !_lastLineWasBlank)
+                    if (!_separatorSinceContent && !_lastLineWasBlank)
                     {
                         SafeWriteLine();
                         _lastLineWasBlank = true;
@@ -992,11 +814,15 @@ namespace OpenCvWpfTracking.Common
             /// </summary>
             private void SafeWriteLine(string value = null)
             {
-                if (_innerUnavailable) return;
+                if (_innerUnavailable)
+                    return;
+
                 try
                 {
-                    if (value == null) _inner.WriteLine();
-                    else _inner.WriteLine(value);
+                    if (value == null)
+                        _inner.WriteLine();
+                    else
+                        _inner.WriteLine(value);
                 }
                 catch (IOException ex)
                 {
@@ -1010,15 +836,27 @@ namespace OpenCvWpfTracking.Common
 
             private void SafeFlush()
             {
-                if (_innerUnavailable) return;
-                try { _inner.Flush(); }
-                catch (IOException ex) { DisableInnerWriter(ex); }
-                catch (ObjectDisposedException ex) { DisableInnerWriter(ex); }
+                if (_innerUnavailable)
+                    return;
+
+                try
+                {
+                    _inner.Flush();
+                }
+                catch (IOException ex)
+                {
+                    DisableInnerWriter(ex);
+                }
+                catch (ObjectDisposedException ex)
+                {
+                    DisableInnerWriter(ex);
+                }
             }
 
             private void DisableInnerWriter(Exception exception)
             {
                 _innerUnavailable = true;
+
                 try
                 {
                     Debug.WriteLine("Console writer disabled: " + exception.Message);
@@ -1028,9 +866,6 @@ namespace OpenCvWpfTracking.Common
                     // 진단 출력 실패는 애플리케이션 기능에 영향을 주지 않는다.
                 }
             }
-
         }
-
     }
-
 }

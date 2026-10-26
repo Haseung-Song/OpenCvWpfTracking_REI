@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -26,7 +26,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public sealed class CtecCameraResponseService
     {
-        #region [Constants]
+        #region [상수]
 
         /// <summary>
         /// CTEC Camera Response Header
@@ -63,7 +63,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Fields]
+        #region [필드]
 
         /// <summary>
         /// 카메라 응답 수신 TCP Client
@@ -101,14 +101,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// 연결 / 해제 동시 호출 보호
         /// </summary>
-        private readonly SemaphoreSlim _connectionLock =
-            new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// Zoom / Focus Position 응답 대기 작업 보호
         /// </summary>
-        private readonly object _positionWaitLock =
-            new object();
+        private readonly object _positionWaitLock = new object();
 
         /// <summary>
         /// 다음 Zoom Position 응답 대기 작업
@@ -122,7 +120,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Events]
+        #region [이벤트]
 
         /// <summary>
         /// 완성된 CTEC Camera Response Packet 수신 이벤트
@@ -139,19 +137,16 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Properties]
+        #region [속성]
 
         /// <summary>
         /// 현재 CTEC Response TCP 연결 여부
         /// </summary>
-        public bool IsConnected =>
-            _tcpClient != null &&
-            _tcpClient.Connected &&
-            _networkStream != null;
+        public bool IsConnected => _tcpClient != null && _tcpClient.Connected && _networkStream != null;
 
         #endregion
 
-        #region [Public Methods]
+        #region [외부 호출 함수]
 
         /// <summary>
         /// 카메라 [TCP Response Port] 연결 및 수신 Loop 시작
@@ -159,25 +154,17 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 동일 카메라에 이미 연결되어 있으면 중복 연결하지 않는다.
         /// 다른 카메라 또는 Port로 변경된 경우 기존 연결을 종료한 뒤 새로 시작한다.
         /// </summary>
-        public async Task StartAsync(
-            string cameraIp,
-            int responsePort)
+        public async Task StartAsync(string cameraIp, int responsePort)
         {
-            if (string.IsNullOrWhiteSpace(
-                    cameraIp))
+            if (string.IsNullOrWhiteSpace(cameraIp))
             {
-                Console.WriteLine(
-                    "[CTEC RESPONSE] Start Failed : Camera IP is empty");
-
+                Console.WriteLine("[CTEC RESPONSE] Start Failed : Camera IP is empty");
                 return;
             }
 
-            if (responsePort < 1 ||
-                responsePort > 65535)
+            if (responsePort < 1 || responsePort > 65535)
             {
-                Console.WriteLine(
-                    $"[CTEC RESPONSE] Start Failed : Invalid Port {responsePort}");
-
+                Console.WriteLine($"[CTEC RESPONSE] Start Failed : Invalid Port {responsePort}");
                 return;
             }
 
@@ -185,46 +172,34 @@ namespace OpenCvWpfTracking.Services.Communication
 
             try
             {
-                string normalizedIp =
-                    cameraIp.Trim();
+                string normalizedIp = cameraIp.Trim();
 
                 if (_isConnectionRequested &&
                     string.Equals(
-                        _cameraIp,
-                        normalizedIp,
-                        StringComparison.OrdinalIgnoreCase) &&
+                    _cameraIp,
+                    normalizedIp,
+                    StringComparison.OrdinalIgnoreCase
+                ) &&
                     _responsePort == responsePort)
                 {
                     return;
                 }
 
                 StopCore();
-
-                _cameraIp =
-                    normalizedIp;
-
-                _responsePort =
-                    responsePort;
-
-                _isConnectionRequested =
-                    true;
-
-                _receiveCts =
-                    new CancellationTokenSource();
-
+                _cameraIp = normalizedIp;
+                _responsePort = responsePort;
+                _isConnectionRequested = true;
+                _receiveCts = new CancellationTokenSource();
                 /*
                  * 장비 연결 버튼의 UI Thread를 점유하지 않도록
                  * TCP 연결 / 수신 / 재연결 Loop는 별도 Task에서 수행한다.
                  */
-                _ = Task.Run(
-                    () => RunConnectionLoopAsync(
-                        _receiveCts.Token));
+                _ = Task.Run(() => RunConnectionLoopAsync(_receiveCts.Token));
             }
             finally
             {
                 _connectionLock.Release();
             }
-
         }
 
         /// <summary>
@@ -242,52 +217,34 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _connectionLock.Release();
             }
-
         }
 
         #endregion
 
-        #region [Connection Loop]
+        #region [연결 반복 처리]
 
         /// <summary>
         /// CTEC Response TCP 연결 / 수신 / 자동 재연결 Loop
         /// </summary>
-        private async Task RunConnectionLoopAsync(
-            CancellationToken cancellationToken)
+        private async Task RunConnectionLoopAsync(CancellationToken cancellationToken)
         {
-            bool isFirstAttempt =
-                true;
-
-            while (_isConnectionRequested &&
-                   !cancellationToken.IsCancellationRequested)
+            bool isFirstAttempt = true;
+            while (_isConnectionRequested && !cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    RaiseConnectionStatus(
-                        isFirstAttempt
-                            ? "Connecting"
-                            : "Reconnecting");
-
-                    isFirstAttempt =
-                        false;
-
-                    bool connectResult =
-                        await ConnectCoreAsync(
-                            cancellationToken);
+                    RaiseConnectionStatus(isFirstAttempt ? "Connecting" : "Reconnecting");
+                    isFirstAttempt = false;
+                    bool connectResult = await ConnectCoreAsync(cancellationToken);
 
                     if (!connectResult)
                     {
-                        await DelayReconnectAsync(
-                            cancellationToken);
-
+                        await DelayReconnectAsync(cancellationToken);
                         continue;
                     }
 
-                    RaiseConnectionStatus(
-                        "Connected");
-
-                    await ReceiveLoopAsync(
-                        cancellationToken);
+                    RaiseConnectionStatus("Connected");
+                    await ReceiveLoopAsync(cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -295,9 +252,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(
-                        $"[CTEC RESPONSE] LOOP ERROR : {ex.Message}");
-
+                    Console.WriteLine($"[CTEC RESPONSE] LOOP ERROR : {ex.Message}");
                     ConsoleLogHelper.PrintLine();
                 }
                 finally
@@ -305,118 +260,77 @@ namespace OpenCvWpfTracking.Services.Communication
                     CloseSocket();
                 }
 
-                if (_isConnectionRequested &&
-                    !cancellationToken.IsCancellationRequested)
+                if (_isConnectionRequested && !cancellationToken.IsCancellationRequested)
                 {
-                    RaiseConnectionStatus(
-                        "Reconnecting");
-
-                    await DelayReconnectAsync(
-                        cancellationToken);
+                    RaiseConnectionStatus("Reconnecting");
+                    await DelayReconnectAsync(cancellationToken);
                 }
-
             }
 
-            RaiseConnectionStatus(
-                "Disconnected");
+            RaiseConnectionStatus("Disconnected");
         }
 
         /// <summary>
         /// 카메라 IP의 TCP Response Port로 연결
         /// </summary>
-        private async Task<bool> ConnectCoreAsync(
-            CancellationToken cancellationToken)
+        private async Task<bool> ConnectCoreAsync(CancellationToken cancellationToken)
         {
             CloseSocket();
-
-            TcpClient tcpClient =
-                new TcpClient();
+            TcpClient tcpClient = new TcpClient();
 
             try
             {
-                Task connectTask =
-                    tcpClient.ConnectAsync(
-                        _cameraIp,
-                        _responsePort);
+                Task connectTask = tcpClient.ConnectAsync(_cameraIp, _responsePort);
+                Task completedTask = await Task.WhenAny(connectTask, Task.Delay(ConnectTimeoutMs, cancellationToken));
 
-                Task completedTask =
-                    await Task.WhenAny(
-                        connectTask,
-                        Task.Delay(
-                            ConnectTimeoutMs,
-                            cancellationToken));
-
-                if (completedTask !=
-                    connectTask)
+                if (completedTask != connectTask)
                 {
                     // 2026-09-29: Close 이후 완료되는 ConnectAsync의 예외까지
                     // 관찰하여 반복 재연결 중 UnobservedTaskException을 방지한다.
                     ObserveTimedOutConnectTask(connectTask);
-
                     tcpClient.Close();
-
-                    Console.WriteLine(
-                        $"[CTEC RESPONSE] CONNECT TIMEOUT : " +
-                        $"{_cameraIp}:{_responsePort}");
-
+                    Console.WriteLine($"[CTEC RESPONSE] CONNECT TIMEOUT : " + $"{_cameraIp}:{_responsePort}");
                     ConsoleLogHelper.PrintLine();
-
                     return false;
                 }
 
                 await connectTask;
-
-                _tcpClient =
-                    tcpClient;
-
-                _networkStream =
-                    tcpClient.GetStream();
-
+                _tcpClient = tcpClient;
+                _networkStream = tcpClient.GetStream();
                 Console.WriteLine();
-                Console.WriteLine(
-                    $"[CTEC RESPONSE] CONNECTED : " +
-                    $"{_cameraIp}:{_responsePort}");
-
+                Console.WriteLine($"[CTEC RESPONSE] CONNECTED : " + $"{_cameraIp}:{_responsePort}");
                 ConsoleLogHelper.PrintLine();
-
                 return true;
             }
             catch (Exception ex)
             {
                 tcpClient.Close();
-
-                Console.WriteLine(
-                    $"[CTEC RESPONSE] CONNECT FAILED : " +
-                    $"{_cameraIp}:{_responsePort} / {ex.Message}");
-
+                Console.WriteLine($"[CTEC RESPONSE] CONNECT FAILED : " + $"{_cameraIp}:{_responsePort} / {ex.Message}");
                 ConsoleLogHelper.PrintLine();
-
                 return false;
             }
-
         }
 
+        /// <summary>
+        /// 시간 초과된 연결 작업의 최종 결과를 관찰해 예외가 누락되지 않게 한다.
+        /// </summary>
         private void ObserveTimedOutConnectTask(Task connectTask)
         {
             _ = connectTask.ContinueWith(
                 faultedTask =>
-                {
-                    Exception observedException = faultedTask.Exception;
-
-                    Debug.WriteLine(
-                        $"[CTEC RESPONSE CONNECT TIMEOUT CLEANUP] " +
-                        $"{_cameraIp}:{_responsePort} / " +
-                        observedException?.GetBaseException().Message);
-                },
+            {
+                Exception observedException = faultedTask.Exception;
+                Debug.WriteLine($"[CTEC RESPONSE CONNECT TIMEOUT CLEANUP] " + $"{_cameraIp}:{_responsePort} / " + observedException?.GetBaseException().Message);
+            },
                 CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted |
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
         }
 
         #endregion
 
-        #region [Position Response Wait]
+        #region [위치 응답 대기]
 
         /// <summary>
         /// [EO Zoom] 다음 TCP 9000 Position 응답을 기다린다.
@@ -424,27 +338,17 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 반드시 CGI Inquiry 송신 전에 호출해야 한다.
         /// 그래야 빠르게 도착한 응답도 놓치지 않는다.
         /// </summary>
-        public Task<int?> WaitForNextZoomPositionAsync(
-            int timeoutMs,
-            CancellationToken cancellationToken)
+        public Task<int?> WaitForNextZoomPositionAsync(int timeoutMs, CancellationToken cancellationToken)
         {
-            return WaitForNextPositionAsync(
-                true,
-                timeoutMs,
-                cancellationToken);
+            return WaitForNextPositionAsync(true, timeoutMs, cancellationToken);
         }
 
         /// <summary>
         /// [EO Focus] 다음 TCP 9000 Position 응답을 기다린다.
         /// </summary>
-        public Task<int?> WaitForNextFocusPositionAsync(
-            int timeoutMs,
-            CancellationToken cancellationToken)
+        public Task<int?> WaitForNextFocusPositionAsync(int timeoutMs, CancellationToken cancellationToken)
         {
-            return WaitForNextPositionAsync(
-                false,
-                timeoutMs,
-                cancellationToken);
+            return WaitForNextPositionAsync(false, timeoutMs, cancellationToken);
         }
 
         /// <summary>
@@ -453,22 +357,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 동일 종류의 이전 대기 작업이 남아 있으면 취소하고
         /// 항상 가장 최근 Inquiry 한 건만 대기한다.
         /// </summary>
-        private async Task<int?> WaitForNextPositionAsync(
-            bool isZoom,
-            int timeoutMs,
-            CancellationToken cancellationToken)
+        private async Task<int?> WaitForNextPositionAsync(bool isZoom, int timeoutMs, CancellationToken cancellationToken)
         {
-            TaskCompletionSource<int> waitSource =
-                new TaskCompletionSource<int>(
-                    TaskCreationOptions.RunContinuationsAsynchronously);
-
+            TaskCompletionSource<int> waitSource = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
             lock (_positionWaitLock)
             {
-                TaskCompletionSource<int> previousSource =
-                    isZoom
-                        ? _zoomPositionWaitSource
-                        : _focusPositionWaitSource;
-
+                TaskCompletionSource<int> previousSource = isZoom ? _zoomPositionWaitSource : _focusPositionWaitSource;
                 previousSource?.TrySetCanceled();
 
                 if (isZoom)
@@ -479,18 +373,12 @@ namespace OpenCvWpfTracking.Services.Communication
                 {
                     _focusPositionWaitSource = waitSource;
                 }
-
             }
 
-            using (CancellationTokenSource timeoutCts =
-                CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken))
+            using (CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
-                timeoutCts.CancelAfter(
-                    Math.Max(1, timeoutMs));
-
-                using (timeoutCts.Token.Register(
-                    () => waitSource.TrySetCanceled()))
+                timeoutCts.CancelAfter(Math.Max(1, timeoutMs));
+                using (timeoutCts.Token.Register(() => waitSource.TrySetCanceled()))
                 {
                     try
                     {
@@ -504,40 +392,26 @@ namespace OpenCvWpfTracking.Services.Communication
                     {
                         lock (_positionWaitLock)
                         {
-                            if (isZoom &&
-                                ReferenceEquals(
-                                    _zoomPositionWaitSource,
-                                    waitSource))
+                            if (isZoom && ReferenceEquals(_zoomPositionWaitSource, waitSource))
                             {
                                 _zoomPositionWaitSource = null;
                             }
-                            else if (!isZoom &&
-                                     ReferenceEquals(
-                                         _focusPositionWaitSource,
-                                         waitSource))
+                            else if (!isZoom && ReferenceEquals(_focusPositionWaitSource, waitSource))
                             {
                                 _focusPositionWaitSource = null;
                             }
-
                         }
-
                     }
-
                 }
-
             }
-
         }
 
         /// <summary>
         /// 수신된 Position을 현재 대기 중인 Inquiry에 전달한다.
         /// </summary>
-        private void CompletePositionWait(
-            byte commandCode,
-            int position)
+        private void CompletePositionWait(byte commandCode, int position)
         {
             TaskCompletionSource<int> waitSource = null;
-
             lock (_positionWaitLock)
             {
                 if (commandCode == 0x47)
@@ -550,11 +424,9 @@ namespace OpenCvWpfTracking.Services.Communication
                     waitSource = _focusPositionWaitSource;
                     _focusPositionWaitSource = null;
                 }
-
             }
 
-            waitSource?.TrySetResult(
-                position);
+            waitSource?.TrySetResult(position);
         }
 
         /// <summary>
@@ -564,12 +436,10 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             TaskCompletionSource<int> zoomSource;
             TaskCompletionSource<int> focusSource;
-
             lock (_positionWaitLock)
             {
                 zoomSource = _zoomPositionWaitSource;
                 focusSource = _focusPositionWaitSource;
-
                 _zoomPositionWaitSource = null;
                 _focusPositionWaitSource = null;
             }
@@ -580,7 +450,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Receive / Packet Parsing]
+        #region [수신 / 패킷 해석]
 
         /// <summary>
         /// 카메라 CTEC Response 수신 Loop
@@ -589,74 +459,47 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 수신 Byte를 누적한 뒤 [0x99 0x55] Header와
         /// [0xFF] 종료 Byte를 기준으로 완성 Packet을 분리한다.
         /// </summary>
-        private async Task ReceiveLoopAsync(
-            CancellationToken cancellationToken)
+        private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
         {
-            byte[] receiveBuffer =
-                new byte[1024];
-
-            List<byte> packetBuffer =
-                new List<byte>();
-
-            while (_isConnectionRequested &&
-                   !cancellationToken.IsCancellationRequested &&
-                   IsConnected)
+            byte[] receiveBuffer = new byte[1024];
+            List<byte> packetBuffer = new List<byte>();
+            while (_isConnectionRequested && !cancellationToken.IsCancellationRequested && IsConnected)
             {
-                int readLength =
-                    await _networkStream.ReadAsync(
-                        receiveBuffer,
-                        0,
-                        receiveBuffer.Length,
-                        cancellationToken);
+                int readLength = await _networkStream.ReadAsync(receiveBuffer, 0, receiveBuffer.Length, cancellationToken);
 
                 if (readLength <= 0)
                 {
-                    Console.WriteLine(
-                        "[CTEC RESPONSE] REMOTE CLOSED");
-
+                    Console.WriteLine("[CTEC RESPONSE] REMOTE CLOSED");
                     ConsoleLogHelper.PrintLine();
-
                     break;
                 }
 
-                for (int index = 0;
-                     index < readLength;
-                     index++)
+                for (int index = 0; index < readLength; index++)
                 {
-                    packetBuffer.Add(
-                        receiveBuffer[index]);
+                    packetBuffer.Add(receiveBuffer[index]);
                 }
 
-                ExtractPackets(
-                    packetBuffer);
+                ExtractPackets(packetBuffer);
             }
-
         }
 
         /// <summary>
         /// 누적 Buffer에서 완성된 CTEC Response Packet 추출
         /// </summary>
-        private void ExtractPackets(
-            List<byte> packetBuffer)
+        private void ExtractPackets(List<byte> packetBuffer)
         {
             while (packetBuffer.Count >= 2)
             {
-                int headerIndex =
-                    FindHeaderIndex(
-                        packetBuffer);
+                int headerIndex = FindHeaderIndex(packetBuffer);
 
                 if (headerIndex < 0)
                 {
-                    bool keepLastHeaderByte =
-                        packetBuffer[packetBuffer.Count - 1] ==
-                        ResponseHeader1;
-
+                    bool keepLastHeaderByte = packetBuffer[packetBuffer.Count - 1] == ResponseHeader1;
                     packetBuffer.Clear();
 
                     if (keepLastHeaderByte)
                     {
-                        packetBuffer.Add(
-                            ResponseHeader1);
+                        packetBuffer.Add(ResponseHeader1);
                     }
 
                     return;
@@ -664,17 +507,14 @@ namespace OpenCvWpfTracking.Services.Communication
 
                 if (headerIndex > 0)
                 {
-                    packetBuffer.RemoveRange(
-                        0,
-                        headerIndex);
+                    packetBuffer.RemoveRange(0, headerIndex);
                 }
 
                 /*
                  * TCP 수신이 6 Byte + 1 Byte처럼 분할될 수 있으므로
                  * 정확히 7 Byte가 누적될 때까지 기다린다.
                  */
-                if (packetBuffer.Count <
-                    ResponsePacketLength)
+                if (packetBuffer.Count < ResponsePacketLength)
                 {
                     return;
                 }
@@ -683,116 +523,78 @@ namespace OpenCvWpfTracking.Services.Communication
                  * 7번째 Byte가 종료값이 아니면 현재 Header를 잘못 잡은 것이다.
                  * 첫 Byte만 제거한 뒤 다음 Header를 다시 검색한다.
                  */
-                if (packetBuffer[ResponsePacketLength - 1] !=
-                    ResponseEnd)
+                if (packetBuffer[ResponsePacketLength - 1] != ResponseEnd)
                 {
                     packetBuffer.RemoveAt(0);
                     continue;
                 }
 
-                byte[] packet =
-                    packetBuffer.GetRange(
-                        0,
-                        ResponsePacketLength)
-                    .ToArray();
-
-                packetBuffer.RemoveRange(
-                    0,
-                    ResponsePacketLength);
-
-                OnPacketReceived(
-                    packet);
+                byte[] packet = packetBuffer.GetRange(0, ResponsePacketLength).ToArray();
+                packetBuffer.RemoveRange(0, ResponsePacketLength);
+                OnPacketReceived(packet);
             }
-
         }
 
         /// <summary>
         /// CTEC Response Header 시작 위치 검색
         /// </summary>
-        private int FindHeaderIndex(
-            List<byte> packetBuffer)
+        private int FindHeaderIndex(List<byte> packetBuffer)
         {
-            for (int index = 0;
-                 index < packetBuffer.Count - 1;
-                 index++)
+            for (int index = 0; index < packetBuffer.Count - 1; index++)
             {
-                if (packetBuffer[index] ==
-                        ResponseHeader1 &&
-                    packetBuffer[index + 1] ==
-                        ResponseHeader2)
+                if (packetBuffer[index] == ResponseHeader1 && packetBuffer[index + 1] == ResponseHeader2)
                 {
                     return index;
                 }
-
             }
+
             return -1;
         }
 
         /// <summary>
         /// 완성 CTEC Response Packet 로그 및 이벤트 전달
         /// </summary>
-        private void OnPacketReceived(
-            byte[] packet)
+        private void OnPacketReceived(byte[] packet)
         {
-            string packetHex =
-                BitConverter
-                    .ToString(packet)
-                    .Replace("-", " ");
-
+            string packetHex = BitConverter.ToString(packet).Replace("-", " ");
             Console.WriteLine();
-            Console.WriteLine(
-                $"[CTEC RESPONSE] RX : {packetHex}");
-
+            Console.WriteLine($"[CTEC RESPONSE] RX : {packetHex}");
             ConsoleLogHelper.PrintLine();
 
-            if (packet.Length == ResponsePacketLength &&
-                (packet[2] == 0x47 ||
-                 packet[2] == 0x48))
+            if (packet.Length == ResponsePacketLength && (packet[2] == 0x47 || packet[2] == 0x48))
             {
-                int position =
-                    (packet[4] << 8) |
-                     packet[5];
-
-                CompletePositionWait(
-                    packet[2],
-                    position);
+                int position = (packet[4] << 8) | packet[5];
+                CompletePositionWait(packet[2], position);
             }
 
-            PacketReceived?.Invoke(
-                packet);
+            PacketReceived?.Invoke(packet);
         }
 
         #endregion
 
-        #region [Utility Methods]
+        #region [공통 보조 함수]
 
         /// <summary>
         /// 자동 재연결 대기
         /// </summary>
-        private async Task DelayReconnectAsync(
-            CancellationToken cancellationToken)
+        private async Task DelayReconnectAsync(CancellationToken cancellationToken)
         {
             try
             {
-                await Task.Delay(
-                    ReconnectDelayMs,
-                    cancellationToken);
+                await Task.Delay(ReconnectDelayMs, cancellationToken);
             }
             catch (OperationCanceledException)
             {
                 // Stop/Disconnect에서 취소된 정상 종료 경로이다.
             }
-
         }
 
         /// <summary>
         /// 연결 상태 이벤트 전달
         /// </summary>
-        private void RaiseConnectionStatus(
-            string status)
+        private void RaiseConnectionStatus(string status)
         {
-            ConnectionStatusChanged?.Invoke(
-                status);
+            ConnectionStatusChanged?.Invoke(status);
         }
 
         /// <summary>
@@ -801,9 +603,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private void StopCore()
         {
             CancelPositionWaits();
-
-            _isConnectionRequested =
-                false;
+            _isConnectionRequested = false;
 
             try
             {
@@ -811,25 +611,15 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Warning(
-                    "CTEC RESPONSE / CLEANUP",
-                    "Receive cancellation cleanup failed / " + ex.Message);
+                ConsoleLogHelper.Warning("CTEC RESPONSE / CLEANUP", "Receive cancellation cleanup failed / " + ex.Message);
             }
 
             _receiveCts?.Dispose();
-            _receiveCts =
-                null;
-
+            _receiveCts = null;
             CloseSocket();
-
-            _cameraIp =
-                null;
-
-            _responsePort =
-                0;
-
-            RaiseConnectionStatus(
-                "Disconnected");
+            _cameraIp = null;
+            _responsePort = 0;
+            RaiseConnectionStatus("Disconnected");
         }
 
         /// <summary>
@@ -843,9 +633,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Warning(
-                    "CTEC RESPONSE / CLEANUP",
-                    "Network stream close failed / " + ex.Message);
+                ConsoleLogHelper.Warning("CTEC RESPONSE / CLEANUP", "Network stream close failed / " + ex.Message);
             }
 
             try
@@ -854,18 +642,13 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Warning(
-                    "CTEC RESPONSE / CLEANUP",
-                    "TCP client close failed / " + ex.Message);
+                ConsoleLogHelper.Warning("CTEC RESPONSE / CLEANUP", "TCP client close failed / " + ex.Message);
             }
 
-            _networkStream =
-                null;
-
-            _tcpClient =
-                null;
+            _networkStream = null;
+            _tcpClient = null;
         }
+
         #endregion
     }
-
 }

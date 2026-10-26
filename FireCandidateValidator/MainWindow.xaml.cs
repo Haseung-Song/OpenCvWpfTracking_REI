@@ -1,4 +1,4 @@
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
@@ -39,7 +39,7 @@ namespace FireCandidateValidator
         private VideoWriter _videoWriter;
 
         // 2026-08-14: 0=BLACK HOT, 1=WHITE HOT, 2=RAINBOW. 장비와 무관한 화면 표시 상태다.
-        // 2026-08-14: Ten display palettes are cycled independently of equipment.
+        // 표시용 팔레트 10종은 실제 장비 팔레트와 독립적으로 순환한다.
         private const int DisplayPaletteCount = 10;
 
         // 2026-10-06: -1은 팔레트를 적용하지 않는 EO 원본 컬러 표시 모드이다.
@@ -1409,8 +1409,11 @@ namespace FireCandidateValidator
 
         // 2026-08-14: 콤보박스 대신 메인 Viewer와 같은 직접/상대 팔레트 버튼을 사용한다.
         private void BlackHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(0);
+
         private void WhiteHotPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(1);
+
         private void EoOriginal_Click(object sender, RoutedEventArgs e) => SetDisplayPalette(-1);
+
         /// <summary>
         /// RandomPalette_Click 이벤트 처리 함수.
         /// </summary>
@@ -1422,6 +1425,7 @@ namespace FireCandidateValidator
         }
 
         private void PreviousPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex - 1 + DisplayPaletteCount) % DisplayPaletteCount);
+
         private void NextPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
 
         /// <summary>
@@ -1473,7 +1477,7 @@ namespace FireCandidateValidator
 
             if (index == 1)
             {
-                // 2026-08-14: WHITE HOT display is the inverse of BLACK HOT.
+                // 흰색 고온 표시는 검정 고온 표시를 반전한 것이다.
                 Cv2.BitwiseNot(gray, gray);
                 Mat whiteHot = new Mat();
                 Cv2.CvtColor(gray, whiteHot, ColorConversionCodes.GRAY2BGR);
@@ -1499,7 +1503,7 @@ namespace FireCandidateValidator
             return colored;
         }
 
-        // 2026-08-14: Initially neutral; show a palette colour after user selection only.
+        // 초기에는 중립 상태이며 사용자가 팔레트를 선택한 뒤에만 색상을 표시한다.
         /// <summary>
         /// UpdatePaletteButtonVisuals 갱신 함수.
         /// </summary>
@@ -1722,7 +1726,8 @@ namespace FireCandidateValidator
             {
                 _smokeDiagnosticWriter.Flush();
                 _smokeDiagnosticWriter.Dispose();
-                if(_smokeDiagnosticDirectory!=null)OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_smokeDiagnosticDirectory,"smoke_candidates.csv"));
+                if (_smokeDiagnosticDirectory != null)
+                    OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_smokeDiagnosticDirectory, "smoke_candidates.csv"));
                 _smokeDiagnosticWriter = null;
             }
 
@@ -1868,7 +1873,8 @@ namespace FireCandidateValidator
             {
                 _fireDiagnosticWriter.Flush();
                 _fireDiagnosticWriter.Dispose();
-                if(_fireDiagnosticDirectory!=null)OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_fireDiagnosticDirectory,"fire_candidates.csv"));
+                if (_fireDiagnosticDirectory != null)
+                    OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_fireDiagnosticDirectory, "fire_candidates.csv"));
                 _fireDiagnosticWriter = null;
             }
 

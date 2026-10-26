@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace OpenCvWpfTracking.Services.Control
 {
@@ -17,7 +17,8 @@ namespace OpenCvWpfTracking.Services.Control
             int eoFrameWidth,
             double irLeftX,
             double irRightX,
-            int irFrameWidth)
+            int irFrameWidth
+        )
         {
             if (level < 1 || level > 10)
             {
@@ -39,9 +40,7 @@ namespace OpenCvWpfTracking.Services.Control
 
             double eoNormalizedWidth = eoPixelWidth / eoFrameWidth;
             double irNormalizedWidth = irPixelWidth / irFrameWidth;
-            double errorPercent = Math.Abs(eoNormalizedWidth - irNormalizedWidth) /
-                                  eoNormalizedWidth * 100.0;
-
+            double errorPercent = Math.Abs(eoNormalizedWidth - irNormalizedWidth) / eoNormalizedWidth * 100.0;
             return new FovSyncValidationResult(
                 level,
                 eoPixelWidth,
@@ -49,18 +48,25 @@ namespace OpenCvWpfTracking.Services.Control
                 eoNormalizedWidth,
                 irNormalizedWidth,
                 errorPercent,
-                errorPercent <= PassThresholdPercent);
+                errorPercent <= PassThresholdPercent
+            );
         }
     }
 
     public sealed class FovSyncValidationResult
     {
         public int Level { get; }
+
         public double EoPixelWidth { get; }
+
         public double IrPixelWidth { get; }
+
         public double EoNormalizedWidth { get; }
+
         public double IrNormalizedWidth { get; }
+
         public double ErrorPercent { get; }
+
         public bool Passed { get; }
 
         public FovSyncValidationResult(
@@ -70,7 +76,8 @@ namespace OpenCvWpfTracking.Services.Control
             double eoNormalizedWidth,
             double irNormalizedWidth,
             double errorPercent,
-            bool passed)
+            bool passed
+        )
         {
             Level = level;
             EoPixelWidth = eoPixelWidth;

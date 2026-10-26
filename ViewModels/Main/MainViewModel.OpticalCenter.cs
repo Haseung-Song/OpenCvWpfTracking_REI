@@ -10,7 +10,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
-
         #region [필드 및 상태 정보]
 
         private OpticalCenterCalibration opticalCenters;
@@ -19,7 +18,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [속성 및 상태 표시]
 
-        private OpticalCenterCalibration OpticalCenters => opticalCenters ?? (opticalCenters = new OpticalCenterCalibration(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "OpticalCenters.xml")));
+        private OpticalCenterCalibration OpticalCenters =>
+            opticalCenters ?? (opticalCenters = new OpticalCenterCalibration(Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "Config",
+            "OpticalCenters.xml"
+        )));
 
         #endregion
 
@@ -31,17 +35,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private static string CameraIdentity(string address)
         {
             Uri uri;
-            return Uri.TryCreate(address, UriKind.Absolute, out uri) ? uri.Scheme + "://" + uri.Host + ":" + uri.Port + uri.AbsolutePath : address;
+            return Uri.TryCreate(
+                address,
+                UriKind.Absolute,
+                out uri
+            ) ? uri.Scheme + "://" + uri.Host + ":" + uri.Port + uri.AbsolutePath : address;
         }
 
         /// <summary>
         /// 장비와 제어 주소 및 카메라 채널별 보정 키를 만든다.
         /// </summary>
-        private string OpticalCenterKey(bool ir) => (SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText + "|" + CameraIdentity(ir ? IrSourceAddress : EoSourceAddress) + "|" + (ir ? "IR" : "EO");
+        private string OpticalCenterKey(bool ir) =>
+            (SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText + "|" + CameraIdentity(ir ? IrSourceAddress : EoSourceAddress) + "|" + (ir ? "IR" : "EO");
+
         /// <summary>
         /// 현재 채널의 보정 저장 대상 키를 반환한다.
         /// </summary>
         public string OpticalDeviceKey(bool ir) => OpticalCenterKey(ir);
+
         /// <summary>
         /// 현재 채널의 표준 광학 줌 위치를 반환한다.
         /// </summary>
@@ -54,6 +65,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool IsOpticalCalibrationBlockedByDigitalZoom(bool ir)
         {
             int channel = ir ? 1 : 0;
+
             if (ir && _digitalCapsKnown[channel] && (_digitalCaps[channel] & 5) != 5)
                 return false;
 
@@ -64,6 +76,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 장비와 줌 위치에 대응하는 십자선 중심을 반환한다.
         /// </summary>
         public Point GetOpticalCenter(bool ir) => OpticalCenters.Get(OpticalCenterKey(ir), OpticalZoom(ir));
+
         /// <summary>
         /// 보정에 필요한 렌즈와 위치 응답의 신선도를 검사한다.
         /// </summary>
@@ -80,7 +93,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool SnapshotFrameFresh(bool ir)
         {
             long age = DateTime.UtcNow.Ticks - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]);
-            return age >= 0 && age < TimeSpan.FromSeconds(1).Ticks && (ir ? IrConnectionStatusText : EoConnectionStatusText) == "Connected";
+            return age >= 0 &&
+                age < TimeSpan.FromSeconds(1).Ticks &&
+                (ir ? IrConnectionStatusText : EoConnectionStatusText) == "Connected";
         }
 
         #endregion
@@ -88,7 +103,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         #region [속성 및 상태 표시]
 
         public Point OpticalPose => new Point(_currentPan, _currentTilt);
+
         public double CurrentPanoramaPan => NormalizeToSignedAngle(_currentPan);
+
         public double CurrentPanoramaTilt => _currentTilt;
 
         // 2026-10-15: 원자적으로 읽은 복사본을 사용하여 연결 해제 중 중복 읽기의 null 참조를 방지한다.
@@ -97,14 +114,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get
             {
                 var pose = Volatile.Read(ref _videoCenterPose);
+
                 if (pose == null)
                     return false;
+
                 long age = DateTime.UtcNow.Ticks - pose.Item3;
                 return age >= 0 && age < TimeSpan.FromSeconds(2).Ticks;
             }
         }
 
-        public string PanoramaDeviceKey => (SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText;
+        public string PanoramaDeviceKey =>
+            (SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText;
+
         public bool IsPanoramaIrSource => _activePanTiltZoomSource == 1;
 
         #endregion
@@ -135,20 +156,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (!OpticalFeedbackFresh(ir))
                 throw new InvalidOperationException("새 줌/PAN/TILT 수신값이 필요합니다.");
+
             OpticalCenters.Save(OpticalCenterKey(ir), OpticalZoom(ir), center);
-            Common.ConsoleLogHelper.State("OPTICAL CENTER", (ir ? "IR" : "EO") + " / ZOOM=" + OpticalZoom(ir) + " / NORMALIZED=" + center);
+            Common.ConsoleLogHelper.State(
+                "OPTICAL CENTER",
+                (ir ? "IR" : "EO") + " / ZOOM=" + OpticalZoom(ir) + " / NORMALIZED=" + center
+            );
         }
 
         /// <summary>
         /// 선택 채널의 보정값을 기본 중심으로 복원한다.
         /// </summary>
         public void ResetOpticalCenter(bool ir) => OpticalCenters.Reset(OpticalCenterKey(ir));
+
         /// <summary>
         /// 위치 기준 변경을 등록된 화면에 알린다.
         /// </summary>
         private void InvalidatePanoramaReference() => PositionReferenceChanged?.Invoke();
 
         #endregion
-
     }
 }

@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.AI;
 using OpenCvWpfTracking.Models.Main;
 using System;
@@ -19,9 +19,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
-        #region [ICommand]
+        #region [화면 명령 구현]
 
-        #region [Display Overlay Commands]
+        #region [표시 오버레이 명령]
 
         /// <summary>
         /// [EO / IR] 영상 중앙 십자선 표시 상태 전환 [Command]
@@ -80,7 +80,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Video Commands]
+        #region [영상 명령]
 
         /// <summary>
         /// 영상 [Connect] 버튼 [Command]
@@ -94,7 +94,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Pan / Tilt Commands]
+        #region [팬·틸트 명령]
 
         /// <summary>
         /// [PAN] 왼쪽 위치 이동 테스트 [Command]
@@ -118,7 +118,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Zoom / Focus Commands]
+        #region [줌·초점 명령]
 
         /// <summary>
         /// [ZOOM] 확대 테스트 [Command]
@@ -142,7 +142,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Move Control Commands]
+        #region [이동 제어 명령]
 
         /// <summary>
         /// Pan / Tilt Home Position 실행 [Command]
@@ -257,7 +257,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [LRF Commands]
+        #region [LRF 명령]
 
         /// <summary>
         /// [LRF] 거리측정 [1회] 요청 [Command]
@@ -266,7 +266,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [STOP Commands]
+        #region [STOP 명령]
 
         /// <summary>
         /// [PT] 연속 이동 정지 [Command]
@@ -275,7 +275,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [AI Detector Setting Commands]
+        #region [AI 검출기 설정 명령]
 
         /// <summary>
         /// [AI Detector Agent] 수동 연결 [Command]
@@ -306,7 +306,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Equipment Status / Zoom Sync Properties]
+        #region [장비 상태 / 줌 동기화 속성]
 
         /// <summary>
         /// [Environment Equipment / Zoom Synchronization]
@@ -366,7 +366,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 ConvertPanTiltValuesForSelectedCoordinateMode();
-
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsRooftopStatusSelected));
                 OnPropertyChanged(nameof(IsEnvironmentStatusSelected));
@@ -390,29 +389,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(TiltAbsoluteRangeLabel));
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(IsGpsTabVisible));
-
             }
-
         }
 
-        public bool IsRooftopStatusSelected =>
-            SelectedEquipmentStatusMode == EquipmentStatusMode.Rooftop;
+        public bool IsRooftopStatusSelected => SelectedEquipmentStatusMode == EquipmentStatusMode.Rooftop;
 
-        public bool IsEnvironmentStatusSelected =>
-            SelectedEquipmentStatusMode == EquipmentStatusMode.Environment;
+        public bool IsEnvironmentStatusSelected => SelectedEquipmentStatusMode == EquipmentStatusMode.Environment;
 
         public string PanTiltCoordinateRangeText =>
-            "PAN : -180° ~ 180°   /   TILT : " +
-            $"{CurrentMoveControlTiltMinimum:F2}° ~ " +
-            $"{CurrentMoveControlTiltMaximum:F2}°";
+            "PAN : -180° ~ 180°   /   TILT : " + $"{CurrentMoveControlTiltMinimum:F2}° ~ " + $"{CurrentMoveControlTiltMaximum:F2}°";
 
-        public string PanAbsoluteRangeLabel =>
-            "Pan Target  (-180° ~ 180°)";
+        public string PanAbsoluteRangeLabel => "Pan Target  (-180° ~ 180°)";
 
         public string TiltAbsoluteRangeLabel =>
-            "Tilt Target  (" +
-            $"{CurrentMoveControlTiltMinimum:F2}° ~ " +
-            $"{CurrentMoveControlTiltMaximum:F2}°)";
+            "Tilt Target  (" + $"{CurrentMoveControlTiltMinimum:F2}° ~ " + $"{CurrentMoveControlTiltMaximum:F2}°)";
 
         /// <summary>
         /// ROOFTOP / ENVIRONMENT 전환 직후에도 현재값과 입력값이 새 좌표계로 즉시 표시되게 한다.
@@ -424,18 +414,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _currentTilt = Math.Max(
                 CurrentMoveControlTiltMinimum,
                 Math.Min(
-                    CurrentMoveControlTiltMaximum,
-                    NormalizeToSignedAngle(_currentTilt)));
-            PanAbsoluteValue = PanAbsoluteValue.HasValue
-                ? NormalizeToSignedAngle(PanAbsoluteValue.Value) : (double?)null;
-            TiltAbsoluteValue = TiltAbsoluteValue.HasValue
-                ? Math.Max(
-                    CurrentMoveControlTiltMinimum,
-                    Math.Min(
-                        CurrentMoveControlTiltMaximum,
-                        NormalizeToSignedAngle(TiltAbsoluteValue.Value)))
-                : (double?)null;
-
+                CurrentMoveControlTiltMaximum,
+                NormalizeToSignedAngle(_currentTilt)
+            )
+            );
+            PanAbsoluteValue = PanAbsoluteValue.HasValue ? NormalizeToSignedAngle(PanAbsoluteValue.Value) : (double?)null;
+            TiltAbsoluteValue = TiltAbsoluteValue.HasValue ? Math.Max(
+                CurrentMoveControlTiltMinimum,
+                Math.Min(
+                CurrentMoveControlTiltMaximum,
+                NormalizeToSignedAngle(TiltAbsoluteValue.Value)
+            )
+            ) : (double?)null;
             OnPropertyChanged(nameof(CurrentPanText));
             OnPropertyChanged(nameof(CurrentTiltText));
         }
@@ -456,10 +446,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public bool IsEnvironmentThermalPaletteVisible => IsEnvironmentStatusSelected;
 
-        public string CurrentStatusEquipmentText =>
-            IsRooftopStatusSelected
-                ? "LA AGENT ACTIVE"
-                : "WEB AGENT ACTIVE";
+        public string CurrentStatusEquipmentText => IsRooftopStatusSelected ? "LA AGENT ACTIVE" : "WEB AGENT ACTIVE";
 
         /// <summary>
         /// HOME / ZERO UI 표시 여부.
@@ -477,12 +464,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool IsPanTiltZeroCommandEnabled => true;
 
         public string PanTiltZeroRouteText =>
-            _selectedControlAgentProfile?.AgentType == ControlAgentType.LaAgent
-                ? "LA AGENT : MCB DIRECT ZERO"
-                : "WEB AGENT : ZERO REQUEST (0xB3)";
+            _selectedControlAgentProfile?.AgentType == ControlAgentType.LaAgent ? "LA AGENT : MCB DIRECT ZERO" : "WEB AGENT : ZERO REQUEST (0xB3)";
 
-        public string HomeControlHeaderText =>
-            "HOME / ZERO";
+        public string HomeControlHeaderText => "HOME / ZERO";
 
         /// <summary>
         /// HOME / ZERO 잠금 화면의 작업 제목.
@@ -501,7 +485,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _homeZeroLockTitle = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -520,7 +503,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _homeZeroLockMessage = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -537,26 +519,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 _isHomePositionMoving = value;
-
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(IsMainControlEnabled));
-                OnPropertyChanged(
-                    nameof(IsOperationCommandEnabled));
-                OnPropertyChanged(
-                    nameof(IsPanTiltSpeedControlEnabled));
-                OnPropertyChanged(
-                    nameof(IsControlInputLocked));
-                OnPropertyChanged(
-                    nameof(IsEventAlertControlEnabled));
-                OnPropertyChanged(
-                    nameof(IsOperationLockOverlayVisible));
-                OnPropertyChanged(
-                    nameof(ControlLockTitle));
-                OnPropertyChanged(
-                    nameof(ControlLockMessage));
+                OnPropertyChanged(nameof(IsMainControlEnabled));
+                OnPropertyChanged(nameof(IsOperationCommandEnabled));
+                OnPropertyChanged(nameof(IsPanTiltSpeedControlEnabled));
+                OnPropertyChanged(nameof(IsControlInputLocked));
+                OnPropertyChanged(nameof(IsEventAlertControlEnabled));
+                OnPropertyChanged(nameof(IsOperationLockOverlayVisible));
+                OnPropertyChanged(nameof(ControlLockTitle));
+                OnPropertyChanged(nameof(ControlLockMessage));
             }
-
         }
 
         /// <summary>
@@ -604,9 +576,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public int SelectedRightPanelTabIndex
         {
-            get =>
-                _selectedRightPanelTabIndex;
-
+            get => _selectedRightPanelTabIndex;
             set
             {
                 if (_selectedRightPanelTabIndex == value)
@@ -614,12 +584,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                _selectedRightPanelTabIndex =
-                    value;
-
+                _selectedRightPanelTabIndex = value;
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(IsPanTiltSpeedControlEnabled));
+                OnPropertyChanged(nameof(IsPanTiltSpeedControlEnabled));
 
                 // 2026-08-24: 이벤트 알림 상위 탭을 열 때 가장 최근 이벤트 종류를 다시 적용한다.
                 // 사용자가 이전에 다른 하위 탭을 보았더라도 AI/FIRE 최신 발생 탭이 즉시 표시된다.
@@ -627,14 +594,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     QuerySpecialFeatureSupport();
                 }
+
                 if (value == 3)
                 {
-                    OnPropertyChanged(
-                        nameof(SelectedEventAlertTabIndex));
+                    OnPropertyChanged(nameof(SelectedEventAlertTabIndex));
                 }
-
             }
-
         }
 
         /// <summary>
@@ -643,9 +608,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public int SelectedOperationControlTabIndex
         {
-            get =>
-                _selectedOperationControlTabIndex;
-
+            get => _selectedOperationControlTabIndex;
             set
             {
                 if (_selectedOperationControlTabIndex == value)
@@ -653,27 +616,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                _selectedOperationControlTabIndex =
-                    value;
-
+                _selectedOperationControlTabIndex = value;
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(IsPanTiltSpeedControlEnabled));
+                OnPropertyChanged(nameof(IsPanTiltSpeedControlEnabled));
             }
-
         }
 
         /// <summary>
         /// 상단 PAN / TILT SPEED 슬라이더 활성 여부.
         /// 수동 PTZF용 속도와 PRESET용 Speed(1 ~ 60)를 명확히 분리한다.
         /// </summary>
-        public bool IsPanTiltSpeedControlEnabled =>
-            IsOperationCommandEnabled;
+        public bool IsPanTiltSpeedControlEnabled => IsOperationCommandEnabled;
 
-        public bool IsPresetScanControlLocked =>
-            IsRouteRunning ||
-            IsLaPresetScanRunning ||
-            IsPresetScanRunning;
+        public bool IsPresetScanControlLocked => IsRouteRunning || IsLaPresetScanRunning || IsPresetScanRunning;
 
         /// <summary>
         /// 2026-08-24: HOME, PAN/TILT ZERO, AUTO SCAN 및 파노라마 작업 중
@@ -687,34 +642,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IsPanoramaProcessingRunning;
 
         public string ControlLockTitle =>
-            IsPanoramaCompleted
-                ? "360° PANORAMA COMPLETED"
-                : IsPanoramaCancellationCompleted
-                ? "360° PANORAMA CANCELED"
-                : IsPanoramaCancellationRequested
-                ? "360° PANORAMA CANCELING"
-                : IsPanoramaProcessingRunning
-                ? "360° PANORAMA OPERATION"
-                : IsPresetScanControlLocked
-                ? "AUTO SCAN OPERATION"
-                : HomeZeroLockTitle;
+            IsPanoramaCompleted ? "360° PANORAMA COMPLETED" : IsPanoramaCancellationCompleted ? "360° PANORAMA CANCELED" : IsPanoramaCancellationRequested ? "360° PANORAMA CANCELING" : IsPanoramaProcessingRunning ? "360° PANORAMA OPERATION" : IsPresetScanControlLocked ? "AUTO SCAN OPERATION" : HomeZeroLockTitle;
 
         public string ControlLockMessage =>
-            IsPanoramaCompleted
-                ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED"
-                : IsPanoramaCancellationCompleted
-                ? "CAPTURE CANCELED / START POSITION RESTORED"
-                : IsPanoramaCancellationRequested
-                ? "CANCELING / RETURNING TO START POSITION..."
-                : IsPanoramaProcessingRunning
-                ? IsPanoramaCaptureRunning
-                    ? "EO CAMERA AUTO PAN / CAPTURING..."
-                    : "FEATURE MATCHING / BLENDING / SAVING..."
-                : IsLaPresetScanRunning
-                ? "PRESET L AUTO SCAN RUNNING"
-                : IsPresetScanRunning
-                    ? "PRESET W AUTO SCAN RUNNING"
-                    : HomeZeroLockMessage;
+            IsPanoramaCompleted ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED" : IsPanoramaCancellationCompleted ? "CAPTURE CANCELED / START POSITION RESTORED" : IsPanoramaCancellationRequested ? "CANCELING / RETURNING TO START POSITION..." : IsPanoramaProcessingRunning ? IsPanoramaCaptureRunning ? "EO CAMERA AUTO PAN / CAPTURING..." : "FEATURE MATCHING / BLENDING / SAVING..." : IsLaPresetScanRunning ? "PRESET L AUTO SCAN RUNNING" : IsPresetScanRunning ? "PRESET W AUTO SCAN RUNNING" : HomeZeroLockMessage;
 
         /// <summary>
         /// 현재 선택된 Zoom Sync Level
@@ -733,13 +664,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedZoomSyncLevelText));
             }
-
         }
 
         public string SelectedZoomSyncLevelText =>
-            SelectedZoomSyncLevel == null
-                ? "SELECTED LEVEL : --"
-                : $"SELECTED LEVEL : {SelectedZoomSyncLevel.DisplayText}";
+            SelectedZoomSyncLevel == null ? "SELECTED LEVEL : --" : $"SELECTED LEVEL : {SelectedZoomSyncLevel.DisplayText}";
 
         public string ZoomSyncStatusText
         {
@@ -754,7 +682,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _zoomSyncStatusText = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -771,21 +698,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 _selectedFocusSyncLevel = value;
-
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(SelectedFocusSyncPositionText));
+                OnPropertyChanged(nameof(SelectedFocusSyncPositionText));
             }
-
         }
 
         /// <summary>
         /// Focus Sync 표준 위치 표시 문자열
         /// </summary>
         public string SelectedFocusSyncPositionText =>
-            SelectedFocusSyncLevel == null
-                ? "0 / 1000"
-                : $"{SelectedFocusSyncLevel.Position} / 1000";
+            SelectedFocusSyncLevel == null ? "0 / 1000" : $"{SelectedFocusSyncLevel.Position} / 1000";
 
         /// <summary>
         /// Focus Sync 실행 상태 표시 문자열
@@ -803,89 +725,64 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _focusSyncStatusText = value;
                 OnPropertyChanged();
             }
-
         }
 
-        public string RooftopEoZoomStatusText =>
-            ZoomRatioStatus(false);
+        public string RooftopEoZoomStatusText => ZoomRatioStatus(false);
 
-        public string RooftopEoFocusStatusText =>
-            $"{GetCurrentPresetStandardFocus()} / 1000";
+        public string RooftopEoFocusStatusText => $"{GetCurrentPresetStandardFocus()} / 1000";
 
-        public string RooftopIrZoomStatusText =>
-            ZoomRatioStatus(true);
+        public string RooftopIrZoomStatusText => ZoomRatioStatus(true);
 
-        public string RooftopIrFocusStatusText =>
-            $"{GetCurrentIrFocusStandardPosition()} / 1000";
+        public string RooftopIrFocusStatusText => $"{GetCurrentIrFocusStandardPosition()} / 1000";
 
-        public string EnvironmentEoZoomStatusText =>
-            ZoomRatioStatus(false);
+        public string EnvironmentEoZoomStatusText => ZoomRatioStatus(false);
 
-        public string EnvironmentEoFocusStatusText =>
-            $"{GetCurrentPresetStandardFocus()} / 1000";
+        public string EnvironmentEoFocusStatusText => $"{GetCurrentPresetStandardFocus()} / 1000";
 
-        public string EnvironmentIrZoomStatusText =>
-            ZoomRatioStatus(true);
+        public string EnvironmentIrZoomStatusText => ZoomRatioStatus(true);
 
-        public string EnvironmentIrFocusStatusText =>
-            $"{GetCurrentIrFocusStandardPosition()} / 1000";
+        public string EnvironmentIrFocusStatusText => $"{GetCurrentIrFocusStandardPosition()} / 1000";
 
         /// <summary>
         /// Home / Zero 실행 상태 표시
         /// </summary>
         public string HomeZeroStatusText
         {
-            get =>
-                _homeZeroStatusText;
-
+            get => _homeZeroStatusText;
             private set
             {
-                if (_homeZeroStatusText ==
-                    value)
+                if (_homeZeroStatusText == value)
                 {
                     return;
                 }
 
-                _homeZeroStatusText =
-                    value;
-
+                _homeZeroStatusText = value;
                 OnPropertyChanged();
             }
-
         }
 
         #endregion
 
-        #region [Move Control Properties]
+        #region [이동 제어 속성]
 
         /// <summary>
         /// Pan Absolute 이동 시 장비 최단거리 모드(0x4D / 0x02)를 사용하는지 여부
         /// </summary>
         public bool IsPanTurnShortMode
         {
-            get =>
-                _panTurnMode ==
-                PanTurnMode.Short;
-
+            get => _panTurnMode == PanTurnMode.Short;
             set
             {
-                if (!value ||
-                    _panTurnMode ==
-                        PanTurnMode.Short)
+                if (!value || _panTurnMode == PanTurnMode.Short)
                 {
                     return;
                 }
 
-                _panTurnMode =
-                    PanTurnMode.Short;
-
+                _panTurnMode = PanTurnMode.Short;
                 ApplySelectedPanTurnMode();
-
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(IsPanTurnViaZeroMode));
+                OnPropertyChanged(nameof(IsPanTurnViaZeroMode));
             }
-
         }
 
         /// <summary>
@@ -893,29 +790,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsPanTurnViaZeroMode
         {
-            get =>
-                _panTurnMode ==
-                PanTurnMode.ViaZero;
-
+            get => _panTurnMode == PanTurnMode.ViaZero;
             set
             {
-                if (!value ||
-                    _panTurnMode ==
-                        PanTurnMode.ViaZero)
+                if (!value || _panTurnMode == PanTurnMode.ViaZero)
                 {
                     return;
                 }
 
-                _panTurnMode =
-                    PanTurnMode.ViaZero;
-
+                _panTurnMode = PanTurnMode.ViaZero;
                 ApplySelectedPanTurnMode();
-
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(IsPanTurnShortMode));
+                OnPropertyChanged(nameof(IsPanTurnShortMode));
             }
-
         }
 
         public bool IsPresetSavedOrderMode
@@ -923,13 +810,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _presetScanOrderMode == PresetScanOrderMode.SavedOrder;
             set
             {
-                if (!value || _presetScanOrderMode == PresetScanOrderMode.SavedOrder) return;
+                if (!value || _presetScanOrderMode == PresetScanOrderMode.SavedOrder)
+                    return;
+
                 _presetScanOrderMode = PresetScanOrderMode.SavedOrder;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsPresetNearestOrderMode));
                 SavePresetStorage();
             }
-
         }
 
         public bool IsPresetNearestOrderMode
@@ -937,13 +825,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _presetScanOrderMode == PresetScanOrderMode.NearestOrder;
             set
             {
-                if (!value || _presetScanOrderMode == PresetScanOrderMode.NearestOrder) return;
+                if (!value || _presetScanOrderMode == PresetScanOrderMode.NearestOrder)
+                    return;
+
                 _presetScanOrderMode = PresetScanOrderMode.NearestOrder;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsPresetSavedOrderMode));
                 SavePresetStorage();
             }
-
         }
 
         /// <summary>
@@ -951,27 +840,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public double? PanAbsoluteValue
         {
-            get =>
-                _panAbsoluteValue;
-
+            get => _panAbsoluteValue;
             set
             {
-                double? roundedValue =
-                    RoundNullableAngle(
-                        value);
+                double? roundedValue = RoundNullableAngle(value);
 
-                if (_panAbsoluteValue ==
-                    roundedValue)
+                if (_panAbsoluteValue == roundedValue)
                 {
                     return;
                 }
 
-                _panAbsoluteValue =
-                    roundedValue;
-
+                _panAbsoluteValue = roundedValue;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -979,27 +860,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public double? TiltAbsoluteValue
         {
-            get =>
-                _tiltAbsoluteValue;
-
+            get => _tiltAbsoluteValue;
             set
             {
-                double? roundedValue =
-                    RoundNullableAngle(
-                        value);
+                double? roundedValue = RoundNullableAngle(value);
 
-                if (_tiltAbsoluteValue ==
-                    roundedValue)
+                if (_tiltAbsoluteValue == roundedValue)
                 {
                     return;
                 }
 
-                _tiltAbsoluteValue =
-                    roundedValue;
-
+                _tiltAbsoluteValue = roundedValue;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1007,23 +880,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public int? ZoomPositionValue
         {
-            get =>
-                _zoomPositionValue;
-
+            get => _zoomPositionValue;
             set
             {
-                if (_zoomPositionValue ==
-                    value)
+                if (_zoomPositionValue == value)
                 {
                     return;
                 }
 
-                _zoomPositionValue =
-                    value;
-
+                _zoomPositionValue = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1041,31 +908,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public double? ZoomRatioValue
         {
-            get =>
-                _zoomRatioValue;
-
+            get => _zoomRatioValue;
             set
             {
-                double? roundedValue =
-                    value.HasValue
-                        ? Math.Round(
-                            value.Value,
-                            1,
-                            MidpointRounding.AwayFromZero)
-                        : (double?)null;
+                double? roundedValue = value.HasValue ? Math.Round(value.Value, 1, MidpointRounding.AwayFromZero) : (double?)null;
 
-                if (_zoomRatioValue ==
-                    roundedValue)
+                if (_zoomRatioValue == roundedValue)
                 {
                     return;
                 }
 
-                _zoomRatioValue =
-                    roundedValue;
-
+                _zoomRatioValue = roundedValue;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1073,216 +928,134 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public int? FocusPositionValue
         {
-            get =>
-                _focusPositionValue;
-
+            get => _focusPositionValue;
             set
             {
-                if (_focusPositionValue ==
-                    value)
+                if (_focusPositionValue == value)
                 {
                     return;
                 }
 
-                _focusPositionValue =
-                    value;
-
+                _focusPositionValue = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
         /// PRESET 1 (LA TEST) ID 선택 목록
         /// </summary>
-        public ObservableCollection<int> LaPresetSlotOptions { get; } =
-            new ObservableCollection<int>(
-                Enumerable.Range(
-                    1,
-                    99));
+        public ObservableCollection<int> LaPresetSlotOptions { get; } = new ObservableCollection<int>(Enumerable.Range(1, 99));
 
-        public ObservableCollection<PresetPointOption> LaPresetPoints { get; } =
-            new ObservableCollection<PresetPointOption>();
+        public ObservableCollection<PresetPointOption> LaPresetPoints { get; } = new ObservableCollection<PresetPointOption>();
 
         public int LaPresetSlotNumber
         {
-            get =>
-                _laPresetSlotNumber;
-
+            get => _laPresetSlotNumber;
             set
             {
-                int safeValue =
-                    Math.Max(
-                        0,
-                        Math.Min(
-                            99,
-                            value));
+                int safeValue = Math.Max(0, Math.Min(99, value));
 
-                if (_laPresetSlotNumber ==
-                    safeValue)
+                if (_laPresetSlotNumber == safeValue)
                 {
                     return;
                 }
 
-                _laPresetSlotNumber =
-                    safeValue;
-
+                _laPresetSlotNumber = safeValue;
                 OnPropertyChanged();
-
-                SelectedLaPresetPoint =
-                    LaPresetPoints
-                        .FirstOrDefault(
-                            preset =>
-                                preset.Number ==
-                                safeValue);
+                SelectedLaPresetPoint = LaPresetPoints.FirstOrDefault(preset => preset.Number == safeValue);
             }
-
         }
 
         public PresetPointOption SelectedLaPresetPoint
         {
-            get =>
-                _selectedLaPresetPoint;
-
+            get => _selectedLaPresetPoint;
             set
             {
-                if (ReferenceEquals(
-                    _selectedLaPresetPoint,
-                    value))
+                if (ReferenceEquals(_selectedLaPresetPoint, value))
                 {
                     return;
                 }
 
-                _selectedLaPresetPoint =
-                    value;
-
+                _selectedLaPresetPoint = value;
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(SelectedLaPresetDetailText));
+                OnPropertyChanged(nameof(SelectedLaPresetDetailText));
 
-                if (value != null &&
-                    _laPresetSlotNumber !=
-                        value.Number)
+                if (value != null && _laPresetSlotNumber != value.Number)
                 {
-                    _laPresetSlotNumber =
-                        value.Number;
-
-                    OnPropertyChanged(
-                        nameof(LaPresetSlotNumber));
+                    _laPresetSlotNumber = value.Number;
+                    OnPropertyChanged(nameof(LaPresetSlotNumber));
                 }
-
             }
-
         }
 
         public string CurrentLaPresetSnapshotText =>
-            $"PAN      : {_currentPan:F2}°\n" +
-            $"TILT     : {_currentTilt:F2}°\n" +
-            $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" +
-            $"EO FOCUS : {CurrentEoFocusText} / 1000\n" +
-            $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" +
-            $"IR FOCUS : {CurrentIrFocusText} / 1000";
+            $"PAN      : {_currentPan:F2}°\n" + $"TILT     : {_currentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
 
         public string SelectedLaPresetDetailText =>
-            SelectedLaPresetPoint == null
-                ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요."
-                : SelectedLaPresetPoint.DetailText;
+            SelectedLaPresetPoint == null ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요." : SelectedLaPresetPoint.DetailText;
 
         public int LaPresetScanSpeed
         {
-            get =>
-                _laPresetScanSpeed;
-
+            get => _laPresetScanSpeed;
             set
             {
-                int safeValue =
-                    Math.Max(
-                        1,
-                        Math.Min(
-                            60,
-                            value));
+                int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_laPresetScanSpeed ==
-                    safeValue)
+                if (_laPresetScanSpeed == safeValue)
                 {
                     return;
                 }
 
-                _laPresetScanSpeed =
-                    safeValue;
-
+                _laPresetScanSpeed = safeValue;
                 OnPropertyChanged();
                 SavePresetStorage();
             }
-
         }
 
         public int LaPresetScanDelay
         {
-            get =>
-                _laPresetScanDelay;
-
+            get => _laPresetScanDelay;
             set
             {
-                int safeValue =
-                    Math.Max(
-                        1,
-                        Math.Min(
-                            60,
-                            value));
+                int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_laPresetScanDelay ==
-                    safeValue)
+                if (_laPresetScanDelay == safeValue)
                 {
                     return;
                 }
 
-                _laPresetScanDelay =
-                    safeValue;
-
+                _laPresetScanDelay = safeValue;
                 OnPropertyChanged();
                 SavePresetStorage();
             }
-
         }
 
         public string LaPresetCommandStatusText
         {
-            get =>
-                _laPresetCommandStatusText;
-
+            get => _laPresetCommandStatusText;
             private set
             {
-                if (_laPresetCommandStatusText ==
-                    value)
+                if (_laPresetCommandStatusText == value)
                 {
                     return;
                 }
 
-                _laPresetCommandStatusText =
-                    value;
-
+                _laPresetCommandStatusText = value;
                 OnPropertyChanged();
             }
-
         }
 
         public bool IsLaPresetScanRunning
         {
-            get =>
-                _isLaPresetScanRunning;
-
+            get => _isLaPresetScanRunning;
             private set
             {
-                if (_isLaPresetScanRunning ==
-                    value)
+                if (_isLaPresetScanRunning == value)
                 {
                     return;
                 }
 
-                _isLaPresetScanRunning =
-                    value;
-
+                _isLaPresetScanRunning = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsPresetScanControlLocked));
                 OnPropertyChanged(nameof(IsControlInputLocked));
@@ -1294,7 +1067,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(ControlLockTitle));
                 OnPropertyChanged(nameof(ControlLockMessage));
             }
-
         }
 
         /// <summary>
@@ -1303,11 +1075,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 프리셋 추가 / 제거 / 이동 명령에서 사용할 수 있는
         /// 1 ~ 63 슬롯을 제공한다.
         /// </summary>
-        public ObservableCollection<int> PresetSlotOptions { get; } =
-            new ObservableCollection<int>(
-                Enumerable.Range(
-                    1,
-                    63));
+        public ObservableCollection<int> PresetSlotOptions { get; } = new ObservableCollection<int>(Enumerable.Range(1, 63));
 
         /// <summary>
         /// 현재 프로그램에서 등록 명령을 송신한 프리셋 목록
@@ -1316,8 +1084,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이 목록은 장비 전체 프리셋 데이터가 아니라
         /// 현재 프로그램 세션에서 관리하는 화면 확인용 목록이다.
         /// </summary>
-        public ObservableCollection<PresetPointOption> PresetPoints { get; } =
-            new ObservableCollection<PresetPointOption>();
+        public ObservableCollection<PresetPointOption> PresetPoints { get; } = new ObservableCollection<PresetPointOption>();
 
         /// <summary>
         /// 스캔 속도 / 정지시간 선택 목록
@@ -1325,56 +1092,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// TORUSS 문서 기준:
         /// 1 ~ 60
         /// </summary>
-        public ObservableCollection<int> PresetScanValueOptions { get; } =
-            new ObservableCollection<int>(
-                Enumerable.Range(
-                    1,
-                    60));
+        public ObservableCollection<int> PresetScanValueOptions { get; } = new ObservableCollection<int>(Enumerable.Range(1, 60));
 
         /// <summary>
         /// 프리셋 추가 / 제거 대상 슬롯 번호
         /// </summary>
         public int PresetSlotNumber
         {
-            get =>
-                _presetSlotNumber;
-
+            get => _presetSlotNumber;
             set
             {
-                int safeValue =
-                    Math.Max(
-                        1,
-                        Math.Min(
-                            63,
-                            value));
+                int safeValue = Math.Max(1, Math.Min(63, value));
 
-                if (_presetSlotNumber ==
-                    safeValue)
+                if (_presetSlotNumber == safeValue)
                 {
                     return;
                 }
 
-                _presetSlotNumber =
-                    safeValue;
-
+                _presetSlotNumber = safeValue;
                 OnPropertyChanged();
-
-                PresetPointOption existingPreset =
-                    PresetPoints
-                        .FirstOrDefault(
-                            preset =>
-                                preset.Number ==
-                                safeValue);
-
+                PresetPointOption existingPreset = PresetPoints.FirstOrDefault(preset => preset.Number == safeValue);
                 /*
                  * 등록되지 않은 새 슬롯을 선택한 경우에는
                  * 기존 ComboBox 선택이 남아 잘못 이동하지 않도록
                  * 선택 프리셋을 null로 초기화한다.
                  */
-                SelectedPresetPoint =
-                    existingPreset;
+                SelectedPresetPoint = existingPreset;
             }
-
         }
 
         /// <summary>
@@ -1382,38 +1126,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public PresetPointOption SelectedPresetPoint
         {
-            get =>
-                _selectedPresetPoint;
-
+            get => _selectedPresetPoint;
             set
             {
-                if (ReferenceEquals(
-                    _selectedPresetPoint,
-                    value))
+                if (ReferenceEquals(_selectedPresetPoint, value))
                 {
                     return;
                 }
 
-                _selectedPresetPoint =
-                    value;
-
+                _selectedPresetPoint = value;
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(SelectedPresetDetailText));
+                OnPropertyChanged(nameof(SelectedPresetDetailText));
 
-                if (value != null &&
-                    _presetSlotNumber !=
-                        value.Number)
+                if (value != null && _presetSlotNumber != value.Number)
                 {
-                    _presetSlotNumber =
-                        value.Number;
-
-                    OnPropertyChanged(
-                        nameof(PresetSlotNumber));
+                    _presetSlotNumber = value.Number;
+                    OnPropertyChanged(nameof(PresetSlotNumber));
                 }
-
             }
-
         }
 
         /// <summary>
@@ -1423,20 +1153,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이 상태를 선택 슬롯의 화면 확인용 정보로 저장한다.
         /// </summary>
         public string CurrentPresetSnapshotText =>
-            $"PAN      : {_currentPan:F2}°\n" +
-            $"TILT     : {_currentTilt:F2}°\n" +
-            $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" +
-            $"EO FOCUS : {CurrentEoFocusText} / 1000\n" +
-            $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" +
-            $"IR FOCUS : {CurrentIrFocusText} / 1000";
+            $"PAN      : {_currentPan:F2}°\n" + $"TILT     : {_currentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
 
         /// <summary>
         /// ComboBox에서 선택한 프리셋 상세값
         /// </summary>
-        public string SelectedPresetDetailText =>
-            SelectedPresetPoint == null
-                ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요."
-                : SelectedPresetPoint.DetailText;
+        public string SelectedPresetDetailText => SelectedPresetPoint == null ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요." : SelectedPresetPoint.DetailText;
 
         /// <summary>
         /// 오토 스캔 이동 속도
@@ -1446,31 +1168,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public int PresetScanSpeed
         {
-            get =>
-                _presetScanSpeed;
-
+            get => _presetScanSpeed;
             set
             {
-                int safeValue =
-                    Math.Max(
-                        1,
-                        Math.Min(
-                            60,
-                            value));
+                int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_presetScanSpeed ==
-                    safeValue)
+                if (_presetScanSpeed == safeValue)
                 {
                     return;
                 }
 
-                _presetScanSpeed =
-                    safeValue;
-
+                _presetScanSpeed = safeValue;
                 OnPropertyChanged();
                 SavePresetStorage();
             }
-
         }
 
         /// <summary>
@@ -1481,31 +1192,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public int PresetScanDelay
         {
-            get =>
-                _presetScanDelay;
-
+            get => _presetScanDelay;
             set
             {
-                int safeValue =
-                    Math.Max(
-                        1,
-                        Math.Min(
-                            60,
-                            value));
+                int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_presetScanDelay ==
-                    safeValue)
+                if (_presetScanDelay == safeValue)
                 {
                     return;
                 }
 
-                _presetScanDelay =
-                    safeValue;
-
+                _presetScanDelay = safeValue;
                 OnPropertyChanged();
                 SavePresetStorage();
             }
-
         }
 
         /// <summary>
@@ -1515,23 +1215,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public string PresetCommandStatusText
         {
-            get =>
-                _presetCommandStatusText;
-
+            get => _presetCommandStatusText;
             private set
             {
-                if (_presetCommandStatusText ==
-                    value)
+                if (_presetCommandStatusText == value)
                 {
                     return;
                 }
 
-                _presetCommandStatusText =
-                    value;
-
+                _presetCommandStatusText = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1539,20 +1233,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsPresetScanRunning
         {
-            get =>
-                _isPresetScanRunning;
-
+            get => _isPresetScanRunning;
             private set
             {
-                if (_isPresetScanRunning ==
-                    value)
+                if (_isPresetScanRunning == value)
                 {
                     return;
                 }
 
-                _isPresetScanRunning =
-                    value;
-
+                _isPresetScanRunning = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsPresetScanControlLocked));
                 OnPropertyChanged(nameof(IsControlInputLocked));
@@ -1564,14 +1253,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(ControlLockTitle));
                 OnPropertyChanged(nameof(ControlLockMessage));
             }
-
         }
 
         #endregion
 
-        #region [Bindable Properties]
+        #region [화면 연결 속성]
 
-        #region [Source Address Properties]
+        #region [소스 주소 속성]
 
         /// <summary>
         /// [EO] 주간 [RTSP] 주소
@@ -1581,29 +1269,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string EoSourceAddress
         {
             get => _eoSourceAddress;
-
             set
             {
-                if (_eoSourceAddress ==
-                    value)
+                if (_eoSourceAddress == value)
                 {
                     return;
                 }
 
-                if(BlockConnectedSettingChange(nameof(EoSourceAddress)))return;
-                _eoSourceAddress =
-                    value;
-
+                _eoSourceAddress = value;
                 OnPropertyChanged();
-
                 /*
                  * EO RTSP 주소가 외부 로직에서 변경된 경우에도
                  * 통신 설정 ComboBox 선택 항목을 함께 갱신한다.
                  */
-                OnPropertyChanged(
-                    nameof(SelectedEoRtspSource));
+                OnPropertyChanged(nameof(SelectedEoRtspSource));
             }
-
         }
 
         /// <summary>
@@ -1625,14 +1305,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _selectedEoRtspSource ?? EoRtspSourceOptions
-                    .FirstOrDefault(
-                        option =>
-                            string.Equals(
-                                option.Address,
-                                EoSourceAddress,
-                                StringComparison.OrdinalIgnoreCase))
-                    ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+                return _selectedEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(option => string.Equals(
+                    option.Address,
+                    EoSourceAddress,
+                    StringComparison.OrdinalIgnoreCase
+                )) ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             }
 
             set
@@ -1642,21 +1319,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                if(ReferenceEquals(_selectedEoRtspSource,value))return;
-                if(BlockConnectedSettingChange(nameof(SelectedEoRtspSource)))return;
+                if (ReferenceEquals(_selectedEoRtspSource, value))
+                    return;
+
                 _selectedEoRtspSource = value;
 
                 if (!value.IsDirectInput)
                 {
-                    EoSourceAddress =
-                        value.Address;
+                    EoSourceAddress = value.Address;
                 }
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsEoRtspDirectInput));
                 SaveRtspCommunicationSettings();
             }
-
         }
 
         /// <summary>
@@ -1667,24 +1343,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string IrSourceAddress
         {
             get => _irSourceAddress;
-
             set
             {
-                if (_irSourceAddress ==
-                    value)
+                if (_irSourceAddress == value)
                 {
                     return;
                 }
 
-                if(BlockConnectedSettingChange(nameof(IrSourceAddress)))return;
-                _irSourceAddress =
-                    value;
-
+                _irSourceAddress = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedIrRtspSource));
                 OnPropertyChanged(nameof(IsIrRtspDirectInput));
             }
-
         }
 
         /// <summary>
@@ -1692,12 +1362,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public RtspSourceOption SelectedIrRtspSource
         {
-            get => _selectedIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(
-                       option => string.Equals(
-                           option.Address,
-                           IrSourceAddress,
-                           StringComparison.OrdinalIgnoreCase))
-                   ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            get =>
+                _selectedIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(option => string.Equals(
+                option.Address,
+                IrSourceAddress,
+                StringComparison.OrdinalIgnoreCase
+            )) ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             set
             {
                 if (value == null)
@@ -1705,32 +1375,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                if(ReferenceEquals(_selectedIrRtspSource,value))return;
-                if(BlockConnectedSettingChange(nameof(SelectedIrRtspSource)))return;
+                if (ReferenceEquals(_selectedIrRtspSource, value))
+                    return;
+
                 _selectedIrRtspSource = value;
 
                 if (!value.IsDirectInput)
                 {
-                    IrSourceAddress =
-                        value.Address;
+                    IrSourceAddress = value.Address;
                 }
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsIrRtspDirectInput));
                 SaveRtspCommunicationSettings();
             }
-
         }
 
-        public bool IsEoRtspDirectInput =>
-            SelectedEoRtspSource?.IsDirectInput == true;
+        public bool IsEoRtspDirectInput => SelectedEoRtspSource?.IsDirectInput == true;
 
-        public bool IsIrRtspDirectInput =>
-            SelectedIrRtspSource?.IsDirectInput == true;
+        public bool IsIrRtspDirectInput => SelectedIrRtspSource?.IsDirectInput == true;
 
         #endregion
 
-        #region [Control Agent Setting Properties]
+        #region [제어 에이전트 설정 속성]
 
         /// <summary>
         /// Control Agent 제어 TCP 연결 IP
@@ -1738,25 +1405,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string ControlAgentIp
         {
             get => _controlControlAgentIp;
-
             set
             {
-                if (_controlControlAgentIp ==
-                    value)
+                if (_controlControlAgentIp == value)
                 {
                     return;
                 }
 
-                if(BlockConnectedSettingChange(nameof(ControlAgentIp)))return;
-                _controlControlAgentIp =
-                    value;
-
+                _controlControlAgentIp = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
-                OnPropertyChanged(nameof(IsGpsTabVisible));   // 추가
+                OnPropertyChanged(nameof(IsGpsTabVisible)); // 추가
                 EnsureVisibleCommunicationSettingsTab();
             }
-
         }
 
         /// <summary>
@@ -1768,21 +1429,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string McbMaintenanceIpAddress
         {
             get => _mcbMaintenanceIpAddress;
-
             set
             {
-                if (_mcbMaintenanceIpAddress ==
-                    value)
+                if (_mcbMaintenanceIpAddress == value)
                 {
                     return;
                 }
 
-                _mcbMaintenanceIpAddress =
-                    value;
-
+                _mcbMaintenanceIpAddress = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1793,27 +1449,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string ControlAgentPortText
         {
             get => _controlControlAgentPortText;
-
             set
             {
-                if (_controlControlAgentPortText ==
-                    value)
+                if (_controlControlAgentPortText == value)
                 {
                     return;
                 }
 
-                if(BlockConnectedSettingChange(nameof(ControlAgentPortText)))return;
-                _controlControlAgentPortText =
-                    value;
-
+                _controlControlAgentPortText = value;
                 OnPropertyChanged();
             }
-
         }
 
         #endregion
 
-        #region [Image Properties]
+        #region [영상 속성]
 
         /// <summary>
         /// [EOCameraImage] 값 변경 시,
@@ -1829,9 +1479,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _eoCameraImage = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         /// <summary>
@@ -1848,14 +1496,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _irCameraImage = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         #endregion
 
-        #region [AI Overlay Video Size Properties]
+        #region [AI 오버레이 영상 크기 속성]
 
         /// <summary>
         /// [EO] [RTSP] 원본 영상 너비
@@ -1871,7 +1517,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _eoVideoWidth = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1888,7 +1533,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _eoVideoHeight = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1905,7 +1549,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _irVideoWidth = value;
                 OnPropertyChanged();
             }
-
         }
 
         /// <summary>
@@ -1922,12 +1565,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _irVideoHeight = value;
                 OnPropertyChanged();
             }
-
         }
 
         #endregion
 
-        #region [AI Detector Setting Properties]
+        #region [AI 검출기 설정 속성]
 
         /// <summary>
         /// [AI Detector Agent] 연결 [IP]
@@ -1942,9 +1584,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _aiControlAgentIp = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         /// <summary>
@@ -1960,9 +1600,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _aiAgentPort = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         /// <summary>
@@ -1980,9 +1618,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     OnPropertyChanged(nameof(SelectedAiEoRtspSource));
                     OnPropertyChanged(nameof(IsAiEoRtspDirectInput));
                 }
-
             }
-
         }
 
         /// <summary>
@@ -2000,19 +1636,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     OnPropertyChanged(nameof(SelectedAiIrRtspSource));
                     OnPropertyChanged(nameof(IsAiIrRtspDirectInput));
                 }
-
             }
-
         }
 
         public RtspSourceOption SelectedAiEoRtspSource
         {
-            get => _selectedAiEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(
-                       option => string.Equals(
-                           option.Address,
-                           AiRtsp0Address,
-                           StringComparison.OrdinalIgnoreCase))
-                   ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            get =>
+                _selectedAiEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(option => string.Equals(
+                option.Address,
+                AiRtsp0Address,
+                StringComparison.OrdinalIgnoreCase
+            )) ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             set
             {
                 if (value == null)
@@ -2031,17 +1665,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsAiEoRtspDirectInput));
                 SaveRtspCommunicationSettings();
             }
-
         }
 
         public RtspSourceOption SelectedAiIrRtspSource
         {
-            get => _selectedAiIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(
-                       option => string.Equals(
-                           option.Address,
-                           AiRtsp1Address,
-                           StringComparison.OrdinalIgnoreCase))
-                   ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            get =>
+                _selectedAiIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(option => string.Equals(
+                option.Address,
+                AiRtsp1Address,
+                StringComparison.OrdinalIgnoreCase
+            )) ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             set
             {
                 if (value == null)
@@ -2060,14 +1693,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsAiIrRtspDirectInput));
                 SaveRtspCommunicationSettings();
             }
-
         }
 
-        public bool IsAiEoRtspDirectInput =>
-            SelectedAiEoRtspSource?.IsDirectInput == true;
+        public bool IsAiEoRtspDirectInput => SelectedAiEoRtspSource?.IsDirectInput == true;
 
-        public bool IsAiIrRtspDirectInput =>
-            SelectedAiIrRtspSource?.IsDirectInput == true;
+        public bool IsAiIrRtspDirectInput => SelectedAiIrRtspSource?.IsDirectInput == true;
 
         /// <summary>
         /// [RTSP Index 0]에 적용할 [ONNX Index]
@@ -2082,9 +1712,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _aiRtsp0OnnxIndex = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         /// <summary>
@@ -2100,9 +1728,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _aiRtsp1OnnxIndex = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         /// <summary>
@@ -2117,19 +1743,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _aiMappingConfidence = value;
                     OnPropertyChanged();
-                    OnPropertyChanged(
-                        nameof(AiMappingConfidenceText));
+                    OnPropertyChanged(nameof(AiMappingConfidenceText));
                 }
-
             }
-
         }
 
         /// <summary>
         /// [AI Detector] Mapping Confidence 화면 표시 문자열
         /// </summary>
-        public string AiMappingConfidenceText =>
-            AiMappingConfidence.ToString("0.00");
+        public string AiMappingConfidenceText => AiMappingConfidence.ToString("0.00");
 
         /// <summary>
         /// [AI Detector] [Mapping IOU] 기준값
@@ -2143,19 +1765,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _aiMappingIou = value;
                     OnPropertyChanged();
-                    OnPropertyChanged(
-                        nameof(AiMappingIouText));
+                    OnPropertyChanged(nameof(AiMappingIouText));
                 }
-
             }
-
         }
 
         /// <summary>
         /// [AI Detector] Mapping IOU 화면 표시 문자열
         /// </summary>
-        public string AiMappingIouText =>
-            AiMappingIou.ToString("0.00");
+        public string AiMappingIouText => AiMappingIou.ToString("0.00");
 
         /// <summary>
         /// 화면 표시용 [Bounding Box] 최소 신뢰도 기준값
@@ -2169,19 +1787,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _aiDisplayConfidenceThreshold = value;
                     OnPropertyChanged();
-                    OnPropertyChanged(
-                        nameof(AiDisplayConfidenceThresholdText));
+                    OnPropertyChanged(nameof(AiDisplayConfidenceThresholdText));
                 }
-
             }
-
         }
 
         /// <summary>
         /// [AI Detector] 화면 표시용 [Bounding Box] 최소 신뢰도 표시 문자열
         /// </summary>
-        public string AiDisplayConfidenceThresholdText =>
-            AiDisplayConfidenceThreshold.ToString("0.00");
+        public string AiDisplayConfidenceThresholdText => AiDisplayConfidenceThreshold.ToString("0.00");
 
         /// <summary>
         /// [AI Detector Setting] 상태 표시 문자열
@@ -2196,9 +1810,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _aiSettingStatusText = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         /// <summary>
@@ -2218,9 +1830,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(AiAlertStatusText));
                 }
-
             }
-
         }
 
         #endregion
@@ -2238,12 +1848,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _isAutoTrackingEnabled = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
-        #region [Display Overlay Properties]
+        #region [표시 오버레이 속성]
 
         /// <summary>
         /// [EO / IR] 영상 중앙 십자선 표시 여부
@@ -2256,25 +1864,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsCrosshairVisible
         {
-            get =>
-                _isCrosshairVisible;
-
+            get => _isCrosshairVisible;
             set
             {
-                if (_isCrosshairVisible ==
-                    value)
+                if (_isCrosshairVisible == value)
                 {
                     return;
                 }
 
-                _isCrosshairVisible =
-                    value;
-
+                _isCrosshairVisible = value;
                 OnPropertyChanged();
-                OnPropertyChanged(
-                    nameof(CrosshairButtonText));
+                OnPropertyChanged(nameof(CrosshairButtonText));
             }
-
         }
 
         /// <summary>
@@ -2283,10 +1884,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 활성 상태를 버튼 자체에서 바로 확인할 수 있도록
         /// ENABLED / DISABLED 상태 문자열을 반환한다.
         /// </summary>
-        public string CrosshairButtonText =>
-            IsCrosshairVisible
-                ? "CROSSHAIR : ENABLED"
-                : "CROSSHAIR : DISABLED";
+        public string CrosshairButtonText => IsCrosshairVisible ? "CROSSHAIR : ENABLED" : "CROSSHAIR : DISABLED";
 
         /// <summary>
         /// EO / IR 메인 화면과 영상 분리 창에 공통 적용되는 십자선 색상.
@@ -2295,37 +1893,36 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Control Agent Communication Properties]
+        #region [제어 에이전트 통신 속성]
 
         /// <summary>
         /// Control Agent TCP 연결 상태 표시 문자열
         /// </summary>
         // WEB 프로필의 지도/저장 파노라마는 LA TCP의 생존 상태와 독립적이다.
         // LA 프로필은 기존 연결 완료 시에만 표시하는 규칙을 유지한다.
-        public bool IsContextPanelsVisible => IsSelectedControlAgentWebAgent ||
-            string.Equals(ControlAgentConnectionStatusText, "Connected", StringComparison.Ordinal);
+        public bool IsContextPanelsVisible =>
+            IsSelectedControlAgentWebAgent ||
+            string.Equals(
+            ControlAgentConnectionStatusText,
+            "Connected",
+            StringComparison.Ordinal
+        );
 
         public string ControlAgentConnectionStatusText
         {
-            get =>
-                _controlAgentConnectionStatusText;
-
+            get => _controlAgentConnectionStatusText;
             private set
             {
-                if (_controlAgentConnectionStatusText ==
-                    value)
+                if (_controlAgentConnectionStatusText == value)
                 {
                     return;
                 }
 
-                _controlAgentConnectionStatusText =
-                    value;
-
+                _controlAgentConnectionStatusText = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(DeviceControlConnectionStatusText));
                 OnPropertyChanged(nameof(IsContextPanelsVisible));
             }
-
         }
 
         /// <summary>
@@ -2335,28 +1932,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public string ControlAgentConnectionStatusColor
         {
-            get =>
-                _controlAgentConnectionStatusColor;
-
+            get => _controlAgentConnectionStatusColor;
             private set
             {
-                if (_controlAgentConnectionStatusColor ==
-                    value)
+                if (_controlAgentConnectionStatusColor == value)
                 {
                     return;
                 }
 
-                _controlAgentConnectionStatusColor =
-                    value;
-
+                _controlAgentConnectionStatusColor = value;
                 OnPropertyChanged();
             }
-
         }
 
         #endregion
 
-        #region [Control Display Properties]
+        #region [제어 상태 표시 속성]
 
         /// <summary>
         /// [PAN / TILT] 속도제어 현재 속도 [Level]
@@ -2370,28 +1961,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _panTiltSpeedLevel;
             set
             {
-                byte normalizedValue =
-                    (byte)Math.Max(
-                        1,
-                        Math.Min(
-                            60,
-                            (int)value));
+                byte normalizedValue = (byte)Math.Max(1, Math.Min(60, (int)value));
 
-                if (_panTiltSpeedLevel !=
-                    normalizedValue)
+                if (_panTiltSpeedLevel != normalizedValue)
                 {
-                    _panTiltSpeedLevel =
-                        normalizedValue;
-
+                    _panTiltSpeedLevel = normalizedValue;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(EffectivePanTiltSpeedLevel));
                     OnPropertyChanged(nameof(PanTiltSpeedDisplayText));
-
                     ApplyPanTiltSpeedWhileMoving();
                 }
-
             }
-
         }
 
         /// <summary>
@@ -2402,32 +1982,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                byte baseProtocolSpeed =
-                    ConvertPanTiltSpeedLevel(
-                        PanTiltSpeedLevel);
+                byte baseProtocolSpeed = ConvertPanTiltSpeedLevel(PanTiltSpeedLevel);
 
                 if (baseProtocolSpeed == 0)
                 {
                     return 0;
                 }
 
-                // V32_0: disconnected EO/IR show the configured default, not cached lens attenuation.
-                // Connected movement keeps the existing zoom-dependent speed safety calculation.
-                if (!_isDeviceConnectionRequested) return baseProtocolSpeed;
+                // 연결 해제 상태의 EO/IR은 캐시 렌즈 감속값 대신 설정된 기본값을 표시한다.
+                // 연결 중 이동은 기존 배율 기반 속도 안전 계산을 유지한다.
+                if (!_isDeviceConnectionRequested)
+                    return baseProtocolSpeed;
 
-                return ApplyZoomAdaptivePanTiltSpeed(
-                    baseProtocolSpeed,
-                    out _,
-                    out _,
-                    out _,
-                    out _);
+                return ApplyZoomAdaptivePanTiltSpeed(baseProtocolSpeed, out _, out _, out _, out _);
             }
         }
 
         public string PanTiltSpeedDisplayText =>
-            $"SET : {PanTiltSpeedLevel} / " +
-            $"ACTIVE({(_activePanTiltZoomSource == 1 ? "IR" : "EO")}) : " +
-            $"{EffectivePanTiltSpeedLevel} / 60";
+            $"SET : {PanTiltSpeedLevel} / " + $"ACTIVE({(_activePanTiltZoomSource == 1 ? "IR" : "EO")}) : " + $"{EffectivePanTiltSpeedLevel} / 60";
 
         /// <summary>
         /// [LRF] 최근 거리측정 값 표시 문자열
@@ -2445,109 +2017,97 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _lrfDistanceText = value;
                     OnPropertyChanged();
                 }
-
             }
-
         }
 
         #endregion
 
-        #region [Status Properties]
+        #region [Status 속성]
 
         public string EoStatusText
         {
             get => _eoAlreadyConnectedNotice ? "[EO] Already Connected..." : _eoStatusText;
-
             private set
             {
-                _eoAlreadyConnectedNotice=false;
-                if (_eoStatusText ==
-                    value)
+                _eoAlreadyConnectedNotice = false;
+
+                if (_eoStatusText == value)
                 {
                     return;
                 }
 
-                _eoStatusText =
-                    value;
-                if (IsSelectedConnectionTarget && value == "[EO] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("EO", true);
-                ZoneChannelChanged("EO");
+                _eoStatusText = value;
 
+                if (IsSelectedConnectionTarget &&
+                    value == "[EO] Connected" &&
+                    (!IsGpsTabVisible ||
+                    !_hasDevicePowerStatus ||
+                    _isDevicePowerStatusStale))
+                    RememberCameraPower("EO", true);
+
+                ZoneChannelChanged("EO");
                 /*
                  * 영상 화면 하단의 EO 상태 문자열 갱신
                  */
                 OnPropertyChanged();
-
                 /*
                  * 통신 설정 화면의 EO RTSP 상태 문자열 및
                  * 상태 표시 색상을 함께 갱신한다.
                  */
-                OnPropertyChanged(
-                    nameof(EoConnectionStatusText));
-
-                OnPropertyChanged(
-                    nameof(EoConnectionStatusColor));
-
+                OnPropertyChanged(nameof(EoConnectionStatusText));
+                OnPropertyChanged(nameof(EoConnectionStatusColor));
                 /*
                  * CONNECTION STATUS 영역의
                  * EO 상태 표시를 함께 갱신한다.
                  */
-                OnPropertyChanged(
-                    nameof(CurrentPowerText));
-
-                OnPropertyChanged(
-                    nameof(CurrentEoPowerText));
+                OnPropertyChanged(nameof(CurrentPowerText));
+                OnPropertyChanged(nameof(CurrentEoPowerText));
                 OnPropertyChanged(nameof(EoPowerControlStatusText));
                 OnPropertyChanged(nameof(CurrentEoPowerStatusColor));
             }
-
         }
 
         public string IrStatusText
         {
             get => _irAlreadyConnectedNotice ? "[IR] Already Connected..." : _irStatusText;
-
             private set
             {
-                _irAlreadyConnectedNotice=false;
-                if (_irStatusText ==
-                    value)
+                _irAlreadyConnectedNotice = false;
+
+                if (_irStatusText == value)
                 {
                     return;
                 }
 
-                _irStatusText =
-                    value;
-                if (IsSelectedConnectionTarget && value == "[IR] Connected" && (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale)) RememberCameraPower("IR", true);
-                ZoneChannelChanged("IR");
+                _irStatusText = value;
 
+                if (IsSelectedConnectionTarget &&
+                    value == "[IR] Connected" &&
+                    (!IsGpsTabVisible ||
+                    !_hasDevicePowerStatus ||
+                    _isDevicePowerStatusStale))
+                    RememberCameraPower("IR", true);
+
+                ZoneChannelChanged("IR");
                 /*
                  * 영상 화면 하단의 IR 상태 문자열 갱신
                  */
                 OnPropertyChanged();
-
                 /*
                  * 통신 설정 화면의 IR RTSP 상태 문자열 및
                  * 상태 표시 색상을 함께 갱신한다.
                  */
-                OnPropertyChanged(
-                    nameof(IrConnectionStatusText));
-
-                OnPropertyChanged(
-                    nameof(IrConnectionStatusColor));
-
+                OnPropertyChanged(nameof(IrConnectionStatusText));
+                OnPropertyChanged(nameof(IrConnectionStatusColor));
                 /*
                  * CONNECTION STATUS 영역의
                  * IR 상태 표시를 함께 갱신한다.
                  */
-                OnPropertyChanged(
-                    nameof(CurrentPowerText));
-
-                OnPropertyChanged(
-                    nameof(CurrentIrPowerText));
+                OnPropertyChanged(nameof(CurrentPowerText));
+                OnPropertyChanged(nameof(CurrentIrPowerText));
                 OnPropertyChanged(nameof(IrPowerControlStatusText));
                 OnPropertyChanged(nameof(CurrentIrPowerStatusColor));
             }
-
         }
 
         /// <summary>
@@ -2564,11 +2124,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return GetRtspConnectionStatusText(
-                    _eoStatusText,
-                    "[EO]");
+                return GetRtspConnectionStatusText(_eoStatusText, "[EO]");
             }
-
         }
 
         /// <summary>
@@ -2586,10 +2143,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return GetRtspConnectionStatusColor(
-                    EoConnectionStatusText);
+                return GetRtspConnectionStatusColor(EoConnectionStatusText);
             }
-
         }
 
         /// <summary>
@@ -2602,11 +2157,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return GetRtspConnectionStatusText(
-                    _irStatusText,
-                    "[IR]");
+                return GetRtspConnectionStatusText(_irStatusText, "[IR]");
             }
-
         }
 
         /// <summary>
@@ -2624,10 +2176,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return GetRtspConnectionStatusColor(
-                    IrConnectionStatusText);
+                return GetRtspConnectionStatusColor(IrConnectionStatusText);
             }
-
         }
 
         /// <summary>
@@ -2651,52 +2201,36 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// "[IR] Disconnected"
         ///     -> "Disconnected"
         /// </summary>
-        private static string GetRtspConnectionStatusText(
-            string statusText,
-            string cameraPrefix)
+        private static string GetRtspConnectionStatusText(string statusText, string cameraPrefix)
         {
-            if (string.IsNullOrWhiteSpace(
-                    statusText))
+            if (string.IsNullOrWhiteSpace(statusText))
             {
                 return "Disconnected";
             }
 
-            string normalizedStatus =
-                statusText
-                    .Replace(
-                        cameraPrefix,
-                        string.Empty)
-                    .Trim();
+            string normalizedStatus = statusText.Replace(cameraPrefix, string.Empty).Trim();
 
             /*
              * Reconnecting 문자열 안에는
              * Connecting 문자열이 포함되므로
              * 반드시 Reconnecting을 먼저 확인해야 한다.
              */
-            if (normalizedStatus.IndexOf(
-                    "Reconnecting",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
+            if (normalizedStatus.IndexOf("Reconnecting", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return "Reconnecting";
             }
 
-            if (normalizedStatus.IndexOf(
-                    "Connecting",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
+            if (normalizedStatus.IndexOf("Connecting", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return "Connecting";
             }
 
-            if (normalizedStatus.IndexOf(
-                    "Disconnected",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
+            if (normalizedStatus.IndexOf("Disconnected", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return "Disconnected";
             }
 
-            if (normalizedStatus.IndexOf(
-                    "Connected",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
+            if (normalizedStatus.IndexOf("Connected", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return "Connected";
             }
@@ -2710,41 +2244,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// Control Agent 연결 상태와 동일한 색상 기준을 사용한다.
         /// </summary>
-        private static string GetRtspConnectionStatusColor(
-            string connectionStatusText)
+        private static string GetRtspConnectionStatusColor(string connectionStatusText)
         {
             switch (connectionStatusText)
             {
                 case "Connected":
-
                     return "#68D391";
-
                 case "Connecting":
                 case "Reconnecting":
-
                     return "#F6E05E";
-
                 case "Disconnected":
                 default:
-
                     return "#FF6B6B";
             }
-
         }
 
-        #region [Current Device Status Properties]
+        #region [현재 장비 상태 속성]
 
         /// <summary>
         /// 현재 Pan 위치 표시 문자열
         /// </summary>
-        public string CurrentPanText =>
-            $"{NormalizeToSignedAngle(_currentPan):F2}°";
+        public string CurrentPanText => $"{NormalizeToSignedAngle(_currentPan):F2}°";
 
         /// <summary>
         /// 현재 Tilt 위치 표시 문자열
         /// </summary>
-        public string CurrentTiltText =>
-            $"{_currentTilt:F2}°";
+        public string CurrentTiltText => $"{_currentTilt:F2}°";
 
         /// <summary>
         /// 현재 EO Zoom 상태 표시 문자열
@@ -2756,60 +2281,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// 그 외 장비는 기존 Control Agent 상태값을 그대로 표시한다.
         /// </summary>
-        public string CurrentEoZoomText =>
-            GetCurrentPresetStandardZoom()
-                .ToString();
+        public string CurrentEoZoomText => GetCurrentPresetStandardZoom().ToString();
 
         /// <summary>
         /// 현재 EO Focus 표준 위치 0~1000 표시
         /// </summary>
-        public string CurrentEoFocusText =>
-            GetCurrentPresetStandardFocus()
-                .ToString();
+        public string CurrentEoFocusText => GetCurrentPresetStandardFocus().ToString();
 
         /// <summary>
         /// 현재 장비 구성에 맞춘 IR Zoom 위치 표시.
         /// LA 상태만 역변환하고 Web Agent 상태는 그대로 표시한다.
         /// </summary>
-        public string CurrentIrZoomText =>
-            GetCurrentIrZoomStandardPosition()
-                .ToString();
+        public string CurrentIrZoomText => GetCurrentIrZoomStandardPosition().ToString();
 
         /// <summary>
         /// 현재 장비 구성에 맞춘 IR Focus 위치 표시.
         /// LA 상태만 역변환하고 Web Agent 상태는 그대로 표시한다.
         /// </summary>
-        public string CurrentIrFocusText =>
-            GetCurrentIrFocusStandardPosition()
-                .ToString();
+        public string CurrentIrFocusText => GetCurrentIrFocusStandardPosition().ToString();
 
         /// <summary>
         /// CTEC 원시 위치를 로그 확인용 현재값 / 최대값 / 퍼센트 문자열로 만든다.
         /// 화면 표시는 0~1000으로 통일하지만 수신 로그에는 원시값을 유지한다.
         /// </summary>
-        private static string BuildCtecPositionText(
-            int rawPosition,
-            int maxPosition)
+        private static string BuildCtecPositionText(int rawPosition, int maxPosition)
         {
             if (maxPosition <= 0)
             {
                 return rawPosition.ToString();
             }
 
-            double percent =
-                rawPosition /
-                (double)maxPosition *
-                100.0;
-
-            percent =
-                Math.Max(
-                    0.0,
-                    Math.Min(
-                        100.0,
-                        percent));
-
-            return
-                $"{rawPosition} / {maxPosition} ({percent:F1}%)";
+            double percent = rawPosition / (double)maxPosition * 100.0;
+            percent = Math.Max(0.0, Math.Min(100.0, percent));
+            return $"{rawPosition} / {maxPosition} ({percent:F1}%)";
         }
 
         /// <summary>
@@ -2826,32 +2330,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     // 2026-10-06: WebAgent는 Function 0x31의 보드 상태를 단일 기준으로 사용한다.
                     // 첫 상태 패킷 전에는 OFF로 오인하지 않도록 UNKNOWN을 유지한다.
-                    return
-                        $"CONTROL:{CurrentControlPowerText} / " +
-                        $"EO:{CurrentEoPowerText} / " +
-                        $"IR:{CurrentIrPowerText}";
+                    return $"CONTROL:{CurrentControlPowerText} / " + $"EO:{CurrentEoPowerText} / " + $"IR:{CurrentIrPowerText}";
                 }
 
-                bool isPanOn =
-                    (_currentPowerStatus & 0x80) != 0;
-
-                bool isTiltOn =
-                    (_currentPowerStatus & 0x40) != 0;
-
-                bool isEoOn =
-                    _eoStatusText ==
-                    "[EO] Connected";
-
-                bool isIrOn =
-                    _irStatusText ==
-                    "[IR] Connected";
-
-                return
-                    $"CONTROL:{ToOnOff(isPanOn && isTiltOn)} / " +
-                    $"EO:{ToOnOff(isEoOn)} / " +
-                    $"IR:{ToOnOff(isIrOn)}";
+                bool isPanOn = (_currentPowerStatus & 0x80) != 0;
+                bool isTiltOn = (_currentPowerStatus & 0x40) != 0;
+                bool isEoOn = _eoStatusText == "[EO] Connected";
+                bool isIrOn = _irStatusText == "[IR] Connected";
+                return $"CONTROL:{ToOnOff(isPanOn && isTiltOn)} / " + $"EO:{ToOnOff(isEoOn)} / " + $"IR:{ToOnOff(isIrOn)}";
             }
-
         }
 
         /// <summary>
@@ -2863,22 +2350,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
                 {
-                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
-                        ? ToOnOff((_currentMcbPowerStatus & 0x01) != 0)
-                        : "UNKNOWN";
+                    return _hasDevicePowerStatus &&
+                        !_isDevicePowerStatusStale ? ToOnOff((_currentMcbPowerStatus & 0x01) != 0) : "UNKNOWN";
                 }
 
-                bool isPanOn =
-                    (_currentPowerStatus & 0x80) != 0;
-
-                bool isTiltOn =
-                    (_currentPowerStatus & 0x40) != 0;
-
-                return ToOnOff(
-                    isPanOn &&
-                    isTiltOn);
+                bool isPanOn = (_currentPowerStatus & 0x80) != 0;
+                bool isTiltOn = (_currentPowerStatus & 0x40) != 0;
+                return ToOnOff(isPanOn && isTiltOn);
             }
-
         }
 
         /// <summary>
@@ -2890,14 +2369,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
                 {
-                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
-                        ? ToOnOff((_currentScbPowerStatus & 0x01) != 0)
-                        : "UNKNOWN";
+                    return _hasDevicePowerStatus &&
+                        !_isDevicePowerStatusStale ? ToOnOff((_currentScbPowerStatus & 0x01) != 0) : "UNKNOWN";
                 }
 
                 return GetLegacyCameraPowerText(_eoStatusText, "EO");
             }
-
         }
 
         /// <summary>
@@ -2909,24 +2386,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
                 {
-                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
-                        ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0)
-                        : "UNKNOWN";
+                    return _hasDevicePowerStatus &&
+                        !_isDevicePowerStatusStale ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0) : "UNKNOWN";
                 }
 
                 return GetLegacyCameraPowerText(_irStatusText, "IR");
             }
-
         }
+
         /// <summary>
         /// ToOnOff 동작 수행 함수.
         /// </summary>
-        private static string ToOnOff(
-            bool isOn)
+        private static string ToOnOff(bool isOn)
         {
-            return isOn
-                ? "ON"
-                : "OFF";
+            return isOn ? "ON" : "OFF";
         }
 
         #endregion
@@ -2935,7 +2408,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #endregion
 
-        #region [Binding Collections]
+        #region [화면 연결 목록]
 
         /// <summary>
         /// 통신 설정 탭의 [EO RTSP] 카메라 선택 목록
@@ -2945,9 +2418,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 4층 LR1000(기동형, WebAgent) / 4층 MR300(ER-WATCHER, WebAgent)의
         /// 장비 주소를 UI에서 선택하도록 제공한다.
         /// </summary>
-        public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; }
-            = new ObservableCollection<RtspSourceOption>(
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(e.EoLabel,e.EoAddress,e.EoControlType,e.ControlIp,e.ControlUser,e.ControlPassword,e.UseHttps)).Concat(new[] {new RtspSourceOption("직접 입력",string.Empty,isDirectInput:true)}));
+        public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; } = new ObservableCollection<RtspSourceOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(
+            e.EoLabel,
+            e.EoAddress,
+            e.EoControlType,
+            e.ControlIp,
+            e.ControlUser,
+            e.ControlPassword,
+            e.UseHttps
+        )).Concat(new[] { new RtspSourceOption(
+            "직접 입력",
+            string.Empty,
+            isDirectInput: true
+        ) }));
 
         /// <summary>
         /// 통신 설정 탭의 [IR RTSP] 카메라 선택 목록
@@ -2955,33 +2438,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// EO와 별도로 IR 카메라를 선택할 수 있으며,
         /// 선택된 Address가 IrSourceAddress에 반영된다.
         /// </summary>
-        public ObservableCollection<RtspSourceOption> IrRtspSourceOptions { get; }
-            = new ObservableCollection<RtspSourceOption>(
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(e.IrLabel,e.IrAddress)).Concat(new[] {new RtspSourceOption("직접 입력",string.Empty,isDirectInput:true)}));
+        public ObservableCollection<RtspSourceOption> IrRtspSourceOptions { get; } = new ObservableCollection<RtspSourceOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(
+            e.IrLabel,
+            e.IrAddress
+        )).Concat(new[] { new RtspSourceOption(
+            "직접 입력",
+            string.Empty,
+            isDirectInput: true
+        ) }));
 
         /// <summary>
         /// [EO] 화면에 표시할 [AI Detector] [Bounding Box] 목록
         /// </summary>
-        public ObservableCollection<AiDetectionBox> EoDetectionBoxes { get; }
-            = new ObservableCollection<AiDetectionBox>();
+        public ObservableCollection<AiDetectionBox> EoDetectionBoxes { get; } = new ObservableCollection<AiDetectionBox>();
 
         /// <summary>
         /// [IR] 화면에 표시할 [AI Detector] [Bounding Box] 목록
         /// </summary>
-        public ObservableCollection<AiDetectionBox> IrDetectionBoxes { get; }
-            = new ObservableCollection<AiDetectionBox>();
+        public ObservableCollection<AiDetectionBox> IrDetectionBoxes { get; } = new ObservableCollection<AiDetectionBox>();
 
         /// <summary>
         /// 2026-09-17: AI Agent와 독립적으로 표시하는 EO 로컬 FIRE/SMOKE BBox.
         /// </summary>
-        public ObservableCollection<VisionDetectionBox> EoFireSmokeDetectionBoxes { get; }
-            = new ObservableCollection<VisionDetectionBox>();
+        public ObservableCollection<VisionDetectionBox> EoFireSmokeDetectionBoxes { get; } = new ObservableCollection<VisionDetectionBox>();
 
         /// <summary>
         /// 2026-09-17: AI Agent와 독립적으로 표시하는 IR 로컬 FIRE/SMOKE BBox.
         /// </summary>
-        public ObservableCollection<VisionDetectionBox> IrFireSmokeDetectionBoxes { get; }
-            = new ObservableCollection<VisionDetectionBox>();
+        public ObservableCollection<VisionDetectionBox> IrFireSmokeDetectionBoxes { get; } = new ObservableCollection<VisionDetectionBox>();
 
         private bool _hasEoLocalFireDetection;
 
@@ -3005,37 +2489,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// AI의 CAR/DRONE/PERSON 등 다른 클래스는 기존 BBox와 이벤트에는 남지만
         /// 이 경고 상태에는 영향을 주지 않는다.
         /// </summary>
-        public bool IsEoFireWarningVisible =>
-            _hasEoLocalFireDetection ||
-            HasAiDetection(EoDetectionBoxes, "FIRE", "FLAME");
+        public bool IsEoFireWarningVisible => _hasEoLocalFireDetection || HasAiDetection(EoDetectionBoxes, "FIRE", "FLAME");
 
-        public bool IsIrFireWarningVisible =>
-            _hasIrLocalFireDetection ||
-            HasAiDetection(IrDetectionBoxes, "FIRE", "FLAME");
+        public bool IsIrFireWarningVisible => _hasIrLocalFireDetection || HasAiDetection(IrDetectionBoxes, "FIRE", "FLAME");
 
-        public bool IsEoSmokeWarningVisible =>
-            _hasEoLocalSmokeDetection ||
-            HasAiDetection(EoDetectionBoxes, "SMOKE");
+        public bool IsEoSmokeWarningVisible => _hasEoLocalSmokeDetection || HasAiDetection(EoDetectionBoxes, "SMOKE");
 
-        public bool IsIrSmokeWarningVisible =>
-            _hasIrLocalSmokeDetection ||
-            HasAiDetection(IrDetectionBoxes, "SMOKE");
+        public bool IsIrSmokeWarningVisible => _hasIrLocalSmokeDetection || HasAiDetection(IrDetectionBoxes, "SMOKE");
 
-        private static bool HasAiDetection(
-            IEnumerable<AiDetectionBox> boxes,
-            params string[] alarmClasses)
+        private static bool HasAiDetection(IEnumerable<AiDetectionBox> boxes, params string[] alarmClasses)
         {
             if (boxes == null || alarmClasses == null || alarmClasses.Length == 0)
             {
                 return false;
             }
 
-            return boxes.Any(box =>
-                box != null &&
+            return boxes.Any(box => box != null &&
                 alarmClasses.Any(alarmClass => string.Equals(
-                    box.ClassName?.Trim(),
-                    alarmClass,
-                    StringComparison.OrdinalIgnoreCase)));
+                box.ClassName?.Trim(),
+                alarmClass,
+                StringComparison.OrdinalIgnoreCase
+            )));
         }
 
         /// <summary>
@@ -3046,15 +2520,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             bool isInfrared = rtspIndex == 1;
             string channel = isInfrared ? "IR" : "EO";
-            bool localFire = isInfrared
-                ? _hasIrLocalFireDetection
-                : _hasEoLocalFireDetection;
-            bool localSmoke = isInfrared
-                ? _hasIrLocalSmokeDetection
-                : _hasEoLocalSmokeDetection;
-            IEnumerable<AiDetectionBox> aiBoxes = isInfrared
-                ? IrDetectionBoxes
-                : EoDetectionBoxes;
+            bool localFire = isInfrared ? _hasIrLocalFireDetection : _hasEoLocalFireDetection;
+            bool localSmoke = isInfrared ? _hasIrLocalSmokeDetection : _hasEoLocalSmokeDetection;
+            IEnumerable<AiDetectionBox> aiBoxes = isInfrared ? IrDetectionBoxes : EoDetectionBoxes;
             bool aiFire = HasAiDetection(aiBoxes, "FIRE", "FLAME");
             bool aiSmoke = HasAiDetection(aiBoxes, "SMOKE");
             bool fireVisible = localFire || aiFire;
@@ -3062,29 +2530,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (isInfrared)
             {
-                LogDetectionWarningTransition(
-                    "FIRE", channel, fireVisible, localFire, aiFire,
-                    ref _lastIrFireWarningVisible);
-                LogDetectionWarningTransition(
-                    "SMOKE", channel, smokeVisible, localSmoke, aiSmoke,
-                    ref _lastIrSmokeWarningVisible);
+                LogDetectionWarningTransition("FIRE", channel, fireVisible, localFire, aiFire, ref _lastIrFireWarningVisible);
+                LogDetectionWarningTransition("SMOKE", channel, smokeVisible, localSmoke, aiSmoke, ref _lastIrSmokeWarningVisible);
             }
             else
             {
-                LogDetectionWarningTransition(
-                    "FIRE", channel, fireVisible, localFire, aiFire,
-                    ref _lastEoFireWarningVisible);
-                LogDetectionWarningTransition(
-                    "SMOKE", channel, smokeVisible, localSmoke, aiSmoke,
-                    ref _lastEoSmokeWarningVisible);
+                LogDetectionWarningTransition("FIRE", channel, fireVisible, localFire, aiFire, ref _lastEoFireWarningVisible);
+                LogDetectionWarningTransition("SMOKE", channel, smokeVisible, localSmoke, aiSmoke, ref _lastEoSmokeWarningVisible);
             }
 
-            OnPropertyChanged(isInfrared
-                ? nameof(IsIrFireWarningVisible)
-                : nameof(IsEoFireWarningVisible));
-            OnPropertyChanged(isInfrared
-                ? nameof(IsIrSmokeWarningVisible)
-                : nameof(IsEoSmokeWarningVisible));
+            OnPropertyChanged(isInfrared ? nameof(IsIrFireWarningVisible) : nameof(IsEoFireWarningVisible));
+            OnPropertyChanged(isInfrared ? nameof(IsIrSmokeWarningVisible) : nameof(IsEoSmokeWarningVisible));
         }
 
         private static void LogDetectionWarningTransition(
@@ -3093,7 +2549,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool current,
             bool local,
             bool ai,
-            ref bool previous)
+            ref bool previous
+        )
         {
             if (current == previous)
             {
@@ -3103,16 +2560,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             previous = current;
             ConsoleLogHelper.State(
                 detectionType + " ALERT",
-                (current ? "Warning displayed" : "Warning cleared") +
-                " / CHANNEL=" + channel +
-                " / LOCAL=" + local +
-                " / AI=" + ai);
+                (current ? "Warning displayed" : "Warning cleared") + " / CHANNEL=" + channel + " / LOCAL=" + local + " / AI=" + ai
+            );
         }
 
-        private void SetLocalFireSmokeDetectionState(
-            int rtspIndex,
-            bool hasFire,
-            bool hasSmoke)
+        private void SetLocalFireSmokeDetectionState(int rtspIndex, bool hasFire, bool hasSmoke)
         {
             if (rtspIndex == 1)
             {
@@ -3133,26 +2585,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// [CMD 52] 응답 결과를 화면에 표시하기 위해 사용한다.
         /// </summary>
-        public ObservableCollection<AiRtspInfo> AiRtspList { get; }
-            = new ObservableCollection<AiRtspInfo>();
+        public ObservableCollection<AiRtspInfo> AiRtspList { get; } = new ObservableCollection<AiRtspInfo>();
 
         /// <summary>
         /// [AI Detector Agent]에서 조회한 [ONNX] 모델 목록
         ///
         /// [CMD 53] 응답 결과를 화면에 표시하기 위해 사용한다.
         /// </summary>
-        public ObservableCollection<AiOnnxInfo> AiOnnxList { get; }
-            = new ObservableCollection<AiOnnxInfo>();
+        public ObservableCollection<AiOnnxInfo> AiOnnxList { get; } = new ObservableCollection<AiOnnxInfo>();
 
         /// <summary>
         /// [AI Detector Agent]에서 조회한 [RTSP] / [ONNX] Mapping 목록
         ///
         /// [CMD 56] 응답 결과를 화면에 표시하기 위해 사용한다.
         /// </summary>
-        public ObservableCollection<AiMappingInfo> AiMappingList { get; }
-            = new ObservableCollection<AiMappingInfo>();
+        public ObservableCollection<AiMappingInfo> AiMappingList { get; } = new ObservableCollection<AiMappingInfo>();
 
         #endregion
     }
-
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace OpenCvWpfTracking.Services.Control
 {
@@ -37,24 +37,22 @@ namespace OpenCvWpfTracking.Services.Control
             double initialTilt,
             double targetTolerance,
             double stableTolerance,
-            int requiredStableSamples)
+            int requiredStableSamples
+        )
         {
             if (targetTolerance < 0)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(targetTolerance));
+                throw new ArgumentOutOfRangeException(nameof(targetTolerance));
             }
 
             if (stableTolerance < 0)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(stableTolerance));
+                throw new ArgumentOutOfRangeException(nameof(stableTolerance));
             }
 
             if (requiredStableSamples <= 0)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(requiredStableSamples));
+                throw new ArgumentOutOfRangeException(nameof(requiredStableSamples));
             }
 
             _previousPan = initialPan;
@@ -67,20 +65,13 @@ namespace OpenCvWpfTracking.Services.Control
         /// <summary>
         /// 현재 Sample을 반영하고 HOME 완료 여부를 반환한다.
         /// </summary>
-        public bool Update(
-            double currentPan,
-            double currentTilt)
+        public bool Update(double currentPan, double currentTilt)
         {
-            IsNearTarget =
-                Math.Abs(currentPan) <= _targetTolerance &&
-                Math.Abs(currentTilt) <= _targetTolerance;
-
-            IsStableSample =
-                Math.Abs(currentPan - _previousPan) <= _stableTolerance &&
+            IsNearTarget = Math.Abs(currentPan) <= _targetTolerance && Math.Abs(currentTilt) <= _targetTolerance;
+            IsStableSample = Math.Abs(currentPan - _previousPan) <= _stableTolerance &&
                 Math.Abs(currentTilt - _previousTilt) <= _stableTolerance;
 
-            if (IsNearTarget &&
-                IsStableSample)
+            if (IsNearTarget && IsStableSample)
             {
                 StableCount++;
             }
@@ -91,11 +82,7 @@ namespace OpenCvWpfTracking.Services.Control
 
             _previousPan = currentPan;
             _previousTilt = currentTilt;
-
-            return StableCount >=
-                _requiredStableSamples;
+            return StableCount >= _requiredStableSamples;
         }
-
     }
-
 }

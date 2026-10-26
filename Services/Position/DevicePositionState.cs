@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Models.Position;
+﻿using OpenCvWpfTracking.Models.Position;
 using System;
 
 namespace OpenCvWpfTracking.Services.Position
@@ -71,6 +71,7 @@ namespace OpenCvWpfTracking.Services.Position
                 }
 
                 _connected = connected;
+
                 if (!connected)
                 {
                     // 마지막 숫자는 진단용으로 남기되 다음 연결의 정상값으로 사용하지 않는다.
@@ -85,12 +86,7 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
-        public void UpdatePtzAndEoLens(
-            double pan,
-            double tilt,
-            int eoZoom,
-            int eoFocus,
-            DateTimeOffset receivedAt)
+        public void UpdatePtzAndEoLens(double pan, double tilt, int eoZoom, int eoFocus, DateTimeOffset receivedAt)
         {
             lock (_sync)
             {
@@ -146,7 +142,8 @@ namespace OpenCvWpfTracking.Services.Position
             int satelliteCount,
             int fixStatus,
             bool valid,
-            DateTimeOffset receivedAt)
+            DateTimeOffset receivedAt
+        )
         {
             lock (_sync)
             {
@@ -163,12 +160,7 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
-        public void UpdateImu(
-            double roll,
-            double pitch,
-            double yaw,
-            bool valid,
-            DateTimeOffset receivedAt)
+        public void UpdateImu(double roll, double pitch, double yaw, bool valid, DateTimeOffset receivedAt)
         {
             lock (_sync)
             {
@@ -185,7 +177,8 @@ namespace OpenCvWpfTracking.Services.Position
             int? presetId,
             TimeSpan maximumPtzLensAge,
             TimeSpan maximumTelemetryAge,
-            DateTimeOffset capturedAt)
+            DateTimeOffset capturedAt
+        )
         {
             lock (_sync)
             {
@@ -194,7 +187,6 @@ namespace OpenCvWpfTracking.Services.Position
                 PositionDataStatus irLensStatus = ResolveStatus(_irLensUpdatedAt, true, maximumPtzLensAge, capturedAt);
                 PositionDataStatus gpsStatus = ResolveStatus(_gpsUpdatedAt, _gpsValueValid, maximumTelemetryAge, capturedAt);
                 PositionDataStatus imuStatus = ResolveStatus(_imuUpdatedAt, _imuValueValid, maximumTelemetryAge, capturedAt);
-
                 return new PositionSnapshot(
                     capturedAt,
                     source,
@@ -221,15 +213,12 @@ namespace OpenCvWpfTracking.Services.Position
                     irLensStatus,
                     gpsStatus,
                     imuStatus,
-                    _connected);
+                    _connected
+                );
             }
         }
 
-        private PositionDataStatus ResolveStatus(
-            DateTimeOffset? updatedAt,
-            bool valueValid,
-            TimeSpan maximumAge,
-            DateTimeOffset now)
+        private PositionDataStatus ResolveStatus(DateTimeOffset? updatedAt, bool valueValid, TimeSpan maximumAge, DateTimeOffset now)
         {
             if (!_connected)
             {
@@ -246,9 +235,7 @@ namespace OpenCvWpfTracking.Services.Position
                 return PositionDataStatus.Invalid;
             }
 
-            return now - updatedAt.Value > maximumAge
-                ? PositionDataStatus.Stale
-                : PositionDataStatus.Valid;
+            return now - updatedAt.Value > maximumAge ? PositionDataStatus.Stale : PositionDataStatus.Valid;
         }
     }
 }

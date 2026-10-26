@@ -18,10 +18,10 @@ namespace OpenCvWpfTracking
 {
     public sealed class OpticalCalibrationSession
     {
-
         #region [필드 및 상태 정보]
 
         private readonly List<Point> points = new List<Point>();
+
         private readonly List<int> zooms = new List<int>();
 
         #endregion
@@ -29,12 +29,19 @@ namespace OpenCvWpfTracking
         #region [속성 및 상태 표시]
 
         public bool Active { get; private set; }
+
         public bool FourPoint { get; private set; }
+
         public Point? Candidate { get; private set; }
+
         public Point Pose { get; private set; }
+
         public int CandidateZoom { get; private set; }
+
         public string Device { get; private set; }
+
         public string Status { get; private set; } = "수동 계산(4점)을 선택하세요.";
+
         public IReadOnlyList<Point> SelectedPoints => points;
 
         #endregion
@@ -82,6 +89,7 @@ namespace OpenCvWpfTracking
         {
             if (!Active)
                 return;
+
             if (device != Device)
             {
                 Cancel();
@@ -97,6 +105,7 @@ namespace OpenCvWpfTracking
 
             if (!OpticalCenterCalibration.Valid(point.X, point.Y))
                 return;
+
             if (PoseError(Pose, pose) > .005)
             {
                 Cancel();
@@ -120,6 +129,7 @@ namespace OpenCvWpfTracking
 
             points.Add(point);
             zooms.Add(zoom);
+
             if (points.Count < 4)
             {
                 Status = points.Count == 1 ? "2/4 · 같은 낮은 줌에서 기준물 B 클릭" : points.Count == 2 ? "3/4 · 줌만 확대 후 같은 기준물 A 클릭" : "4/4 · 같은 높은 줌에서 기준물 B 클릭";
@@ -127,7 +137,17 @@ namespace OpenCvWpfTracking
             }
 
             Point center;
-            if (Math.Abs(zooms[0] - zooms[1]) > 12 || Math.Abs(zooms[2] - zooms[3]) > 12 || zooms[2] - zooms[0] < 50 || !OpticalCenterCalibration.TryIntersection(points[0], points[1], points[2], points[3], out center))
+
+            if (Math.Abs(zooms[0] - zooms[1]) > 12 ||
+                Math.Abs(zooms[2] - zooms[3]) > 12 ||
+                zooms[2] - zooms[0] < 50 ||
+                !OpticalCenterCalibration.TryIntersection(
+                points[0],
+                points[1],
+                points[2],
+                points[3],
+                out center
+            ))
             {
                 Cancel();
                 Status = "교점 계산 불가 · 줌 차이/대응점 확인 후 다시 시작";
@@ -142,33 +162,61 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// 후보와 현재 장비 및 줌 상태가 저장 조건을 만족하는지 확인한다.
         /// </summary>
-        public bool CanSave(int zoom, Point pose, string device, bool fresh) => Active && Candidate.HasValue && fresh && zoom == CandidateZoom && device == Device && PoseError(Pose, pose) <= .005;
+        public bool CanSave(
+            int zoom,
+            Point pose,
+            string device,
+            bool fresh
+        ) =>
+            Active &&
+            Candidate.HasValue &&
+            fresh &&
+            zoom == CandidateZoom &&
+            device == Device &&
+            PoseError(
+            Pose,
+            pose
+        ) <= .005;
 
         #endregion
-
     }
 
     internal sealed class InlineOpticalCalibration
     {
-
         #region [필드 및 상태 정보]
 
         private static readonly ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration> controllers = new ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration>();
+
         private readonly FrameworkElement image;
+
         private readonly MainViewModel vm;
+
         private readonly Button fourPointButton;
+
         private readonly Func<bool> ir;
+
         private readonly OpticalCalibrationSession session = new OpticalCalibrationSession();
+
         private readonly TextBlock status;
+
         private readonly ToggleButton settingsToggle;
+
         private readonly Border settingsBorder;
+
         private readonly TextBlock pickingHint;
+
         private readonly Canvas calibrationOverlay;
+
         private readonly List<Point> drawnPoints = new List<Point>();
+
         private Point? drawnCenter;
+
         private Rect markerArea = Rect.Empty;
+
         private int markerVersion, paintedVersion = -1;
+
         private string overlayDeviceKey;
+
         private bool hidingForSelection;
 
         #endregion
@@ -196,9 +244,14 @@ namespace OpenCvWpfTracking
         internal static bool IsSettingsHit(FrameworkElement image, DependencyObject hit)
         {
             InlineOpticalCalibration c;
+
             if (image == null || hit == null || !controllers.TryGetValue(image, out c))
                 return false;
-            return hit == c.settingsToggle || hit == c.settingsBorder || c.settingsToggle.IsAncestorOf(hit) || c.settingsBorder.IsAncestorOf(hit);
+
+            return hit == c.settingsToggle ||
+                hit == c.settingsBorder ||
+                c.settingsToggle.IsAncestorOf(hit) ||
+                c.settingsBorder.IsAncestorOf(hit);
         }
 
         #endregion
@@ -259,7 +312,10 @@ namespace OpenCvWpfTracking
                 Margin = new Thickness(3, 2, 3, 2),
                 ToolTip = "십자선 표시/숨김은 EO / IR 공통 적용"
             };
-            visible.SetBinding(ToggleButton.IsCheckedProperty, new Binding("IsCrosshairVisible") { Source = vm, Mode = BindingMode.TwoWay });
+            visible.SetBinding(
+                ToggleButton.IsCheckedProperty,
+                new Binding("IsCrosshairVisible") { Source = vm, Mode = BindingMode.TwoWay }
+            );
             tools.Children.Add(visible);
             var buttons = new Grid();
             buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.45, GridUnitType.Star) });
@@ -363,9 +419,12 @@ namespace OpenCvWpfTracking
                 settingsBorder.Visibility = Visibility.Collapsed;
             };
             bool previousIr = ir();
-            VideoShortcutGuide.WatchOverlayLayout(host, () =>
+            VideoShortcutGuide.WatchOverlayLayout(
+                host,
+                () =>
             {
                 bool channel = ir();
+
                 if (channel != previousIr || overlayDeviceKey != null && overlayDeviceKey != vm.OpticalDeviceKey(channel))
                 {
                     session.Cancel();
@@ -380,7 +439,15 @@ namespace OpenCvWpfTracking
                 settingsToggle.Foreground = LegacyVideoIntegration.ChannelBrush(channel);
                 settingsBorder.BorderBrush = settingsToggle.Foreground;
                 bool connected = (channel ? vm.IrStatusText : vm.EoStatusText).EndsWith("] Connected", StringComparison.Ordinal);
-                Rect area = VideoShortcutGuide.VideoContentRect(host, image, VideoShortcutGuide.SourceAspect(image, channel ? 1.25 : 16.0 / 9));
+                Rect area = VideoShortcutGuide.VideoContentRect(
+                    host,
+                    image,
+                    VideoShortcutGuide.SourceAspect(
+                    image,
+                    channel ? 1.25 : 16.0 / 9
+                )
+                );
+
                 if (!connected || area.IsEmpty || area.Width < 100 || area.Height < 80)
                 {
                     if (session.Active)
@@ -405,32 +472,49 @@ namespace OpenCvWpfTracking
                 settingsBorder.MaxHeight = Math.Max(1, Math.Min(area.Height * .36, area.Height - 67));
                 double font = area.Width < 400 ? 10 : 11;
                 header.FontSize = font;
+
                 foreach (var button in buttons.Children.OfType<Button>())
                     button.FontSize = font;
+
                 pickingHint.Margin = new Thickness(area.Left + 90, 0, 0, bottom + 33);
                 pickingHint.MaxWidth = Math.Max(1, area.Width - 98);
                 DrawGeometry(area);
-            });
-            host.AddHandler(UIElement.PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler((s, e) =>
+            }
+            );
+            host.AddHandler(
+                UIElement.PreviewMouseLeftButtonDownEvent,
+                new MouseButtonEventHandler((s, e) =>
             {
                 if (IsSettingsHit(image, e.OriginalSource as DependencyObject))
                     return;
+
                 if (!session.Active)
                     return;
+
                 for (DependencyObject hit = e.OriginalSource as DependencyObject; hit != null; hit = hit is Visual ? VisualTreeHelper.GetParent(hit) : null)
                     if (hit is System.Windows.Controls.Primitives.ButtonBase || hit is Expander)
                         return;
+
                 var bitmap = ir() ? vm.IRCameraImage : vm.EOCameraImage;
+
                 if (bitmap == null)
                     return;
+
                 double scale = Math.Min(image.ActualWidth / bitmap.PixelWidth, image.ActualHeight / bitmap.PixelHeight);
+
                 if (scale <= 0)
                     return;
+
                 Point p = e.GetPosition(image);
-                p = new Point((p.X - (image.ActualWidth - bitmap.PixelWidth * scale) / 2) / (bitmap.PixelWidth * scale), (p.Y - (image.ActualHeight - bitmap.PixelHeight * scale) / 2) / (bitmap.PixelHeight * scale));
+                p = new Point(
+                    (p.X - (image.ActualWidth - bitmap.PixelWidth * scale) / 2) / (bitmap.PixelWidth * scale),
+                    (p.Y - (image.ActualHeight - bitmap.PixelHeight * scale) / 2) / (bitmap.PixelHeight * scale)
+                );
                 SelectPoint(p);
                 e.Handled = true;
-            }), true);
+            }),
+                true
+            );
             image.Unloaded += (s, e) =>
             {
                 session.Cancel();
@@ -450,6 +534,7 @@ namespace OpenCvWpfTracking
         private void Begin(bool four)
         {
             RefreshDigitalZoomAvailability();
+
             if (vm.IsOpticalCalibrationBlockedByDigitalZoom(ir()))
                 return;
 
@@ -466,6 +551,7 @@ namespace OpenCvWpfTracking
             session.Begin(four, vm.OpticalPose, overlayDeviceKey);
             // 작은 IR 패널이 영상 중심을 가리지 않도록 점 선택 시 패널을 접는다.
             hidingForSelection = true;
+
             try
             {
                 settingsToggle.IsChecked = false;
@@ -505,6 +591,7 @@ namespace OpenCvWpfTracking
         private void SelectPoint(Point point)
         {
             RefreshDigitalZoomAvailability();
+
             if (vm.IsOpticalCalibrationBlockedByDigitalZoom(ir()))
                 return;
 
@@ -514,6 +601,7 @@ namespace OpenCvWpfTracking
             drawnCenter = session.Candidate;
             markerVersion++;
             Refresh();
+
             if (session.Candidate.HasValue)
             {
                 Save();
@@ -532,6 +620,7 @@ namespace OpenCvWpfTracking
         private void Save()
         {
             RefreshDigitalZoomAvailability();
+
             if (vm.IsOpticalCalibrationBlockedByDigitalZoom(ir()))
                 return;
 
@@ -539,8 +628,10 @@ namespace OpenCvWpfTracking
             {
                 if (vm.IsControlInputLocked)
                     throw new InvalidOperationException("장비 작업 중 · 다시 계산하세요.");
+
                 if (!session.CanSave(vm.OpticalZoom(ir()), vm.OpticalPose, vm.OpticalDeviceKey(ir()), vm.OpticalFeedbackFresh(ir())))
                     throw new InvalidOperationException("후보/현재 위치·줌 수신값 확인 후 다시 선택하세요.");
+
                 vm.SaveOpticalCenter(ir(), session.Candidate.Value);
                 session.Cancel();
                 Refresh();
@@ -560,10 +651,12 @@ namespace OpenCvWpfTracking
         {
             if (drawnPoints.Count == 0 && !drawnCenter.HasValue && overlayDeviceKey == null)
                 return;
+
             drawnPoints.Clear();
             drawnCenter = null;
             overlayDeviceKey = null;
             markerVersion++;
+
             if (calibrationOverlay != null && calibrationOverlay.Children.Count > 0)
                 calibrationOverlay.Children.Clear();
         }
@@ -575,18 +668,23 @@ namespace OpenCvWpfTracking
         {
             if (area == markerArea && paintedVersion == markerVersion)
                 return;
+
             markerArea = area;
             paintedVersion = markerVersion;
             calibrationOverlay.Children.Clear();
             calibrationOverlay.Clip = new RectangleGeometry(area);
+
             if (area.IsEmpty || drawnPoints.Count == 0)
                 return;
+
             var points = drawnPoints.Select(p => new Point(area.Left + p.X * area.Width, area.Top + p.Y * area.Height)).ToArray();
             Action<int, int, Brush, bool> line = (a, b, color, dashed) =>
             {
                 if (points.Length <= b)
                     return;
+
                 Point start = points[a], end = points[b];
+
                 if (!dashed && drawnCenter.HasValue)
                 {
                     var c = drawnCenter.Value;
@@ -604,18 +702,21 @@ namespace OpenCvWpfTracking
                     StrokeThickness = dashed ? 1 : 1.3,
                     Opacity = .85
                 };
+
                 if (dashed)
                     shape.StrokeDashArray = new DoubleCollection
                     {
                         3,
                         3
                     };
+
                 calibrationOverlay.Children.Add(shape);
             };
             line(0, 1, Brushes.Cyan, true);
             line(2, 3, Brushes.Gold, true);
             line(0, 2, Brushes.Cyan, false);
             line(1, 3, Brushes.Gold, false);
+
             for (int i = 0; i < points.Length; i++)
             {
                 var dot = new Ellipse
@@ -684,6 +785,7 @@ namespace OpenCvWpfTracking
         {
             bool blocked = vm.IsOpticalCalibrationBlockedByDigitalZoom(ir());
             fourPointButton.IsEnabled = !blocked;
+
             if (!blocked || !session.Active)
                 return;
 
@@ -691,10 +793,11 @@ namespace OpenCvWpfTracking
             ClearGeometry();
             pickingHint.Visibility = Visibility.Collapsed;
             OpenCvWpfTracking.Common.ConsoleLogHelper.State(
-                "OPTICAL CENTER", (ir() ? "IR" : "EO") + " / CALIBRATION_CANCELED / DIGITAL_ZOOM_ON");
+                "OPTICAL CENTER",
+                (ir() ? "IR" : "EO") + " / CALIBRATION_CANCELED / DIGITAL_ZOOM_ON"
+            );
         }
 
         #endregion
-
     }
 }

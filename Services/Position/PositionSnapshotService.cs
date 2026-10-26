@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Models.Position;
+﻿using OpenCvWpfTracking.Models.Position;
 using System;
 
 namespace OpenCvWpfTracking.Services.Position
@@ -14,17 +14,10 @@ namespace OpenCvWpfTracking.Services.Position
 
         private readonly TimeSpan _maximumTelemetryAge;
 
-        public PositionSnapshotService(
-            TimeSpan maximumPtzLensAge,
-            TimeSpan maximumTelemetryAge)
+        public PositionSnapshotService(TimeSpan maximumPtzLensAge, TimeSpan maximumTelemetryAge)
         {
-            _maximumPtzLensAge = maximumPtzLensAge > TimeSpan.Zero
-                ? maximumPtzLensAge
-                : TimeSpan.FromSeconds(3);
-
-            _maximumTelemetryAge = maximumTelemetryAge > TimeSpan.Zero
-                ? maximumTelemetryAge
-                : TimeSpan.FromSeconds(30);
+            _maximumPtzLensAge = maximumPtzLensAge > TimeSpan.Zero ? maximumPtzLensAge : TimeSpan.FromSeconds(3);
+            _maximumTelemetryAge = maximumTelemetryAge > TimeSpan.Zero ? maximumTelemetryAge : TimeSpan.FromSeconds(30);
         }
 
         public void SetConnected(bool connected)
@@ -62,19 +55,10 @@ namespace OpenCvWpfTracking.Services.Position
             double hdop,
             int satelliteCount,
             int fixStatus,
-            bool valid)
+            bool valid
+        )
         {
-            _state.UpdateGps(
-                latitude,
-                longitude,
-                altitude,
-                speed,
-                course,
-                hdop,
-                satelliteCount,
-                fixStatus,
-                valid,
-                DateTimeOffset.Now);
+            _state.UpdateGps(latitude, longitude, altitude, speed, course, hdop, satelliteCount, fixStatus, valid, DateTimeOffset.Now);
         }
 
         public void UpdateImu(double roll, double pitch, double yaw, bool valid)
@@ -84,12 +68,7 @@ namespace OpenCvWpfTracking.Services.Position
 
         public PositionSnapshot Capture(string source, int? presetId = null)
         {
-            return _state.Capture(
-                source,
-                presetId,
-                _maximumPtzLensAge,
-                _maximumTelemetryAge,
-                DateTimeOffset.Now);
+            return _state.Capture(source, presetId, _maximumPtzLensAge, _maximumTelemetryAge, DateTimeOffset.Now);
         }
     }
 }

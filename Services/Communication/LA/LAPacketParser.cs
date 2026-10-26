@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace OpenCvWpfTracking.Services.Communication
 {
@@ -19,19 +19,17 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public class LAPacketParser
     {
-        #region [Constants]
+        #region [상수]
 
         /// <summary>
         /// [TORUSS] 응답 [Packet Header]
         /// </summary>
-        private const byte Header =
-            0xFF;
+        private const byte Header = 0xFF;
 
         /// <summary>
         /// [TORUSS] 응답 [Packet] 크기
         /// </summary>
-        private const int LegacyPacketSize =
-            12;
+        private const int LegacyPacketSize = 12;
 
         // 2026-10-06: Function 0x31은 LEN 필드가 없는 고정 13Byte
         // PTZF + MCB/SCB 상태 응답이다.
@@ -51,7 +49,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         #endregion
 
-        #region [Fields]
+        #region [필드]
 
         /// <summary>
         /// [TCP] 분할 수신 Packet을 보관하는 누적 Buffer
@@ -62,44 +60,36 @@ namespace OpenCvWpfTracking.Services.Communication
         ///
         /// 두 데이터를 누적한 뒤 12byte Packet으로 조립한다.
         /// </summary>
-        private readonly List<byte> _receiveBuffer =
-            new List<byte>();
+        private readonly List<byte> _receiveBuffer = new List<byte>();
 
         /// <summary>
         /// Parse / Reset 동시 호출 방지용 Lock
         /// </summary>
-        private readonly object _bufferLock =
-            new object();
+        private readonly object _bufferLock = new object();
 
         #endregion
 
-        #region [Parse]
+        #region [해석]
 
         /// <summary>
         /// 수신 byte[] 데이터를 내부 Buffer에 누적하고,
         /// 완성된 Legacy 또는 가변 길이 Packet만 반환한다.
         /// </summary>
-        public List<LaResponsePacket> Parse(
-            byte[] receivedData)
+        public List<LaResponsePacket> Parse(byte[] receivedData)
         {
-            List<LaResponsePacket> packets =
-                new List<LaResponsePacket>();
+            List<LaResponsePacket> packets = new List<LaResponsePacket>();
 
-            if (receivedData == null ||
-                receivedData.Length == 0)
+            if (receivedData == null || receivedData.Length == 0)
             {
                 return packets;
             }
 
             lock (_bufferLock)
             {
-                _receiveBuffer.AddRange(
-                    receivedData);
-
+                _receiveBuffer.AddRange(receivedData);
                 while (true)
                 {
-                    int headerIndex =
-                        FindHeaderIndex();
+                    int headerIndex = FindHeaderIndex();
 
                     /// <summary>
                     /// Header가 없으면 현재 Buffer는 Packet으로 사용할 수 없다.
@@ -116,9 +106,7 @@ namespace OpenCvWpfTracking.Services.Communication
                     /// </summary>
                     if (headerIndex > 0)
                     {
-                        _receiveBuffer.RemoveRange(
-                            0,
-                            headerIndex);
+                        _receiveBuffer.RemoveRange(0, headerIndex);
                     }
 
                     /// <summary>
@@ -132,20 +120,20 @@ namespace OpenCvWpfTracking.Services.Communication
 
                     int packetSize = LegacyPacketSize;
                     byte function = _receiveBuffer[1];
+
                     if (function == DevicePowerStatusFunction)
                     {
                         packetSize = DevicePowerStatusPacketSize;
                     }
-                    else if (function >= VariableFunctionMinimum &&
-                        function <= VariableFunctionMaximum)
+                    else if (function >= VariableFunctionMinimum && function <= VariableFunctionMaximum)
                     {
                         if (_receiveBuffer.Count < VariableHeaderSize)
                         {
                             break;
                         }
 
-                        int payloadLength = _receiveBuffer[2] |
-                                            _receiveBuffer[3] << 8;
+                        int payloadLength = _receiveBuffer[2] | _receiveBuffer[3] << 8;
+
                         if (payloadLength > MaximumPayloadLength)
                         {
                             _receiveBuffer.RemoveAt(0);
@@ -160,33 +148,13 @@ namespace OpenCvWpfTracking.Services.Communication
                         break;
                     }
 
-                    byte[] packet =
-                        _receiveBuffer
-                            .GetRange(
-                                0,
-                                packetSize)
-                            .ToArray();
-
-                    bool isValid =
-                        ValidateChecksum(
-                            packet);
+                    byte[] packet = _receiveBuffer.GetRange(0, packetSize).ToArray();
+                    bool isValid = ValidateChecksum(packet);
 
                     if (isValid)
                     {
-                        packets.Add(
-                            new LaResponsePacket
-                            {
-                                RawData =
-                                    packet,
-
-                                IsValid =
-                                    true
-                            });
-
-                        _receiveBuffer.RemoveRange(
-                            0,
-                            packetSize);
-
+                        packets.Add(new LaResponsePacket { RawData = packet, IsValid = true });
+                        _receiveBuffer.RemoveRange(0, packetSize);
                         continue;
                     }
 
@@ -196,21 +164,11 @@ namespace OpenCvWpfTracking.Services.Communication
                     /// Buffer 전체를 버리지 않고 첫 byte만 제거한 뒤
                     /// 다음 0xFF 위치에서 다시 Packet 조립을 시도한다.
                     /// </summary>
-                    packets.Add(
-                        new LaResponsePacket
-                        {
-                            RawData =
-                                packet,
-
-                            IsValid =
-                                false
-                        });
-
-                    _receiveBuffer.RemoveAt(
-                        0);
+                    packets.Add(new LaResponsePacket { RawData = packet, IsValid = false });
+                    _receiveBuffer.RemoveAt(0);
                 }
-
             }
+
             return packets;
         }
 
@@ -219,17 +177,14 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private int FindHeaderIndex()
         {
-            for (int index = 0;
-                 index < _receiveBuffer.Count;
-                 index++)
+            for (int index = 0; index < _receiveBuffer.Count; index++)
             {
-                if (_receiveBuffer[index] ==
-                    Header)
+                if (_receiveBuffer[index] == Header)
                 {
                     return index;
                 }
-
             }
+
             return -1;
         }
 
@@ -243,12 +198,11 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 _receiveBuffer.Clear();
             }
-
         }
 
         #endregion
 
-        #region [Checksum]
+        #region [체크섬 계산]
 
         /// <summary>
         /// [TORUSS] 응답 [Packet Checksum] 검증
@@ -256,40 +210,31 @@ namespace OpenCvWpfTracking.Services.Communication
         /// Checksum은 Function부터 마지막 Payload까지 합산한
         /// 하위 1Byte이며 Packet의 마지막 Byte와 비교한다.
         /// </summary>
-        private bool ValidateChecksum(
-            byte[] packet)
+        private bool ValidateChecksum(byte[] packet)
         {
-            if (packet == null ||
-                packet.Length < 3)
+            if (packet == null || packet.Length < 3)
             {
                 return false;
             }
 
-            if (packet[0] !=
-                Header)
+            if (packet[0] != Header)
             {
                 return false;
             }
 
-            byte sum =
-                0;
+            byte sum = 0;
 
-            for (int index = 1;
-                 index < packet.Length - 1;
-                 index++)
+            for (int index = 1; index < packet.Length - 1; index++)
             {
                 unchecked
                 {
-                    sum +=
-                        packet[index];
+                    sum += packet[index];
                 }
-
             }
 
-            return sum ==
-                   packet[packet.Length - 1];
+            return sum == packet[packet.Length - 1];
         }
+
         #endregion
     }
-
 }
