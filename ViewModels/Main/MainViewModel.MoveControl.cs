@@ -75,7 +75,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task MoveHomePositionAsync()
         {
-            InvalidatePanoramaReference();
+            // HOME은 같은 좌표계의 위치 이동이므로 파노라마 연동을 유지한다.
             ConsoleLogHelper.Command("HOME / ZERO", "HOME POSITION requested");
 
             // 2026-09-16: ROOFTOP/ENVIRONMENT 모두 기존 절대 위치 HOME 경로를 공유한다.
@@ -250,7 +250,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task SetPanZeroAsync()
         {
-            InvalidatePanoramaReference();
             ConsoleLogHelper.Command("HOME / ZERO", "PAN ZERO requested");
 
             if (!await _homeZeroOperationLock.WaitAsync(0))
@@ -267,6 +266,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
+                var panoramaZero = BeginPanoramaZeroReference(true);
                 bool useWebAgent = _selectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
 
                 if (useWebAgent)
@@ -280,6 +280,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     HomeZeroStatusText = sent ? "PAN ZERO REQUEST SENT / WEB AGENT" : "PAN ZERO REQUEST SEND FAILED";
                     HomeZeroLockMessage = sent ? "PAN ZERO REQUEST SENT / APPLYING..." : "PAN ZERO REQUEST SEND FAILED";
                     await Task.Delay(WebAgentZeroOverlayMinimumMilliseconds);
+                    await FinishPanoramaZeroReferenceAsync(panoramaZero, sent);
                     return;
                 }
 
@@ -291,6 +292,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Console.WriteLine("[HOME / ZERO] PAN SET ORIGIN " + $"/ MCB={mcbIpAddress}:{McbMaintenancePort} " + $"/ SEQUENCE=],),|2,( " + $"/ MOTOR_STABILIZATION=1000ms " + $"/ RESULT={result}");
                 ConsoleLogHelper.PrintLine();
                 HomeZeroStatusText = result ? "PAN ZERO COMPLETE / MOTOR READY" : "PAN ZERO SEND FAILED";
+                await FinishPanoramaZeroReferenceAsync(panoramaZero, result);
             }
             catch (Exception ex)
             {
@@ -311,7 +313,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task SetTiltZeroAsync()
         {
-            InvalidatePanoramaReference();
             ConsoleLogHelper.Command("HOME / ZERO", "TILT ZERO requested");
 
             if (!await _homeZeroOperationLock.WaitAsync(0))
@@ -331,6 +332,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
+                var panoramaZero = BeginPanoramaZeroReference(false);
                 bool useWebAgent = _selectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
 
                 if (useWebAgent)
@@ -352,6 +354,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         "WEB AGENT TILT LIMIT",
                         "Post TILT ZERO query / " + "PACKET=FF 01 00 B5 02 00 B8 / " + "SENT=" + limitQuerySent
                     );
+                    await FinishPanoramaZeroReferenceAsync(panoramaZero, sent);
                     return;
                 }
 
@@ -362,6 +365,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Console.WriteLine("[HOME / ZERO] TILT SET ORIGIN " + $"/ MCB={mcbIpAddress}:{McbMaintenancePort} " + $"/ SEQUENCE=],),|2,( " + $"/ MOTOR_STABILIZATION=1000ms " + $"/ RESULT={result}");
                 ConsoleLogHelper.PrintLine();
                 HomeZeroStatusText = result ? "TILT ZERO COMPLETE / MOTOR READY" : "TILT ZERO SEND FAILED";
+                await FinishPanoramaZeroReferenceAsync(panoramaZero, result);
             }
             catch (Exception ex)
             {
@@ -436,9 +440,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void StopAbsoluteMove()
         {
-            bool stopResult = _controlCommandService.StopPanTiltPositionMove();
+            StopPrecisionMotion("절대 이동 STOP", _precisionStopUncertain);
+            bool stopResult =
+                _controlCommandService
+                    .StopPanTiltPositionMove();
+
             ClearActivePanTiltAbsoluteMove();
-            ConsoleLogHelper.Command("ABSOLUTE MOVE", $"Position stop requested / CMD2=0x4F / RESULT={stopResult}");
+
+            ConsoleLogHelper.Command(
+                "ABSOLUTE MOVE",
+                $"Position stop requested / CMD2=0x4F / RESULT={stopResult}");
         }
 
         /// <summary>
@@ -647,45 +658,88 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task MoveToSelectedLaPresetPointAsync()
         {
-            PresetPointOption preset = SelectedLaPresetPoint;
-
-            if (preset == null)
+            RecoverPanoramaPresetReference();
+            if (PanoramaReference.Pending)
             {
-                LaPresetCommandStatusText = "MOVE FAILED : SELECT LA PRESET";
+                LaPresetCommandStatusText = "PRESET REFERENCE CHECK REQUIRED";
                 return;
             }
 
-            CancellationTokenSource moveCts = new CancellationTokenSource();
-            CancellationTokenSource oldMoveCts = Interlocked.Exchange(ref _laPresetSingleMoveCts, moveCts);
+            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
+                return;
+            PresetPointOption preset =
+                SelectedLaPresetPoint;
+
+            if (preset == null)
+            {
+                LaPresetCommandStatusText =
+                    "MOVE FAILED : SELECT LA PRESET";
+
+                return;
+            }
+
+            CancellationTokenSource moveCts =
+                new CancellationTokenSource();
+
+            CancellationTokenSource oldMoveCts =
+                Interlocked.Exchange(
+                    ref _laPresetSingleMoveCts,
+                    moveCts);
 
             if (oldMoveCts != null)
             {
                 oldMoveCts.Cancel();
             }
 
-            LaPresetCommandStatusText = $"P{preset.Number:00} DIRECT PTZF MOVING";
+            LaPresetCommandStatusText =
+                $"P{preset.Number:00} DIRECT PTZF MOVING";
 
             try
             {
-                bool result = await MoveLaPresetPointDirectAsync(preset, moveCts.Token);
+                bool result =
+                    await MoveLaPresetPointDirectAsync(
+                        preset,
+                        moveCts.Token);
+
                 Console.WriteLine();
-                Console.WriteLine("[PRESET 1 / WPF DIRECT] MOVE");
-                Console.WriteLine($"[PRESET 1 / WPF DIRECT] DISPLAY=P{preset.Number:00} / " + $"PAN={preset.Pan:F2} / TILT={preset.Tilt:F2} / " + $"EO_ZOOM={preset.EoZoomText} / " + $"EO_FOCUS={preset.EoFocusText} / " + $"IR_ZOOM={preset.IrZoomText} / " + $"IR_FOCUS={preset.IrFocusText} / RESULT={result}");
+                Console.WriteLine(
+                    "[PRESET 1 / WPF DIRECT] MOVE");
+
+                Console.WriteLine(
+                    $"[PRESET 1 / WPF DIRECT] DISPLAY=P{preset.Number:00} / " +
+                    $"PAN={preset.Pan:F2} / TILT={preset.Tilt:F2} / " +
+                    $"EO_ZOOM={preset.EoZoomText} / " +
+                    $"EO_FOCUS={preset.EoFocusText} / " +
+                    $"IR_ZOOM={preset.IrZoomText} / " +
+                    $"IR_FOCUS={preset.IrFocusText} / RESULT={result}");
+
                 ConsoleLogHelper.PrintLine();
-                LaPresetCommandStatusText = result ? $"P{preset.Number:00} DIRECT PTZF MOVE COMPLETED" : $"P{preset.Number:00} DIRECT PTZF MOVE INCOMPLETE";
+
+                LaPresetCommandStatusText =
+                    result
+                        ? $"P{preset.Number:00} DIRECT PTZF MOVE COMPLETED"
+                        : $"P{preset.Number:00} DIRECT PTZF MOVE INCOMPLETE";
             }
             catch (OperationCanceledException)
             {
                 // Stop/Disconnect로 취소된 정상 종료 경로이다.
-                LaPresetCommandStatusText = $"P{preset.Number:00} DIRECT PTZF MOVE STOPPED";
+                LaPresetCommandStatusText =
+                    $"P{preset.Number:00} DIRECT PTZF MOVE STOPPED";
             }
             finally
             {
-                if (ReferenceEquals(Interlocked.CompareExchange(ref _laPresetSingleMoveCts, null, moveCts), moveCts))
+                if (ReferenceEquals(
+                        Interlocked.CompareExchange(
+                            ref _laPresetSingleMoveCts,
+                            null,
+                            moveCts),
+                        moveCts))
                 {
                     moveCts.Dispose();
                 }
+
             }
+
         }
 
         /// <summary>
@@ -1167,38 +1221,57 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int irStandardPosition,
             CancellationToken cancellationToken,
             int eoTolerance = LensSyncTargetTolerance,
-            int irTolerance = IrFocusSyncTolerance,
-            bool? onlyIr = null
-        )
+            int irTolerance = IrFocusSyncTolerance, bool? onlyIr = null)
         {
-            int safeEoPosition = Clamp(eoStandardPosition, MoveControlPositionMinimum, MoveControlPositionMaximum);
-            int safeIrStandardPosition = Clamp(irStandardPosition, MoveControlPositionMinimum, MoveControlPositionMaximum);
-            int irRawTargetPosition = ConvertIrFocusStandardToStatusPosition(safeIrStandardPosition);
-            bool eoAlreadyAtTarget = HasFreshPresetLens(
-                false,
-                false
-            ) &&
-                Math.Abs(GetCurrentPresetStandardFocus() - safeEoPosition) <= eoTolerance;
-            bool irAlreadyAtTarget = HasFreshPresetLens(
-                true,
-                false
-            ) &&
-                Math.Abs(GetCurrentIrFocusStandardPosition() - safeIrStandardPosition) <= irTolerance;
+            if ((!onlyIr.HasValue || !onlyIr.Value) && IsAf292FocusBlocked(false))
+                return false;
+            if ((!onlyIr.HasValue || onlyIr.Value) && IsAf292FocusBlocked(true))
+                return false;
+            int safeEoPosition =
+                Clamp(
+                    eoStandardPosition,
+                    MoveControlPositionMinimum,
+                    MoveControlPositionMaximum);
 
+            int safeIrStandardPosition =
+                Clamp(
+                    irStandardPosition,
+                    MoveControlPositionMinimum,
+                    MoveControlPositionMaximum);
+
+            int irRawTargetPosition =
+                ConvertIrFocusStandardToStatusPosition(
+                    safeIrStandardPosition);
+
+            bool eoAlreadyAtTarget =
+                HasFreshPresetLens(false, false) && Math.Abs(GetCurrentPresetStandardFocus() - safeEoPosition) <= eoTolerance;
+
+            bool irAlreadyAtTarget =
+                HasFreshPresetLens(true, false) && Math.Abs(
+                    GetCurrentIrFocusStandardPosition() -
+                    safeIrStandardPosition) <=
+                irTolerance;
             if (onlyIr == true)
                 eoAlreadyAtTarget = true;
-
             if (onlyIr == false)
                 irAlreadyAtTarget = true;
 
-            if (eoAlreadyAtTarget && irAlreadyAtTarget)
+            if (eoAlreadyAtTarget &&
+                irAlreadyAtTarget)
             {
-                Console.WriteLine("[PRESET 1 / WPF DIRECT] FOCUS " + $"/ EO={safeEoPosition}:SKIPPED " + $"/ IR_STANDARD={safeIrStandardPosition}:SKIPPED");
+                Console.WriteLine(
+                    "[PRESET 1 / WPF DIRECT] FOCUS " +
+                    $"/ EO={safeEoPosition}:SKIPPED " +
+                    $"/ IR_STANDARD={safeIrStandardPosition}:SKIPPED");
+
                 return true;
             }
 
             await StopFocusSyncAsync();
-            cancellationToken.ThrowIfCancellationRequested();
+
+            cancellationToken
+                .ThrowIfCancellationRequested();
+
             Task<bool> irMoveTask;
 
             if (irAlreadyAtTarget)
@@ -1214,22 +1287,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 irMoveTask = MoveIrFocusToPositionAsync(
                     irRawTargetPosition,
                     cancellationToken,
-                    Math.Max(
-                    1,
-                    Math.Max(
-                    Math.Abs(ConvertIrFocusStandardToStatusPosition(Clamp(
-                    safeIrStandardPosition + irTolerance,
-                    0,
-                    1000
-                )) - irRawTargetPosition),
-                    Math.Abs(ConvertIrFocusStandardToStatusPosition(Clamp(
-                    safeIrStandardPosition - irTolerance,
-                    0,
-                    1000
-                )) - irRawTargetPosition)
-                )
-                )
-                );
+                    Math.Max(1, Math.Max(
+                        Math.Abs(ConvertIrFocusStandardToStatusPosition(Clamp(safeIrStandardPosition + irTolerance, 0, 1000)) - irRawTargetPosition),
+                        Math.Abs(ConvertIrFocusStandardToStatusPosition(Clamp(safeIrStandardPosition - irTolerance, 0, 1000)) - irRawTargetPosition))));
             }
 
             bool eoResult;
@@ -1237,46 +1297,63 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (eoAlreadyAtTarget)
             {
-                eoResult = true;
+                eoResult =
+                    true;
             }
-            else if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
+            else if (SelectedEquipmentStatusMode ==
+                EquipmentStatusMode.Environment)
             {
-                eoResult = _controlCommandService.EoFocusGoPosition((short)safeEoPosition);
+                eoResult =
+                    _controlCommandService
+                        .EoFocusGoPosition(
+                            (short)safeEoPosition);
             }
             else
             {
-                RtspSourceOption ctecSource = _connectedEoCtecSource;
+                RtspSourceOption ctecSource =
+                    _connectedEoCtecSource;
 
                 if (ctecSource == null)
                 {
-                    eoResult = _controlCommandService.EoFocusGoPosition((short)safeEoPosition);
+                    eoResult =
+                        _controlCommandService
+                            .EoFocusGoPosition(
+                                (short)safeEoPosition);
                 }
                 else
                 {
-                    int eoRawTarget = ConvertStandardFocusToCtecRaw(safeEoPosition);
-                    eoResult = await MoveRooftopEoFocusToRawPositionAsync(ctecSource, eoRawTarget, cancellationToken);
+                    int eoRawTarget =
+                        ConvertStandardFocusToCtecRaw(
+                            safeEoPosition);
+
+                    eoResult =
+                        await MoveRooftopEoFocusToRawPositionAsync(
+                            ctecSource,
+                            eoRawTarget,
+                            cancellationToken);
                 }
+
             }
 
-            bool irResult = await irMoveTask;
-            irResult = onlyIr == false ||
-                irResult &&
-                HasFreshPresetLens(
-                true,
-                false
-            ) &&
+            bool irResult =
+                await irMoveTask;
+
+            irResult = onlyIr == false || irResult && HasFreshPresetLens(true, false) &&
                 Math.Abs(GetCurrentIrFocusStandardPosition() - safeIrStandardPosition) <= irTolerance;
             cancellationToken.ThrowIfCancellationRequested();
-
             if (eoResult && !eoAlreadyAtTarget && (IsEnvironmentStatusSelected || _connectedEoCtecSource == null))
                 eoResult = await WaitPresetEoLensTargetAsync(safeEoPosition, false, eoCommandTicks, cancellationToken, eoTolerance);
+            ConsoleLogHelper.State("PRESET LENS", "FOCUS / EO_TARGET=" + safeEoPosition + " / IR_STANDARD_TARGET=" + safeIrStandardPosition +
+                " / IR_ACTUAL=" + GetCurrentIrFocusStandardPosition() + " / EO_RESULT=" + eoResult + " / IR_RESULT=" + irResult);
 
-            ConsoleLogHelper.State(
-                "PRESET LENS",
-                "FOCUS / EO_TARGET=" + safeEoPosition + " / IR_STANDARD_TARGET=" + safeIrStandardPosition + " / IR_ACTUAL=" + GetCurrentIrFocusStandardPosition() + " / EO_RESULT=" + eoResult + " / IR_RESULT=" + irResult
-            );
-            Console.WriteLine("[PRESET 1 / WPF DIRECT] FOCUS " + $"/ EO={safeEoPosition}:{eoResult} " + $"/ IR_STANDARD={safeIrStandardPosition} " + $"/ IR_RAW_TARGET={irRawTargetPosition}:{irResult}");
-            return eoResult && irResult;
+            Console.WriteLine(
+                "[PRESET 1 / WPF DIRECT] FOCUS " +
+                $"/ EO={safeEoPosition}:{eoResult} " +
+                $"/ IR_STANDARD={safeIrStandardPosition} " +
+                $"/ IR_RAW_TARGET={irRawTargetPosition}:{irResult}");
+
+            return eoResult &&
+                irResult;
         }
 
         /// <summary>
@@ -1433,15 +1510,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task StartLaPresetScanAsync()
         {
-            ConsoleLogHelper.Command("PRESET L", "Scan start requested");
-
-            if (LaPresetPoints.Count < 2)
+            RecoverPanoramaPresetReference();
+            if (PanoramaReference.Pending)
             {
-                LaPresetCommandStatusText = "SCAN START FAILED : REGISTER 2 OR MORE POINTS";
+                LaPresetCommandStatusText = "PRESET REFERENCE CHECK REQUIRED";
                 return;
             }
 
-            CancellationTokenSource oldCts = Interlocked.Exchange(ref _laPresetDirectScanCts, null);
+            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
+                return;
+            ConsoleLogHelper.Command(
+                "PRESET L",
+                "Scan start requested");
+
+            if (LaPresetPoints.Count <
+                2)
+            {
+                LaPresetCommandStatusText =
+                    "SCAN START FAILED : REGISTER 2 OR MORE POINTS";
+
+                return;
+            }
+
+            CancellationTokenSource oldCts =
+                Interlocked.Exchange(
+                    ref _laPresetDirectScanCts,
+                    null);
 
             if (oldCts != null)
             {
@@ -1449,67 +1543,131 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 oldCts.Dispose();
             }
 
-            CancellationTokenSource scanCts = new CancellationTokenSource();
-            _laPresetDirectScanCts = scanCts;
-            int delaySeconds = Math.Max(1, Math.Min(60, LaPresetScanDelay));
-            int speedDegreesPerSecond = Math.Max(1, Math.Min(60, LaPresetScanSpeed));
-            IsLaPresetScanRunning = true;
-            LaPresetCommandStatusText = $"WPF DIRECT SCAN START / {LaPresetPoints.Count} POINTS";
+            CancellationTokenSource scanCts =
+                new CancellationTokenSource();
+
+            _laPresetDirectScanCts =
+                scanCts;
+
+            int delaySeconds =
+                Math.Max(
+                    1,
+                    Math.Min(
+                        60,
+                        LaPresetScanDelay));
+
+            int speedDegreesPerSecond =
+                Math.Max(
+                    1,
+                    Math.Min(
+                        60,
+                        LaPresetScanSpeed));
+
+            IsLaPresetScanRunning =
+                true;
+
+            LaPresetCommandStatusText =
+                $"WPF DIRECT SCAN START / {LaPresetPoints.Count} POINTS";
+
             Console.WriteLine();
-            Console.WriteLine("[PRESET 1 / WPF DIRECT SCAN] START");
-            Console.WriteLine($"[PRESET 1 / WPF DIRECT SCAN] " + $"POINTS={LaPresetPoints.Count} / " + $"SPEED={speedDegreesPerSecond}deg/s / " + $"DELAY={delaySeconds}s");
+            Console.WriteLine(
+                "[PRESET 1 / WPF DIRECT SCAN] START");
+
+            Console.WriteLine(
+                $"[PRESET 1 / WPF DIRECT SCAN] " +
+                $"POINTS={LaPresetPoints.Count} / " +
+                $"SPEED={speedDegreesPerSecond}deg/s / " +
+                $"DELAY={delaySeconds}s");
+
             ConsoleLogHelper.PrintLine();
 
             try
             {
-                bool isFirstPointOfScan = true;
-                PresetPointOption[] points = CreatePresetScanQueue(LaPresetPoints);
+                bool isFirstPointOfScan =
+                    true;
+                PresetPointOption[] points =
+                    CreatePresetScanQueue(LaPresetPoints);
+
                 while (!scanCts.IsCancellationRequested)
                 {
                     foreach (PresetPointOption point in points)
                     {
-                        scanCts.Token.ThrowIfCancellationRequested();
+                        scanCts.Token
+                            .ThrowIfCancellationRequested();
 
-                        if (isFirstPointOfScan && IsLaPresetPointAlreadyAtTarget(point))
+                        if (isFirstPointOfScan &&
+                            IsLaPresetPointAlreadyAtTarget(
+                                point))
                         {
-                            isFirstPointOfScan = false;
-                            SelectedLaPresetPoint = point;
+                            isFirstPointOfScan =
+                                false;
+
+                            SelectedLaPresetPoint =
+                                point;
+
                             ConsoleLogHelper.Command(
                                 "PRESET L",
-                                $"Initial current point skipped / P{point.Number:00} / " + "NEXT POINT STARTS IMMEDIATELY"
-                            );
+                                $"Initial current point skipped / P{point.Number:00} / " +
+                                "NEXT POINT STARTS IMMEDIATELY");
+
                             continue;
                         }
 
-                        isFirstPointOfScan = false;
-                        SelectedLaPresetPoint = point;
-                        LaPresetCommandStatusText = $"SCAN MOVING P{point.Number:00}";
-                        var pointTimer = Stopwatch.StartNew();
-                        bool moveResult = await MoveLaPresetPointDirectAsync(point, scanCts.Token, true);
-                        Console.WriteLine("[PRESET 1 / WPF DIRECT SCAN] " + $"P{point.Number:00} MOVE RESULT={moveResult}");
-                        int minimumDwellMs = Math.Max(1, Math.Min(60, LaPresetScanDelay)) * 1000;
+                        isFirstPointOfScan =
+                            false;
 
+                        SelectedLaPresetPoint =
+                            point;
+
+                        LaPresetCommandStatusText =
+                            $"SCAN MOVING P{point.Number:00}";
+
+                        var pointTimer = Stopwatch.StartNew();
+                        bool moveResult =
+                            await MoveLaPresetPointDirectAsync(
+                                point,
+                                scanCts.Token,
+                                true);
+
+                        Console.WriteLine(
+                            "[PRESET 1 / WPF DIRECT SCAN] " +
+                            $"P{point.Number:00} MOVE RESULT={moveResult}");
+
+                        int minimumDwellMs = Math.Max(1, Math.Min(60, LaPresetScanDelay)) * 1000;
                         if (pointTimer.ElapsedMilliseconds < minimumDwellMs)
                             await Task.Delay(minimumDwellMs - (int)pointTimer.ElapsedMilliseconds, scanCts.Token);
+
                     }
+
                 }
+
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("[PRESET 1 / WPF DIRECT SCAN] CANCELED");
+                Console.WriteLine(
+                    "[PRESET 1 / WPF DIRECT SCAN] CANCELED");
             }
             finally
             {
-                if (ReferenceEquals(_laPresetDirectScanCts, scanCts))
+                if (ReferenceEquals(
+                        _laPresetDirectScanCts,
+                        scanCts))
                 {
-                    _laPresetDirectScanCts = null;
+                    _laPresetDirectScanCts =
+                        null;
+
                     scanCts.Dispose();
                 }
 
-                IsLaPresetScanRunning = false;
-                LaPresetCommandStatusText = "WPF DIRECT SCAN STOPPED";
+                IsLaPresetScanRunning =
+                    false;
+
+                LaPresetCommandStatusText =
+                    "WPF DIRECT SCAN STOPPED";
+
                 ConsoleLogHelper.PrintLine();
             }
+
         }
 
         /// <summary>
@@ -1571,6 +1729,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void StopLaPresetMove()
         {
+            _panoramaPresetCts?.Cancel();
             CancellationTokenSource moveCts = Interlocked.Exchange(ref _laPresetSingleMoveCts, null);
 
             if (moveCts != null)
@@ -1729,18 +1888,53 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async void MoveToSelectedPresetPoint()
         {
+            await MoveToSelectedPresetPointAsync();
+        }
+
+        /// <summary>
+        /// 기존 웹 프리셋 이동을 번호 클릭과 순회 연동에서 완료까지 기다릴 수 있도록 공유한다.
+        /// </summary>
+        private async Task MoveToSelectedPresetPointAsync()
+        {
+            RecoverPanoramaPresetReference();
+            if (PanoramaReference.Pending)
+            {
+                PresetCommandStatusText = "PRESET REFERENCE CHECK REQUIRED";
+                return;
+            }
+
+            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
+                return;
             if (SelectedPresetPoint == null)
             {
-                PresetCommandStatusText = "MOVE FAILED : SELECT PRESET";
-                Console.WriteLine("[PRESET 2 / WEB AGENT] GOTO FAILED : " + "프리셋 미선택 상태");
+                PresetCommandStatusText =
+                    "MOVE FAILED : SELECT PRESET";
+
+                Console.WriteLine(
+                    "[PRESET 2 / WEB AGENT] GOTO FAILED : " +
+                    "프리셋 미선택 상태");
+
                 return;
             }
 
             PresetPointOption preset = SelectedPresetPoint;
-            int presetNumber = preset.Number;
-            int moveSpeed = Math.Max(1, Math.Min(60, PresetScanSpeed));
-            CancellationTokenSource moveCts = new CancellationTokenSource();
-            CancellationTokenSource oldMoveCts = Interlocked.Exchange(ref _presetSingleMoveCts, moveCts);
+            int presetNumber =
+                preset.Number;
+
+            int moveSpeed =
+                Math.Max(
+                    1,
+                    Math.Min(
+                        60,
+                        PresetScanSpeed));
+
+            CancellationTokenSource moveCts =
+                new CancellationTokenSource();
+
+            CancellationTokenSource oldMoveCts =
+                Interlocked.Exchange(
+                    ref _presetSingleMoveCts,
+                    moveCts);
 
             if (oldMoveCts != null)
             {
@@ -1755,55 +1949,93 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 0x4D Pan Turn Mode는 Pan 절대 위치 제어용이며
              * 프리셋 이동 명령에 포함되지 않으므로 전송하지 않는다.
              */
-            bool speedResult = ApplyPresetPositionSpeed(moveSpeed);
-            bool moveResult = speedResult && _controlCommandService.MoveToPresetPoint((byte)presetNumber);
+            // ZERO 이후에는 장비 슬롯의 내부 기준을 추측하지 않고 기존 직접 PTZF 복원 경로를 공유한다.
+            bool referenceAdjusted = Math.Abs(PanoramaReference.PanOffset) > 0.000001 ||
+                Math.Abs(PanoramaReference.TiltOffset) > 0.000001;
+            // 직접 이동 경로가 속도를 설정하므로 같은 속도 패킷을 중복 전송하지 않는다.
+            bool speedResult = referenceAdjusted || ApplyPresetPositionSpeed(moveSpeed);
+            bool moveResult =
+                referenceAdjusted ? speedResult : speedResult &&
+                _controlCommandService
+                    .MoveToPresetPoint(
+                        (byte)presetNumber);
 
             if (moveResult)
             {
-                _lastPanAbsoluteTarget = SelectedPresetPoint.Pan;
+                _lastPanAbsoluteTarget =
+                    SelectedPresetPoint.Pan;
             }
 
-            bool panTiltSettled = false;
+            bool panTiltSettled =
+                false;
             bool lensRestored = false;
 
             try
             {
-                panTiltSettled = moveResult &&
-                    await EnsurePresetPanTiltTargetAsync(
-                    "PRESET W",
-                    preset,
-                    () => ApplyPresetPositionSpeed(moveSpeed) &&
-                    _controlCommandService.MoveToPresetPoint((byte)presetNumber),
-                    CalculatePresetPanTiltSettleTimeoutMs(
-                    preset,
-                    moveSpeed
-                ),
-                    moveCts.Token
-                );
-
-                if (panTiltSettled)
-                    lensRestored = await RestoreStoredPresetLensAsync(preset, moveCts.Token);
+                if (referenceAdjusted)
+                {
+                    panTiltSettled = moveResult && await MoveLaPresetPointDirectAsync(preset, moveCts.Token,
+                        routeSpeed: moveSpeed, routeDelay: PresetScanDelay);
+                    lensRestored = panTiltSettled;
+                }
+                else
+                {
+                    panTiltSettled =
+                        moveResult &&
+                        await EnsurePresetPanTiltTargetAsync(
+                            "PRESET W",
+                            preset,
+                            () =>
+                                ApplyPresetPositionSpeed(
+                                    moveSpeed) &&
+                                _controlCommandService
+                                    .MoveToPresetPoint(
+                                        (byte)presetNumber),
+                            CalculatePresetPanTiltSettleTimeoutMs(
+                                preset,
+                                moveSpeed),
+                            moveCts.Token);
+                    if (panTiltSettled)
+                        lensRestored = await RestoreStoredPresetLensAsync(preset, moveCts.Token);
+                }
             }
             catch (OperationCanceledException)
             {
-                PresetCommandStatusText = $"P{presetNumber:00} GOTO PRESET STOPPED";
+                PresetCommandStatusText =
+                    $"P{presetNumber:00} GOTO PRESET STOPPED";
+
                 return;
             }
             finally
             {
-                if (ReferenceEquals(Interlocked.CompareExchange(ref _presetSingleMoveCts, null, moveCts), moveCts))
+                if (ReferenceEquals(
+                        Interlocked.CompareExchange(
+                            ref _presetSingleMoveCts,
+                            null,
+                            moveCts),
+                        moveCts))
                 {
                     moveCts.Dispose();
                 }
+
             }
 
             Console.WriteLine();
-            Console.WriteLine("[PRESET 2 / WEB AGENT] GOTO PRESET");
-            Console.WriteLine($"[PRESET 2 / WEB AGENT] NUMBER={presetNumber} / " + $"SPEED={moveSpeed} / PELCO_D=0x07 / RESULT={moveResult} / " + $"PT_SETTLED={panTiltSettled}");
+            Console.WriteLine(
+                "[PRESET 2 / WEB AGENT] GOTO PRESET");
+
+            Console.WriteLine(
+                $"[PRESET 2 / WEB AGENT] NUMBER={presetNumber} / " +
+                $"SPEED={moveSpeed} / MODE={(referenceAdjusted ? "REFERENCE_DIRECT_PTZF" : "DEVICE_PRESET")} / RESULT={moveResult} / " +
+                $"PT_SETTLED={panTiltSettled}");
+
             ConsoleLogHelper.PrintLine();
-            PresetCommandStatusText = moveResult &&
-                panTiltSettled &&
-                lensRestored ? $"P{presetNumber:00} GOTO PRESET COMPLETED" : $"P{presetNumber:00} GOTO PRESET INCOMPLETE";
+
+            PresetCommandStatusText =
+                moveResult &&
+                panTiltSettled && lensRestored
+                    ? $"P{presetNumber:00} GOTO PRESET COMPLETED"
+                    : $"P{presetNumber:00} GOTO PRESET INCOMPLETE";
         }
 
         /// <summary>
@@ -1816,28 +2048,68 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void StartPresetScan()
         {
-            ConsoleLogHelper.Command("PRESET W", "Loop start requested");
+            RecoverPanoramaPresetReference();
+            if (PanoramaReference.Pending)
+            {
+                PresetCommandStatusText = "PRESET REFERENCE CHECK REQUIRED";
+                return;
+            }
+
+            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
+                return;
+            ConsoleLogHelper.Command(
+                "PRESET W",
+                "Loop start requested");
 
             if (PresetPoints.Count <= 0)
             {
-                PresetCommandStatusText = "START FAILED : NO PRESET";
+                PresetCommandStatusText =
+                    "START FAILED : NO PRESET";
+
                 return;
             }
 
             // 기존 PRESET 2 루프만 취소한다.
             // START 시 장비 Stop 명령을 먼저 보내지 않는다.
             CancelPreset2DirectScan();
-            CancellationTokenSource scanCts = new CancellationTokenSource();
-            _presetDirectScanCts = scanCts;
-            IsPresetScanRunning = true;
-            int delaySeconds = Math.Max(1, Math.Min(60, PresetScanDelay));
+
+            CancellationTokenSource scanCts =
+                new CancellationTokenSource();
+
+            _presetDirectScanCts =
+                scanCts;
+
+            IsPresetScanRunning =
+                true;
+
+            int delaySeconds =
+                Math.Max(
+                    1,
+                    Math.Min(
+                        60,
+                        PresetScanDelay));
+
             Console.WriteLine();
-            Console.WriteLine("[PRESET 2 / WEB AGENT] LOOP START");
-            Console.WriteLine($"[PRESET 2 / WEB AGENT] COUNT={PresetPoints.Count} / " + $"DELAY={delaySeconds}s / " + "COMMAND=POSITION_SPEED_THEN_GOTO_PRESET_0x07");
+            Console.WriteLine(
+                "[PRESET 2 / WEB AGENT] LOOP START");
+
+            Console.WriteLine(
+                $"[PRESET 2 / WEB AGENT] COUNT={PresetPoints.Count} / " +
+                $"DELAY={delaySeconds}s / " +
+                "COMMAND=POSITION_SPEED_THEN_GOTO_PRESET_0x07");
+
             ConsoleLogHelper.PrintLine();
-            PresetCommandStatusText = "WEB AGENT PRESET LOOP STARTED";
-            PresetPointOption[] scanQueue = CreatePresetScanQueue(PresetPoints);
-            _ = RunPreset2DirectScanAsync(scanCts, scanQueue);
+
+            PresetCommandStatusText =
+                "WEB AGENT PRESET LOOP STARTED";
+
+            PresetPointOption[] scanQueue =
+                CreatePresetScanQueue(PresetPoints);
+
+            _ =
+                RunPreset2DirectScanAsync(
+                    scanCts,
+                    scanQueue);
         }
 
         /// <summary>
@@ -1991,6 +2263,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void StopPresetMove()
         {
+            _panoramaPresetCts?.Cancel();
             CancellationTokenSource moveCts = Interlocked.Exchange(ref _presetSingleMoveCts, null);
             moveCts?.Cancel();
             bool stopResult = _controlCommandService.StopPanTiltPositionMove();
@@ -2004,6 +2277,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void StopActivePresetScan()
         {
+            CancelPanoramaPresets();
             if (IsLaPresetScanRunning)
             {
                 StopLaPresetScan();
@@ -2207,14 +2481,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task SetFocusPositionFromInputAsync()
         {
+            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
+                return;
             if (!FocusPositionValue.HasValue)
             {
-                Console.WriteLine("[MOVE CONTROL] FOCUS POSITION FAILED : EMPTY VALUE");
+                Console.WriteLine(
+                    "[MOVE CONTROL] FOCUS POSITION FAILED : EMPTY VALUE");
+
                 return;
             }
 
-            int standardPosition = Clamp(FocusPositionValue.Value, MoveControlPositionMinimum, MoveControlPositionMaximum);
-            await ApplyMoveControlFocusPositionAsync(standardPosition);
+            int standardPosition =
+                Clamp(
+                    FocusPositionValue.Value,
+                    MoveControlPositionMinimum,
+                    MoveControlPositionMaximum);
+
+            await ApplyMoveControlFocusPositionAsync(
+                standardPosition);
         }
 
         /// <summary>

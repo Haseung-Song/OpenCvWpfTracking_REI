@@ -41,7 +41,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         // 2026-10-20: v2.9 분리 텔레메트리 응답(0x32~0x34)까지
         // LEN 기반 가변 Packet으로 조립한다. 0x31은 위의 고정 13Byte 분기다.
-        private const byte VariableFunctionMaximum = 0x34;
+        private const byte VariableFunctionMaximum = 0x35;
 
         private const int VariableHeaderSize = 4;
 

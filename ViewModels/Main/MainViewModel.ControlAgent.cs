@@ -531,11 +531,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool canPrintLog = CanPrintLaLog();
             bool canPrintExtendedStatusLog = CanPrintLaExtendedStatusLog();
+
             switch (packet.Function)
             {
                 case 0x02:
                     ParseWebAgentTiltLimitPacket(packet.RawData);
                     break;
+
                 case 0x01:
                     /// <summary>
                     /// [Pan] / [Tilt] / [Zoom] / [Focus] 상태 정보
@@ -550,14 +552,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine("[LA PACKET] [Pan] / [Tilt] / [Zoom] / [Focus] Status");
                     Console.WriteLine();
                     ParseLaStatusPacket(packet.RawData, true);
+
                     ConsoleLogHelper.PrintLine();
                     break;
+
                 case 0x31:
                     // 2026-10-06: 기존 0x01 PTZF와 동일한 위치값에
                     // MCB/SCB 원본 상태 바이트를 추가한 고정 13Byte 응답.
                     ParseLaStatusPacket(packet.RawData, canPrintLog, false);
                     ApplyDevicePowerStatus(packet.RawData[10], packet.RawData[11]);
                     break;
+
                 case 0x07:
                     /// <summary>
                     /// [Function] [0x07]
@@ -582,15 +587,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// D6 03 → 982
                     /// E8 03 → 1000
                     /// </summary>
-                    ParseLaIrCameraStatusPacket(packet, canPrintExtendedStatusLog);
+                    ParseLaIrCameraStatusPacket(
+                        packet,
+                        canPrintExtendedStatusLog);
+
                     break;
+
                 case 0xA1:
+
                     /// <summary>
                     /// 상태값은 모든 Packet마다 파싱하고,
                     /// Console 로그만 설정된 주기로 제한한다.
                     /// </summary>
-                    ParseLaExtendedStatusPacket(packet.RawData, canPrintExtendedStatusLog);
+                    ParseLaExtendedStatusPacket(
+                        packet.RawData,
+                        canPrintExtendedStatusLog);
+
                     break;
+
                 case 0xA3:
                     /// <summary>
                     /// [Function] [0xA3]
@@ -602,16 +616,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// Console 출력 생략
                     /// </summary>
                     break;
+
                 case 0x04:
                     /// <summary>
                     /// [LRF] 거리측정 응답 Packet
                     /// </summary>
+
                     ConsoleLogHelper.PrintLine();
                     Console.WriteLine("[LA PACKET] [LRF] Distance Packet");
                     Console.WriteLine();
                     ParseLrfDistancePacket(packet.RawData);
+
                     ConsoleLogHelper.PrintLine();
                     break;
+
                 case 0x23:
                 case 0x24:
                 case 0x25:
@@ -629,8 +647,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 case 0x32:
                 case 0x33:
                 case 0x34:
+                case 0x35:
                     ParseWebAgentV18Packet(packet);
                     break;
+
                 default:
                     /// <summary>
                     /// 정의되지 않은 [Function] 번호
@@ -638,18 +658,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// [LRF] / [GPS] / 기타 확장 [Packet] 확인용으로
                     /// 로그 제한 없이 출력한다.
                     /// </summary>
+
                     ConsoleLogHelper.PrintLine();
                     Console.WriteLine($"[LA PACKET] Unknown Function: 0x{packet.Function:X2}");
                     Console.WriteLine();
+
                     foreach (byte b in packet.RawData)
                     {
                         Console.Write($"{b:X2} ");
                     }
-
                     Console.WriteLine();
+
                     ConsoleLogHelper.PrintLine();
                     break;
             }
+
         }
 
         /// <summary>

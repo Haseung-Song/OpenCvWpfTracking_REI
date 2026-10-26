@@ -1,5 +1,7 @@
-﻿using System;
-using System.IO;
+﻿using OpenCvWpfTracking.Services.Video;
+using OpenCvWpfTracking.Views.Video;
+using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -23,6 +25,19 @@ namespace OpenCvWpfTracking
         private readonly Image _previewImage;
 
         private readonly Grid _root;
+
+        private readonly PanoramaPresetOverlay _presetOverlay = new PanoramaPresetOverlay();
+
+        private Action<int> _movePreset;
+
+        /// <summary>
+        /// 확대 영상과 같은 변환을 적용한 번호 레이어를 갱신한다.
+        /// </summary>
+        public void UpdatePresetLinks(IEnumerable<PanoramaPresetLink> links, int[] order, Action<int> move)
+        {
+            _movePreset = move;
+            _presetOverlay.Update(_previewImage.Source as BitmapSource, links, order);
+        }
 
         private Point _dragStartPoint;
 
@@ -65,6 +80,9 @@ namespace OpenCvWpfTracking
                 ClipToBounds = true
             };
             _root.Children.Add(_previewImage);
+            _presetOverlay.RenderTransform = imageTransform;
+            _presetOverlay.RenderTransformOrigin = new Point(0.5, 0.5);
+            _root.Children.Add(_presetOverlay);
             Content = _root;
             PreviewMouseWheel += OnPreviewMouseWheel;
             PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
@@ -84,41 +102,16 @@ namespace OpenCvWpfTracking
         private static ImageSource CreatePreviewSource(ImageSource source, string filePath)
         {
             const int MaximumPreviewPixelWidth = 8192;
-            Uri imageUri = !string.IsNullOrWhiteSpace(filePath) &&
-                File.Exists(filePath) ? new Uri(
-                filePath,
-                UriKind.Absolute
-            ) : new Uri(
-                "pack://application:,,,/Images/Demo/DefaultRooftopPanorama.jpg",
-                UriKind.Absolute
-            );
+            var bitmap = source as BitmapSource;
 
-            try
-            {
-                BitmapImage bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                bitmap.DecodePixelWidth = MaximumPreviewPixelWidth;
-                bitmap.UriSource = imageUri;
-                bitmap.EndInit();
-                bitmap.Freeze();
-                return bitmap;
-            }
-            catch
-            {
-                BitmapSource bitmapSource = source as BitmapSource;
+            // 파일이 외부에서 바뀌어도 메인 화면에서 검증한 동일 이미지로 번호를 표시한다.
+            if (bitmap == null || bitmap.PixelWidth <= MaximumPreviewPixelWidth)
+                return source;
 
-                if (bitmapSource == null || bitmapSource.PixelWidth <= MaximumPreviewPixelWidth)
-                {
-                    return source;
-                }
-
-                double scale = MaximumPreviewPixelWidth / (double)bitmapSource.PixelWidth;
-                TransformedBitmap reduced = new TransformedBitmap(bitmapSource, new ScaleTransform(scale, scale));
-                reduced.Freeze();
-                return reduced;
-            }
+            double scale = MaximumPreviewPixelWidth / (double)bitmap.PixelWidth;
+            var reduced = new TransformedBitmap(bitmap, new ScaleTransform(scale, scale));
+            reduced.Freeze();
+            return reduced;
         }
 
         /// <summary>
@@ -157,6 +150,18 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            int? number = _presetOverlay.HitNumber(e.GetPosition(_presetOverlay));
+
+            if (number.HasValue)
+            {
+                e.Handled = true;
+
+                if (e.ClickCount == 1)
+                    _movePreset?.Invoke(number.Value);
+
+                return;
+            }
+
             if (e.ClickCount != 1 || _zoomTransform.ScaleX <= 1.0)
             {
                 return;

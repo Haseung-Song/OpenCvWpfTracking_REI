@@ -107,7 +107,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// 반복 적용하지 않으므로 ErrorNeedMoreImgs, SHRT_MAX 및 열 누락으로
         /// 인한 360° 단절을 방지한다. 완성된 행은 마지막에만 세로 블렌딩한다.
         /// </summary>
-        public BitmapSource StitchRowsAndSave(IEnumerable<IEnumerable<BitmapSource>> sourceRows, string outputPath)
+        public BitmapSource StitchRowsAndSave(IEnumerable<IEnumerable<BitmapSource>> sourceRows, string outputPath, PanoramaCoordinateMetadata coordinates = null)
         {
             DisableOpenClForCurrentProcess();
             Stopwatch totalStopwatch = Stopwatch.StartNew();
@@ -164,9 +164,9 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     try
                     {
-                        panorama = frameRows.Count == 1 ? ComposeSharedLongitudeSingleRow(frameRows[0]) : ComposeSharedLongitudeRowFirstPanorama(
+                        panorama = frameRows.Count == 1 ? ComposeSharedLongitudeSingleRow(frameRows[0], coordinates) : ComposeSharedLongitudeRowFirstPanorama(
                             frameRows,
-                            outputPath
+                            outputPath, coordinates
                         );
                         ConsoleLogHelper.State(
                             "EO PANORAMA / ROW",
@@ -175,6 +175,8 @@ namespace OpenCvWpfTracking.Services.Video
                     }
                     catch (Exception rowFirstException)
                     {
+                        if (coordinates != null)
+                            coordinates.GeometryMode = "UNSUPPORTED_COLUMN_FIRST";
                         panorama?.Dispose();
                         panorama = null;
                         ConsoleLogHelper.Warning(
@@ -222,6 +224,19 @@ namespace OpenCvWpfTracking.Services.Video
                 SavePanoramaDebugMat(outputPath, "output", "panorama_before_crop.jpg", panorama);
 #endif
                 BitmapSource result = SaveAndConvert(panorama, outputPath);
+                if (coordinates != null)
+                {
+                    coordinates.OutputWidth = panorama.Width;
+                    coordinates.OutputHeight = panorama.Height;
+                    try
+                    {
+                        PanoramaPresetRegistration.Save(outputPath, coordinates);
+                    }
+                    catch (Exception metadataError)
+                    {
+                        ConsoleLogHelper.Warning("PANORAMA COORDINATES", "좌표 JSON 저장 실패: " + metadataError.Message);
+                    }
+                }
 #if DEBUG
                 SavePanoramaDebugMat(outputPath, "output", "panorama_final.jpg", panorama);
 #endif
@@ -602,7 +617,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// 행마다 독립 Stitcher가 폭/배율을 바꾸지 않으므로 과거 Row-first의
         /// 수평 띠와 경도 불일치를 막고, Column-first의 선행 구조물 절단도 피한다.
         /// </summary>
-        private static Mat ComposeSharedLongitudeRowFirstPanorama(IList<List<Mat>> frameRows, string outputPath)
+        private static Mat ComposeSharedLongitudeRowFirstPanorama(IList<List<Mat>> frameRows, string outputPath, PanoramaCoordinateMetadata coordinates = null)
         {
             if (frameRows == null ||
                 frameRows.Count < 2 ||
@@ -650,6 +665,8 @@ namespace OpenCvWpfTracking.Services.Video
                 pairRowGains.Add(EstimateStableRowExposureGain(frameRows[rowIndex], frameRows[rowIndex + 1], stableOverlap));
             }
 
+            PanoramaPresetRegistration.SetGeometry(coordinates, frameRows[0][0].Width, frameRows[0][0].Height,
+                sharedContributionWidth, sharedVerticalOverlaps, sharedVerticalOffsets);
             double[] sharedRowGains = BuildCenterAnchoredRowGains(pairRowGains, frameRows.Count);
             Mat[] stitchedRows = new Mat[frameRows.Count];
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -710,9 +727,11 @@ namespace OpenCvWpfTracking.Services.Video
         /// <summary>
         /// 단일 행도 36개 입력 전체와 명시적인 10도 경도를 사용한다.
         /// </summary>
-        private static Mat ComposeSharedLongitudeSingleRow(IList<Mat> frames)
+        private static Mat ComposeSharedLongitudeSingleRow(IList<Mat> frames, PanoramaCoordinateMetadata coordinates = null)
         {
             int contributionWidth = EstimateFixedAngleContributionWidth(frames, "SHARED_SINGLE_ROW_GEOMETRY");
+            PanoramaPresetRegistration.SetGeometry(coordinates, frames[0].Width, frames[0].Height,
+                contributionWidth, new int[0], new int[0]);
             return ComposeFixedAngleFullCircle(frames, "SHARED_SINGLE_ROW", "EXPLICIT_10_DEGREE_GEOMETRY", contributionWidth);
         }
 

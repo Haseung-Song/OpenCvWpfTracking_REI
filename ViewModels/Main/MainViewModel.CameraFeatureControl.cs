@@ -222,11 +222,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ResetDigitalZoomSession()
         {
+            ResetV292Session();
             ResetSpecialFeatureSession();
             ResetPresetLensEvidence();
             _eoDigitalEstimate.Enable(false);
             _irDigitalEstimate.Enable(false);
-
             for (int i = 0; i < 2; i++)
             {
                 _digitalCaps[i] = 0;

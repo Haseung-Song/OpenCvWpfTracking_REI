@@ -137,6 +137,17 @@ namespace OpenCvWpfTracking.Models.Position
             WebAgentConnected = webAgentConnected;
         }
 
+        /// <summary>영점 변경 시 위치 각도만 변환하고 촬영 시각·렌즈·GPS·IMU 근거는 보존한다.</summary>
+        public PositionSnapshot WithReferenceOffset(double panDelta, double tiltDelta)
+        {
+            double? pan = Pan.HasValue ? (double?)(((Pan.Value + panDelta + 180) % 360 + 360) % 360 - 180) : null;
+            double? tilt = Tilt.HasValue ? (double?)(Tilt.Value + tiltDelta) : null;
+            return new PositionSnapshot(CapturedAt, Source, PresetId, pan, tilt,
+                EoZoom, EoFocus, IrZoom, IrFocus, Latitude, Longitude, Altitude,
+                GpsSpeed, GpsCourse, GpsHdop, GpsSatelliteCount, GpsFixStatus,
+                Roll, Pitch, Yaw, PtzStatus, EoLensStatus, IrLensStatus, GpsStatus, ImuStatus, WebAgentConnected);
+        }
+
         public string PositionSummary => "PAN " + FormatDouble(Pan, PtzStatus, "F2") + " / TILT " + FormatDouble(Tilt, PtzStatus, "F2");
 
         public string[] ToExportFields()

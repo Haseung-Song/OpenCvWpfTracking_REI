@@ -298,8 +298,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             try
             {
                 Properties.Settings settings = Properties.Settings.Default;
-                settings.SavedEoRtspUrl = EoSourceAddress?.Trim() ?? string.Empty;
-                settings.SavedIrRtspUrl = IrSourceAddress?.Trim() ?? string.Empty;
+                settings.SavedEoRtspUrl = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(EoSourceAddress?.Trim() ?? string.Empty);
+                settings.SavedIrRtspUrl = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(IrSourceAddress?.Trim() ?? string.Empty);
                 settings.SavedEoRtspPreset = SelectedEoRtspSource?.DisplayName ?? "직접 입력";
                 settings.SavedIrRtspPreset = SelectedIrRtspSource?.DisplayName ?? "직접 입력";
                 settings.SavedControlAgentProfile = SelectedControlAgentProfile.DisplayName;
@@ -346,6 +346,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-09-18: CONNECT 프로필이 LA/WEB 활성 모드의 유일한 결정점이다.
             SelectedEquipmentStatusMode = profile.AgentType == ControlAgentType.LaAgent ? EquipmentStatusMode.Rooftop : EquipmentStatusMode.Environment;
             ApplyControlAgentPanCoordinateMode(profile);
+            ResetV292Session();
+            OnPropertyChanged(nameof(IsAf292PanelVisible));
+            OnPropertyChanged(nameof(V292Enabled));
             ApplyProfilePanTiltSpeedDefault(profile);
 
             foreach (var name in new[]
@@ -509,15 +512,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 StringComparison.OrdinalIgnoreCase
             ));
 
-            if (byName != null && (byName.IsDirectInput || string.Equals(byName.Address, address, StringComparison.OrdinalIgnoreCase)))
+            if (byName != null && (byName.IsDirectInput || string.Equals(OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(byName.Address), OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(address), StringComparison.OrdinalIgnoreCase)))
             {
                 return byName;
             }
 
             return options.FirstOrDefault(option => !option.IsDirectInput &&
                 string.Equals(
-                option.Address,
-                address,
+                OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
+                OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(address),
                 StringComparison.OrdinalIgnoreCase
             )) ?? options.First(option => option.IsDirectInput);
         }

@@ -64,6 +64,18 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Services\Communication\WebAgent\WebAgentV292Protocol.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.WebAgentV292.cs" />
+    <Compile Include="Views\Main\MainWindow.WebAgentV292.cs" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Compile Include="Services\Video\RtspUriNormalization.cs" />
+    <Compile Include="Services\Video\PanoramaReferenceState.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.PanoramaReference.cs" />
+    <Compile Include="Services\Video\PanoramaPresetRegistration.cs" />
+    <Compile Include="Views\Video\PanoramaPresetOverlay.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.PanoramaPresets.cs" />
+    <Compile Include="Views\Main\MainWindow.PanoramaPresets.cs" />
+    <Content Include="V33_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Compile Include="Services\Communication\WebAgent\TelemetryClock.cs" />
     <Compile Include="Services\Communication\WebAgent\CameraFeatureProtocol.cs" />
     <Compile Include="Models\Main\CameraSpecialFeatureRow.cs" />
@@ -88,7 +100,6 @@
     <Compile Include="Views\Video\PanoramaLinkedView.cs" />
     <Compile Include="Views\Main\MainWindow.LegacyFeatures.cs" />
     <Compile Include="Services\Control\IrFocusMotionPlanner.cs" />
-    <Content Include="V32_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Resource Include="Images\Demo\Toruss.ico" />
     <Reference Include="FFmpeg.AutoGen, Version=8.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\FFmpeg.AutoGen.8.1.0\lib\netstandard2.0\FFmpeg.AutoGen.dll</HintPath>

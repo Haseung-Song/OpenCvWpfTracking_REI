@@ -46,15 +46,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 2026-10-02: 선택한 11단계(LEVEL 0~10) Zoom Position을 현재 장비 구성에 적용한다.
+        /// WEB AGENT에서 선택한 11단계(LEVEL 0~10)의 실측 화각 대응 위치를 적용한다.
         ///
-        /// 환경장비:
-        /// - Web Agent 기준 EO / IR Position 0 ~ 1000을 동일하게 송신
-        ///
-        /// 옥상장비:
-        /// - IR은 0 ~ 1000 Position 그대로 송신
-        /// - EO는 표준 Position을 CTEC Raw 0 ~ 16384로 변환한 뒤
-        ///   현재 위치 피드백을 보면서 Tele / Wide / Stop으로 이동
+        /// EO/IR 렌즈별 목표 위치는 각각 계산하며 동일한 값을 단순 복사하지 않는다.
+        /// LA 구성은 동기화 탭과 실행 경로를 차단한다.
         /// </summary>
         private async Task ApplySelectedZoomSyncLevelAsync()
         {
@@ -870,17 +865,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task ApplySelectedFocusSyncLevelAsync()
         {
-            // 숨겨진 탭 외의 호출에서도 LA 초점 동기화를 시작하지 않는다.
+            // LA 장비는 IR 구성이 달라 동기화 명령을 실행하지 않는다.
             if (!IsEnvironmentStatusSelected)
             {
                 return;
             }
 
+            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
+                return;
             ConsoleLogHelper.Command(
                 "FOCUS SYNC",
-                $"Apply requested / EQUIPMENT={SelectedEquipmentStatusMode} / TARGET={SelectedFocusSyncLevel?.Position.ToString() ?? "NULL"}"
-            );
-            ZoomSyncLevelOption selectedLevel = SelectedFocusSyncLevel;
+                $"Apply requested / EQUIPMENT={SelectedEquipmentStatusMode} / TARGET={SelectedFocusSyncLevel?.Position.ToString() ?? "NULL"}");
+
+            ZoomSyncLevelOption selectedLevel =
+                SelectedFocusSyncLevel;
 
             if (selectedLevel == null)
             {
@@ -901,8 +899,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// 새 명령 시작 전 불필요한 장비 명령을 보내지 않도록
             /// 기존 Token만 취소 / 정리한다.
             /// </summary>
-            CancellationTokenSource previousCts = _rooftopFocusSyncCts;
-            _rooftopFocusSyncCts = null;
+            CancellationTokenSource previousCts =
+                _rooftopFocusSyncCts;
+
+            _rooftopFocusSyncCts =
+                null;
 
             if (previousCts != null)
             {
@@ -910,18 +911,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 previousCts.Dispose();
             }
 
-            short standardPosition = selectedLevel.Position;
-            FocusSyncStatusText = $"APPLYING LEVEL {selectedLevel.Level}";
+            short standardPosition =
+                selectedLevel.Position;
+
+            FocusSyncStatusText =
+                $"APPLYING LEVEL {selectedLevel.Level}";
             _ptzPerformanceScenario = "FOCUS_SYNC";
+
             // APPLYING 문구를 먼저 화면에 반영한 뒤 Zoom Sync와 동일하게
             // 장비별 명령 결과와 영상 연결 상태를 합쳐 최종 결과를 표시한다.
-            await Dispatcher.Yield(DispatcherPriority.Background);
-            bool isIrConnected = _irDecoder.IsOpened || _isIrFrameDisplayed;
-            CancellationTokenSource focusSyncCts = new CancellationTokenSource();
-            _rooftopFocusSyncCts = focusSyncCts;
-            bool eoResult = false;
-            bool irResult = false;
-            long eoStartSequence = Interlocked.Read(ref _eoLensStatusVersion);
+            await Dispatcher.Yield(
+                DispatcherPriority.Background);
+
+            bool isIrConnected =
+                _irDecoder.IsOpened ||
+                _isIrFrameDisplayed;
+
+            CancellationTokenSource focusSyncCts =
+                new CancellationTokenSource();
+
+            _rooftopFocusSyncCts =
+                focusSyncCts;
+
+            bool eoResult =
+                false;
+
+            bool irResult =
+                false;
+
+            long eoStartSequence =
+                Interlocked.Read(ref _eoLensStatusVersion);
+
             bool wasCanceled = false;
 
             try
@@ -930,19 +950,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 /// IR Focus 목표값을 현재 장비의 상태 좌표로 변환한다.
                 /// LA 상태만 표준 방향과 반대이며 Web Agent 상태는 동일하다.
                 /// </summary>
-                int irRawTargetPosition = ConvertIrFocusStandardToStatusPosition(standardPosition);
+                int irRawTargetPosition =
+                    ConvertIrFocusStandardToStatusPosition(
+                        standardPosition);
 
                 if (!isIrConnected)
                 {
-                    ConsoleLogHelper.Command("FOCUS SYNC", "IR move skipped - camera disconnected");
+                    ConsoleLogHelper.Command(
+                        "FOCUS SYNC",
+                        "IR move skipped - camera disconnected");
                 }
 
-                if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
+                if (SelectedEquipmentStatusMode ==
+                    EquipmentStatusMode.Environment)
                 {
                     /// <summary>
                     /// 환경장비 EO Focus는 기존 Web Agent Absolute 명령을 사용한다.
                     /// </summary>
-                    eoResult = _controlCommandService.EoFocusGoPosition(standardPosition);
+                    eoResult =
+                        _controlCommandService
+                            .EoFocusGoPosition(
+                                standardPosition);
 
                     if (!isIrConnected)
                     {
@@ -950,35 +978,64 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                     else
                     {
-                        irResult = await MoveIrFocusToPositionAsync(irRawTargetPosition, focusSyncCts.Token);
+                        irResult = await MoveIrFocusToPositionAsync(
+                                irRawTargetPosition,
+                                focusSyncCts.Token);
                     }
+
                 }
                 else
                 {
-                    Task<bool> irMoveTask = isIrConnected ? MoveIrFocusToPositionAsync(
-                        irRawTargetPosition,
-                        focusSyncCts.Token
-                    ) : Task.FromResult(false);
-                    RtspSourceOption ctecSource = _connectedEoCtecSource;
+                    Task<bool> irMoveTask =
+                        isIrConnected
+                            ? MoveIrFocusToPositionAsync(
+                                irRawTargetPosition,
+                                focusSyncCts.Token)
+                            : Task.FromResult(false);
+
+                    RtspSourceOption ctecSource =
+                        _connectedEoCtecSource;
 
                     if (ctecSource == null)
                     {
-                        irResult = await irMoveTask;
+                        irResult =
+                            await irMoveTask;
                     }
                     else
                     {
-                        int eoRawTarget = ConvertStandardFocusToCtecRaw(standardPosition);
-                        Task<bool> eoMoveTask = MoveRooftopEoFocusToRawPositionAsync(ctecSource, eoRawTarget, focusSyncCts.Token);
-                        bool[] moveResults = await Task.WhenAll(eoMoveTask, irMoveTask);
-                        eoResult = moveResults[0];
-                        irResult = moveResults[1];
+                        int eoRawTarget =
+                            ConvertStandardFocusToCtecRaw(
+                                standardPosition);
+
+                        Task<bool> eoMoveTask =
+                            MoveRooftopEoFocusToRawPositionAsync(
+                                ctecSource,
+                                eoRawTarget,
+                                focusSyncCts.Token);
+
+                        bool[] moveResults =
+                            await Task.WhenAll(
+                                eoMoveTask,
+                                irMoveTask);
+
+                        eoResult =
+                            moveResults[0];
+
+                        irResult =
+                            moveResults[1];
                     }
+
                 }
 
                 if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment && eoResult)
                 {
-                    eoResult = await WaitForEnvironmentEoLensTargetAsync(standardPosition, false, eoStartSequence, focusSyncCts.Token);
+                    eoResult = await WaitForEnvironmentEoLensTargetAsync(
+                        standardPosition,
+                        false,
+                        eoStartSequence,
+                        focusSyncCts.Token);
                 }
+
             }
             catch (OperationCanceledException)
             {
@@ -993,23 +1050,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             finally
             {
-                if (ReferenceEquals(_rooftopFocusSyncCts, focusSyncCts))
+                if (ReferenceEquals(
+                        _rooftopFocusSyncCts,
+                        focusSyncCts))
                 {
-                    _rooftopFocusSyncCts = null;
+                    _rooftopFocusSyncCts =
+                        null;
+
                 }
 
                 // 실행 중인 await가 모두 종료된 뒤 실행 작업이 토큰을 해제한다.
                 focusSyncCts.Dispose();
+
                 _ptzPerformanceScenario = "IDLE";
+
                 _lensSyncOperationLock.Release();
+
             }
 
-            eoResult = eoResult && (_eoDecoder.IsOpened || _isEoFrameDisplayed);
-            irResult = irResult && (_irDecoder.IsOpened || _isIrFrameDisplayed);
+            eoResult = eoResult &&
+                (_eoDecoder.IsOpened || _isEoFrameDisplayed);
+
+            irResult = irResult &&
+                (_irDecoder.IsOpened || _isIrFrameDisplayed);
 
             if (!wasCanceled && !FocusSyncStatusText.StartsWith("ERROR", StringComparison.Ordinal))
             {
-                FocusSyncStatusText = !irResult ? "INCOMPLETE / IR FOCUS TARGET NOT CONFIRMED" : eoResult ? $"COMPLETED / LEVEL {selectedLevel.Level}" : $"COMPLETED / LEVEL {selectedLevel.Level} / EO VERIFY WARNING";
+                FocusSyncStatusText = !irResult
+                    ? "INCOMPLETE / IR FOCUS TARGET NOT CONFIRMED"
+                    : eoResult
+                        ? $"COMPLETED / LEVEL {selectedLevel.Level}"
+                        : $"COMPLETED / LEVEL {selectedLevel.Level} / EO VERIFY WARNING";
             }
         }
 

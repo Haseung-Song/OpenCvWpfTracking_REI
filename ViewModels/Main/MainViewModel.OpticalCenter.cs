@@ -158,6 +158,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 throw new InvalidOperationException("새 줌/PAN/TILT 수신값이 필요합니다.");
 
             OpticalCenters.Save(OpticalCenterKey(ir), OpticalZoom(ir), center);
+            InvalidatePanoramaReference();
             Common.ConsoleLogHelper.State(
                 "OPTICAL CENTER",
                 (ir ? "IR" : "EO") + " / ZOOM=" + OpticalZoom(ir) + " / NORMALIZED=" + center
@@ -167,7 +168,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 선택 채널의 보정값을 기본 중심으로 복원한다.
         /// </summary>
-        public void ResetOpticalCenter(bool ir) => OpticalCenters.Reset(OpticalCenterKey(ir));
+        public void ResetOpticalCenter(bool ir)
+        {
+            OpticalCenters.Reset(OpticalCenterKey(ir));
+            InvalidatePanoramaReference();
+        }
 
         /// <summary>
         /// 위치 기준 변경을 등록된 화면에 알린다.

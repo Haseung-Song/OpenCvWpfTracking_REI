@@ -120,6 +120,7 @@ namespace OpenCvWpfTracking.Common
             if (string.IsNullOrWhiteSpace(rtspAddress))
                 return string.Empty;
 
+            rtspAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(rtspAddress);
             int scheme = rtspAddress.IndexOf("://", StringComparison.Ordinal);
 
             if (scheme < 0)

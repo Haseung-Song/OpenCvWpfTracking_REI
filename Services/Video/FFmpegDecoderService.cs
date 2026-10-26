@@ -286,7 +286,7 @@ namespace OpenCvWpfTracking.Services.Video
                 if (cancellationToken.IsCancellationRequested)
                     return false;
 
-                bool opened = OpenWithAuthenticationFallback(rtspUrl);
+                bool opened = OpenWithAuthenticationFallback(RtspUriNormalization.Connect(rtspUrl));
 
                 if (!cancellationToken.IsCancellationRequested)
                     return opened;

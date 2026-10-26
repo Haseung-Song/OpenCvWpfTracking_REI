@@ -155,11 +155,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 현재 프리셋과 순서 정보를 저장하며 기존 파일 보존 규칙을 적용한다.
         /// </summary>
-        private void SavePresetStorage()
+        private bool SavePresetStorage()
         {
             if (_isLoadingPresetStorage)
             {
-                return;
+                return false;
             }
 
             try
@@ -202,10 +202,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 ConsoleLogHelper.State("PRESET STORAGE", "Saved CSV / PATH=" + PresetStoragePath);
                 CsvExcelCompanion.Create(PresetStoragePath);
+                return true;
             }
             catch (Exception ex)
             {
                 ConsoleLogHelper.Error("PRESET STORAGE", "Save failed", ex);
+                return false;
             }
         }
 

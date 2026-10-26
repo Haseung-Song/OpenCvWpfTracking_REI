@@ -10,6 +10,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+        public OpenCvWpfTracking.Services.Video.PanoramaCoordinateMetadata LastPanoramaCoordinates { get; private set; }
+
         private bool _isPanoramaCaptureRunning;
 
         private bool _isPanoramaProcessingRunning;
@@ -266,6 +268,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 throw new InvalidOperationException(blockReason);
             }
 
+            LastPanoramaCoordinates = null;
             ClearRawEoPanoramaFrame();
             double originalPan = _currentPan;
             double originalTilt = _currentTilt;
@@ -273,6 +276,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
             IList<double> tiltTargets = BuildPanoramaTiltTargets(selectedOptionIndex, originalTilt);
             int selectedTiltRangeDegrees = (selectedOptionIndex + 1) * 12;
             int totalFrameCount = tiltTargets.Count * PanoramaCaptureFrameCount;
+            var tuning = ControlTuningForPanorama(false);
+            var center = GetOpticalCenter(false);
+            var coordinates = new OpenCvWpfTracking.Services.Video.PanoramaCoordinateMetadata
+            {
+                CapturePanOffset = PanoramaReference.PanOffset,
+                CaptureTiltOffset = PanoramaReference.TiltOffset,
+                ReferencePan = originalPan,
+                ReferenceTilt = originalTilt,
+                CaptureRange = selectedTiltRangeDegrees,
+                CaptureDateTime = DateTimeOffset.Now.ToString("o"),
+                ContextHash = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.ContextIdentity(PanoramaPresetContext),
+                OpticalCenterX = center.X,
+                OpticalCenterY = center.Y,
+                VerticalFov = 2 * Math.Atan(Math.Tan(tuning.Item1 * Math.PI / 360) / tuning.Item2) * 180 / Math.PI
+            };
             // 2026-09-08: UI 범위와 실제 장비 Tilt Target의 연결을 명시한다.
             ConsoleLogHelper.StateSection(
                 "PANORAMA CONFIG",
@@ -344,6 +362,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
 
                     List<BitmapSource> capturedFrames = new List<BitmapSource>(PanoramaCaptureFrameCount);
+                    var coordinateRow = new OpenCvWpfTracking.Services.Video.PanoramaCoordinateRow { TargetTilt = targetTilt };
+                    double tiltSum = 0;
 
                     for (int index = 0; index < PanoramaCaptureFrameCount; index++)
                     {
@@ -394,6 +414,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         }
 
                         capturedFrames.Add(frozenFrame);
+                        coordinateRow.FramePans.Add(_currentPan);
+                        tiltSum += _currentTilt;
                         ConsoleLogHelper.Info(
                             "EO PANORAMA / FRAME",
                             "Frame captured / ROW=" + (rowIndex + 1) + " / FRAME=" + (index + 1) + "/" + PanoramaCaptureFrameCount + " / PAN=" + _currentPan.ToString("F2") + " / TILT=" + _currentTilt.ToString("F2") + " / SPEED=" + capturePositionSpeed + " / STABLE_MS=" + frameStabilizationMs + " / SOURCE=RAW_NO_OVERLAY" + " / SIZE=" + frozenFrame.PixelWidth + "x" + frozenFrame.PixelHeight
@@ -411,7 +433,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     // 역방향 촬영 Row도 합성 입력은 정방향 Pan 순서로 통일한다.
                     if (reversePanDirection)
+                    {
                         capturedFrames.Reverse();
+                        coordinateRow.FramePans.Reverse();
+                    }
+                    coordinateRow.ActualTilt = tiltSum / capturedFrames.Count;
+                    coordinates.Rows.Add(coordinateRow);
 
                     capturedRows.Add(capturedFrames);
                     ConsoleLogHelper.State(
@@ -424,6 +451,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "EO PANORAMA",
                     "Frame capture completed / ROWS=" + capturedRows.Count + " / TOTAL_COUNT=" + totalFrameCount
                 );
+                LastPanoramaCoordinates = coordinates;
                 return capturedRows;
             }
             catch (OperationCanceledException)

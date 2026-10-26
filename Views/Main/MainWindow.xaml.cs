@@ -202,6 +202,7 @@ namespace OpenCvWpfTracking
             _pcTitleBarClockTimer.Start();
             LayoutUpdated += AlignPcClockWithLogo;
             LoadLatestGeneratedPanoramaOrKeepDefault();
+            InitializePanoramaPresets();
             // 파노라마 추가 화면은 보관하고 기존 파노라마 화면을 유지한다.
         }
 
@@ -593,8 +594,9 @@ namespace OpenCvWpfTracking
 
         protected override void OnClosed(EventArgs e)
         {
+            vm?.CancelPanoramaPresets();
+            vm?.StopPrecisionMotion("프로그램 종료");
             ShutdownV30Ui();
-
             /*
              * 2026-08-26: Application.Current가 해제되기 전에 ViewModel의
              * AI 수신, 이벤트 Timer와 영상 연결을 먼저 종료한다.
@@ -610,14 +612,19 @@ namespace OpenCvWpfTracking
                 _panoramaCaptureCts?.Cancel();
                 vm.ShutdownForApplicationExit();
 
-                if (_fireDetectorTestProgram != null && !_fireDetectorTestProgram.HasExited)
+                if (_fireDetectorTestProgram != null &&
+                    !_fireDetectorTestProgram.HasExited)
                 {
                     _fireDetectorTestProgram.Kill();
                 }
+
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Error("APPLICATION / SHUTDOWN", "Main window cleanup failed", ex);
+                ConsoleLogHelper.Error(
+                    "APPLICATION / SHUTDOWN",
+                    "Main window cleanup failed",
+                    ex);
             }
 
             base.OnClosed(e);
@@ -1616,7 +1623,7 @@ namespace OpenCvWpfTracking
                 NewPanoramaButton.IsEnabled = false;
                 string outputPath = GetNextPanoramaOutputPath();
                 ConsoleLogHelper.Info("EO PANORAMA / UI", "Stitch phase dispatched / OUTPUT=" + outputPath);
-                BitmapSource panorama = await Task.Run(() => _eoPanoramaStitchingService.StitchRowsAndSave(frameRows, outputPath));
+                BitmapSource panorama = await Task.Run(() => _eoPanoramaStitchingService.StitchRowsAndSave(frameRows, outputPath, vm.LastPanoramaCoordinates));
                 PanoramaImage.Source = panorama;
                 _currentPanoramaFilePath = outputPath;
                 PanoramaEmptyText.Visibility = Visibility.Collapsed;
@@ -1860,6 +1867,7 @@ namespace OpenCvWpfTracking
                     Owner = this
                 };
                 _panoramaPreviewWindow = previewWindow;
+                DrawPanoramaPresetLinks();
                 previewWindow.Closed += (closedSender, closedArgs) =>
                 {
                     if (ReferenceEquals(_panoramaPreviewWindow, previewWindow))
@@ -2133,8 +2141,11 @@ namespace OpenCvWpfTracking
         /// KeyUp 이벤트가 들어오지 않을 수 있으므로,
         /// 키보드 Pan / Tilt 상태를 강제로 초기화하고 정지한다.
         /// </summary>
-        private void Window_Deactivated(object sender, EventArgs e)
+        private void Window_Deactivated(
+            object sender,
+            EventArgs e)
         {
+            vm?.StopPrecisionMotion("창 포커스 이탈");
             if (vm.IsGlobalControlEnabled)
             {
                 vm.ReleaseControlOwner("main");
@@ -2142,7 +2153,6 @@ namespace OpenCvWpfTracking
                 vm.ReleaseControlOwner("video");
                 return;
             }
-
             vm.ReleaseAllControlInputs("Window deactivated");
             StopActiveHoverLensMove();
             vm?.ResetAllKeyboardControlState();

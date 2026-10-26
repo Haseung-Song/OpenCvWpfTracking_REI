@@ -544,6 +544,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-08-24: AUTO SCAN 중 PRESET L / PRESET W 탭 전환과 상태 확인만 허용한다.
         /// </summary>
         public bool IsOperationCommandEnabled =>
+            !IsPanoramaPresetRunning &&
+            !_precisionActive && !_precisionStopUncertain &&
             !IsHomePositionMoving &&
             !IsPresetScanControlLocked &&
             !IsPanoramaCaptureRunning &&
@@ -560,6 +562,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-08-21: HOME, AUTO SCAN, 파노라마 작업 중 이벤트 목록 변경 버튼을 잠근다.
         /// </summary>
         public bool IsEventAlertControlEnabled =>
+            !IsPanoramaPresetRunning &&
             !IsHomePositionMoving &&
             !IsPresetScanControlLocked &&
             !IsPanoramaCaptureRunning &&
@@ -636,16 +639,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 화면의 작업 중지 버튼은 별도의 마우스 명령으로 계속 사용할 수 있다.
         /// </summary>
         public bool IsControlInputLocked =>
+            IsPanoramaPresetRunning ||
+            _precisionActive || _precisionStopUncertain ||
             IsHomePositionMoving ||
             IsPresetScanControlLocked ||
             IsPanoramaCaptureRunning ||
             IsPanoramaProcessingRunning;
 
         public string ControlLockTitle =>
-            IsPanoramaCompleted ? "360° PANORAMA COMPLETED" : IsPanoramaCancellationCompleted ? "360° PANORAMA CANCELED" : IsPanoramaCancellationRequested ? "360° PANORAMA CANCELING" : IsPanoramaProcessingRunning ? "360° PANORAMA OPERATION" : IsPresetScanControlLocked ? "AUTO SCAN OPERATION" : HomeZeroLockTitle;
+            IsPanoramaPresetRunning ? "PANORAMA PRESET MOVING" :
+            _precisionStopUncertain ? "정밀 이동 정지 송신 미확인" :
+            _precisionActive ? "정밀 이동 시험 중" :
+            IsPanoramaCompleted
+                ? "360° PANORAMA COMPLETED"
+                : IsPanoramaCancellationCompleted
+                ? "360° PANORAMA CANCELED"
+                : IsPanoramaCancellationRequested
+                ? "360° PANORAMA CANCELING"
+                : IsPanoramaProcessingRunning
+                ? "360° PANORAMA OPERATION"
+                : IsPresetScanControlLocked
+                ? "AUTO SCAN OPERATION"
+                : HomeZeroLockTitle;
 
         public string ControlLockMessage =>
-            IsPanoramaCompleted ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED" : IsPanoramaCancellationCompleted ? "CAPTURE CANCELED / START POSITION RESTORED" : IsPanoramaCancellationRequested ? "CANCELING / RETURNING TO START POSITION..." : IsPanoramaProcessingRunning ? IsPanoramaCaptureRunning ? "EO CAMERA AUTO PAN / CAPTURING..." : "FEATURE MATCHING / BLENDING / SAVING..." : IsLaPresetScanRunning ? "PRESET L AUTO SCAN RUNNING" : IsPresetScanRunning ? "PRESET W AUTO SCAN RUNNING" : HomeZeroLockMessage;
+            IsPanoramaPresetRunning ? "STOP TO CANCEL PRESET MOVE" :
+            _precisionStopUncertain ? "다른 제어 잠금 / STOP 재시도 및 장비 정지 여부 현장 확인 필요" :
+            _precisionActive ? "다른 제어 잠금 / 정밀 이동 STOP 또는 수동 STOP 사용" :
+            IsPanoramaCompleted
+                ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED"
+                : IsPanoramaCancellationCompleted
+                ? "CAPTURE CANCELED / START POSITION RESTORED"
+                : IsPanoramaCancellationRequested
+                ? "CANCELING / RETURNING TO START POSITION..."
+                : IsPanoramaProcessingRunning
+                ? IsPanoramaCaptureRunning
+                    ? "EO CAMERA AUTO PAN / CAPTURING..."
+                    : "FEATURE MATCHING / BLENDING / SAVING..."
+                : IsLaPresetScanRunning
+                ? "PRESET L AUTO SCAN RUNNING"
+                : IsPresetScanRunning
+                    ? "PRESET W AUTO SCAN RUNNING"
+                    : HomeZeroLockMessage;
 
         /// <summary>
         /// 현재 선택된 Zoom Sync Level
@@ -1266,6 +1301,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// 통신 설정 탭의 EO 카메라 선택 ComboBox와 양방향 바인딩한다.
         /// </summary>
+        /// <summary>UI 전용 주소는 인증정보만 사람이 읽는 형태로 표시한다.</summary>
+        public string EoSourceDisplayAddress
+        {
+            get => OpenCvWpfTracking.Services.Video.RtspUriNormalization.Display(EoSourceAddress);
+            set => EoSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
+        }
+
+        /// <summary>프로필·AI 연동·연결에 사용하는 내부 인코딩 주소다.</summary>
         public string EoSourceAddress
         {
             get => _eoSourceAddress;
@@ -1276,8 +1319,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                _eoSourceAddress = value;
+                _eoSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(EoSourceDisplayAddress));
                 /*
                  * EO RTSP 주소가 외부 로직에서 변경된 경우에도
                  * 통신 설정 ComboBox 선택 항목을 함께 갱신한다.
@@ -1306,7 +1350,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get
             {
                 return _selectedEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(option => string.Equals(
-                    option.Address,
+                    OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
                     EoSourceAddress,
                     StringComparison.OrdinalIgnoreCase
                 )) ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
@@ -1340,6 +1384,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         ///
         /// 통신 설정 탭의 IR 카메라 선택 ComboBox와 양방향 바인딩한다.
         /// </summary>
+        /// <summary>IR 직접 입력 UI와 내부 연결 주소를 분리한다.</summary>
+        public string IrSourceDisplayAddress
+        {
+            get => OpenCvWpfTracking.Services.Video.RtspUriNormalization.Display(IrSourceAddress);
+            set => IrSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
+        }
+
+        /// <summary>내부 IR 연결과 설정 저장에는 인코딩 주소를 유지한다.</summary>
         public string IrSourceAddress
         {
             get => _irSourceAddress;
@@ -1350,8 +1402,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                _irSourceAddress = value;
+                _irSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IrSourceDisplayAddress));
                 OnPropertyChanged(nameof(SelectedIrRtspSource));
                 OnPropertyChanged(nameof(IsIrRtspDirectInput));
             }
@@ -1364,7 +1417,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get =>
                 _selectedIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(option => string.Equals(
-                option.Address,
+                OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
                 IrSourceAddress,
                 StringComparison.OrdinalIgnoreCase
             )) ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);

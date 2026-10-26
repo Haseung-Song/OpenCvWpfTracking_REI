@@ -25,17 +25,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly SemaphoreSlim _inputReconcile = new SemaphoreSlim(1, 1);
 
-        private bool _isFovSpeedEnabled = true, _isGlobalControlEnabled, _isVideoClickCenterEnabled = true;
+        private bool _isFovSpeedEnabled = true;
+
+        private bool _isGlobalControlEnabled;
+
+        private bool _isVideoClickCenterEnabled = true;
 
         private bool _isZoomRatioOverlayVisible = true;
 
         private int _inputEpoch;
 
-        private long _eoLensReceivedTicks, _irLensReceivedTicks;
+        private long _eoLensReceivedTicks;
+
+        private long _irLensReceivedTicks;
 
         private DispatcherTimer _v30StatusTimer;
 
-        private string _lastZoomNotification, _lastPowerNotification;
+        private string _lastZoomNotification;
+
+        private string _lastPowerNotification;
 
         private bool _replayControlInputs;
 
@@ -438,21 +446,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void PressControlInput(string token, string axis, int x, int y, bool ir)
         {
+            if ((axis == "EF" && IsAf292FocusBlocked(false)) || (axis == "IF" && IsAf292FocusBlocked(true)))
+                return;
             // 2026-10-12: 거절한 화면 입력은 원인을 진단할 수 있도록 기록한다.
             string blocked = IsControlInputLocked ? "CONTROL_LOCK" : !IsOperationCommandEnabled ? "OPERATION_LOCK" : !_isDeviceConnectionRequested ? "NO_REQUESTED_CONNECTION" : !_laTcpService.IsConnected ? "TCP_DISCONNECTED" : null;
-
             if (blocked != null)
             {
-                ConsoleLogHelper.Warning(
-                    "PTZF INPUT",
-                    "REJECTED / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / REASON=" + blocked
-                );
+                ConsoleLogHelper.Warning("PTZF INPUT", "REJECTED / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / REASON=" + blocked);
                 return;
             }
 
             if (_controlInputs.ContainsKey(token))
                 return;
-
             // 2026-10-12: 수동 입력은 대기 중이거나 실행 중인 클릭 중심 이동보다 우선한다.
             if (_videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue)
             {
@@ -463,10 +468,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             SetActivePanTiltZoomSource(ir);
             _controlInputs[token] = Tuple.Create(axis, x, y);
-            ConsoleLogHelper.Command(
-                "PTZF INPUT",
-                "PRESS / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / X=" + x + " / Y=" + y
-            );
+            ConsoleLogHelper.Command("PTZF INPUT", "PRESS / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / X=" + x + " / Y=" + y);
             ReconcileControlInputs();
         }
 

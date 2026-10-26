@@ -65,6 +65,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>연결마다 이전 캐시 시각과 기능 협상 결과를 비운다.</summary>
         private void ResetWebAgentTelemetrySession()
         {
+            ResetV292Session();
             _webAgentTelemetryClock.Reset();
             _webAgentTelemetryClockGeneration = -1;
             Interlocked.Exchange(ref _webAgentTelemetryNegotiationStarted, 0);
@@ -73,12 +74,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Interlocked.Exchange(ref _webAgentPanSampleMilliseconds, 0);
             Interlocked.Exchange(ref _webAgentTiltSampleMilliseconds, 0);
             Interlocked.Exchange(ref _webAgentPowerSampleMilliseconds, 0);
-
             for (int index = 0; index < _webAgentLensSampleMilliseconds.Length; index++)
             {
                 Interlocked.Exchange(ref _webAgentLensSampleMilliseconds[index], 0);
             }
-
             _irFocusDirectUnavailableSession = null;
         }
 
@@ -144,7 +143,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ParseWebAgentV18Packet(LaResponsePacket packet)
         {
             byte[] payload = packet.Payload;
-
             try
             {
                 switch (packet.Function)
@@ -199,6 +197,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         break;
                     case 0x34:
                         ParseWebAgentTelemetrySetting(payload);
+                        break;
+                    case 0x35:
+                        ParseAutoFocusV292(payload);
                         break;
                 }
             }
@@ -804,15 +805,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (p.Length < 6)
                 return;
-
+            HandlePrecisionUnavailable(p);
             if (p[0] == 1 && p[2] == 0 && p[3] == 0x2B)
             {
                 _irFocusDirectUnavailableSession = _connectionSessionId;
             }
-
             DispatchSpecialFeaturePacket(p, ApplySpecialFeatureUnavailable);
             HandleGpsUnavailable(p);
-
             if (p[2] == 0x1D && p[3] == 0xE9 && p[4] < 2)
             {
                 byte target = p[4];
@@ -822,18 +821,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ApplyDigitalZoomUnavailable(target);
                 }));
             }
-
-            ConsoleLogHelper.Warning(
-                "WEB AGENT V1.8",
-                string.Format(
+            ConsoleLogHelper.Warning("WEB AGENT V1.8", string.Format(
                 "Request unavailable / STATUS={0} / REQUEST={1:X2}{2:X2}{3:X2}{4:X2}",
-                p[1],
-                p[2],
-                p[3],
-                p[4],
-                p[5]
-            )
-            );
+                p[1], p[2], p[3], p[4], p[5]));
         }
     }
 }

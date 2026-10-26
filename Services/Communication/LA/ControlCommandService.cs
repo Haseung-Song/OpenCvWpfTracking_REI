@@ -72,6 +72,31 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [TORUSS] 제어 [Packet] 생성 및 송신
         /// </summary>
+        /// <summary>정밀 이동은 속도와 위치를 같은 프레임으로 묶으며 기존 속도 설정을 변경하지 않는다.</summary>
+        public bool SendPrecisionAbsolute(bool tilt, double guiAngle, double speed, double maximum)
+        {
+            if (tilt ? !UseUnsignedWebAgentTiltCoordinates : !UseUnsignedWebAgentPanCoordinates)
+                return false;
+            return _tcpClientService.Send(WebAgentV292Protocol.Absolute(_unitId, tilt, guiAngle, speed, maximum));
+        }
+
+        /// <summary>정밀 조그는 방향을 명령 첫째 바이트에 넣는다. 영 방향은 양 축 정지이다.</summary>
+        public bool SendPrecisionJog(byte direction, double panSpeed, double tiltSpeed, double maximum)
+        {
+            if (!UseUnsignedWebAgentPanCoordinates || !UseUnsignedWebAgentTiltCoordinates)
+                return false;
+            return _tcpClientService.Send(WebAgentV292Protocol.Jog(_unitId, direction, panSpeed, tiltSpeed, maximum));
+        }
+
+        /// <summary>자동 초점 조회·설정·한 번 실행을 구분하여 전송한다.</summary>
+        public bool SendAutoFocusV292(byte command, byte target, byte value)
+        {
+            return _tcpClientService.Send(WebAgentV292Protocol.AutoFocus(_unitId, command, target, value));
+        }
+
+        /// <summary>
+        /// [TORUSS] 제어 [Packet] 생성 및 송신
+        /// </summary>
         public bool SendCommand(byte cmd1, byte cmd2, byte data1, byte data2)
         {
             byte[] packet =

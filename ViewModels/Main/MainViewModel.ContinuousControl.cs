@@ -854,58 +854,101 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private async Task StartEoFocusNearMoveAsync()
         {
-            if (_currentMoveType != ContinuousMoveType.None)
+            if (IsAf292FocusBlocked(false))
+                return;
+            if (_currentMoveType !=
+                ContinuousMoveType.None)
             {
                 return;
             }
 
-            int sequence = Interlocked.Increment(ref _eoFocusCommandSequence);
-            _lastEoFocusCommandName = "NEAR";
-            _lastEoFocusCommandElapsedMs = _focusLogStopwatch.ElapsedMilliseconds;
-            _currentMoveType = ContinuousMoveType.EoFocus;
+            int sequence =
+                Interlocked.Increment(
+                    ref _eoFocusCommandSequence);
+
+            _lastEoFocusCommandName =
+                "NEAR";
+
+            _lastEoFocusCommandElapsedMs =
+                _focusLogStopwatch.ElapsedMilliseconds;
+
+            _currentMoveType =
+                ContinuousMoveType.EoFocus;
+
             Console.WriteLine();
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"NEAR START / " + $"ELAPSED={_lastEoFocusCommandElapsedMs}ms / " + $"CURRENT={_currentEoFocus}");
+            Console.WriteLine(
+                $"[{DateTime.Now:HH:mm:ss.fff}] " +
+                $"[FOCUS COMMAND #{sequence}] " +
+                $"NEAR START / " +
+                $"ELAPSED={_lastEoFocusCommandElapsedMs}ms / " +
+                $"CURRENT={_currentEoFocus}");
+
             ConsoleLogHelper.PrintLine();
+
             bool result;
 
-            if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
+            if (TryGetSelectedEoCtecSource(
+                    out RtspSourceOption ctecSource))
             {
-                _activeEoCtecSource = ctecSource;
-                Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CTEC CGI DIRECT");
-                result = await _ctecCameraCommandService.StartFocusNearAsync(
-                    ctecSource.ControlIp,
-                    ctecSource.ControlUserName,
-                    ctecSource.ControlPassword,
-                    ctecSource.UseHttps,
-                    RooftopMr300EoCtecControlSpeed
-                );
+                _activeEoCtecSource =
+                    ctecSource;
 
+                Console.WriteLine(
+                    "[CONTROL] EO FOCUS ROUTE : CTEC CGI DIRECT");
+
+                result =
+                    await _ctecCameraCommandService
+                        .StartFocusNearAsync(
+                            ctecSource.ControlIp,
+                            ctecSource.ControlUserName,
+                            ctecSource.ControlPassword,
+                            ctecSource.UseHttps,
+                            RooftopMr300EoCtecControlSpeed);
                 if (!result)
                 {
                     _activeEoCtecSource = null;
                     Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
                     result = _controlCommandService.StartEoFocusNear();
                 }
+
             }
             else
             {
-                _activeEoCtecSource = null;
-                Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CONTROL AGENT");
-                result = _controlCommandService.StartEoFocusNear();
+                _activeEoCtecSource =
+                    null;
+
+                Console.WriteLine(
+                    "[CONTROL] EO FOCUS ROUTE : CONTROL AGENT");
+
+                result =
+                    _controlCommandService
+                        .StartEoFocusNear();
             }
 
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"SEND RESULT={result}");
+            Console.WriteLine(
+                $"[{DateTime.Now:HH:mm:ss.fff}] " +
+                $"[FOCUS COMMAND #{sequence}] " +
+                $"SEND RESULT={result}");
 
-            if (result && _activeEoCtecSource != null)
+            if (result &&
+                _activeEoCtecSource != null)
             {
-                StartCtecEoPositionPolling(ContinuousMoveType.EoFocus, _activeEoCtecSource);
+                StartCtecEoPositionPolling(
+                    ContinuousMoveType.EoFocus,
+                    _activeEoCtecSource);
             }
 
-            if (!result && _currentMoveType == ContinuousMoveType.EoFocus)
+            if (!result &&
+                _currentMoveType ==
+                    ContinuousMoveType.EoFocus)
             {
-                _currentMoveType = ContinuousMoveType.None;
-                _activeEoCtecSource = null;
+                _currentMoveType =
+                    ContinuousMoveType.None;
+
+                _activeEoCtecSource =
+                    null;
             }
+
         }
 
         /// <summary>
@@ -921,58 +964,101 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private async Task StartEoFocusFarMoveAsync()
         {
-            if (_currentMoveType != ContinuousMoveType.None)
+            if (IsAf292FocusBlocked(false))
+                return;
+            if (_currentMoveType !=
+                ContinuousMoveType.None)
             {
                 return;
             }
 
-            int sequence = Interlocked.Increment(ref _eoFocusCommandSequence);
-            _lastEoFocusCommandName = "FAR";
-            _lastEoFocusCommandElapsedMs = _focusLogStopwatch.ElapsedMilliseconds;
-            _currentMoveType = ContinuousMoveType.EoFocus;
+            int sequence =
+                Interlocked.Increment(
+                    ref _eoFocusCommandSequence);
+
+            _lastEoFocusCommandName =
+                "FAR";
+
+            _lastEoFocusCommandElapsedMs =
+                _focusLogStopwatch.ElapsedMilliseconds;
+
+            _currentMoveType =
+                ContinuousMoveType.EoFocus;
+
             Console.WriteLine();
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"FAR START / " + $"ELAPSED={_lastEoFocusCommandElapsedMs}ms / " + $"CURRENT={_currentEoFocus}");
+            Console.WriteLine(
+                $"[{DateTime.Now:HH:mm:ss.fff}] " +
+                $"[FOCUS COMMAND #{sequence}] " +
+                $"FAR START / " +
+                $"ELAPSED={_lastEoFocusCommandElapsedMs}ms / " +
+                $"CURRENT={_currentEoFocus}");
+
             ConsoleLogHelper.PrintLine();
+
             bool result;
 
-            if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
+            if (TryGetSelectedEoCtecSource(
+                    out RtspSourceOption ctecSource))
             {
-                _activeEoCtecSource = ctecSource;
-                Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CTEC CGI DIRECT");
-                result = await _ctecCameraCommandService.StartFocusFarAsync(
-                    ctecSource.ControlIp,
-                    ctecSource.ControlUserName,
-                    ctecSource.ControlPassword,
-                    ctecSource.UseHttps,
-                    RooftopMr300EoCtecControlSpeed
-                );
+                _activeEoCtecSource =
+                    ctecSource;
 
+                Console.WriteLine(
+                    "[CONTROL] EO FOCUS ROUTE : CTEC CGI DIRECT");
+
+                result =
+                    await _ctecCameraCommandService
+                        .StartFocusFarAsync(
+                            ctecSource.ControlIp,
+                            ctecSource.ControlUserName,
+                            ctecSource.ControlPassword,
+                            ctecSource.UseHttps,
+                            RooftopMr300EoCtecControlSpeed);
                 if (!result)
                 {
                     _activeEoCtecSource = null;
                     Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
                     result = _controlCommandService.StartEoFocusFar();
                 }
+
             }
             else
             {
-                _activeEoCtecSource = null;
-                Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CONTROL AGENT");
-                result = _controlCommandService.StartEoFocusFar();
+                _activeEoCtecSource =
+                    null;
+
+                Console.WriteLine(
+                    "[CONTROL] EO FOCUS ROUTE : CONTROL AGENT");
+
+                result =
+                    _controlCommandService
+                        .StartEoFocusFar();
             }
 
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"SEND RESULT={result}");
+            Console.WriteLine(
+                $"[{DateTime.Now:HH:mm:ss.fff}] " +
+                $"[FOCUS COMMAND #{sequence}] " +
+                $"SEND RESULT={result}");
 
-            if (result && _activeEoCtecSource != null)
+            if (result &&
+                _activeEoCtecSource != null)
             {
-                StartCtecEoPositionPolling(ContinuousMoveType.EoFocus, _activeEoCtecSource);
+                StartCtecEoPositionPolling(
+                    ContinuousMoveType.EoFocus,
+                    _activeEoCtecSource);
             }
 
-            if (!result && _currentMoveType == ContinuousMoveType.EoFocus)
+            if (!result &&
+                _currentMoveType ==
+                    ContinuousMoveType.EoFocus)
             {
-                _currentMoveType = ContinuousMoveType.None;
-                _activeEoCtecSource = null;
+                _currentMoveType =
+                    ContinuousMoveType.None;
+
+                _activeEoCtecSource =
+                    null;
             }
+
         }
 
         /// <summary>
@@ -983,26 +1069,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void StartEoAutoFocusMove()
         {
+            // 기존 LENS 단발 자동 초점은 LA/WEB 공통으로 유지하고 새 AF 영역의 지원 조건과 분리한다.
+            if (V292Ready && Af292TargetUsesAgent(0))
+            {
+                ExecuteAf292("03");
+                return;
+            }
             Console.WriteLine();
-            Console.WriteLine("[CONTROL] EO ONE PUSH FOCUS REQUEST");
+            Console.WriteLine(
+                "[CONTROL] EO ONE PUSH FOCUS REQUEST");
+
             ConsoleLogHelper.PrintLine();
+
             bool result;
 
-            if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
+            if (TryGetSelectedEoCtecSource(
+                    out RtspSourceOption ctecSource))
             {
-                result = await _ctecCameraCommandService.OnePushFocusAsync(
-                    ctecSource.ControlIp,
-                    ctecSource.ControlUserName,
-                    ctecSource.ControlPassword,
-                    ctecSource.UseHttps
-                );
+                result =
+                    await _ctecCameraCommandService
+                        .OnePushFocusAsync(
+                            ctecSource.ControlIp,
+                            ctecSource.ControlUserName,
+                            ctecSource.ControlPassword,
+                            ctecSource.UseHttps);
             }
             else
             {
-                result = _controlCommandService.StartEoAutoFocus();
+                result =
+                    _controlCommandService
+                        .StartEoAutoFocus();
             }
 
-            Console.WriteLine($"[CONTROL] EO ONE PUSH FOCUS RESULT : {result}");
+            Console.WriteLine(
+                $"[CONTROL] EO ONE PUSH FOCUS RESULT : {result}");
+
             ConsoleLogHelper.PrintLine();
         }
 
@@ -1250,12 +1351,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StartIrFocusNearMove()
         {
+            if (IsAf292FocusBlocked(true))
+                return;
             _currentMoveType = ContinuousMoveType.IrFocus;
+
             Console.WriteLine();
             Console.WriteLine("[CONTROL] IR FOCUS NEAR START");
             ConsoleLogHelper.PrintLine();
+
             bool result = _controlCommandService.StartIrFocusNear();
-            BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrFocus, +1, result);
+            BeginEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrFocus,
+                +1,
+                result);
         }
 
         /// <summary>
@@ -1263,12 +1371,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StartIrFocusFarMove()
         {
+            if (IsAf292FocusBlocked(true))
+                return;
             _currentMoveType = ContinuousMoveType.IrFocus;
+
             Console.WriteLine();
             Console.WriteLine("[CONTROL] IR FOCUS FAR START");
             ConsoleLogHelper.PrintLine();
+
             bool result = _controlCommandService.StartIrFocusFar();
-            BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrFocus, -1, result);
+            BeginEnvironmentIrManualEstimate(
+                ContinuousMoveType.IrFocus,
+                -1,
+                result);
         }
 
         /// <summary>
@@ -1357,10 +1472,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void StartIrAutoFocusMove()
         {
+            // 기존 LENS 단발 자동 초점은 LA/WEB 공통으로 유지하고 새 AF 영역의 지원 조건과 분리한다.
+            if (V292Ready)
+            {
+                ExecuteAf292("13");
+                return;
+            }
             Console.WriteLine();
             Console.WriteLine("[CONTROL] IR AUTO FOCUS REQUEST");
             Console.WriteLine($"[CONTROL] Current Common Focus : {_currentEoFocus}");
             ConsoleLogHelper.PrintLine();
+
             _controlCommandService.StartIrAutoFocus();
         }
 
@@ -1608,16 +1730,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public async void StopAllPtzfMove()
         {
+            CancelPanoramaPresets();
+            StopPrecisionMotion("전체 수동 STOP", _precisionStopUncertain);
             SetDigitalEstimateDirection(0);
             SetDigitalEstimateDirection(0, true);
-
             // LA와 WEB AGENT 모두 절대 팬·틸트로 클릭 이동을 처리한다.
             if (_videoCenterBusy || _centerDeadlineTicks != 0)
             {
                 _controlCommandService.StopPanTiltPositionMove();
                 _centerDeadlineTicks = 0;
             }
-
             // 긴급 정지는 대기 중이거나 재실행될 입력까지 무효화한다.
             _axisCtecSources.TryGetValue("EZ", out RtspSourceOption zoomStopSource);
             _axisCtecSources.TryGetValue("EF", out RtspSourceOption focusStopSource);
@@ -1625,15 +1747,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _controlInputs.Clear();
             _issuedControlAxes.Clear();
             _axisCtecSources.Clear();
-            ContinuousMoveType moveType = _currentMoveType;
+            ContinuousMoveType moveType =
+                _currentMoveType;
+
             // 2026-09-28: WebAgent는 Pan/Tilt 조그 정지에 축별 0x4F를 사용한다.
             // 중앙 STOP은 현재 UI 상태가 유실된 경우에도 두 축 정지를 모두
             // 송신한 다음 기존 전체 STOP을 보내도록 하여 장비 정지를 보장한다.
             bool positionStopResult = true;
 
-            if (_controlCommandService.UseUnsignedWebAgentPanCoordinates || _controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            if (_controlCommandService.UseUnsignedWebAgentPanCoordinates ||
+                _controlCommandService.UseUnsignedWebAgentTiltCoordinates)
             {
-                positionStopResult = _controlCommandService.StopPanTiltPositionMove();
+                positionStopResult = _controlCommandService
+                    .StopPanTiltPositionMove();
+
                 Interlocked.Increment(ref _panStopTxCount);
                 Interlocked.Increment(ref _tiltStopTxCount);
             }
@@ -1643,62 +1770,69 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Interlocked.Increment(ref _zoomStopTxCount);
             }
 
-            RtspSourceOption activeEoCtecSource = _activeEoCtecSource;
+            RtspSourceOption activeEoCtecSource =
+                _activeEoCtecSource;
+
             CancelMoveControlPanOperation();
             StopCtecEoPositionPolling();
-            Interlocked.Increment(ref _ctecEoPositionOperationGeneration);
+
+            Interlocked.Increment(
+                ref _ctecEoPositionOperationGeneration);
+
             ClearKeyboardPanTiltPressedState();
-            _currentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
-            _currentMoveType = ContinuousMoveType.None;
+
+            _currentKeyboardPanTiltDirection =
+                KeyboardPanTiltDirection.None;
+
+            _currentMoveType =
+                ContinuousMoveType.None;
+
             _isPanTiltMoveActive = false;
-            _activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
-            _activeEoCtecSource = null;
+
+            _activePanTiltMoveDirection =
+                KeyboardPanTiltDirection.None;
+
+            _activeEoCtecSource =
+                null;
+
             ClearActivePanTiltAbsoluteMove();
-            bool tcpStopResult = _controlCommandService.StopMove();
+
+            bool tcpStopResult =
+                _controlCommandService.StopMove();
+
             bool ctecStopResult = true;
-
             if (zoomStopSource != null)
-                ctecStopResult &= await _ctecCameraCommandService.StopZoomAsync(
-                    zoomStopSource.ControlIp,
-                    zoomStopSource.ControlUserName,
-                    zoomStopSource.ControlPassword,
-                    zoomStopSource.UseHttps
-                );
-
+                ctecStopResult &= await _ctecCameraCommandService.StopZoomAsync(zoomStopSource.ControlIp, zoomStopSource.ControlUserName, zoomStopSource.ControlPassword, zoomStopSource.UseHttps);
             if (focusStopSource != null)
-                ctecStopResult &= await _ctecCameraCommandService.StopFocusAsync(
-                    focusStopSource.ControlIp,
-                    focusStopSource.ControlUserName,
-                    focusStopSource.ControlPassword,
-                    focusStopSource.UseHttps
-                );
+                ctecStopResult &= await _ctecCameraCommandService.StopFocusAsync(focusStopSource.ControlIp, focusStopSource.ControlUserName, focusStopSource.ControlPassword, focusStopSource.UseHttps);
 
             if (activeEoCtecSource != null)
             {
                 if (moveType == ContinuousMoveType.EoZoom)
                 {
-                    ctecStopResult = await _ctecCameraCommandService.StopZoomAsync(
-                        activeEoCtecSource.ControlIp,
-                        activeEoCtecSource.ControlUserName,
-                        activeEoCtecSource.ControlPassword,
-                        activeEoCtecSource.UseHttps
-                    );
+                    ctecStopResult =
+                        await _ctecCameraCommandService.StopZoomAsync(
+                            activeEoCtecSource.ControlIp,
+                            activeEoCtecSource.ControlUserName,
+                            activeEoCtecSource.ControlPassword,
+                            activeEoCtecSource.UseHttps);
                 }
                 else if (moveType == ContinuousMoveType.EoFocus)
                 {
-                    ctecStopResult = await _ctecCameraCommandService.StopFocusAsync(
-                        activeEoCtecSource.ControlIp,
-                        activeEoCtecSource.ControlUserName,
-                        activeEoCtecSource.ControlPassword,
-                        activeEoCtecSource.UseHttps
-                    );
+                    ctecStopResult =
+                        await _ctecCameraCommandService.StopFocusAsync(
+                            activeEoCtecSource.ControlIp,
+                            activeEoCtecSource.ControlUserName,
+                            activeEoCtecSource.ControlPassword,
+                            activeEoCtecSource.UseHttps);
                 }
             }
 
             ConsoleLogHelper.Command(
                 "PTZF GLOBAL STOP",
-                $"PACKET=FF 01 00 00 00 00 01 / TCP={tcpStopResult} / " + $"POSITION_STOP_0x4F={positionStopResult} / " + $"PREVIOUS_MOVE={moveType} / CTEC={ctecStopResult}"
-            );
+                $"PACKET=FF 01 00 00 00 00 01 / TCP={tcpStopResult} / " +
+                $"POSITION_STOP_0x4F={positionStopResult} / " +
+                $"PREVIOUS_MOVE={moveType} / CTEC={ctecStopResult}");
         }
 
         /// <summary>

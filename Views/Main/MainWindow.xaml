@@ -516,7 +516,7 @@
 
         </Style>
 
-        <!-- 표시 중인 운용 탭 개수에 맞춰 실제 사용 가능 폭 전체에 균등 배치한다. -->
+        <!-- 2026-09-17: 운용 제어 하위 탭 4개를 실제 사용 가능 폭 전체에 균등 배치한다. -->
         <Style x:Key="OperationSubTabControlStyle" TargetType="TabControl">
             <Setter Property="Template">
                 <Setter.Value>
@@ -1478,8 +1478,19 @@
 
                                 <TextBlock x:Name="PanoramaFileNameText"
                                            Text="ROOFTOP PANORAMA / DEFAULT IMAGE"
+                                           MaxWidth="440"
+                                           HorizontalAlignment="Left"
+                                           TextTrimming="CharacterEllipsis"
                                            Foreground="#AFC8D8"
                                            FontWeight="Bold"/>
+
+                                <TextBlock x:Name="PanoramaPresetStatusText"
+                                           Grid.Row="0"
+                                           HorizontalAlignment="Right"
+                                           Text="PRESET COORDINATES UNAVAILABLE"
+                                           Foreground="#EBCF7B"
+                                           FontSize="10.5"
+                                           TextWrapping="NoWrap"/>
 
                                 <TextBlock Grid.Row="1"
                                            Foreground="#6F8A99"
@@ -1522,6 +1533,12 @@
                                               Height="26"
                                               Margin="7,0,10,0"
                                               FontWeight="Bold"/>
+                                    <Button x:Name="LinkPanoramaPresetsButton"
+                                            Content="PRESET 연동"
+                                            Width="120"
+                                            Margin="0,0,8,0"
+                                            ToolTip="현재 저장된 PRESET 번호를 파노라마 좌표에 표시"
+                                            Click="LinkPanoramaPresetsButton_Click"/>
                                     <Button x:Name="NewPanoramaButton"
                                             Content="360° 파노라마 촬영"
                                             Width="165"
@@ -1587,6 +1604,8 @@
                                         </Style>
                                     </Image.Style>
                                 </Image>
+
+                                <Grid x:Name="PanoramaPresetHost"/>
 
                                 <TextBlock x:Name="PanoramaEmptyText"
                                            Text="파노라마 이미지가 없습니다."
@@ -2009,7 +2028,7 @@
                                                                                           MaxDropDownHeight="180"/>
 
                                                                                 <TextBox Margin="0,6,0,0"
-                                                                                         Text="{Binding EoSourceAddress,
+                                                                                         Text="{Binding EoSourceDisplayAddress,
                                                                                                  Mode=TwoWay,
                                                                                                  UpdateSourceTrigger=PropertyChanged}">
                                                                                     <TextBox.Style>
@@ -2077,7 +2096,7 @@
                                                                                           MaxDropDownHeight="180"/>
 
                                                                                 <TextBox Margin="0,6,0,0"
-                                                                                         Text="{Binding IrSourceAddress,
+                                                                                         Text="{Binding IrSourceDisplayAddress,
                                                                                                  Mode=TwoWay,
                                                                                                  UpdateSourceTrigger=PropertyChanged}">
                                                                                     <TextBox.Style>
@@ -3699,7 +3718,37 @@
                                                         <ScrollViewer.Resources>
                                                             <Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/>
                                                         </ScrollViewer.Resources>
-                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="2,0,2,0">
+                                                        <StackPanel Margin="2,0,2,0">
+<Expander x:Name="V292TestPanel" Header="자동 초점 (AF)" IsExpanded="False"
+          Visibility="{Binding IsAf292PanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+          Margin="0,4,0,10" Padding="8" Foreground="White" Background="#454D54"
+          BorderBrush="#95A5B0" BorderThickness="1">
+    <StackPanel Margin="0,4,0,8">
+        <TextBlock Text="WEB AGENT 전용 · 연결 후 상태 자동 조회"
+                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Foreground="#8FD3FF" Margin="0,0,0,8"/>
+        <CheckBox IsChecked="{Binding V292Enabled}" Foreground="White" Margin="0,0,0,10">
+            <TextBlock Text="AF 제어 사용 (기본 ON)" TextWrapping="NoWrap"/>
+        </CheckBox>
+        <TextBlock Text="{Binding EoAf292StatusText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,0,0,5"/>
+        <UniformGrid Columns="2" Margin="0,0,0,10">
+            <Button Content="EO 상태 조회" Command="{Binding Af292Command}" CommandParameter="00" MinHeight="30" Margin="2"/>
+            <Button Content="EO ONE PUSH" Command="{Binding Af292Command}" CommandParameter="03" MinHeight="30" Margin="2"/>
+            <Button Content="EO AF ON" Command="{Binding Af292Command}" CommandParameter="01" MinHeight="30" Margin="2"/>
+            <Button Content="EO AF OFF" Command="{Binding Af292Command}" CommandParameter="02" MinHeight="30" Margin="2"/>
+        </UniformGrid>
+        <TextBlock Text="{Binding IrAf292StatusText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,0,0,5"/>
+        <UniformGrid Columns="2" Margin="0,0,0,10">
+            <Button Content="IR 상태 조회" Command="{Binding Af292Command}" CommandParameter="10" MinHeight="30" Margin="2"/>
+            <Button Content="IR ONE PUSH" Command="{Binding Af292Command}" CommandParameter="13" MinHeight="30" Margin="2"/>
+            <Button Content="IR AF ON" Command="{Binding Af292Command}" CommandParameter="11" MinHeight="30" Margin="2"/>
+            <Button Content="IR AF OFF" Command="{Binding Af292Command}" CommandParameter="12" MinHeight="30" Margin="2"/>
+        </UniformGrid>
+        <TextBlock Text="미응답 시 재연결 후 조회하세요."
+                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Foreground="#FFDE80" Margin="0,0,0,8"/>
+    </StackPanel>
+</Expander>
+
+<StackPanel IsEnabled="{Binding IsOperationCommandEnabled}">
                                                             <!-- V32_0: 십자선 표시/설정은 상단 장비 제어 체크박스로 통합. -->
                                                             <!-- [PAN] / [TILT] 제어 -->
                                                             <Border Grid.Row="2"
@@ -4215,6 +4264,7 @@
                                                             </Border>
 
                                                         </StackPanel>
+</StackPanel>
                                                     </ScrollViewer>
                                                 </TabItem>
 
@@ -5170,7 +5220,6 @@
                                                 </TabItem>
 
                                                 <!-- [SYNC] 환경장비 Web Agent 표준 Zoom 동기화 -->
-                                                <!-- LA 장비는 IR 구성이 달라 동기화 시험 탭을 제공하지 않는다. -->
                                                 <TabItem x:Name="SyncOperationTab" Header="SYNC"
                                                          IsEnabledChanged="SyncOperationTab_IsEnabledChanged"
                                                          IsEnabled="{Binding IsEnvironmentStatusSelected}"
@@ -5523,8 +5572,7 @@
                                             </TextBlock.Style>
                                         </TextBlock>
 
-                                        <Button Content="STOP AUTO SCAN"
-                                                Command="{Binding StopActivePresetScanCommand}"
+                                        <Button Command="{Binding StopActivePresetScanCommand}"
                                                 Width="180"
                                                 Height="34"
                                                 Margin="0,14,0,0"
@@ -5535,6 +5583,7 @@
 
                                             <Button.Style>
                                                 <Style TargetType="Button">
+                                                    <Setter Property="Content" Value="STOP AUTO SCAN"/>
                                                     <Setter Property="Visibility"
                                                             Value="Collapsed"/>
 
@@ -5543,6 +5592,11 @@
                                                                      Value="True">
                                                             <Setter Property="Visibility"
                                                                     Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsPanoramaPresetRunning}"
+                                                                     Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="Content" Value="STOP PRESET"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
