@@ -1193,7 +1193,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// ComboBox에서 선택한 프리셋 상세값
         /// </summary>
-        public string SelectedPresetDetailText => SelectedPresetPoint == null ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요." : SelectedPresetPoint.DetailText.Replace(
+        public string SelectedPresetDetailText => SelectedPresetPoint == null ? "WEB 프리셋 미등록 / 연결 후 REGISTER / UPDATE로 등록하세요." : SelectedPresetPoint.DetailText.Replace(
             "IR ZOOM  : " + SelectedPresetPoint.IrZoomText, "IR ZOOM  : " + PresetIrZoomPosition(SelectedPresetPoint));
 
         /// <summary>

@@ -52,7 +52,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>장비 프리셋 명령이 내부 초점을 복원하지 않도록 보호 채널은 직접 PTZ 경로로 이동한다.</summary>
         private bool RequiresDirectPresetRestore =>
-            Math.Abs(PanoramaReference.PanOffset) > 0.000001 ||
+            IsSelectedControlAgentWebAgent || Math.Abs(PanoramaReference.PanOffset) > 0.000001 ||
             Math.Abs(PanoramaReference.TiltOffset) > 0.000001 ||
             IsPresetFocusProtected(false) || IsPresetFocusProtected(true);
 
@@ -423,4 +423,5 @@ namespace OpenCvWpfTracking.ViewModels.Main
         #endregion
     }
 }
+
 

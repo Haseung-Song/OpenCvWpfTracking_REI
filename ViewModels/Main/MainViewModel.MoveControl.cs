@@ -1975,7 +1975,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (SelectedPresetPoint == null)
             {
                 PresetCommandStatusText =
-                    "MOVE FAILED : SELECT PRESET";
+                    PresetPoints.Count == 0 ? "NO WEB PRESET / REGISTER FIRST" : "MOVE FAILED : SELECT WEB PRESET";
 
                 Console.WriteLine(
                     "[PRESET 2 / WEB AGENT] GOTO FAILED : " +
@@ -2095,7 +2095,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine(
                 $"[PRESET 2 / WEB AGENT] NUMBER={presetNumber} / " +
-                $"SPEED={moveSpeed} / MODE={(referenceAdjusted ? "REFERENCE_DIRECT_PTZF" : "DEVICE_PRESET")} / RESULT={moveResult} / " +
+                $"SPEED={moveSpeed} / MODE={(referenceAdjusted ? "STORED_DIRECT_PTZF" : "DEVICE_PRESET")} / RESULT={moveResult} / " +
                 $"PT_SETTLED={panTiltSettled}");
 
             ConsoleLogHelper.PrintLine();
@@ -2755,3 +2755,4 @@ namespace OpenCvWpfTracking.ViewModels.Main
         #endregion
     }
 }
+
