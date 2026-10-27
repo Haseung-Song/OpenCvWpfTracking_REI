@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
@@ -13,6 +13,55 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public partial class MainViewModel
     {
         #region [필드 및 상태 정보]
+
+        /// <summary>과거 WEB 줌 저장값은 호환 변환만 적용하고 새 프리셋은 장비 위치를 그대로 사용한다.</summary>
+        private int PresetIrZoomPosition(PresetPointOption preset)
+        {
+            int position = ParsePresetPosition(preset.IrZoomText, GetCurrentIrZoomStandardPosition());
+            if (!preset.UsesLegacyIrZoomCalibration)
+                return position;
+
+            // 과거 저장 형식의 기준을 고정해 이후 SYNC 끝점 학습이 기존 프리셋을 바꾸지 않게 한다.
+            const int legacyWide = 61;
+            const int legacyTele = 934;
+            int? received = preset.PositionSnapshot?.IrZoom;
+            if (received.HasValue && received.Value >= 0 && received.Value <= 1000 &&
+                preset.PositionSnapshot.IrLensStatus == OpenCvWpfTracking.Models.Position.PositionDataStatus.Valid)
+                return received.Value;
+
+            return legacyWide + (int)Math.Round(position * (legacyTele - legacyWide) / 1000.0);
+        }
+
+        private int _presetSkippedFocusMask;
+
+        /// <summary>자동 초점 또는 상태 미확인으로 저장 초점을 적용하지 않은 채널을 구분한다.</summary>
+        public string PresetFocusSkipText => _presetSkippedFocusMask == 3 ? "EO/IR FOCUS SKIPPED" :
+            _presetSkippedFocusMask == 1 ? "EO FOCUS SKIPPED" :
+            _presetSkippedFocusMask == 2 ? "IR FOCUS SKIPPED" : string.Empty;
+
+        /// <summary>프리셋에서는 자동 초점 채널의 초점만 제외하며 팬·틸트·줌 이동은 차단하지 않는다.</summary>
+        private bool IsPresetFocusProtected(bool ir)
+        {
+            if (!IsAf292PanelVisible || !CameraFeatureTransportReady || !Af292TargetUsesAgent(ir ? 1 : 0))
+            {
+                return false;
+            }
+
+            return IsAf292FocusBlocked(ir, false) || (!_af292ActivatedForSession && _af292[ir ? 1 : 0] == null);
+        }
+
+        /// <summary>장비 프리셋 명령이 내부 초점을 복원하지 않도록 보호 채널은 직접 PTZ 경로로 이동한다.</summary>
+        private bool RequiresDirectPresetRestore =>
+            Math.Abs(PanoramaReference.PanOffset) > 0.000001 ||
+            Math.Abs(PanoramaReference.TiltOffset) > 0.000001 ||
+            IsPresetFocusProtected(false) || IsPresetFocusProtected(true);
+
+        /// <summary>완료한 이동과 적용하지 않은 저장 초점을 화면에서 구분한다.</summary>
+        private string FormatPresetCompletion(string completed)
+        {
+            return _presetSkippedFocusMask == 0 ? completed : completed.Replace("PTZF", "PTZ")
+                .Replace(" COMPLETED", " (" + PresetFocusSkipText + ") COMPLETED");
+        }
 
         private const int PresetEoLensTolerance = 25;
 
@@ -126,8 +175,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         }
                         else
                         {
-                            _controlCommandService.StopIrFocus();
-                            _controlCommandService.StopEoFocus();
+                            if (!IsPresetFocusProtected(true))
+                                _controlCommandService.StopIrFocus();
+                            if (!IsPresetFocusProtected(false))
+                                _controlCommandService.StopEoFocus();
                         }
                     }
                 }
@@ -352,6 +403,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
+            iz = PresetIrZoomPosition(preset);
             bool result = await RestorePresetLensWithinDelayAsync(ez, ef, iz, iff, PresetScanDelay, scanTiming, token);
             ConsoleLogHelper.State(
                 "PRESET LENS",
@@ -371,3 +423,4 @@ namespace OpenCvWpfTracking.ViewModels.Main
         #endregion
     }
 }
+

@@ -111,7 +111,7 @@ namespace OpenCvWpfTracking.Models.Main
         /// TORUSS 프리셋 슬롯 번호
         ///
         /// 프리셋 추가 / 제거 / 이동 명령 기준:
-        /// 1 ~ 63
+        /// 1 ~ 100
         /// </summary>
         public int Number { get; }
 
@@ -143,6 +143,10 @@ namespace OpenCvWpfTracking.Models.Main
         /// 등록 명령 송신 시점의 IR Zoom 표시값
         /// </summary>
         public string IrZoomText { get; }
+
+        /// <summary>구형 WEB 프리셋의 IR 줌이 SYNC 보정 좌표로 저장됐는지 나타낸다.</summary>
+        public bool UsesLegacyIrZoomCalibration { get; set; }
+
 
         /// <summary>
         /// 등록 명령 송신 시점의 IR Focus 표시값

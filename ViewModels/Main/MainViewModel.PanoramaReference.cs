@@ -74,7 +74,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             return new PresetPointOption(point.Number, pan, tilt, point.EoZoomText, point.EoFocusText,
                 point.IrZoomText, point.IrFocusText, point.Name, point.SavedOrder,
-                point.PositionSnapshot?.WithReferenceOffset(SignedPan(pan - point.Pan), tilt - point.Tilt));
+                point.PositionSnapshot?.WithReferenceOffset(SignedPan(pan - point.Pan), tilt - point.Tilt)) { UsesLegacyIrZoomCalibration = point.UsesLegacyIrZoomCalibration };
         }
 
         /// <summary>Config의 변경 기록을 먼저 확정하므로 CSV 저장 중 종료되어도 같은 보정을 한 번만 적용한다.</summary>

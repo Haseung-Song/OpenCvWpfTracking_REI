@@ -161,6 +161,68 @@ namespace OpenCvWpfTracking.Services.Video
                 return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value ?? ""))).Replace("-", "");
         }
 
+        /// <summary>
+        /// 순번·EO/IR 접미사·해시를 빼고 장비 이름으로 저장한다. 이름 중복 시에만 주소를 붙인다.
+        /// </summary>
+        public static string DeviceDirectory(string root, bool web, string deviceKey, string displayName)
+        {
+            string name = System.Text.RegularExpressions.Regex.Replace(displayName ?? "DEVICE", @"^\s*\d+\.\s*", "");
+            name = System.Text.RegularExpressions.Regex.Replace(name, @"\s+EO\s*/\s*IR\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            string label = new string(name.Select(c => char.IsLetterOrDigit(c) || c == '-' ? c : '_').ToArray());
+            label = System.Text.RegularExpressions.Regex.Replace(label, "_+", "_").Trim('_');
+            if (label.Length == 0)
+                label = "DEVICE";
+            if (label.Length > 48)
+                label = label.Substring(0, 48);
+
+            string endpoint = (deviceKey ?? "DIRECT").Split('|').Last();
+            string identity = ContextIdentity((web ? "WEB|" : "LA|") + endpoint);
+            string stem = (web ? "WEB_" : "LA_") + label;
+            string address = new string(endpoint.Select(c => char.IsLetterOrDigit(c) || c == '.' || c == '-' ? c : '_').ToArray());
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                string directory = Path.Combine(root, stem + (attempt == 0 ? "" : "_" + address));
+                Directory.CreateDirectory(directory);
+                string owner = Path.Combine(directory, ".device");
+                if (File.Exists(owner))
+                {
+                    if (File.ReadAllText(owner) == identity)
+                        return directory;
+                    continue;
+                }
+
+                // 장비 정보가 없는 기존 사진 폴더를 다른 장비 소유로 임의 지정하지 않는다.
+                if (Directory.EnumerateFiles(directory, "*.jpg").Any())
+                    continue;
+                try
+                {
+                    using (var stream = new FileStream(owner, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+                    using (var writer = new StreamWriter(stream))
+                        writer.Write(identity);
+                    return directory;
+                }
+                catch (IOException)
+                {
+                    if (File.Exists(owner) && File.ReadAllText(owner) == identity)
+                        return directory;
+                }
+            }
+            throw new IOException("장비별 파노라마 폴더 구분 정보를 확인하세요.");
+        }
+
+        /// <summary>기존 긴 이름 폴더는 이동·삭제하지 않고 사진 복원 시 호환 경로로 사용한다.</summary>
+        public static string LegacyDeviceDirectory(string root, bool web, string deviceKey, string displayName)
+        {
+            string label = new string((displayName ?? "DEVICE").Select(c =>
+                char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '_').ToArray()).Trim('_');
+            if (label.Length == 0)
+                label = "DEVICE";
+            if (label.Length > 32)
+                label = label.Substring(0, 32);
+            string key = (web ? "WEB|" : "LA|") + deviceKey;
+            return Path.Combine(root, (web ? "WEB_" : "LA_") + label + "_" + ContextIdentity(key).Substring(0, 12));
+        }
+
         /// <summary>다른 사진이나 외부에서 변경된 JPG에 과거 좌표를 적용하지 않는다.</summary>
         public static string FileIdentity(string path)
         {

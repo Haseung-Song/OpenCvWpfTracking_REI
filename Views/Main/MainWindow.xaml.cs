@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using Microsoft.Win32;
 using OpenCvWpfTracking.ViewModels.Main;
 using OpenCvWpfTracking.Services.Video;
@@ -201,7 +201,9 @@ namespace OpenCvWpfTracking
             UpdatePcTitleBarClock();
             _pcTitleBarClockTimer.Start();
             LayoutUpdated += AlignPcClockWithLogo;
-            LoadLatestGeneratedPanoramaOrKeepDefault();
+            _defaultPanoramaSource = PanoramaImage.Source;
+            InitializeDevicePanoramaFolders();
+            RestorePanoramaForCurrentDevice();
             InitializePanoramaPresets();
             // 파노라마 추가 화면은 보관하고 기존 파노라마 화면을 유지한다.
         }
@@ -432,6 +434,33 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 선택 중인 프리셋 탭이 Agent 전환으로 숨겨지면 상대 Agent의 탭을 선택한다.
+        /// </summary>
+        private void PresetAgentTab_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (!(sender is TabItem tab) || tab.IsEnabled || !tab.IsSelected)
+            {
+                return;
+            }
+
+            // 바인딩 갱신이 끝난 뒤 선택하여 숨겨진 콘텐츠나 빈 화면이 남지 않게 한다.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_isMainWindowClosing || !(DataContext is MainViewModel model))
+                {
+                    return;
+                }
+
+                var tabs = ItemsControl.ItemsControlFromItemContainer(tab) as TabControl;
+                var target = model.IsSelectedControlAgentWebAgent ? PresetWTab : PresetLTab;
+                if (tabs != null && target != null && target.IsEnabled)
+                {
+                    tabs.SelectedItem = target;
+                }
+            }));
+        }
+
         private bool _isMainWindowClosing;
 
         /// <summary>
@@ -644,7 +673,7 @@ namespace OpenCvWpfTracking
         {
             OpenStreetMapControl mapControl = sender as OpenStreetMapControl;
 
-            if (mapControl == null)
+            if (mapControl == null || !vm.IsContextPanelsVisible)
             {
                 return;
             }
@@ -1625,6 +1654,7 @@ namespace OpenCvWpfTracking
                 ConsoleLogHelper.Info("EO PANORAMA / UI", "Stitch phase dispatched / OUTPUT=" + outputPath);
                 BitmapSource panorama = await Task.Run(() => _eoPanoramaStitchingService.StitchRowsAndSave(frameRows, outputPath, vm.LastPanoramaCoordinates));
                 PanoramaImage.Source = panorama;
+                _displayedPanoramaDeviceContext = PanoramaImageDeviceContext;
                 _currentPanoramaFilePath = outputPath;
                 PanoramaEmptyText.Visibility = Visibility.Collapsed;
                 PanoramaFileNameText.Text = "ROOFTOP PANORAMA / " + Path.GetFileName(outputPath);
@@ -1737,10 +1767,44 @@ namespace OpenCvWpfTracking
             }
         }
 
+        private ImageSource _defaultPanoramaSource;
+
+        private string _displayedPanoramaDeviceContext;
+
+        private string PanoramaImageDeviceContext => vm.PanoramaDeviceKey + "|" + vm.EoSourceAddress;
+
         /// <summary>
-        /// Panoramas 폴더의 Panorama N.jpg 중 가장 큰 N을 시작 이미지로
-        /// 표시한다. 파일이 없거나 읽기에 실패하면 XAML의 기존 내장 기본
-        /// 이미지를 그대로 유지한다.
+        /// 장비 전환 시 해당 장비의 마지막 사진 또는 전용 폴더 사진만 복원한다.
+        /// 공용 폴더의 과거 사진은 좌표 JSON의 장비·파일 지문이 맞을 때만 자동 선택한다.
+        /// </summary>
+        private void RestorePanoramaForCurrentDevice()
+        {
+            _displayedPanoramaDeviceContext = PanoramaImageDeviceContext;
+            ClosePanoramaPreview();
+            PanoramaImage.Source = _defaultPanoramaSource;
+            _currentPanoramaFilePath = null;
+            PanoramaFileNameText.Text = "ROOFTOP PANORAMA / DEFAULT IMAGE";
+            string contextHash = PanoramaPresetRegistration.ContextIdentity(vm.PanoramaPresetContext);
+            string remembered = PanoramaPresetRegistration.ReadAtomic<string>(
+                PanoramaPresetRegistration.LastImagePath(contextHash));
+            if (!string.IsNullOrWhiteSpace(remembered) && File.Exists(remembered))
+            {
+                try
+                {
+                    DisplayPanoramaFile(remembered, "현재 장비의 마지막 파노라마 복원");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    ConsoleLogHelper.Warning("PANORAMA STORAGE", "마지막 사진 복원 실패: " + ex.Message);
+                }
+            }
+
+            LoadLatestGeneratedPanoramaOrKeepDefault();
+        }
+
+        /// <summary>
+        /// 현재 장비 폴더의 최신 사진을 우선 선택하고 공용 과거 사진은 일치하는 JSON이 있을 때만 복원한다.
         /// </summary>
         private void LoadLatestGeneratedPanoramaOrKeepDefault()
         {
@@ -1748,20 +1812,45 @@ namespace OpenCvWpfTracking
             {
                 string directory = GetPanoramaDirectory();
 
-                if (!Directory.Exists(directory))
+                string latestPath = Directory.Exists(directory) ? Directory.EnumerateFiles(
+                    directory, "Panorama *.jpg", SearchOption.TopDirectoryOnly)
+                    .Select(path => new { Path = path, Sequence = GetPanoramaSequence(path) })
+                    .Where(item => item.Sequence > 0).OrderByDescending(item => item.Sequence)
+                    .Select(item => item.Path).FirstOrDefault() : null;
+
+                if (latestPath == null)
                 {
-                    ConsoleLogHelper.Info(
-                        "EO PANORAMA / DEFAULT",
-                        "Generated panorama directory not found; bundled default retained / DIRECTORY=" + directory
-                    );
-                    return;
+                    string previousDirectory = PanoramaPresetRegistration.LegacyDeviceDirectory(
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas"),
+                        vm.IsSelectedControlAgentWebAgent, vm.PanoramaDeviceKey, vm.SelectedControlAgentProfile?.DisplayName);
+                    if (Directory.Exists(previousDirectory))
+                        latestPath = Directory.EnumerateFiles(previousDirectory, "Panorama *.jpg", SearchOption.TopDirectoryOnly)
+                            .Where(path => GetPanoramaSequence(path) > 0).OrderByDescending(GetPanoramaSequence).FirstOrDefault();
                 }
 
-                string latestPath = Directory.EnumerateFiles(
-                    directory,
-                    "Panorama *.jpg",
-                    SearchOption.TopDirectoryOnly
-                ).Select(path => new { Path = path, Sequence = GetPanoramaSequence(path) }).Where(item => item.Sequence > 0).OrderByDescending(item => item.Sequence).Select(item => item.Path).FirstOrDefault();
+                if (latestPath == null)
+                {
+                    string legacy = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas");
+                    string contextHash = PanoramaPresetRegistration.ContextIdentity(vm.PanoramaPresetContext);
+                    if (Directory.Exists(legacy))
+                    {
+                        latestPath = Directory.EnumerateFiles(legacy, "Panorama *.jpg", SearchOption.TopDirectoryOnly)
+                            .OrderByDescending(GetPanoramaSequence).FirstOrDefault(path =>
+                            {
+                                try
+                                {
+                                    var data = PanoramaPresetRegistration.ReadAtomic<PanoramaCoordinateMetadata>(Path.ChangeExtension(path, ".json"));
+                                    return data != null && data.ContextHash == contextHash &&
+                                        data.ImageHash == PanoramaPresetRegistration.FileIdentity(path);
+                                }
+                                catch (Exception)
+                                {
+                                    // 근거가 없는 과거 사진은 보존하고 사용자가 직접 선택하게 한다.
+                                    return false;
+                                }
+                            });
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(latestPath))
                 {
@@ -1797,6 +1886,7 @@ namespace OpenCvWpfTracking
             bitmap.EndInit();
             bitmap.Freeze();
             PanoramaImage.Source = bitmap;
+            _displayedPanoramaDeviceContext = PanoramaImageDeviceContext;
             _currentPanoramaFilePath = filePath;
             PanoramaEmptyText.Visibility = Visibility.Collapsed;
             PanoramaFileNameText.Text = "ROOFTOP PANORAMA / " + Path.GetFileName(filePath);
@@ -1827,7 +1917,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void PanoramaImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount != 2 || PanoramaImage.Source == null)
+            if (e.ClickCount != 2 || PanoramaImage.Source == null || !vm.IsContextPanelsVisible)
             {
                 return;
             }
@@ -1921,18 +2011,57 @@ namespace OpenCvWpfTracking
 
         /// <summary>
         /// 2026-08-18: 생성과 불러오기가 항상 동일한 저장 폴더를 사용한다.
-        /// Visual Studio 실행 시에는 bin\x64\Debug\Panoramas 아래가 된다.
+        /// Agent 종류와 장비 키별 하위 폴더를 사용하며 기존 공용 사진은 이동하지 않는다.
         /// </summary>
-        private static string GetPanoramaDirectory()
+        /// <summary>등록된 모든 장비 폴더에 공통 기본 사진 0번을 준비한다. 실제 촬영은 1번부터 시작한다.</summary>
+        private void InitializeDevicePanoramaFolders()
         {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas");
+            foreach (var profile in vm.ControlAgentProfiles.Where(profile => !profile.IsDirectInput))
+            {
+                try
+                {
+                    string key = profile.DisplayName + "|" + profile.IpAddress + ":" + profile.Port;
+                    string directory = PanoramaPresetRegistration.DeviceDirectory(
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas"),
+                        profile.AgentType == OpenCvWpfTracking.Models.Main.ControlAgentType.WebAgent, key, profile.DisplayName);
+                    EnsurePanoramaDefault(directory);
+                }
+                catch (Exception ex)
+                {
+                    ConsoleLogHelper.Warning("PANORAMA STORAGE", "장비 기본 사진 준비 실패: " + ex.Message);
+                }
+            }
+        }
+
+        /// <summary>기본 사진은 실행 파일에 포함된 같은 원본을 복사하며 기존 0번 파일은 덮어쓰지 않는다.</summary>
+        private static void EnsurePanoramaDefault(string directory)
+        {
+            string path = Path.Combine(directory, "Panorama 0.jpg");
+            if (File.Exists(path))
+                return;
+            var resource = Application.GetResourceStream(new Uri("/Images/Demo/DefaultRooftopPanorama.jpg", UriKind.Relative));
+            if (resource == null)
+                throw new FileNotFoundException("기본 파노라마 원본을 찾을 수 없습니다.");
+            using (var source = resource.Stream)
+            using (var destination = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+                source.CopyTo(destination);
+        }
+
+        private string GetPanoramaDirectory()
+        {
+            string directory = PanoramaPresetRegistration.DeviceDirectory(
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas"),
+                vm.IsSelectedControlAgentWebAgent, vm.PanoramaDeviceKey,
+                vm.SelectedControlAgentProfile?.DisplayName);
+            EnsurePanoramaDefault(directory);
+            return directory;
         }
 
         /// <summary>
         /// 2026-08-18: 기존 결과를 덮어쓰지 않고 현재 가장 큰 번호 + 1로
         /// 저장한다. 중간 번호가 삭제되어도 새 결과가 항상 최신 번호가 된다.
         /// </summary>
-        private static string GetNextPanoramaOutputPath()
+        private string GetNextPanoramaOutputPath()
         {
             string directory = GetPanoramaDirectory();
             Directory.CreateDirectory(directory);
@@ -2575,3 +2704,4 @@ namespace OpenCvWpfTracking
         #endregion
     }
 }
+

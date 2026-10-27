@@ -733,7 +733,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// Data2    = Preset Number
         ///
         /// 유효 슬롯:
-        /// 1 ~ 63
+        /// 1 ~ 100
         /// </summary>
         public bool AddPresetPoint(byte presetNumber)
         {
@@ -816,7 +816,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// 프리셋 번호를 문서 허용 범위 1 ~ 63으로 제한한다.
+        /// 프리셋 번호를 프로그램 지원 범위 1 ~ 100로 제한한다.
         /// </summary>
         private static byte NormalizePresetNumber(byte presetNumber)
         {
@@ -825,9 +825,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 return 1;
             }
 
-            if (presetNumber > 63)
+            if (presetNumber > 100)
             {
-                return 63;
+                return 100;
             }
 
             return presetNumber;

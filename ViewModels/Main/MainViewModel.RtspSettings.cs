@@ -151,6 +151,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
+                OnPropertyChanged(nameof(IsSelectedControlAgentLaAgent));
                 OnPropertyChanged(nameof(IsContextPanelsVisible));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(IsGpsTabVisible)); // 추가
@@ -243,6 +244,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(SelectedControlAgentProfile));
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
+                OnPropertyChanged(nameof(IsSelectedControlAgentLaAgent));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(IsContextPanelsVisible));
                 OnPropertyChanged(nameof(IsGpsTabVisible)); // 추가
@@ -412,6 +414,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 전원 제어 명령은 WebAgent 프로필에 공통 적용한다.
         /// 상태 표시는 기동형만 Function 0x31을 사용하고 나머지는 기존 응답으로 폴백한다.
         /// </summary>
+        /// <summary>LA 전용 프리셋 화면과 명령은 실제 제어 프로필을 기준으로 분리한다.</summary>
+        public bool IsSelectedControlAgentLaAgent => !IsSelectedControlAgentWebAgent;
+
         public bool IsSelectedControlAgentWebAgent => SelectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
 
         /// <summary>

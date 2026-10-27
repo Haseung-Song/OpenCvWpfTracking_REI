@@ -40,6 +40,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Encoding.UTF8
                 )).Select(row => row.ToArray()).ToList();
                 var positions = ReadPresetPositions();
+                int coordinateColumn = rows.Count == 0 ? -1 : Array.IndexOf(rows[0], "IR_ZOOM_COORDINATES");
 
                 foreach (string[] p in rows.Skip(1))
                 {
@@ -100,7 +101,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     PositionSnapshot.TryParseExportFields(p, 10, out PositionSnapshot positionSnapshot);
                     string[] savedPosition;
 
-                    if (positionSnapshot == null && p.Length == 12 && positions.TryGetValue(PresetRowHash(p), out savedPosition))
+                    if (positionSnapshot == null && p.Length >= 12 && positions.TryGetValue(PresetRowHash(p), out savedPosition))
                         PositionSnapshot.TryParseExportFields(savedPosition, 0, out positionSnapshot);
 
                     PresetPointOption preset = new PresetPointOption(
@@ -115,6 +116,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         order,
                         positionSnapshot
                     );
+
+                    preset.UsesLegacyIrZoomCalibration = p[0] == "W" &&
+                        (coordinateColumn < 0 || p.Length <= coordinateColumn || p[coordinateColumn] != "DEVICE_POSITION");
 
                     if (p[0] == "L")
                     {
@@ -132,7 +136,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State("PRESET STORAGE", "Loaded / PATH=" + loadPath);
 
                 // 이전 파일을 덮어쓰거나 지우지 않으며 이후 시작부터 CSV를 우선한다.
-                if (legacy || rows.FirstOrDefault()?.Length > 12)
+                if (legacy || (coordinateColumn < 0 && rows.FirstOrDefault()?.Length > 12))
                 {
                     _isLoadingPresetStorage = false;
                     SavePresetStorage();
@@ -169,7 +173,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string temporaryPath = PresetStoragePath + ".tmp";
                 List<string> lines = new List<string>
                 {
-                    "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" + "POSITION_CAPTURED_AT\tPOSITION_SOURCE",
+                    "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" + "POSITION_CAPTURED_AT\tPOSITION_SOURCE\tIR_ZOOM_COORDINATES",
                     string.Join(
                         "\t",
                         new[] { "SETTINGS", "0", "0", _presetScanOrderMode.ToString(), _laPresetScanSpeed.ToString(), _laPresetScanDelay.ToString(), _presetScanSpeed.ToString(), _presetScanDelay.ToString(), "-", "-", "", "" }
@@ -233,6 +237,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     PositionSnapshot.ExportFieldCount
                 ).ToArray();
                 fields.AddRange(positionFields.Take(2).Select(SanitizePresetStorageField));
+                fields.Add(preset.UsesLegacyIrZoomCalibration ? "LEGACY_SYNC" : "DEVICE_POSITION");
 
                 if (preset.PositionSnapshot != null)
                     positions.Add(new XElement(

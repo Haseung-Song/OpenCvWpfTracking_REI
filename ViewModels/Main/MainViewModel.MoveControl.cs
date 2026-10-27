@@ -601,6 +601,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
+        /// LA와 WEB 슬롯은 공유하지 않는다. 잘못된 명령 호출도 패킷 전송 전에 차단한다.
+        /// </summary>
+        private bool EnsurePresetAgent(bool web)
+        {
+            if (web == IsSelectedControlAgentWebAgent)
+            {
+                return true;
+            }
+
+            const string message = "PRESET BLOCKED : AGENT CHANGED";
+            LaPresetCommandStatusText = message;
+            PresetCommandStatusText = message;
+            Console.WriteLine($"[PRESET] 다른 Agent 명령 차단 / REQUEST={(web ? "WEB" : "LA")} / ACTIVE={(IsSelectedControlAgentWebAgent ? "WEB" : "LA")}");
+            return false;
+        }
+
+        /// <summary>
         /// PRESET 1 (LA TEST) 등록.
         ///
         /// LA 실제 구현 순서:
@@ -609,8 +626,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void AddOrUpdateLaPresetPoint()
         {
+            if (!EnsurePresetAgent(false))
+            {
+                return;
+            }
+
             ConsoleLogHelper.Command("PRESET L", "Register/update requested");
-            int presetNumber = Math.Max(1, Math.Min(99, LaPresetSlotNumber));
+            int presetNumber = Math.Max(1, Math.Min(100, LaPresetSlotNumber));
             ushort zoom = GetCurrentPresetStandardZoom();
             ushort focus = GetCurrentPresetStandardFocus();
             int laInternalId = presetNumber - 1;
@@ -656,6 +678,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task MoveToSelectedLaPresetPointAsync()
         {
+            if (!EnsurePresetAgent(false))
+            {
+                return;
+            }
+
             RecoverPanoramaPresetReference();
             if (PanoramaReference.Pending)
             {
@@ -663,8 +690,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
-                return;
             PresetPointOption preset =
                 SelectedLaPresetPoint;
 
@@ -715,7 +740,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 LaPresetCommandStatusText =
                     result
-                        ? $"P{preset.Number:00} DIRECT PTZF MOVE COMPLETED"
+                        ? FormatPresetCompletion($"P{preset.Number:00} DIRECT PTZF MOVE COMPLETED")
                         : $"P{preset.Number:00} DIRECT PTZF MOVE INCOMPLETE";
             }
             catch (OperationCanceledException)
@@ -752,6 +777,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool? onlyIr = null
         )
         {
+            _presetSkippedFocusMask = 0;
             if (preset == null)
                 return false;
 
@@ -845,7 +871,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             int eoZoom = ParsePresetPosition(preset.EoZoomText, GetCurrentPresetStandardZoom());
             int eoFocus = ParsePresetPosition(preset.EoFocusText, GetCurrentPresetStandardFocus());
-            int irZoom = ParsePresetPosition(preset.IrZoomText, GetCurrentIrZoomStandardPosition());
+            int irZoom = PresetIrZoomPosition(preset);
             int irFocus = ParsePresetPosition(preset.IrFocusText, GetCurrentIrFocusStandardPosition());
             bool lensResult = await RestorePresetLensWithinDelayAsync(
                 eoZoom,
@@ -1107,7 +1133,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             int eoZoom = ParsePresetPosition(preset.EoZoomText, GetCurrentPresetStandardZoom());
             int eoFocus = ParsePresetPosition(preset.EoFocusText, GetCurrentPresetStandardFocus());
-            int irZoom = ParsePresetPosition(preset.IrZoomText, GetCurrentIrZoomStandardPosition());
+            int irZoom = PresetIrZoomPosition(preset);
             int irFocus = ParsePresetPosition(preset.IrFocusText, GetCurrentIrFocusStandardPosition());
             return Math.Abs(GetShortestPanDifference(
                 _currentPan,
@@ -1225,10 +1251,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int eoTolerance = LensSyncTargetTolerance,
             int irTolerance = IrFocusSyncTolerance, bool? onlyIr = null)
         {
-            if ((!onlyIr.HasValue || !onlyIr.Value) && IsAf292FocusBlocked(false))
-                return false;
-            if ((!onlyIr.HasValue || onlyIr.Value) && IsAf292FocusBlocked(true))
-                return false;
+            bool skipEoFocus = onlyIr != true && IsPresetFocusProtected(false);
+            bool skipIrFocus = onlyIr != false && IsPresetFocusProtected(true);
+            if (skipEoFocus || skipIrFocus)
+            {
+                _presetSkippedFocusMask |= (skipEoFocus ? 1 : 0) | (skipIrFocus ? 2 : 0);
+                ConsoleLogHelper.State("PRESET FOCUS", PresetFocusSkipText + " / 자동 초점·상태 미확인 채널의 저장 초점만 제외 / PTZ 이동 유지");
+            }
             int safeEoPosition =
                 Clamp(
                     eoStandardPosition,
@@ -1246,10 +1275,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     safeIrStandardPosition);
 
             bool eoAlreadyAtTarget =
-                HasFreshPresetLens(false, false) && Math.Abs(GetCurrentPresetStandardFocus() - safeEoPosition) <= eoTolerance;
+                skipEoFocus || HasFreshPresetLens(false, false) && Math.Abs(GetCurrentPresetStandardFocus() - safeEoPosition) <= eoTolerance;
 
             bool irAlreadyAtTarget =
-                HasFreshPresetLens(true, false) && Math.Abs(
+                skipIrFocus || HasFreshPresetLens(true, false) && Math.Abs(
                     GetCurrentIrFocusStandardPosition() -
                     safeIrStandardPosition) <=
                 irTolerance;
@@ -1269,7 +1298,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return true;
             }
 
-            await StopFocusSyncAsync();
+            await StopFocusSyncAsync(stopEo: !skipEoFocus && onlyIr != true, stopIr: !skipIrFocus && onlyIr != false);
 
             cancellationToken
                 .ThrowIfCancellationRequested();
@@ -1340,7 +1369,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool irResult =
                 await irMoveTask;
 
-            irResult = onlyIr == false || irResult && HasFreshPresetLens(true, false) &&
+            irResult = onlyIr == false || skipIrFocus || irResult && HasFreshPresetLens(true, false) &&
                 Math.Abs(GetCurrentIrFocusStandardPosition() - safeIrStandardPosition) <= irTolerance;
             cancellationToken.ThrowIfCancellationRequested();
             if (eoResult && !eoAlreadyAtTarget && (IsEnvironmentStatusSelected || _connectedEoCtecSource == null))
@@ -1463,6 +1492,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ClearAllLaPresetPoints()
         {
+            if (!EnsurePresetAgent(false))
+            {
+                return;
+            }
+
             StopLaPresetScan();
             bool result = _controlCommandService.ClearAllLaPresets();
 
@@ -1488,6 +1522,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void DeleteSelectedLaPresetPoint()
         {
+            if (!EnsurePresetAgent(false))
+            {
+                return;
+            }
+
             PresetPointOption selected = SelectedLaPresetPoint;
 
             if (selected == null)
@@ -1512,6 +1551,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task StartLaPresetScanAsync()
         {
+            if (!EnsurePresetAgent(false))
+            {
+                return;
+            }
+
             RecoverPanoramaPresetReference();
             if (PanoramaReference.Pending)
             {
@@ -1519,8 +1563,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
-                return;
             ConsoleLogHelper.Command(
                 "PRESET L",
                 "Scan start requested");
@@ -1693,6 +1735,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void UpdateLaPresetScan()
         {
+            if (!EnsurePresetAgent(false))
+            {
+                return;
+            }
+
             int speed = Math.Max(1, Math.Min(60, LaPresetScanSpeed));
             int delay = Math.Max(1, Math.Min(60, LaPresetScanDelay));
             Console.WriteLine();
@@ -1759,8 +1806,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void AddOrUpdatePresetPoint()
         {
+            if (!EnsurePresetAgent(true))
+            {
+                return;
+            }
+
             ConsoleLogHelper.Command("PRESET W", "Set preset requested");
-            int presetNumber = Math.Max(1, Math.Min(63, PresetSlotNumber));
+            int presetNumber = Math.Max(1, Math.Min(100, PresetSlotNumber));
             /*
              * PRESET 2는 WEB AGENT Pelco-D 프리셋 검증 모드다.
              * LA 전용 Scan Point(0x19/0x91/0x93/0x95/0x97)는 절대 등록하지 않는다.
@@ -1804,10 +1856,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// TORUSS 명령:
         /// Command2 = 0x05
         /// Data1    = 0x00
-        /// Data2    = Preset Number (1 ~ 63)
+        /// Data2    = Preset Number (1 ~ 100)
         /// </summary>
         private void DeletePresetPoint()
         {
+            if (!EnsurePresetAgent(true))
+            {
+                return;
+            }
+
             if (SelectedPresetPoint == null)
             {
                 PresetCommandStatusText = "DELETE FAILED : SELECT PRESET";
@@ -1845,6 +1902,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ClearAllPresetPoints()
         {
+            if (!EnsurePresetAgent(true))
+            {
+                return;
+            }
+
             StopPresetScan();
             PresetPointOption[] registered = PresetPoints.ToArray();
             int removedCount = 0;
@@ -1886,7 +1948,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// TORUSS 명령:
         /// Command2 = 0x07
         /// Data1    = 0x00
-        /// Data2    = Preset Number (1 ~ 63)
+        /// Data2    = Preset Number (1 ~ 100)
         /// </summary>
         private async void MoveToSelectedPresetPoint()
         {
@@ -1898,6 +1960,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task MoveToSelectedPresetPointAsync()
         {
+            if (!EnsurePresetAgent(true))
+            {
+                return;
+            }
+
             RecoverPanoramaPresetReference();
             if (PanoramaReference.Pending)
             {
@@ -1905,8 +1972,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
-                return;
             if (SelectedPresetPoint == null)
             {
                 PresetCommandStatusText =
@@ -1952,8 +2017,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 프리셋 이동 명령에 포함되지 않으므로 전송하지 않는다.
              */
             // ZERO 이후에는 장비 슬롯의 내부 기준을 추측하지 않고 기존 직접 PTZF 복원 경로를 공유한다.
-            bool referenceAdjusted = Math.Abs(PanoramaReference.PanOffset) > 0.000001 ||
-                Math.Abs(PanoramaReference.TiltOffset) > 0.000001;
+            _presetSkippedFocusMask = 0;
+            bool referenceAdjusted = RequiresDirectPresetRestore;
             // 직접 이동 경로가 속도를 설정하므로 같은 속도 패킷을 중복 전송하지 않는다.
             bool speedResult = referenceAdjusted || ApplyPresetPositionSpeed(moveSpeed);
             bool moveResult =
@@ -2038,7 +2103,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             PresetCommandStatusText =
                 moveResult &&
                 panTiltSettled && lensRestored
-                    ? $"P{presetNumber:00} GOTO PRESET COMPLETED"
+                    ? FormatPresetCompletion($"P{presetNumber:00} GOTO PRESET COMPLETED")
                     : $"P{presetNumber:00} GOTO PRESET INCOMPLETE";
         }
 
@@ -2052,6 +2117,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void StartPresetScan()
         {
+            if (!EnsurePresetAgent(true))
+            {
+                return;
+            }
+
             RecoverPanoramaPresetReference();
             if (PanoramaReference.Pending)
             {
@@ -2059,8 +2129,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
-                return;
             ConsoleLogHelper.Command(
                 "PRESET W",
                 "Loop start requested");
@@ -2150,6 +2218,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         int moveSpeed = Math.Max(1, Math.Min(60, PresetScanSpeed));
+                        _presetSkippedFocusMask = 0;
+                        if (RequiresDirectPresetRestore)
+                        {
+                            // AF 보호 또는 ZERO 보정이 필요한 순회도 단일 이동과 같은 직접 복원을 사용한다.
+                            bool restored = await MoveLaPresetPointDirectAsync(preset, cancellationToken,
+                                scanTiming: true, routeSpeed: moveSpeed, routeDelay: PresetScanDelay);
+                            PresetCommandStatusText = restored
+                                ? FormatPresetCompletion($"P{preset.Number:00} GOTO COMPLETED")
+                                : $"P{preset.Number:00} GOTO INCOMPLETE";
+                            continue;
+                        }
+
                         bool speedResult = ApplyPresetPositionSpeed(moveSpeed);
                         bool result = speedResult && _controlCommandService.MoveToPresetPoint((byte)preset.Number);
                         Console.WriteLine();
@@ -2184,7 +2264,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         var lensTimer = Stopwatch.StartNew();
                         bool lensRestored = panTiltSettled && await RestoreStoredPresetLensAsync(preset, cancellationToken, true);
                         PresetCommandStatusText = panTiltSettled &&
-                            lensRestored ? $"P{preset.Number:00} GOTO COMPLETED" : $"P{preset.Number:00} GOTO INCOMPLETE";
+                            lensRestored ? FormatPresetCompletion($"P{preset.Number:00} GOTO COMPLETED") : $"P{preset.Number:00} GOTO INCOMPLETE";
                         int delaySeconds = Math.Max(1, Math.Min(60, PresetScanDelay));
                         int remainingDelayMs = delaySeconds * 1000 - (int)lensTimer.ElapsedMilliseconds;
 
@@ -2217,6 +2297,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void UpdatePresetScan()
         {
+            if (!EnsurePresetAgent(true))
+            {
+                return;
+            }
+
             int speed = Math.Max(1, Math.Min(60, PresetScanSpeed));
             int delay = Math.Max(1, Math.Min(60, PresetScanDelay));
             /*

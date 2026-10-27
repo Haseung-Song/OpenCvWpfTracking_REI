@@ -59,6 +59,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly bool[] _af292FocusUnknown = new bool[2];
 
+        // 연결마다 지원 여부를 조회하고 연속 AF를 OFF로 확인한 뒤 저장 초점 복원을 허용한다.
+        private readonly bool[] _af292DefaultOffRequired = { true, true };
+
+        private readonly bool[] _af292DefaultOffSent = new bool[2];
+
         private readonly string[] _af292Text = { "미조회", "미조회" };
 
         private ICommand _precisionAbsoluteCommand;
@@ -428,22 +433,70 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State("WEB AGENT AF", "대상=" + target + " / 작업=" + state.Operation +
                     " / 결과=" + state.Result + " / 플래그=" + state.Flags.ToString("X2") +
                     " / 실행주체=" + state.Owner + " / 경로=" + state.Transport + " / 상태=" + state.State);
+                ApplyAf292DefaultOff(state);
                 RefreshV292Controls();
             }));
         }
 
         /// <summary>
+        /// 연결 시 연속 AF가 지원되는 채널만 기본 OFF로 맞춘다.
+        /// 송신 성공을 OFF로 간주하지 않고 장비 응답의 모드와 실행 상태를 확인한다.
+        /// </summary>
+        private void ApplyAf292DefaultOff(AutoFocusSnapshot state)
+        {
+            int target = state.Target;
+            if (!_af292DefaultOffRequired[target] || _af292Pending[target] >= 0)
+            {
+                // 변경 알림만으로 아직 대기 중인 최초 조회·설정 응답을 대신하지 않는다.
+                return;
+            }
+
+            if (state.Result != 0)
+            {
+                // 최초 조회에서 미지원이 명시된 채널에는 설정 패킷을 보내지 않는다.
+                if (state.Operation == 0 && state.Result == 2 && _af292[target] == null)
+                {
+                    _af292DefaultOffRequired[target] = false;
+                }
+                return;
+            }
+
+            if (!state.ContinuousSupported)
+            {
+                _af292DefaultOffRequired[target] = false;
+                return;
+            }
+
+            if ((state.Flags & 4) == 0 && !state.Running)
+            {
+                _af292DefaultOffRequired[target] = false;
+                ConsoleLogHelper.State("WEB AGENT AF", $"기본 OFF 확인 / 대상={target} / 프리셋 초점 복원 허용");
+                return;
+            }
+
+            // 자동 설정은 세션당 한 번만 요청한다. 미응답·오류를 반복 송신으로 덮지 않는다.
+            if (_af292Pending[target] >= 0 || _af292DefaultOffSent[target])
+            {
+                return;
+            }
+
+            _af292DefaultOffSent[target] = true;
+            SendAf292(target, 1, 0);
+            ConsoleLogHelper.State("WEB AGENT AF", $"기본 OFF 설정 요청 / 대상={target} / 응답 확인 전 초점 복원 대기");
+        }
+
+        /// <summary>
         /// AF 동작·응답 대기·상태 불명 중 해당 채널의 수동 초점 충돌을 차단한다.
         /// </summary>
-        private bool IsAf292FocusBlocked(bool ir)
+        private bool IsAf292FocusBlocked(bool ir, bool logWarning = true)
         {
             if (!IsAf292PanelVisible || !CameraFeatureTransportReady || !Af292TargetUsesAgent(ir ? 1 : 0))
                 return false;
             int target = ir ? 1 : 0;
             var state = _af292[target];
-            bool blocked = _af292Uncertain[target] || _af292FocusUnknown[target] || _af292Pending[target] >= 0 ||
+            bool blocked = (_af292ActivatedForSession && _af292DefaultOffRequired[target]) || _af292Uncertain[target] || _af292FocusUnknown[target] || _af292Pending[target] >= 0 ||
                 (state != null && (state.Running || (state.Result == 0 && (state.Flags & 4) != 0)));
-            if (blocked)
+            if (blocked && logWarning)
                 ConsoleLogHelper.Warning("WEB AGENT AF", (ir ? "IR" : "EO") + " 자동 초점 동작·응답 대기 중 수동 초점 충돌 방지 / AF OFF 및 상태 확인 필요");
             return blocked;
         }
@@ -466,9 +519,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         #region [세션 및 안전 타이머]
 
         /// <summary>
-        /// AF 응답 제한 시간과 보관된 정밀 동작 안전 상태를 확인할 타이머를 준비한다.
+        /// 지원 장비 연결 뒤 상태를 조회하고 지원 채널의 연속 AF 기본 OFF 확인을 시작한다.
         /// </summary>
-        /// <summary>지원 장비 연결 뒤 한 번만 상태를 조회하며 AF 모드를 강제로 ON으로 바꾸지 않는다.</summary>
         private void ActivateAf292Session(bool refresh = false)
         {
             if (!V292Ready || (!refresh && _af292ActivatedForSession) ||
@@ -479,7 +531,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _af292Text[0] = "직접 제어 · 기존 AF 사용";
             SendAf292(0, 0, 0);
             SendAf292(1, 0, 0);
-            ConsoleLogHelper.State("WEB AGENT AF", "지원 장비 AF 제어 사용 / 상태 자동 조회");
+            ConsoleLogHelper.State("WEB AGENT AF", "지원 장비 AF 제어 사용 / 상태 조회 후 연속 AF 기본 OFF 확인");
         }
 
         private void EnsureV292Timer()
@@ -575,13 +627,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _af292Pending[i] = -1;
                     _af292Uncertain[i] = false;
                     _af292FocusUnknown[i] = false;
+                    _af292DefaultOffRequired[i] = true;
+                    _af292DefaultOffSent[i] = false;
                     _af292Text[i] = "조회 전";
                 }
 
                 _v292Timer?.Stop();
                 if (IsAf292PanelVisible)
                     EnsureV292Timer();
-                SetPrecisionStatus(active ? "연결 변경 / 이전 장비 정지 여부를 현장에서 확인하세요." : "WEB AGENT AF 기본 사용");
+                SetPrecisionStatus(active ? "연결 변경 / 이전 장비 정지 여부를 현장에서 확인하세요." : "WEB AGENT 연속 AF 기본 OFF");
                 OnPropertyChanged(nameof(V292Enabled));
                 RefreshV292Controls();
             }));

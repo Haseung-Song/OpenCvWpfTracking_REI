@@ -360,7 +360,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 camera
             ) ||
                 !int.TryParse(
-                camera == "IR" ? p.Point.IrZoomText : p.Point.EoZoomText,
+                camera == "IR" ? PresetIrZoomPosition(p.Point).ToString(System.Globalization.CultureInfo.InvariantCulture) : p.Point.EoZoomText,
                 out zoom
             ))
                 return "프리셋 위치·ZOOM 미확인";
@@ -398,7 +398,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int zoom;
 
             if (!int.TryParse(
-                scene.Camera == "IR" ? p.Point.IrZoomText : p.Point.EoZoomText,
+                scene.Camera == "IR" ? PresetIrZoomPosition(p.Point).ToString(System.Globalization.CultureInfo.InvariantCulture) : p.Point.EoZoomText,
                 out zoom
             ) ||
                 FireSmokeZoneService.PanDistance(

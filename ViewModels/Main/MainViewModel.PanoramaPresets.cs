@@ -65,10 +65,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public async Task<bool> MovePanoramaPresetAsync(PresetPointOption point)
         {
             if (!CanStartPanoramaPresets || point == null || !GetPanoramaPresets().Contains(point) ||
-                point.Number < (IsSelectedControlAgentWebAgent ? 1 : 0) || point.Number > (IsSelectedControlAgentWebAgent ? 63 : 99))
+                point.Number < 1 || point.Number > 100)
                 throw new InvalidOperationException("장비 연결·위치·운용 잠금·번호를 확인하세요.");
-            if (IsAf292FocusBlocked(false) || IsAf292FocusBlocked(true))
-                throw new InvalidOperationException("AF 상태를 확인하세요.");
             string context = PanoramaPresetContext;
             bool web = IsSelectedControlAgentWebAgent;
             var cts = new CancellationTokenSource();

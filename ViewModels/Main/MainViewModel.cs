@@ -1047,7 +1047,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// PRESET 1 (LA TEST) 선택 ID
-        /// LA 실제 구현 기준 0 ~ 99
+        /// 표시 슬롯 1 ~ 100 / 장비 내부 ID 0 ~ 99
         /// </summary>
         private int _laPresetSlotNumber = 1;
 
@@ -1065,7 +1065,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 프리셋 추가 / 제거 대상 슬롯 번호
         ///
         /// TORUSS 프리셋 실행 / 편집 명령 기준:
-        /// 1 ~ 63
+        /// 1 ~ 100
         /// </summary>
         private int _presetSlotNumber = 1;
 

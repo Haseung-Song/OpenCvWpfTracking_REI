@@ -91,7 +91,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 이전 학습 범위로 환산하면 렌즈가 끝점에 닿기 전에 최대 배율로 오인할 수 있다.
             // 실제 렌즈가 최대 줌에 도달하기 전에 완료로 보고하지 않게 한다.
             bool verifyRawTeleEndpoint = IsEnvironmentStatusSelected && selectedLevel.Level == 10;
-            int irRawTarget = verifyRawTeleEndpoint ? 1000 : ConvertIrZoomStandardToStatusPosition(irStandardPosition);
+            int irRawTarget = verifyRawTeleEndpoint ? 1000 : ConvertIrZoomSyncToStatusPosition(irStandardPosition);
             CancellationTokenSource zoomSyncCts = new CancellationTokenSource();
             _rooftopZoomSyncCts = zoomSyncCts;
             ZoomSyncStatusText = $"APPLYING LEVEL {selectedLevel.Level}";
@@ -106,7 +106,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     irRawTarget,
                     zoomSyncCts.Token,
                     verifyRawTeleEndpoint ? -1 : irStandardPosition,
-                    verifyRawTeleEndpoint ? 12 : IrZoomTargetTolerance
+                    verifyRawTeleEndpoint ? 12 : IrZoomTargetTolerance,
+                    syncCalibration: true
                 ) : Task.FromResult(false);
 
                 if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
@@ -137,7 +138,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 ConsoleLogHelper.State(
                     "ZOOM SYNC",
-                    $"MODEL=MEASURED_LEVEL_0_10_261002_PIECEWISE / LEVEL={selectedLevel.Level} / " + $"EO_COMMANDED={eoStandardPosition} / IR_COMMANDED={irStandardPosition} / " + $"IR_COMMAND_RAW_TARGET={irRawTarget} / EO_ACTUAL={_currentEoZoom} / " + $"IR_ENDPOINT_MODE={(verifyRawTeleEndpoint ? "RAW_TELE_1000" : "CALIBRATED_SPAN")} / " + $"IR_SETTLED_RAW={_currentIrZoom} / IR_STANDARD_FINAL={NormalizeIrZoomStatusPosition(_currentIrZoom)} / " + $"PHYSICAL_MIN={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_MAX={_environmentIrZoomPhysicalTeleRaw} / " + $"EO_POSITION_ERROR={Math.Abs(_currentEoZoom - eoStandardPosition)} / " + $"IR_POSITION_ERROR={Math.Abs(NormalizeIrZoomStatusPosition(_currentIrZoom) - irStandardPosition)} / " + $"EO_DONE={eoResult} / IR_DONE={irResult} / FINAL_RESULT={(eoResult && irResult ? "COMPLETED" : "INCOMPLETE")}"
+                    $"MODEL=MEASURED_LEVEL_0_10_261002_PIECEWISE / LEVEL={selectedLevel.Level} / " + $"EO_COMMANDED={eoStandardPosition} / IR_COMMANDED={irStandardPosition} / " + $"IR_COMMAND_RAW_TARGET={irRawTarget} / EO_ACTUAL={_currentEoZoom} / " + $"IR_ENDPOINT_MODE={(verifyRawTeleEndpoint ? "RAW_TELE_1000" : "CALIBRATED_SPAN")} / " + $"IR_SETTLED_RAW={_currentIrZoom} / IR_STANDARD_FINAL={NormalizeIrZoomSyncStatusPosition(_currentIrZoom)} / " + $"PHYSICAL_MIN={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_MAX={_environmentIrZoomPhysicalTeleRaw} / " + $"EO_POSITION_ERROR={Math.Abs(_currentEoZoom - eoStandardPosition)} / " + $"IR_POSITION_ERROR={Math.Abs(NormalizeIrZoomSyncStatusPosition(_currentIrZoom) - irStandardPosition)} / " + $"EO_DONE={eoResult} / IR_DONE={irResult} / FINAL_RESULT={(eoResult && irResult ? "COMPLETED" : "INCOMPLETE")}"
                 );
                 // 2026-09-18: 장비 기구 오차로 목표 허용범위를 조금 벗어난 경우를
                 // 고장처럼 표시하지 않는다. INCOMPLETE는 IR 명령/피드백이 있어도
@@ -292,7 +293,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ZoomSyncStatusText = "STOPPED";
         }
 
+        /// <summary>일반 WEB 줌은 수신·송신 위치를 그대로 사용한다. LA의 기존 방향 반전만 유지한다.</summary>
         private int ConvertIrZoomStandardToStatusPosition(int standardPosition)
+        {
+            int safe = Math.Max(0, Math.Min(1000, standardPosition));
+            return IsSelectedControlAgentWebAgent ? safe : 1000 - safe;
+        }
+
+        /// <summary>상태 표시·새 프리셋 저장은 SYNC 끝점 보정과 독립적인 장비 위치를 사용한다.</summary>
+        private int NormalizeIrZoomStatusPosition(int rawPosition)
+        {
+            int safe = Math.Max(0, Math.Min(1000, rawPosition));
+            return IsSelectedControlAgentWebAgent ? safe : 1000 - safe;
+        }
+
+        /// <summary>공유 구동부에서 명시적으로 요청한 SYNC 작업에만 끝점 환산을 적용한다.</summary>
+        private int NormalizeIrZoomControlPosition(int rawPosition, bool syncCalibration)
+        {
+            return syncCalibration ? NormalizeIrZoomSyncStatusPosition(rawPosition) : NormalizeIrZoomStatusPosition(rawPosition);
+        }
+
+        /// <summary>SYNC 화각 단계에 한정해 학습된 물리 끝점을 장비 명령 위치로 환산한다.</summary>
+        private int ConvertIrZoomSyncToStatusPosition(int standardPosition)
         {
             int safe = Math.Max(0, Math.Min(1000, standardPosition));
 
@@ -305,7 +327,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _environmentIrZoomPhysicalWideRaw + (int)Math.Round(safe * span / 1000.0);
         }
 
-        private int NormalizeIrZoomStatusPosition(int rawPosition)
+        private int NormalizeIrZoomSyncStatusPosition(int rawPosition)
         {
             int safeRaw = Math.Max(0, Math.Min(1000, rawPosition));
 
@@ -338,7 +360,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "IR ZOOM CALIBRATION",
-                $"STANDARD_TARGET={standardTarget} / SETTLED_RAW={settledRaw} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"STANDARD_FINAL={NormalizeIrZoomStatusPosition(settledRaw)}"
+                $"STANDARD_TARGET={standardTarget} / SETTLED_RAW={settledRaw} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"STANDARD_FINAL={NormalizeIrZoomSyncStatusPosition(settledRaw)}"
             );
         }
 
@@ -351,10 +373,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int targetPosition,
             CancellationToken cancellationToken,
             int standardTarget = -1,
-            int tolerance = IrZoomTargetTolerance
+            int tolerance = IrZoomTargetTolerance,
+            bool syncCalibration = false
         )
         {
             int target = Math.Max(0, Math.Min(1000, targetPosition));
+            ConsoleLogHelper.State("IR ZOOM COORDINATES",
+                $"MODE={(syncCalibration ? "SYNC_CALIBRATED" : "DEVICE_POSITION")} / RAW_TARGET={target} / INPUT_TARGET={standardTarget}");
             Stopwatch total = Stopwatch.StartNew();
             int operationStart = _currentIrZoom;
             int retryCount = 0;
@@ -364,7 +389,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int directionReversalCount = 0;
             string lastDirection = "NONE";
 
-            if (IsIrZoomTargetReached(target, operationStart, standardTarget, tolerance))
+            if (IsIrZoomTargetReached(target, operationStart, standardTarget, tolerance, syncCalibration))
             {
                 if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
                 {
@@ -377,7 +402,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         target,
                         _currentIrZoom,
                         standardTarget,
-                        tolerance
+                        tolerance,
+                        syncCalibration
                     );
                 }
 
@@ -390,7 +416,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     target,
                     standardTarget,
                     cancellationToken,
-                    tolerance
+                    tolerance,
+                    syncCalibration
                 );
 
                 if (absoluteResult.HasValue && absoluteResult.Value)
@@ -413,7 +440,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 int start = _currentIrZoom;
 
-                if (IsIrZoomTargetReached(target, start, standardTarget, tolerance))
+                if (IsIrZoomTargetReached(target, start, standardTarget, tolerance, syncCalibration))
                     return true;
 
                 int currentDirection = target > start ? 1 : -1;
@@ -457,7 +484,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (startRemaining <= IrZoomShortPulseThreshold)
                 {
-                    int physicalSpan = SelectedEquipmentStatusMode == EquipmentStatusMode.Environment ? Math.Max(
+                    int physicalSpan = syncCalibration && SelectedEquipmentStatusMode == EquipmentStatusMode.Environment ? Math.Max(
                         1,
                         _environmentIrZoomPhysicalTeleRaw - _environmentIrZoomPhysicalWideRaw
                     ) : 1000;
@@ -483,13 +510,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     bool pulseMovementObserved = Math.Abs(settled - start) > 1;
                     operationMovementObserved |= pulseMovementObserved;
 
-                    if (standardTarget >= 0 && tolerance <= IrZoomTargetTolerance)
+                    if (syncCalibration && standardTarget >= 0 && tolerance <= IrZoomTargetTolerance)
                         UpdateEnvironmentIrZoomEndpointCalibration(standardTarget, settled);
 
-                    bool pulseReached = IsIrZoomTargetReached(target, settled, standardTarget, tolerance);
+                    bool pulseReached = IsIrZoomTargetReached(target, settled, standardTarget, tolerance, syncCalibration);
                     ConsoleLogHelper.State(
                         "IR ZOOM SYNC",
-                        $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / CURRENT_POSITION={start} / " + $"DIRECTION={direction} / CONTROL_MODE=SHORT_PULSE / PULSE_MS={pulseMilliseconds} / " + $"STOP_POSITION={pulseStopPosition} / SETTLED_RAW={settled} / " + $"STANDARD_FINAL={NormalizeIrZoomStatusPosition(settled)} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomStatusPosition(settled) - standardTarget) : Math.Abs(settled - target))} / " + $"MOVEMENT_OBSERVED={pulseMovementObserved} / REVERSAL_COUNT={directionReversalCount} / RETRY_COUNT={retryCount} / " + $"RESULT={(pulseReached ? "COMPLETED" : "RETRY")}"
+                        $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / CURRENT_POSITION={start} / " + $"DIRECTION={direction} / CONTROL_MODE=SHORT_PULSE / PULSE_MS={pulseMilliseconds} / " + $"STOP_POSITION={pulseStopPosition} / SETTLED_RAW={settled} / " + $"STANDARD_FINAL={NormalizeIrZoomControlPosition(settled, syncCalibration)} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomControlPosition(settled, syncCalibration) - standardTarget) : Math.Abs(settled - target))} / " + $"MOVEMENT_OBSERVED={pulseMovementObserved} / REVERSAL_COUNT={directionReversalCount} / RETRY_COUNT={retryCount} / " + $"RESULT={(pulseReached ? "COMPLETED" : "RETRY")}"
                     );
 
                     if (pulseReached)
@@ -588,14 +615,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _irZoomObservedStopLag = _irZoomObservedStopLag * 0.65 + stopTravel * 0.35;
                 }
 
-                if (standardTarget >= 0 && tolerance <= IrZoomTargetTolerance)
+                if (syncCalibration && standardTarget >= 0 && tolerance <= IrZoomTargetTolerance)
                     UpdateEnvironmentIrZoomEndpointCalibration(standardTarget, settled);
 
-                bool reached = IsIrZoomTargetReached(target, settled, standardTarget, tolerance);
+                bool reached = IsIrZoomTargetReached(target, settled, standardTarget, tolerance, syncCalibration);
                 int finalError = Math.Abs(settled - target);
                 ConsoleLogHelper.State(
                     "IR ZOOM SYNC",
-                    $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / DIRECTION={direction} / " + $"PREDICTED_STOP_LEAD={stopLead} / STOP_POSITION={stopPosition} / " + $"SETTLED_RAW={settled} / STANDARD_FINAL={NormalizeIrZoomStatusPosition(settled)} / STOP_TRAVEL={stopTravel} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"OBSERVED_STOP_LAG={_irZoomObservedStopLag:F1} / RAW_ERROR={finalError} / " + $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomStatusPosition(settled) - standardTarget) : finalError)} / RETRY_COUNT={retryCount} / " + $"RESULT={(reached ? "COMPLETED" : "RETRY")}"
+                    $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / DIRECTION={direction} / " + $"PREDICTED_STOP_LEAD={stopLead} / STOP_POSITION={stopPosition} / " + $"SETTLED_RAW={settled} / STANDARD_FINAL={NormalizeIrZoomControlPosition(settled, syncCalibration)} / STOP_TRAVEL={stopTravel} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"OBSERVED_STOP_LAG={_irZoomObservedStopLag:F1} / RAW_ERROR={finalError} / " + $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomControlPosition(settled, syncCalibration) - standardTarget) : finalError)} / RETRY_COUNT={retryCount} / " + $"RESULT={(reached ? "COMPLETED" : "RETRY")}"
                 );
 
                 if (reached)
@@ -613,11 +640,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 await Task.Delay(250, cancellationToken);
             }
 
-            bool positionMatched = IsIrZoomTargetReached(target, settled, standardTarget, tolerance);
+            bool positionMatched = IsIrZoomTargetReached(target, settled, standardTarget, tolerance, syncCalibration);
             bool finalResult = positionMatched;
             ConsoleLogHelper.State(
                 "IR ZOOM SYNC",
-                $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / SETTLED_RAW={settled} / " + $"STANDARD_FINAL={NormalizeIrZoomStatusPosition(settled)} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomStatusPosition(settled) - standardTarget) : Math.Abs(settled - target))} / DIRECTION={lastDirection} / " + $"REVERSAL_COUNT={directionReversalCount} / RETRY_COUNT={retryCount} / POSITION_MATCH={positionMatched} / MOVEMENT_OBSERVED={operationMovementObserved} / " + $"RESULT={(finalResult ? "OPERATIONAL" : "NO_MOVEMENT")}"
+                $"STANDARD_TARGET={standardTarget} / COMMAND_RAW_TARGET={target} / START_POSITION={operationStart} / SETTLED_RAW={settled} / " + $"STANDARD_FINAL={NormalizeIrZoomControlPosition(settled, syncCalibration)} / " + $"PHYSICAL_WIDE={_environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_environmentIrZoomPhysicalTeleRaw} / " + $"NORMALIZED_ERROR={(standardTarget >= 0 ? Math.Abs(NormalizeIrZoomControlPosition(settled, syncCalibration) - standardTarget) : Math.Abs(settled - target))} / DIRECTION={lastDirection} / " + $"REVERSAL_COUNT={directionReversalCount} / RETRY_COUNT={retryCount} / POSITION_MATCH={positionMatched} / MOVEMENT_OBSERVED={operationMovementObserved} / " + $"RESULT={(finalResult ? "OPERATIONAL" : "NO_MOVEMENT")}"
             );
             return finalResult;
         }
@@ -630,7 +657,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int rawTarget,
             int standardTarget,
             CancellationToken cancellationToken,
-            int tolerance = IrZoomTargetTolerance
+            int tolerance = IrZoomTargetTolerance,
+            bool syncCalibration = false
         )
         {
             const int noMovementWaitMs = 3000;
@@ -669,21 +697,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 freshSamples++;
                 int current = _currentIrZoom;
                 movementObserved |= Math.Abs(current - startPosition) > 1;
-                matchedSamples = IsIrZoomTargetReached(rawTarget, current, standardTarget, tolerance) ? matchedSamples + 1 : 0;
+                matchedSamples = IsIrZoomTargetReached(rawTarget, current, standardTarget, tolerance, syncCalibration) ? matchedSamples + 1 : 0;
 
                 if (matchedSamples >= 2)
                 {
                     int settled = await WaitForIrLensSettledPositionAsync(true, cancellationToken);
-                    bool reached = IsIrZoomTargetReached(rawTarget, settled, standardTarget, tolerance);
+                    bool reached = IsIrZoomTargetReached(rawTarget, settled, standardTarget, tolerance, syncCalibration);
 
-                    if (reached && standardTarget >= 0 && tolerance <= IrZoomTargetTolerance)
+                    if (syncCalibration && reached && standardTarget >= 0 && tolerance <= IrZoomTargetTolerance)
                     {
                         UpdateEnvironmentIrZoomEndpointCalibration(standardTarget, settled);
                     }
 
                     ConsoleLogHelper.State(
                         "IR ZOOM ABSOLUTE",
-                        $"RESULT={(reached ? "COMPLETED" : "SETTLED_OUTSIDE_TARGET")} / " + $"COMMAND_RAW_TARGET={rawTarget} / SETTLED_RAW={settled} / " + $"STANDARD_FINAL={NormalizeIrZoomStatusPosition(settled)} / " + $"FRESH_SAMPLES={freshSamples}"
+                        $"RESULT={(reached ? "COMPLETED" : "SETTLED_OUTSIDE_TARGET")} / " + $"COMMAND_RAW_TARGET={rawTarget} / SETTLED_RAW={settled} / " + $"STANDARD_FINAL={NormalizeIrZoomControlPosition(settled, syncCalibration)} / " + $"FRESH_SAMPLES={freshSamples}"
                     );
                     return reached ? true : (bool?)null;
                 }
@@ -727,11 +755,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-09-18: 화면/명령의 표준 좌표가 제공되면 장비 Raw 물리 끝점을
         /// 공통 정규화한 값으로 판정한다. Raw 좌표 전용 호출만 기존 허용 오차를 유지한다.
         /// </summary>
-        private bool IsIrZoomTargetReached(int target, int actual, int standardTarget = -1, int tolerance = IrZoomTargetTolerance)
+        private bool IsIrZoomTargetReached(int target, int actual, int standardTarget = -1, int tolerance = IrZoomTargetTolerance, bool syncCalibration = false)
         {
             if (standardTarget >= 0)
             {
-                return Math.Abs(NormalizeIrZoomStatusPosition(actual) - standardTarget) <= tolerance;
+                return Math.Abs(NormalizeIrZoomControlPosition(actual, syncCalibration) - standardTarget) <= tolerance;
             }
 
             return Math.Abs(actual - target) <= tolerance;
@@ -1542,7 +1570,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 진행 중인 Focus Sync 확인 작업과 장비 이동을 정지한다.
         /// </summary>
-        private async Task StopFocusSyncAsync()
+        private async Task StopFocusSyncAsync(bool stopEo = true, bool stopIr = true)
         {
             CancellationTokenSource cts = _rooftopFocusSyncCts;
             _rooftopFocusSyncCts = null;
@@ -1558,10 +1586,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ///
             /// Pan / Tilt 오동작을 발생시킨 0x28 명령은 사용하지 않는다.
             /// </summary>
-            _controlCommandService.StopIrFocus();
+            if (stopIr)
+                _controlCommandService.StopIrFocus();
             RtspSourceOption ctecSource = _connectedEoCtecSource;
 
-            if (ctecSource != null)
+            if (stopEo && ctecSource != null)
             {
                 await _ctecCameraCommandService.StopFocusAsync(
                     ctecSource.ControlIp,

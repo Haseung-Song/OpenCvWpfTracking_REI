@@ -4284,7 +4284,10 @@
 
                                                 <!-- [PRESET] 프리셋 등록 / 이동 / 오토 스캔 제어 -->
                                                 <TabItem x:Name="PresetLTab"
-                                                         Header="PRESET">
+                                                         Header="PRESET"
+                                                         IsEnabledChanged="PresetAgentTab_IsEnabledChanged"
+                                                         IsEnabled="{Binding IsSelectedControlAgentLaAgent}"
+                                                         Visibility="{Binding IsSelectedControlAgentLaAgent, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <!-- 2026-09-10: PTZF와 같은 상하 안전 여백을 사용해 스크롤 끝 위치의 간격을 통일한다. -->
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
@@ -4308,13 +4311,13 @@
 
                                                                 <StackPanel>
 
-                                                                    <TextBlock Text="PRESET / COMMON DIRECT PTZF"
+                                                                    <TextBlock Text="PRESET / LA AGENT"
                                                                                HorizontalAlignment="Center"
                                                                                Foreground="White"
                                                                                FontWeight="Bold"
                                                                                Margin="0,0,0,10"/>
 
-                                                                    <TextBlock Text="LA Scan Point ID  (0 ~ 99)"
+                                                                    <TextBlock Text="LA Preset Slot  (1 ~ 100)"
                                                                                Foreground="White"
                                                                                FontSize="11"/>
 
@@ -4326,7 +4329,7 @@
                                                                               FontWeight="Bold"
                                                                               VerticalContentAlignment="Center"/>
 
-                                                                    <!-- ADD 명령은 현재 장비의 PTZF 상태를 LA 슬롯에 저장한다. -->
+                                                                    <!-- 현재 연결 Agent의 전용 슬롯에 PTZF 상태를 저장한다. -->
                                                                     <Border Background="#4A5056"
                                                                             BorderBrush="#7E8A94"
                                                                             BorderThickness="1"
@@ -4637,18 +4640,24 @@
                                                     </ScrollViewer>
                                                 </TabItem>
 
-                                                <TabItem Header="PRESET W&#x0a;(DEVICE)"
-                                                         Visibility="Collapsed">
+                                                <TabItem x:Name="PresetWTab" Header="PRESET"
+                                                         IsEnabledChanged="PresetAgentTab_IsEnabledChanged"
+                                                         IsEnabled="{Binding IsSelectedControlAgentWebAgent}"
+                                                         Visibility="{Binding IsSelectedControlAgentWebAgent, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
                                                                   CanContentScroll="False"
                                                                   PanningMode="VerticalOnly"
                                                                   IsVisibleChanged="OperationScrollViewer_IsVisibleChanged"
-                                                                  Padding="0,10,8,14">
-                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="3,0,2,4">
+                                                                  Margin="0,4,4,4"
+                                                                  Padding="6,8,8,8">
+                                                        <ScrollViewer.Resources>
+                                                            <Style TargetType="ScrollBar" BasedOn="{StaticResource PresetScrollBarStyle}"/>
+                                                        </ScrollViewer.Resources>
+                                                        <StackPanel IsEnabled="{Binding IsOperationCommandEnabled}" Margin="2,0,2,0">
 
                                                             <!-- 프리셋 추가 / 갱신 / 제거 -->
-                                                            <Border Margin="0,12,5,0"
+                                                            <Border Margin="0,10,5,0"
                                                                     Background="#5F666D"
                                                                     BorderBrush="#95A5B0"
                                                                     BorderThickness="1.5"
@@ -4657,13 +4666,13 @@
 
                                                                 <StackPanel>
 
-                                                                    <TextBlock Text="PRESET W / WEB AGENT Ver."
+                                                                    <TextBlock Text="PRESET / WEB AGENT"
                                                                                HorizontalAlignment="Center"
                                                                                Foreground="White"
                                                                                FontWeight="Bold"
                                                                                Margin="0,0,0,10"/>
 
-                                                                    <TextBlock Text="Preset Slot  (1 ~ 63)"
+                                                                    <TextBlock Text="Preset Slot  (1 ~ 100)"
                                                                                Foreground="White"
                                                                                FontSize="11"/>
 
@@ -4675,7 +4684,7 @@
                                                                               FontWeight="Bold"
                                                                               VerticalContentAlignment="Center"/>
 
-                                                                    <!-- ADD 명령은 현재 장비의 PTZF 상태를 LA 슬롯에 저장한다. -->
+                                                                    <!-- 현재 연결 Agent의 전용 슬롯에 PTZF 상태를 저장한다. -->
                                                                     <Border Background="#4A5056"
                                                                             BorderBrush="#7E8A94"
                                                                             BorderThickness="1"

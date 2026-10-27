@@ -979,7 +979,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// PRESET 1 (LA TEST) ID 선택 목록
         /// </summary>
-        public ObservableCollection<int> LaPresetSlotOptions { get; } = new ObservableCollection<int>(Enumerable.Range(1, 99));
+        public ObservableCollection<int> LaPresetSlotOptions { get; } = new ObservableCollection<int>(Enumerable.Range(1, 100));
 
         public ObservableCollection<PresetPointOption> LaPresetPoints { get; } = new ObservableCollection<PresetPointOption>();
 
@@ -988,7 +988,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _laPresetSlotNumber;
             set
             {
-                int safeValue = Math.Max(0, Math.Min(99, value));
+                int safeValue = Math.Max(1, Math.Min(100, value));
 
                 if (_laPresetSlotNumber == safeValue)
                 {
@@ -1108,9 +1108,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 프리셋 슬롯 선택 목록
         ///
         /// 프리셋 추가 / 제거 / 이동 명령에서 사용할 수 있는
-        /// 1 ~ 63 슬롯을 제공한다.
+        /// 1 ~ 100 슬롯을 제공한다.
         /// </summary>
-        public ObservableCollection<int> PresetSlotOptions { get; } = new ObservableCollection<int>(Enumerable.Range(1, 63));
+        public ObservableCollection<int> PresetSlotOptions { get; } = new ObservableCollection<int>(Enumerable.Range(1, 100));
 
         /// <summary>
         /// 현재 프로그램에서 등록 명령을 송신한 프리셋 목록
@@ -1137,7 +1137,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _presetSlotNumber;
             set
             {
-                int safeValue = Math.Max(1, Math.Min(63, value));
+                int safeValue = Math.Max(1, Math.Min(100, value));
 
                 if (_presetSlotNumber == safeValue)
                 {
@@ -1193,7 +1193,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// ComboBox에서 선택한 프리셋 상세값
         /// </summary>
-        public string SelectedPresetDetailText => SelectedPresetPoint == null ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요." : SelectedPresetPoint.DetailText;
+        public string SelectedPresetDetailText => SelectedPresetPoint == null ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요." : SelectedPresetPoint.DetailText.Replace(
+            "IR ZOOM  : " + SelectedPresetPoint.IrZoomText, "IR ZOOM  : " + PresetIrZoomPosition(SelectedPresetPoint));
 
         /// <summary>
         /// 오토 스캔 이동 속도
@@ -1951,10 +1952,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// Control Agent TCP 연결 상태 표시 문자열
         /// </summary>
-        // WEB 프로필의 지도/저장 파노라마는 LA TCP의 생존 상태와 독립적이다.
-        // LA 프로필은 기존 연결 완료 시에만 표시하는 규칙을 유지한다.
+        // 지도·파노라마는 LA/WEB 공통으로 Control Agent TCP 연결 완료 시 표시한다.
+        // RTSP 영상 수신 여부와 저장된 사진·프리셋의 보존 여부는 이 조건과 분리한다.
         public bool IsContextPanelsVisible =>
-            IsSelectedControlAgentWebAgent ||
             string.Equals(
             ControlAgentConnectionStatusText,
             "Connected",

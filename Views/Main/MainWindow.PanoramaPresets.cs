@@ -31,32 +31,50 @@ namespace OpenCvWpfTracking
         /// <summary>번호 레이어와 좌표 JSON 읽기를 연결한다.</summary>
         private void InitializePanoramaPresets()
         {
-            // 마지막으로 연동한 외부 사진도 프로그램 재실행 시 같은 경로에서 복원한다.
-            string remembered = PanoramaPresetRegistration.ReadAtomic<string>(
-                PanoramaPresetRegistration.LastImagePath(PanoramaPresetRegistration.ContextIdentity(vm.PanoramaPresetContext)));
-            if (!string.IsNullOrWhiteSpace(remembered) && System.IO.File.Exists(remembered))
-            {
-                try
-                {
-                    DisplayPanoramaFile(remembered, "Config last panorama restored");
-                }
-                catch (Exception ex)
-                {
-                    ConsoleLogHelper.Warning("PANORAMA STORAGE", "이전 사진 복원 실패: " + ex.Message);
-                }
-            }
             PanoramaPresetHost.Children.Add(_panoramaPresetOverlay);
             _panoramaPresetOverlay.PresetClicked += MovePanoramaPreset;
             vm.PositionReferenceChanged += InvalidatePanoramaPresetLinks;
+            vm.PropertyChanged += ContextPanels_PropertyChanged;
             _panoramaPresetTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
             _panoramaPresetTimer.Tick += RefreshPanoramaPresetLinks;
             _panoramaPresetTimer.Start();
+            RefreshPanoramaPresetLinks(null, EventArgs.Empty);
             Closed += (sender, args) =>
             {
                 _panoramaPresetTimer.Stop();
                 vm.PositionReferenceChanged -= InvalidatePanoramaPresetLinks;
+                vm.PropertyChanged -= ContextPanels_PropertyChanged;
                 vm.CancelPanoramaPresets();
             };
+        }
+
+        /// <summary>
+        /// TCP 연결 해제 시 표시와 확대 창만 정리한다. 사진·JSON·연동 목록은 삭제하지 않는다.
+        /// </summary>
+        private void ContextPanels_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(vm.IsContextPanelsVisible) || _isMainWindowClosing)
+            {
+                return;
+            }
+
+            // 프로필의 IP·영상 주소 바인딩까지 갱신된 뒤 같은 장비 키로 한 번에 표시한다.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_isMainWindowClosing)
+                {
+                    return;
+                }
+
+                if (!vm.IsContextPanelsVisible)
+                {
+                    vm.CancelPanoramaPresets();
+                    ClosePanoramaPreview();
+                    _companyMapWindow?.Close();
+                }
+
+                RefreshPanoramaPresetLinks(null, EventArgs.Empty);
+            }));
         }
 
         /// <summary>사진·장비가 바뀔 때 좌표 JSON을 읽고 현재 PRESET을 다시 투영한다.</summary>
@@ -64,6 +82,11 @@ namespace OpenCvWpfTracking
         {
             if (_isMainWindowClosing)
                 return;
+            if (_displayedPanoramaDeviceContext != PanoramaImageDeviceContext)
+            {
+                // 장비만 전환된 경우 이전 장비의 사진을 새 장비의 마지막 사진으로 기록하지 않는다.
+                RestorePanoramaForCurrentDevice();
+            }
             var source = PanoramaImage.Source as BitmapSource;
             string context = vm.PanoramaPresetContext;
             if (!ReferenceEquals(source, _linkedPanoramaSource) || context != _linkedPanoramaContext ||
@@ -91,7 +114,7 @@ namespace OpenCvWpfTracking
             if (!string.IsNullOrWhiteSpace(_linkedPanoramaPath))
                 vm.RecoverPanoramaPresetReference();
             UpdatePanoramaPresetMarkers();
-            LinkPanoramaPresetsButton.IsEnabled = _panoramaCoordinates != null && !vm.PanoramaReference.Pending &&
+            LinkPanoramaPresetsButton.IsEnabled = vm.IsContextPanelsVisible && _panoramaCoordinates != null && !vm.PanoramaReference.Pending &&
                 !vm.IsPanoramaPresetRunning && !vm.IsPanoramaProcessingRunning && vm.GetPanoramaPresets().Length > 0;
             if (!vm.IsPanoramaProcessingRunning)
             {
@@ -126,7 +149,9 @@ namespace OpenCvWpfTracking
                 ConsoleLogHelper.State("PANORAMA ANCHOR", "사진 위 연동 위치 저장 / COUNT=" + _panoramaPresetLinks.Count);
             }
             DrawPanoramaPresetLinks();
-            if (!vm.IsPanoramaPresetRunning && DateTime.UtcNow >= _panoramaMoveStatusUntilUtc)
+            if (!vm.IsContextPanelsVisible)
+                PanoramaPresetStatusText.Text = "DEVICE DISCONNECTED";
+            else if (!vm.IsPanoramaPresetRunning && DateTime.UtcNow >= _panoramaMoveStatusUntilUtc)
                 PanoramaPresetStatusText.Text = vm.PanoramaReference.Pending || vm.PanoramaReference.Journal.Count > 0 || _panoramaCoordinates?.ReferenceUncertain == true ||
                     _panoramaPresetLinks.Any(link => !link.ReferenceValid)
                     ? "PRESET REFERENCE CHECK REQUIRED" : _panoramaCoordinates == null ? "PRESET COORDINATES UNAVAILABLE" :
@@ -212,7 +237,8 @@ namespace OpenCvWpfTracking
                 PanoramaPresetStatusText.Text = "P" + number.ToString("00") + " PTZF MOVING";
                 bool full = await vm.MovePanoramaPresetAsync(point);
                 PanoramaPresetStatusText.Text = "P" + number.ToString("00") +
-                    (full ? " PTZF MOVE COMPLETED" : " PT ARRIVED / LENS UNCONFIRMED");
+                    (full ? (string.IsNullOrEmpty(vm.PresetFocusSkipText) ? " PTZF MOVE COMPLETED" :
+                        " PTZ MOVE COMPLETED / " + vm.PresetFocusSkipText) : " PT ARRIVED / LENS UNCONFIRMED");
             }
             catch (OperationCanceledException)
             {
@@ -230,3 +256,4 @@ namespace OpenCvWpfTracking
         }
     }
 }
+
