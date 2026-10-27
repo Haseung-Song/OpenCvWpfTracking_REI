@@ -26,6 +26,8 @@ namespace OpenCvWpfTracking
 
         private string _linkedPanoramaPath;
 
+        private DateTime _panoramaMoveStatusUntilUtc;
+
         /// <summary>번호 레이어와 좌표 JSON 읽기를 연결한다.</summary>
         private void InitializePanoramaPresets()
         {
@@ -89,7 +91,7 @@ namespace OpenCvWpfTracking
             if (!string.IsNullOrWhiteSpace(_linkedPanoramaPath))
                 vm.RecoverPanoramaPresetReference();
             UpdatePanoramaPresetMarkers();
-            LinkPanoramaPresetsButton.IsEnabled = _panoramaCoordinates != null &&
+            LinkPanoramaPresetsButton.IsEnabled = _panoramaCoordinates != null && !vm.PanoramaReference.Pending &&
                 !vm.IsPanoramaPresetRunning && !vm.IsPanoramaProcessingRunning && vm.GetPanoramaPresets().Length > 0;
             if (!vm.IsPanoramaProcessingRunning)
             {
@@ -103,19 +105,30 @@ namespace OpenCvWpfTracking
         {
             _panoramaPresetLinks.Clear();
             var points = vm.GetPanoramaPresets();
+            var reference = vm.PanoramaReference;
+            bool changed = false;
             if (_panoramaCoordinates != null)
             {
                 foreach (var point in points.Where(point => _panoramaCoordinates.LinkedPresetNumbers?.Contains(point.Number) == true))
                 {
-                    var reference = vm.PanoramaReference;
-                    var link = PanoramaPresetRegistration.Project(_panoramaCoordinates, point, reference.PanOffset, reference.TiltOffset);
+                    bool captured;
+                    var link = PanoramaPresetRegistration.ResolveLink(_panoramaCoordinates, point,
+                        reference.PanOffset, reference.TiltOffset,
+                        !reference.Pending && reference.Journal.Count == 0 && !_panoramaCoordinates.ReferenceUncertain, out captured);
+                    changed |= captured;
                     if (link != null)
                         _panoramaPresetLinks.Add(link);
                 }
             }
+            if (changed)
+            {
+                SavePanoramaPresetCoordinates();
+                ConsoleLogHelper.State("PANORAMA ANCHOR", "사진 위 연동 위치 저장 / COUNT=" + _panoramaPresetLinks.Count);
+            }
             DrawPanoramaPresetLinks();
-            if (!vm.IsPanoramaPresetRunning)
-                PanoramaPresetStatusText.Text = vm.PanoramaReference.Pending || _panoramaCoordinates?.ReferenceUncertain == true
+            if (!vm.IsPanoramaPresetRunning && DateTime.UtcNow >= _panoramaMoveStatusUntilUtc)
+                PanoramaPresetStatusText.Text = vm.PanoramaReference.Pending || vm.PanoramaReference.Journal.Count > 0 || _panoramaCoordinates?.ReferenceUncertain == true ||
+                    _panoramaPresetLinks.Any(link => !link.ReferenceValid)
                     ? "PRESET REFERENCE CHECK REQUIRED" : _panoramaCoordinates == null ? "PRESET COORDINATES UNAVAILABLE" :
                     "PRESETS " + _panoramaPresetLinks.Count + " · CLICK TO MOVE";
         }
@@ -162,6 +175,9 @@ namespace OpenCvWpfTracking
                     return;
                 _panoramaCoordinates.ReferenceUncertain = false;
             }
+            if (vm.PanoramaReference.Pending || vm.PanoramaReference.Journal.Count > 0)
+                return;
+            _panoramaCoordinates.PresetAnchors = new List<PanoramaPresetAnchor>();
             _panoramaCoordinates.LinkedPresetNumbers = vm.GetPanoramaPresets().Select(point => point.Number).ToList();
             SavePanoramaPresetCoordinates();
             UpdatePanoramaPresetMarkers();
@@ -188,14 +204,15 @@ namespace OpenCvWpfTracking
                 vm.PanoramaPresetContext != _linkedPanoramaContext || _panoramaCoordinates?.ReferenceUncertain == true || !vm.CanStartPanoramaPresets)
                 return;
             var point = vm.GetPanoramaPresets().FirstOrDefault(preset => preset.Number == number);
-            if (point == null || !_panoramaPresetLinks.Any(link => link.Number == number &&
+            if (point == null || !_panoramaPresetLinks.Any(link => link.Number == number && link.ReferenceValid &&
                 link.Fingerprint == PanoramaPresetRegistration.PresetIdentity(point)))
                 return;
             try
             {
                 PanoramaPresetStatusText.Text = "P" + number.ToString("00") + " PTZF MOVING";
-                await vm.MovePanoramaPresetAsync(point);
-                PanoramaPresetStatusText.Text = "P" + number.ToString("00") + " PTZF MOVE COMPLETED";
+                bool full = await vm.MovePanoramaPresetAsync(point);
+                PanoramaPresetStatusText.Text = "P" + number.ToString("00") +
+                    (full ? " PTZF MOVE COMPLETED" : " PT ARRIVED / LENS UNCONFIRMED");
             }
             catch (OperationCanceledException)
             {
@@ -205,6 +222,10 @@ namespace OpenCvWpfTracking
             {
                 PanoramaPresetStatusText.Text = "PRESET MOVE UNCONFIRMED · CHECK LOG";
                 ConsoleLogHelper.Error("PANORAMA PRESET", "기존 PRESET 이동 실패", ex);
+            }
+            finally
+            {
+                _panoramaMoveStatusUntilUtc = DateTime.UtcNow.AddSeconds(5);
             }
         }
     }

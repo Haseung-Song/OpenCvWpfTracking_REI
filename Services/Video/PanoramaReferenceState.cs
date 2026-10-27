@@ -23,12 +23,32 @@ namespace OpenCvWpfTracking.Services.Video
         public double Tilt { get; set; }
     }
 
+    /// <summary>프리셋과 구역 파일 사이의 종료에도 동일한 ZERO 변환을 한 번만 적용한다.</summary>
+    [DataContract]
+    public sealed class PanoramaZoneRebase
+    {
+        [DataMember]
+        public string OperationId { get; set; }
+
+        [DataMember]
+        public string EquipmentKey { get; set; }
+
+        [DataMember]
+        public double PanDelta { get; set; }
+
+        [DataMember]
+        public double TiltDelta { get; set; }
+    }
+
     /// <summary>물리 방향과 현재 팬·틸트 좌표 사이의 누적 변환을 장비별로 보존한다.</summary>
     [DataContract]
     public sealed class PanoramaReferenceState
     {
         [DataMember]
         public int Version { get; set; } = 1;
+
+        [DataMember]
+        public PanoramaZoneRebase ZoneRebase { get; set; }
 
         [DataMember]
         public double PanOffset { get; set; }

@@ -957,6 +957,7 @@ namespace OpenCvWpfTracking
 
             foreach (var overlay in new[]
             {
+                PopoutZoneOverlay,
                 PopoutAiOverlay,
                 PopoutVisionOverlay
             }
@@ -966,6 +967,12 @@ namespace OpenCvWpfTracking
                 overlay.SetBinding(ZoneOverlayView.SourceWidthProperty, new Binding(videoWidthPropertyName) { Source = _viewModel });
                 overlay.SetBinding(ZoneOverlayView.SourceHeightProperty, new Binding(videoHeightPropertyName) { Source = _viewModel });
             }
+
+            string zonePropertyName = _cameraType == VideoPopoutCameraType.Ir ? "IrZoneOverlay" : "EoZoneOverlay";
+            PopoutZoneOverlay.SetBinding(ZoneOverlayView.ItemsProperty,
+                new Binding(zonePropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+            ConsoleLogHelper.State("VIDEO POPOUT / ZONE OVERLAY",
+                "메인 구역 공유 / CAMERA=" + GetCameraName() + " / SOURCE=" + zonePropertyName);
 
             PopoutAiOverlay.SetBinding(ZoneOverlayView.ItemsProperty, new Binding(detectionBoxesPropertyName) { Source = _viewModel });
             PopoutVisionOverlay.SetBinding(

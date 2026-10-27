@@ -25,6 +25,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public double? BeforeValue;
 
             public long PoseTicks;
+
+            public double OtherBeforeValue;
         }
 
         private string PanoramaReferencePath => Path.Combine(PanoramaPresetRegistration.ConfigDirectory,
@@ -94,7 +96,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             var reference = PanoramaReference;
             if (reference.Pending)
                 return;
-            if (reference.Journal.Count == 0)
+            if (reference.Journal.Count == 0 && reference.ZoneRebase == null)
                 return;
             var points = IsSelectedControlAgentWebAgent ? PresetPoints : LaPresetPoints;
             foreach (var entry in reference.Journal)
@@ -114,9 +116,56 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             if (SavePresetStorage())
             {
+                if (reference.ZoneRebase != null)
+                    ApplyZoneReferenceRebase(reference.ZoneRebase);
                 reference.Journal.Clear();
+                reference.ZoneRebase = null;
                 PanoramaPresetRegistration.WriteAtomic(PanoramaReferencePath, reference);
+                FinishZoneReferenceChange(false);
             }
+        }
+
+        /// <summary>정지 후 새 위치 세 개가 안정된 경우에만 ZERO 직전 기준을 확보한다.</summary>
+        private async Task<PanoramaZeroTicket> PreparePanoramaZeroReferenceAsync(bool panAxis)
+        {
+            string context = PanoramaPresetContext;
+            if (PanoramaReference.Pending)
+                throw new InvalidOperationException("이전 ZERO 좌표 기준 확인 필요");
+
+            bool positionStopped = _controlCommandService.StopPanTiltPositionMove();
+            bool continuousStopped = _controlCommandService.StopMove();
+            if (!positionStopped || !continuousStopped)
+                throw new InvalidOperationException("ZERO 전 정지 명령 송신 실패");
+
+            var previous = Volatile.Read(ref _videoCenterPose);
+            long ticks = previous?.Item3 ?? 0;
+            int stable = 0;
+            for (int attempt = 0; attempt < 80; attempt++)
+            {
+                await Task.Delay(100);
+                if (context != PanoramaPresetContext)
+                    throw new InvalidOperationException("ZERO 준비 중 연결 장비 변경");
+                var pose = Volatile.Read(ref _videoCenterPose);
+                if (pose == null || pose.Item3 <= ticks || !PanoramaPoseFresh)
+                    continue;
+                ticks = pose.Item3;
+                bool still = previous != null && Math.Abs(SignedPan(pose.Item1 - previous.Item1)) <= .02 &&
+                    Math.Abs(pose.Item2 - previous.Item2) <= .02;
+                stable = still ? stable + 1 : 1;
+                previous = pose;
+                if (stable >= 3)
+                {
+                    var ticket = BeginPanoramaZeroReference(panAxis);
+                    // 대기 중 마지막으로 검증한 수신 묶음을 사용한다.
+                    ticket.BeforeValue = panAxis ? pose.Item1 : pose.Item2;
+                    ticket.OtherBeforeValue = panAxis ? pose.Item2 : pose.Item1;
+                    ticket.PoseTicks = pose.Item3;
+                    ConsoleLogHelper.State("PANORAMA ZERO BEFORE", "AXIS=" + (panAxis ? "PAN" : "TILT") +
+                        " / PAN=" + pose.Item1.ToString("F3") + " / TILT=" + pose.Item2.ToString("F3"));
+                    return ticket;
+                }
+            }
+            throw new InvalidOperationException("ZERO 전 안정된 새 위치 미수신 / ZERO 미송신");
         }
 
         /// <summary>ZERO 송신 전에 미확정 상태를 저장해 확인 없이 이전 좌표로 이동하지 않도록 한다.</summary>
@@ -132,10 +181,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Context = PanoramaPresetContext,
                 PanAxis = panAxis,
                 BeforeValue = PanoramaPoseFresh && pose != null ? (double?)(panAxis ? pose.Item1 : pose.Item2) : null,
+                OtherBeforeValue = pose == null ? 0 : (panAxis ? pose.Item2 : pose.Item1),
                 PoseTicks = pose?.Item3 ?? 0
             };
             reference.Pending = true;
             PanoramaPresetRegistration.WriteAtomic(PanoramaReferencePath, reference);
+            BeginZoneReferenceChange();
             return ticket;
         }
 
@@ -149,6 +200,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 previous.Pending = false;
                 PanoramaPresetRegistration.WriteAtomic(PanoramaReferencePath, previous);
+                FinishZoneReferenceChange();
                 return;
             }
             if (!ticket.BeforeValue.HasValue)
@@ -170,7 +222,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     lastTicks = pose.Item3;
                     after = ticket.PanAxis ? SignedPan(pose.Item1) : pose.Item2;
-                    stable = Math.Abs(after) <= .1
+                    double other = ticket.PanAxis ? pose.Item2 : pose.Item1;
+                    double otherDelta = ticket.PanAxis ? other - ticket.OtherBeforeValue : SignedPan(other - ticket.OtherBeforeValue);
+                    stable = Math.Abs(otherDelta) <= .05 && Math.Abs(after) <= .1
                         ? (double.IsNaN(lastValue) || Math.Abs(after - lastValue) <= .05 ? stable + 1 : 1) : 0;
                     lastValue = after;
                     if (stable >= 3)
@@ -190,6 +244,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 PanOffset = previous.PanOffset + (ticket.PanAxis ? delta : 0),
                 TiltOffset = previous.TiltOffset + (ticket.PanAxis ? 0 : delta),
                 Pending = false,
+                ZoneRebase = new PanoramaZoneRebase
+                {
+                    OperationId = Guid.NewGuid().ToString("N"),
+                    EquipmentKey = ZoneEquipmentKey,
+                    PanDelta = ticket.PanAxis ? delta : 0,
+                    TiltDelta = ticket.PanAxis ? 0 : delta
+                },
                 Journal = previous.Journal.ToList()
             };
             foreach (var point in GetPanoramaPresets())
@@ -211,7 +272,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RecoverPanoramaPresetReference();
             HomeZeroStatusText = "ZERO APPLIED / PRESET REFERENCE UPDATED";
             ConsoleLogHelper.State("PANORAMA REFERENCE", (ticket.PanAxis ? "PAN" : "TILT") +
-                " ZERO 좌표 갱신 / 변화=" + delta.ToString("F3") + " / 이미지·연동 번호 유지");
+                " ZERO 좌표 갱신 / BEFORE=" + ticket.BeforeValue.Value.ToString("F3") +
+                " / AFTER=" + after.ToString("F3") + " / DELTA=" + delta.ToString("F3") +
+                " / PAN_OFFSET=" + updated.PanOffset.ToString("F3") + " / TILT_OFFSET=" + updated.TiltOffset.ToString("F3") +
+                " / 이미지·연동 번호 유지");
         }
     }
 }

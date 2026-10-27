@@ -1,4 +1,7 @@
 ﻿using OpenCvWpfTracking.Models.Position;
+using OpenCvWpfTracking.Models.Main;
+using System.Globalization;
+using OpenCvWpfTracking.Services.Video;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,7 +37,23 @@ namespace OpenCvWpfTracking.Services.Position
         public System.Windows.Media.Imaging.BitmapSource Thumbnail { get; set; }
 
         [XmlIgnore]
-        public string DisplayColor => "#C8A2FF";
+        public string DisplayColor => ColorForKind(Kind);
+
+        /// <summary>구역 편집·메인 영상·분리 영상에 같은 등급 색상을 사용한다.</summary>
+        public static string ColorForKind(string kind)
+        {
+            switch (kind)
+            {
+                case "허용":
+                    return "#2DD4BF";
+                case "주의":
+                    return "#FACC15";
+                case "위험":
+                    return "#FF3B30";
+                default:
+                    return "#C8A2FF";
+            }
+        }
 
         public override string ToString() => Name + " / " + Kind + " / " + (Fire ? "FIRE " : "") + (Smoke ? "SMOKE" : "");
     }
@@ -92,6 +111,8 @@ namespace OpenCvWpfTracking.Services.Position
         public int Version { get; set; } = 1;
 
         public List<FireSmokeScene> Scenes { get; set; } = new List<FireSmokeScene>();
+
+        public List<string> AppliedZeroOperations { get; set; } = new List<string>();
     }
 
     public sealed class ZoneAssessment
@@ -141,6 +162,80 @@ namespace OpenCvWpfTracking.Services.Position
 
     public static class FireSmokeZoneService
     {
+        // 정규화 렌즈값 0~1000에서 줌 ±5, 포커스 ±30의 소폭 오차를 허용한다.
+        public const int ZoomTolerance = 5;
+
+        public const int FocusTolerance = 30;
+
+        /// <summary>사진·도형·분류는 보존하고 장면 방향과 저장된 프리셋 방향에만 동일한 변환을 적용한다.</summary>
+        public static bool RebaseZero(FireSmokeZoneFile data, PanoramaZoneRebase operation)
+        {
+            if (operation == null || string.IsNullOrWhiteSpace(operation.OperationId) ||
+                string.IsNullOrWhiteSpace(operation.EquipmentKey) || !Finite(operation.PanDelta) || !Finite(operation.TiltDelta))
+                throw new InvalidDataException("구역 ZERO 변환 기록 확인 필요");
+            if (data.AppliedZeroOperations == null)
+                data.AppliedZeroOperations = new List<string>();
+            if (data.AppliedZeroOperations.Contains(operation.OperationId))
+                return false;
+
+            foreach (var scene in data.Scenes.Where(item => item.EquipmentKey == operation.EquipmentKey))
+            {
+                // 이전 버전에서 이미 무효화된 근거 불명 구역은 자동으로 유효화하지 않는다.
+                scene.Pan = SignedAngle(scene.Pan + operation.PanDelta);
+                scene.Tilt += operation.TiltDelta;
+                if (scene.PresetNumber > 0)
+                {
+                    var signature = (scene.PresetSignature ?? "").Split('|');
+                    double pan, tilt;
+                    if (signature.Length < 8 ||
+                        !double.TryParse(signature[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) ||
+                        !double.TryParse(signature[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) || !Finite(pan) || !Finite(tilt))
+                        throw new InvalidDataException("구역 프리셋의 ZERO 이전 방향 확인 필요: " + scene.Name);
+                    signature[1] = SignedAngle(pan + operation.PanDelta).ToString("R", CultureInfo.InvariantCulture);
+                    signature[2] = (tilt + operation.TiltDelta).ToString("R", CultureInfo.InvariantCulture);
+                    scene.PresetSignature = string.Join("|", signature);
+                }
+                scene.Revision = Guid.NewGuid().ToString("N");
+            }
+            data.AppliedZeroOperations.Add(operation.OperationId);
+            return true;
+        }
+
+        private static double SignedAngle(double value) => ((value + 180) % 360 + 360) % 360 - 180;
+
+        public static bool LensWithin(int? actual, int expected, int tolerance) =>
+            actual.HasValue && actual.Value >= 0 && actual.Value <= 1000 && expected >= 0 && expected <= 1000 &&
+            Math.Abs((long)actual.Value - expected) <= tolerance;
+
+        private static bool LensTextWithin(string saved, string current, int tolerance)
+        {
+            int before, after;
+            return int.TryParse(saved, out before) && int.TryParse(current, out after)
+                ? LensWithin(after, before, tolerance) : saved == current;
+        }
+
+        /// <summary>과거 전체 프리셋 지문도 읽되 해당 카메라의 렌즈와 실제 방향만 비교한다.</summary>
+        public static string PresetMismatch(FireSmokeScene scene, PresetPointOption current)
+        {
+            var parts = (scene.PresetSignature ?? "").Split('|');
+            double pan, tilt;
+            if (parts.Length < 8 || parts[0] != current.Number.ToString(CultureInfo.InvariantCulture) ||
+                double.IsNaN(current.Pan) || double.IsInfinity(current.Pan) ||
+                double.IsNaN(current.Tilt) || double.IsInfinity(current.Tilt) ||
+                !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) ||
+                !double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) ||
+                double.IsNaN(pan) || double.IsInfinity(pan) || double.IsNaN(tilt) || double.IsInfinity(tilt))
+                return "등록 기준 미확인";
+            if (PanDistance(pan, current.Pan) > .015000001 || Math.Abs(tilt - current.Tilt) > .015000001)
+                return "PAN/TILT 변경";
+            bool ir = scene.Camera == "IR";
+            if (!LensTextWithin(parts[ir ? 5 : 3], ir ? current.IrZoomText : current.EoZoomText, ZoomTolerance))
+                return (ir ? "IR" : "EO") + " ZOOM 변경";
+            if (!LensTextWithin(parts[ir ? 6 : 4], ir ? current.IrFocusText : current.EoFocusText, FocusTolerance))
+                return (ir ? "IR" : "EO") + " FOCUS 변경";
+            return null;
+        }
+
         public static void Validate(FireSmokeZoneFile data)
         {
             if (data == null || data.Version != 1 || data.Scenes == null || data.Scenes.Count > 100)
@@ -235,7 +330,10 @@ namespace OpenCvWpfTracking.Services.Position
             try
             {
                 using (var stream = File.Create(temp))
+                {
                     new XmlSerializer(typeof(FireSmokeZoneFile)).Serialize(stream, data);
+                    stream.Flush(true);
+                }
 
                 if (File.Exists(path))
                     File.Replace(temp, path, path + ".bak");
@@ -313,7 +411,7 @@ namespace OpenCvWpfTracking.Services.Position
                 Math.Abs(s.Tilt - f.Position.Tilt.Value) > s.AngleTolerance)
                 return "PAN/TILT 불일치 (허용 " + s.AngleTolerance.ToString("F2") + "°)\n" + values;
 
-            if (s.Zoom != zoom)
+            if (!LensWithin(zoom, s.Zoom, ZoomTolerance))
                 return "ZOOM 불일치\n" + values;
 
             if (f.Width <= 0 || f.Height <= 0 || Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) >= .005)
@@ -336,7 +434,7 @@ namespace OpenCvWpfTracking.Services.Position
             f.Position.Pan.Value
         ) <= s.AngleTolerance &&
             Math.Abs(s.Tilt - f.Position.Tilt.Value) <= s.AngleTolerance &&
-            s.Zoom == (s.Camera == "IR" ? f.Position.IrZoom : f.Position.EoZoom) &&
+            LensWithin(s.Camera == "IR" ? f.Position.IrZoom : f.Position.EoZoom, s.Zoom, ZoomTolerance) &&
             f.Width > 0 &&
             f.Height > 0 &&
             Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) < 0.005;

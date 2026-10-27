@@ -15,6 +15,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private string _panoramaPresetActiveContext;
 
+        private bool _panoramaPanTiltConfirmed;
+
         public bool IsPanoramaPresetRunning => _panoramaPresetCts != null;
 
         public string PanoramaPresetContext => PanoramaDeviceKey + "|" + EoSourceAddress + "|" +
@@ -35,7 +37,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _laPresetSingleMoveCts == null && _presetSingleMoveCts == null &&
             !_videoCenterBusy && _currentMoveType == ContinuousMoveType.None &&
             _controlInputs.Count == 0 && _issuedControlAxes.Count == 0 && _axisCtecSources.Count == 0 &&
-            PanoramaPoseFresh && !PanoramaReference.Pending;
+            PanoramaPoseFresh && !PanoramaReference.Pending && PanoramaReference.Journal.Count == 0;
 
         /// <summary>
         /// 시작과 종료 모두 기존 제어 잠금 속성에 알림을 보내 화면과 키 입력을 함께 잠근다.
@@ -60,7 +62,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 번호 클릭은 기존 프리셋의 단일 PTZF 이동 경로를 사용한다.
         /// 이미지 좌표로 새로운 이동 각도를 계산하거나 별도 패킷을 만들지 않는다.
         /// </summary>
-        public async Task MovePanoramaPresetAsync(PresetPointOption point)
+        public async Task<bool> MovePanoramaPresetAsync(PresetPointOption point)
         {
             if (!CanStartPanoramaPresets || point == null || !GetPanoramaPresets().Contains(point) ||
                 point.Number < (IsSelectedControlAgentWebAgent ? 1 : 0) || point.Number > (IsSelectedControlAgentWebAgent ? 63 : 99))
@@ -74,6 +76,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _panoramaPresetCts = cts;
             NotifyPanoramaPresetLock();
             bool completed = false;
+            _panoramaPanTiltConfirmed = false;
             try
             {
                 if (web)
@@ -88,11 +91,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 cts.Token.ThrowIfCancellationRequested();
                 string status = web ? PresetCommandStatusText : LaPresetCommandStatusText;
-                completed = context == PanoramaPresetContext && PanoramaPoseFresh &&
-                    GetPanoramaPresets().Contains(point) && status != null &&
-                    status.EndsWith(" COMPLETED", StringComparison.Ordinal);
+                bool sameContext = context == PanoramaPresetContext && PanoramaPoseFresh && GetPanoramaPresets().Contains(point);
+                bool full = sameContext && status != null && status.EndsWith(" COMPLETED", StringComparison.Ordinal);
+                bool lensOnly = sameContext && IsPanoramaLensOnlyIncomplete(status, _panoramaPanTiltConfirmed,
+                    SignedPan(_currentPan - point.Pan), _currentTilt - point.Tilt);
+                completed = full || lensOnly;
                 if (!completed)
-                    throw new InvalidOperationException("PRESET 이동 완료를 확인하지 못했습니다.");
+                    throw new InvalidOperationException("PRESET 이동 완료 미확인 / " + status);
+                if (lensOnly)
+                    OpenCvWpfTracking.Common.ConsoleLogHelper.Warning("PANORAMA PRESET",
+                        "팬·틸트 도착 / 렌즈 확인 미완료 / P" + point.Number.ToString("00") + " / " + status);
+                return full;
             }
             finally
             {
@@ -104,6 +113,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 NotifyPanoramaPresetLock();
             }
         }
+
+        /// <summary>팬·틸트 도착은 확인됐으나 기존 렌즈 복원이 제한 시간 안에 끝나지 않은 경우를 구분한다.</summary>
+        private static bool IsPanoramaLensOnlyIncomplete(string status, bool confirmed, double panError, double tiltError) =>
+            confirmed && status != null && status.EndsWith(" INCOMPLETE", StringComparison.Ordinal) &&
+            Math.Abs(panError) <= PresetPanTiltTargetTolerance + 1e-9 &&
+            Math.Abs(tiltError) <= PresetPanTiltTargetTolerance + 1e-9;
 
         /// <summary>
         /// 연동 버튼과 공통 정지는 기존 단일 프리셋 이동의 취소 경로를 그대로 사용한다.

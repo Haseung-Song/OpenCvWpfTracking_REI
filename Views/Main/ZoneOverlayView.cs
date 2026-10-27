@@ -91,7 +91,6 @@ namespace OpenCvWpfTracking
             foreach (var item in Items)
             {
                 var z = item as MainViewModel.ZoneOverlayBox;
-                bool registeredZone = z != null;
 
                 if (item is AiDetectionBox ai)
                     z = new MainViewModel.ZoneOverlayBox
@@ -117,7 +116,7 @@ namespace OpenCvWpfTracking
                 if (z == null)
                     continue;
 
-                var color = (Brush)new BrushConverter().ConvertFromString(registeredZone ? "#C8A2FF" : z.Color);
+                var color = (Brush)new BrushConverter().ConvertFromString(z.Color);
                 var viewport = new Rect(ox, oy, SourceWidth * scale, SourceHeight * scale);
                 var r = new Rect(ox + z.Left * scale, oy + z.Top * scale, Math.Max(0, z.Width * scale), Math.Max(0, z.Height * scale));
                 r.Intersect(viewport);

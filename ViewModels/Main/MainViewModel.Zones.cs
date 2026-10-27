@@ -11,6 +11,7 @@ using System.Text;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using OpenCvWpfTracking.Models.Main;
+using OpenCvWpfTracking.Services.Video;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
@@ -71,6 +72,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _zoneCalibrationGeneration;
 
         public int ZoneCalibrationGeneration => _zoneCalibrationGeneration;
+
+        private bool _zoneZeroPending;
+
+        public bool IsZoneReferencePending => _zoneZeroPending || PanoramaReference.Pending || PanoramaReference.ZoneRebase != null;
+
+        public event Action<PanoramaZoneRebase> ZoneReferenceChanged;
 
         private string _zoneStatus = "구역 미등록";
 
@@ -304,11 +311,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             p.PositionSnapshot?.CapturedAt.ToString("O") ?? "LEGACY"
         );
 
-        public bool ZonePresetCurrent(FireSmokeScene scene) =>
-            scene.PresetNumber == 0 ||
-            GetZonePresets().Any(p => p.Kind == scene.PresetKind &&
-            p.Point.Number == scene.PresetNumber &&
-            ZonePresetSignature(p.Point) == scene.PresetSignature);
+        public bool ZonePresetCurrent(FireSmokeScene scene) => ZonePresetMismatchReason(scene) == null;
+
+        /// <summary>프리셋 번호·장비 종류를 먼저 확인하고 현재 장면의 카메라 기준으로만 변경을 판정한다.</summary>
+        public string ZonePresetMismatchReason(FireSmokeScene scene)
+        {
+            if (scene == null)
+                return "장면 없음";
+            if (scene.PresetNumber == 0)
+                return null;
+            var current = GetZonePresets().FirstOrDefault(p => p.Kind == scene.PresetKind && p.Point.Number == scene.PresetNumber);
+            return current == null ? "연결 프리셋 없음" : FireSmokeZoneService.PresetMismatch(scene, current.Point);
+        }
 
         public void MoveZonePreset(ZonePresetOption p)
         {
@@ -358,7 +372,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 p.Point.Pan
             ) <= .3 &&
                 Math.Abs(frame.Position.Tilt.Value - p.Point.Tilt) <= .3 &&
-                currentZoom == zoom)
+                FireSmokeZoneService.LensWithin(currentZoom, zoom, FireSmokeZoneService.ZoomTolerance))
                 return null;
 
             return string.Format(
@@ -392,7 +406,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 p.Point.Pan
             ) > scene.AngleTolerance ||
                 Math.Abs(scene.Tilt - p.Point.Tilt) > scene.AngleTolerance ||
-                scene.Zoom != zoom)
+                !FireSmokeZoneService.LensWithin(scene.Zoom, zoom, FireSmokeZoneService.ZoomTolerance))
                 throw new InvalidOperationException("선택 프리셋에 도착하지 않았습니다. 이동 후 캡처하세요.");
 
             scene.PresetKind = p.Kind;
@@ -514,7 +528,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         p.Y * frame.Height
                     )).ToList(),
                         Name = "ZONE " + zone.ToString(),
-                        Color = "#C8A2FF"
+                        Color = zone.DisplayColor
                     });
         }
 
@@ -582,6 +596,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private string ZoneFrameReadiness(ZoneFrameContext f, bool requireStable)
         {
+            if (IsZoneReferencePending)
+                return "ZERO 좌표 기준 확인 대기 / 구역 보존";
+
             if (f == null ||
                 f.Epoch != _zoneEpoch ||
                 (DateTimeOffset.Now - f.At).TotalSeconds > 2 ||
@@ -735,25 +752,50 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(ZoneStatusText));
         }
 
-        private void InvalidateZoneCalibration()
+        /// <summary>ZERO 확인 전에는 구역을 지우지 않고 과거 프레임·정합 결과의 적용만 중지한다.</summary>
+        private void BeginZoneReferenceChange()
         {
             _zoneCalibrationGeneration++;
+            _zoneZeroPending = true;
+            ResetZoneReferenceFrames();
+        }
+
+        private void ResetZoneReferenceFrames()
+        {
             System.Threading.Interlocked.Increment(ref _zoneEpoch);
+            lock (_zoneHistoryLock)
+                _zoneHistory.Clear();
+            lock (_zoneImageLock)
+                _zoneImageFrames.Clear();
+            _eoZoneSignature = null;
+            _irZoneSignature = null;
+            EoZoneOverlay.Clear();
+            IrZoneOverlay.Clear();
+        }
+
+        /// <summary>변환과 적용 번호를 같은 XML에 확정해 재시작 시 중복 보정을 방지한다.</summary>
+        private void ApplyZoneReferenceRebase(PanoramaZoneRebase operation)
+        {
+            if (_zoneLoadError != null)
+                throw new IOException("구역 원본 확인 필요 / ZERO 변환 저장 보류: " + _zoneLoadError);
             var data = FireSmokeZoneService.Clone(_zoneFile);
-
-            foreach (var scene in data.Scenes.Where(s => s.EquipmentKey == ZoneEquipmentKey))
-                scene.Invalidated = true;
-
-            try
+            if (FireSmokeZoneService.RebaseZero(data, operation))
             {
-                SaveZoneEditorData(data);
-            }
-            catch (Exception ex)
-            {
+                FireSmokeZoneService.Save(ZonePath, data);
                 _zoneFile = data;
-                _zoneLoadError = "ZERO 후 설정 저장 실패 / 재등록 필요";
-                ConsoleLogHelper.Error("ZONE ZERO", "구역 무효화 저장 실패", ex);
             }
+            ResetZoneReferenceFrames();
+            ZoneReferenceChanged?.Invoke(operation);
+            ConsoleLogHelper.State("ZONE ZERO REFERENCE", "구역 보존·기준 갱신 / PAN_DELTA=" +
+                operation.PanDelta.ToString("F3") + " / TILT_DELTA=" + operation.TiltDelta.ToString("F3") +
+                " / SCENES=" + data.Scenes.Count(scene => scene.EquipmentKey == operation.EquipmentKey));
+        }
+
+        private void FinishZoneReferenceChange(bool notifyEditor = true)
+        {
+            _zoneZeroPending = false;
+            if (notifyEditor)
+                ZoneReferenceChanged?.Invoke(null);
         }
 
         private void ZoneChannelChanged(string camera)

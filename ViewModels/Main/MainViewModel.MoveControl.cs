@@ -260,13 +260,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             HomeZeroLockTitle = "PAN ZERO";
-            InvalidateZoneCalibration();
             HomeZeroLockMessage = "PAN MOTOR STABILIZING...";
             SetHomePositionMovingState(true);
 
             try
             {
-                var panoramaZero = BeginPanoramaZeroReference(true);
+                var panoramaZero = await PreparePanoramaZeroReferenceAsync(true);
                 bool useWebAgent = _selectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
 
                 if (useWebAgent)
@@ -326,13 +325,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 마지막 모터 안정화 대기가 모두 끝날 때까지 기존 HOME Lock을 유지한다.
             // 이 구간에는 HOME, 방향키, WASD, Zoom/Focus 입력이 차단된다.
             HomeZeroLockTitle = "TILT ZERO";
-            InvalidateZoneCalibration();
             HomeZeroLockMessage = "TILT MOTOR STABILIZING...";
             SetHomePositionMovingState(true);
 
             try
             {
-                var panoramaZero = BeginPanoramaZeroReference(false);
+                var panoramaZero = await PreparePanoramaZeroReferenceAsync(false);
                 bool useWebAgent = _selectedControlAgentProfile?.AgentType == ControlAgentType.WebAgent;
 
                 if (useWebAgent)
@@ -841,6 +839,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 settleTimeoutMs,
                 cancellationToken
             );
+            // 파노라마 이동에서는 실제 정착 확인 결과를 별도로 보존해 렌즈 미완료와 구분한다.
+            if (IsPanoramaPresetRunning)
+                _panoramaPanTiltConfirmed = panTiltSettled;
+
             int eoZoom = ParsePresetPosition(preset.EoZoomText, GetCurrentPresetStandardZoom());
             int eoFocus = ParsePresetPosition(preset.EoFocusText, GetCurrentPresetStandardFocus());
             int irZoom = ParsePresetPosition(preset.IrZoomText, GetCurrentIrZoomStandardPosition());
@@ -1995,6 +1997,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 preset,
                                 moveSpeed),
                             moveCts.Token);
+                    if (IsPanoramaPresetRunning)
+                        _panoramaPanTiltConfirmed = panTiltSettled;
                     if (panTiltSettled)
                         lensRestored = await RestoreStoredPresetLensAsync(preset, moveCts.Token);
                 }

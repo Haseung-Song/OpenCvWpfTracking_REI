@@ -23,6 +23,31 @@ namespace OpenCvWpfTracking.Services.Video
         public double Pan { get; set; }
 
         public double Tilt { get; set; }
+
+        public bool ReferenceValid { get; set; } = true;
+    }
+
+    /// <summary>영점 변경과 분리한 사진 위치와 연동 당시의 기준 방향을 보존한다.</summary>
+    [DataContract]
+    public sealed class PanoramaPresetAnchor
+    {
+        [DataMember]
+        public int Number { get; set; }
+
+        [DataMember]
+        public string RegistrationKey { get; set; }
+
+        [DataMember]
+        public double BasePan { get; set; }
+
+        [DataMember]
+        public double BaseTilt { get; set; }
+
+        [DataMember]
+        public double U { get; set; }
+
+        [DataMember]
+        public double V { get; set; }
     }
 
     /// <summary>촬영 행별 실제 각도와 최종 합성 위치를 보관한다.</summary>
@@ -119,6 +144,9 @@ namespace OpenCvWpfTracking.Services.Video
         public bool ReferenceUncertain { get; set; }
 
         [DataMember] public List<int> LinkedPresetNumbers { get; set; } = new List<int>();
+
+        [DataMember]
+        public List<PanoramaPresetAnchor> PresetAnchors { get; set; } = new List<PanoramaPresetAnchor>();
     }
 
     /// <summary>영상 비교 없이 저장된 팬·틸트를 실제 행 정합 좌표계로 변환한다.</summary>
@@ -272,6 +300,63 @@ namespace OpenCvWpfTracking.Services.Video
                 U = x / data.OutputWidth,
                 V = y / data.OutputHeight
             };
+        }
+
+        /// <summary>렌즈와 등록 시각으로 재등록을 구분하며 ZERO로 바뀌는 각도는 식별자에서 제외한다.</summary>
+        private static string AnchorRegistrationKey(PresetPointOption preset)
+        {
+            return ContextIdentity(preset.Number + "|" + preset.PositionSnapshot?.CapturedAt.ToString("o") + "|" +
+                preset.EoZoomText + "|" + preset.EoFocusText + "|" + preset.IrZoomText + "|" + preset.IrFocusText);
+        }
+
+        /// <summary>사진 위치는 고정하고 현재 이동 각도와 지문만 갱신한다. 기준 불일치는 감추지 않고 이동을 막는다.</summary>
+        public static PanoramaPresetLink ResolveLink(PanoramaCoordinateMetadata data, PresetPointOption preset,
+            double panOffset, double tiltOffset, bool allowCapture, out bool changed)
+        {
+            changed = false;
+            if (data == null || preset == null || !Finite(panOffset) || !Finite(tiltOffset))
+                return null;
+
+            string key = AnchorRegistrationKey(preset);
+            var anchor = data.PresetAnchors?.FirstOrDefault(item => item.Number == preset.Number);
+            if (anchor != null && anchor.RegistrationKey == key && Finite(anchor.U) && Finite(anchor.V) &&
+                anchor.U >= 0 && anchor.U < 1 && anchor.V >= 0 && anchor.V < 1)
+            {
+                double panError = Wrap(preset.Pan - panOffset - anchor.BasePan + 180) - 180;
+                double tiltError = preset.Tilt - tiltOffset - anchor.BaseTilt;
+                return new PanoramaPresetLink
+                {
+                    Number = preset.Number,
+                    Fingerprint = PresetIdentity(preset),
+                    Pan = preset.Pan,
+                    Tilt = preset.Tilt,
+                    U = anchor.U,
+                    V = anchor.V,
+                    ReferenceValid = allowCapture && Math.Abs(panError) <= .03 && Math.Abs(tiltError) <= .03
+                };
+            }
+
+            // 미확정 ZERO 중에는 과거 파일을 새 기준으로 변환하여 저장하지 않는다.
+            if (!allowCapture)
+                return null;
+            var link = Project(data, preset, panOffset, tiltOffset);
+            if (link == null)
+                return null;
+            if (data.PresetAnchors == null)
+                data.PresetAnchors = new List<PanoramaPresetAnchor>();
+            if (anchor != null)
+                data.PresetAnchors.Remove(anchor);
+            data.PresetAnchors.Add(new PanoramaPresetAnchor
+            {
+                Number = preset.Number,
+                RegistrationKey = key,
+                BasePan = Wrap(preset.Pan - panOffset),
+                BaseTilt = preset.Tilt - tiltOffset,
+                U = link.U,
+                V = link.V
+            });
+            changed = true;
+            return link;
         }
 
         public static string ConfigDirectory => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "PanoramaLinks");

@@ -1899,6 +1899,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeFireEventFeatures();
             InitializeZoneFeatures();
             LoadPresetStorage();
+            RecoverPanoramaPresetReference();
             ConsoleLogHelper.PrintSection("[CONTROL AGENT]", "Service Initialize Complete");
             ConsoleLogHelper.StateSection(
                 "MAIN",
