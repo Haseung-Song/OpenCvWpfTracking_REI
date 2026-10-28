@@ -461,11 +461,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 previousDirection = currentDirection;
+                // 오차·정지 계산은 원시 좌표 방향으로 유지하고 광학 구동 방향만 장비별로 변환한다.
+                // LA는 망원으로 갈수록 원시 줌이 감소하며 WEB은 증가한다.
                 bool zoomIn = currentDirection > 0;
-                string direction = zoomIn ? "ZoomIn" : "ZoomOut";
+                bool opticalZoomIn = IsSelectedControlAgentWebAgent ? zoomIn : !zoomIn;
+                string direction = opticalZoomIn ? "ZoomIn" : "ZoomOut";
+                ConsoleLogHelper.State(
+                    "IR ZOOM DIRECTION",
+                    $"AGENT={(IsSelectedControlAgentWebAgent ? "WEB" : "LA")} / RAW_START={start} / RAW_TARGET={target} / " +
+                    $"RAW_DIRECTION={currentDirection} / OPTICAL_DIRECTION={direction}"
+                );
                 lastDirection = direction;
                 long startSequence = Interlocked.Read(ref _irLensStatusVersion);
-                bool started = zoomIn ? _controlCommandService.StartIrZoomTele() : _controlCommandService.StartIrZoomWide();
+                bool started = opticalZoomIn ? _controlCommandService.StartIrZoomTele() : _controlCommandService.StartIrZoomWide();
 
                 if (!started)
                     return false;
@@ -513,6 +521,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     if (syncCalibration && standardTarget >= 0 && tolerance <= IrZoomTargetTolerance)
                         UpdateEnvironmentIrZoomEndpointCalibration(standardTarget, settled);
 
+                    // 목표와 반대 방향의 실제 이동은 재시도로 덮지 않고 정지 상태로 종료한다.
+                    if ((settled - start) * currentDirection < -Math.Max(1, tolerance))
+                    {
+                        ConsoleLogHelper.Warning("IR ZOOM DIRECTION",
+                            $"RESULT=OPPOSITE_FEEDBACK / RAW_START={start} / RAW_TARGET={target} / SETTLED_RAW={settled}");
+                        return false;
+                    }
+
                     bool pulseReached = IsIrZoomTargetReached(target, settled, standardTarget, tolerance, syncCalibration);
                     ConsoleLogHelper.State(
                         "IR ZOOM SYNC",
@@ -549,6 +565,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         long feedbackIntervalMs = Math.Max(1, nowMs - lastFeedbackMs);
                         lastFeedbackMs = nowMs;
                         startSequence = sequence;
+
+                        if (delta * currentDirection < -Math.Max(1, tolerance))
+                        {
+                            ConsoleLogHelper.Warning("IR ZOOM DIRECTION",
+                                $"RESULT=OPPOSITE_FEEDBACK / RAW_START={start} / RAW_TARGET={target} / CURRENT_RAW={current}");
+                            return false;
+                        }
 
                         if (delta != 0)
                         {

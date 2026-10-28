@@ -167,6 +167,20 @@ namespace OpenCvWpfTracking.Services.Position
 
         public const int FocusTolerance = 30;
 
+        /// <summary>안정화도 구역 일치와 같은 줌 허용치를 사용하며 다른 채널 렌즈는 간섭하지 않는다.</summary>
+        public static bool IsCameraPoseStable(PositionSnapshot reference, PositionSnapshot current, string camera)
+        {
+            if (!ValidPose(reference, camera) || !ValidPose(current, camera))
+                return false;
+
+            int? expected = camera == "IR" ? reference.IrZoom : reference.EoZoom;
+            int? actual = camera == "IR" ? current.IrZoom : current.EoZoom;
+            return PanDistance(reference.Pan.Value, current.Pan.Value) <= .05 &&
+                Math.Abs(reference.Tilt.Value - current.Tilt.Value) <= .05 &&
+                expected.HasValue && LensWithin(actual, expected.Value, ZoomTolerance);
+        }
+
+
         /// <summary>사진·도형·분류는 보존하고 장면 방향과 저장된 프리셋 방향에만 동일한 변환을 적용한다.</summary>
         public static bool RebaseZero(FireSmokeZoneFile data, PanoramaZoneRebase operation)
         {

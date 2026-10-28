@@ -132,6 +132,11 @@ namespace OpenCvWpfTracking
 
         private readonly DispatcherTimer _timer;
 
+        private string _lastLoggedCaptureState;
+
+        private DateTime _lastCaptureStateLogAt = DateTime.MinValue;
+
+
         private Button _eoTab, _irTab;
 
         private Viewbox _view;
@@ -740,6 +745,20 @@ namespace OpenCvWpfTracking
             if (_pendingPreset != null)
                 state = "자동 캡처 대기\n" + _pendingWaitReason;
 
+            // 같은 상태는 반복 기록하지 않고 전환이 잦아도 2초에 한 번만 현재 수치를 남긴다.
+            string stateKey = (string)_camera.SelectedItem + "|" + state;
+            if (stateKey != _lastLoggedCaptureState && (DateTime.UtcNow - _lastCaptureStateLogAt).TotalSeconds >= 2)
+            {
+                var position = _vm.CaptureZoneFrame((string)_camera.SelectedItem).Position;
+                OpenCvWpfTracking.Common.ConsoleLogHelper.State("ZONE READINESS",
+                    "채널=" + _camera.SelectedItem + " / 상태=" + state.Replace("\n", " · ") +
+                    " / 팬=" + position.Pan + " / 틸트=" + position.Tilt +
+                    " / EO줌=" + position.EoZoom + " / IR줌(원시)=" + position.IrZoom +
+                    " / 안정화=약2초·줌허용±5·PT허용0.05도");
+                _lastLoggedCaptureState = stateKey;
+                _lastCaptureStateLogAt = DateTime.UtcNow;
+            }
+
             _state.Text = state;
             _state.ToolTip = state + "\n지원 EO의 PTZ/ZOOM 시점 연동은 화각 모델 기반이며 장비 이동/ZERO 후에는 재등록해야 합니다.";
             _state.Foreground = Brush(state.StartsWith("적용 가능") ||
@@ -772,7 +791,7 @@ namespace OpenCvWpfTracking
             _refreshingScenes = true;
             try
             {
-                _scenes.ItemsSource = _data.Scenes.Where(s => s.EquipmentKey == _equipment && s.Camera == camera).ToList();
+                _scenes.ItemsSource = _data.Scenes.Where(s => s.EquipmentKey == _equipment && s.Camera == camera && _vm.IsZoneSceneForCurrentAgent(s)).ToList();
                 _scenes.SelectedItem = wanted != null && _scenes.Items.Contains(wanted)
                     ? wanted : _scenes.Items.Cast<FireSmokeScene>().FirstOrDefault();
             }
@@ -1287,7 +1306,7 @@ namespace OpenCvWpfTracking
         /// <summary>선택 장면 외의 오래된 연결도 이름과 원인을 알려 불필요한 재캡처 반복을 막는다.</summary>
         private void EnsurePresetReferencesCurrent()
         {
-            var stale = _data.Scenes.Where(scene => scene.EquipmentKey == _equipment && !scene.Invalidated &&
+            var stale = _data.Scenes.Where(scene => scene.EquipmentKey == _equipment && _vm.IsZoneSceneForCurrentAgent(scene) && !scene.Invalidated &&
                 !_vm.ZonePresetCurrent(scene)).ToList();
             if (stale.Count == 0)
                 return;
@@ -1312,7 +1331,7 @@ namespace OpenCvWpfTracking
 
             EnsurePresetReferencesCurrent();
 
-            foreach (var s in _data.Scenes.Where(s => s.EquipmentKey == _equipment))
+            foreach (var s in _data.Scenes.Where(s => s.EquipmentKey == _equipment && _vm.IsZoneSceneForCurrentAgent(s)))
             {
                 s.FixedInstallationConfirmed = true;
                 s.Revision = Guid.NewGuid().ToString("N");

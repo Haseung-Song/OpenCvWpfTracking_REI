@@ -289,8 +289,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
             public override string ToString() => Kind + " P" + Point.Number.ToString("00") + " / " + Point.Name;
         }
 
-        public List<ZonePresetOption> GetZonePresets() =>
-            (LaPresetPoints ?? new ObservableCollection<PresetPointOption>()).Select(p => new ZonePresetOption { Kind = "LA", Point = p }).Concat((PresetPoints ?? new ObservableCollection<PresetPointOption>()).Select(p => new ZonePresetOption { Kind = "WEB", Point = p })).ToList();
+        /// <summary>구역 설정과 이동은 현재 선택한 Agent의 프리셋만 사용한다.</summary>
+        public List<ZonePresetOption> GetZonePresets()
+        {
+            if (IsSelectedControlAgentLaAgent)
+            {
+                return (LaPresetPoints ?? new ObservableCollection<PresetPointOption>())
+                    .Select(p => new ZonePresetOption { Kind = "LA", Point = p }).ToList();
+            }
+
+            if (IsSelectedControlAgentWebAgent)
+            {
+                return (PresetPoints ?? new ObservableCollection<PresetPointOption>())
+                    .Select(p => new ZonePresetOption { Kind = "WEB", Point = p }).ToList();
+            }
+
+            return new List<ZonePresetOption>();
+        }
+
+        /// <summary>직접 캡처와 현재 Agent 장면만 표시하고 다른 Agent의 저장 자료는 보존한다.</summary>
+        public bool IsZoneSceneForCurrentAgent(FireSmokeScene scene)
+        {
+            if (scene == null)
+                return false;
+
+            return scene.PresetNumber == 0 ||
+                (IsSelectedControlAgentLaAgent && scene.PresetKind == "LA") ||
+                (IsSelectedControlAgentWebAgent && scene.PresetKind == "WEB");
+        }
+
+        /// <summary>프리셋 줌을 구역 장면과 동일한 장비 수신 좌표로 변환한다.</summary>
+        private bool TryGetZonePresetZoomPosition(string camera, PresetPointOption preset, out int zoom)
+        {
+            if (camera == "IR")
+            {
+                // LA 표준 줌은 반전하고 WEB은 기존 위치·구형 호환 변환 결과를 그대로 사용한다.
+                zoom = ConvertIrZoomStandardToStatusPosition(PresetIrZoomPosition(preset));
+                return true;
+            }
+
+            return int.TryParse(preset.EoZoomText, out zoom);
+        }
 
         public static string ZonePresetSignature(PresetPointOption p) =>
             p == null ? "" : string.Join(
@@ -359,12 +398,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 frame.Position,
                 camera
             ) ||
-                !int.TryParse(
-                camera == "IR" ? PresetIrZoomPosition(p.Point).ToString(System.Globalization.CultureInfo.InvariantCulture) : p.Point.EoZoomText,
-                out zoom
-            ))
+                !TryGetZonePresetZoomPosition(camera, p.Point, out zoom))
                 return "프리셋 위치·ZOOM 미확인";
 
+            // 구역 스냅샷은 원시 수신 좌표이다. LA 프리셋의 반전된 줌을 같은 기준으로 비교한다.
             int? currentZoom = camera == "IR" ? frame.Position.IrZoom : frame.Position.EoZoom;
 
             if (FireSmokeZoneService.PanDistance(
@@ -377,7 +414,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             return string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
-                "도착 대기\n목표 P/T/Z: {0:F2} / {1:F2} / {2}\n수신 P/T/Z: {3:F2} / {4:F2} / {5}",
+                "도착 대기 (줌: 장비 수신 기준)\n목표 P/T/Z: {0:F2} / {1:F2} / {2}\n수신 P/T/Z: {3:F2} / {4:F2} / {5}",
                 p.Point.Pan,
                 p.Point.Tilt,
                 zoom,
@@ -397,10 +434,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             int zoom;
 
-            if (!int.TryParse(
-                scene.Camera == "IR" ? PresetIrZoomPosition(p.Point).ToString(System.Globalization.CultureInfo.InvariantCulture) : p.Point.EoZoomText,
-                out zoom
-            ) ||
+            if (!TryGetZonePresetZoomPosition(scene.Camera, p.Point, out zoom) ||
                 FireSmokeZoneService.PanDistance(
                 scene.Pan,
                 p.Point.Pan
@@ -585,7 +619,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     aligned.Position.Pan.Value
                 ) < .03 &&
                     Math.Abs(position.Tilt.Value - aligned.Position.Tilt.Value) < .03 &&
-                    (camera == "IR" ? position.IrZoom == aligned.Position.IrZoom : position.EoZoom == aligned.Position.EoZoom))
+                    (camera == "IR" ? FireSmokeZoneService.LensWithin(position.IrZoom, aligned.Position.IrZoom.Value, FireSmokeZoneService.ZoomTolerance) : FireSmokeZoneService.LensWithin(position.EoZoom, aligned.Position.EoZoom.Value, FireSmokeZoneService.ZoomTolerance)))
                     context.RegisteredScenes = aligned.RegisteredScenes;
             }
 
@@ -635,16 +669,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             var current = CaptureZonePosition();
 
-            if (!FireSmokeZoneService.ValidPose(
-                current,
-                camera
-            ) ||
-                FireSmokeZoneService.PanDistance(
-                current.Pan.Value,
-                f.Position.Pan.Value
-            ) > 0.05 ||
-                Math.Abs(current.Tilt.Value - f.Position.Tilt.Value) > 0.05 ||
-                (camera == "IR" ? current.IrZoom != f.Position.IrZoom : current.EoZoom != f.Position.EoZoom))
+            if (!FireSmokeZoneService.IsCameraPoseStable(f.Position, current, camera))
                 return "검출 이후 카메라 위치/Zoom 변경";
 
             List<ZoneFrameContext> history;
@@ -653,21 +678,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     h.Epoch == f.Epoch &&
                     h.ChannelEpoch == f.ChannelEpoch &&
                     h.At <= f.At &&
-                    (f.At - h.At).TotalSeconds <= 4.5).ToList();
+                    (f.At - h.At).TotalSeconds <= 2.5).ToList();
 
-            if (history.Count < 7 || (f.At - history.First().At).TotalSeconds < 3.5 || (f.At - history.Last().At).TotalSeconds > 0.9)
-                return "시점 안정화 대기 (약 4초)";
+            if (history.Count < 4 || (f.At - history.First().At).TotalSeconds < 1.5 || (f.At - history.Last().At).TotalSeconds > 1.25)
+                return "시점 안정화 대기 (약 2초)";
 
-            if (history.Any(h => !FireSmokeZoneService.ValidPose(
-                h.Position,
-                camera
-            ) ||
-                FireSmokeZoneService.PanDistance(
-                h.Position.Pan.Value,
-                f.Position.Pan.Value
-            ) > 0.05 ||
-                Math.Abs(h.Position.Tilt.Value - f.Position.Tilt.Value) > 0.05 ||
-                (camera == "IR" ? h.Position.IrZoom != f.Position.IrZoom : h.Position.EoZoom != f.Position.EoZoom)))
+            // 최근 약 2초 동안 해당 채널의 줌 ±5와 기존 PT 기준을 함께 확인한다.
+            if (history.Any(h => !FireSmokeZoneService.IsCameraPoseStable(f.Position, h.Position, camera)))
                 return "카메라 이동/Zoom 변경 / 안정화 필요";
 
             return null;
