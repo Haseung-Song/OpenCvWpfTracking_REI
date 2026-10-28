@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
@@ -71,68 +71,121 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [기능 처리 함수]
 
-        // 프리셋 전용 시간 제한이며 렌즈 보정과 대기는 설정한 지연 시간을 공유한다.
-        // PAN/TILT 이동 시간은 이 제한에서 제외하며 일반 렌즈 제어의 기존 허용 오차는 유지한다.
+        // 줌 복원 제한은 운용자가 설정한 정지 시간과 분리한다.
+        // 초점은 기존 저장값으로 복원하되 자동 순회의 정지 시간 시작 조건으로 사용하지 않는다.
+        private const int PresetZoomRestoreTimeoutMs = 45000;
+
+        private const int PresetFocusRestoreTimeoutMs = 15000;
+
         /// <summary>
-        /// 프리셋의 설정 대기 시간 안에서 렌즈 위치 복원을 수행한다.
+        /// 선택 채널의 줌 도착을 확인한 뒤 정지 시간을 시작하고 그동안 저장 초점을 복원한다.
         /// </summary>
-        private async Task<bool> RestorePresetLensWithinDelayAsync(
+        private async Task<bool> RestorePresetLensAsync(
             int ez,
             int ef,
             int iz,
             int iff,
             int delaySeconds,
-            bool waitRemaining,
+            bool scanTiming,
             CancellationToken token,
-            bool? onlyIr = null
-        )
+            bool? onlyIr = null)
         {
-            int budgetMs = Math.Max(1, Math.Min(60, delaySeconds)) * 1000;
-            var timer = Stopwatch.StartNew();
+            var zoomTimer = Stopwatch.StartNew();
             bool zoom = await RunPresetLensStageAsync(
                 true,
-                Math.Max(
-                1,
-                budgetMs / 2
-            ),
-                ct => MoveLaPresetZoomDirectAsync(
-                ez,
-                iz,
-                ct,
-                PresetEoLensTolerance,
-                PresetIrLensTolerance,
-                onlyIr
-            ),
-                token
-            );
+                PresetZoomRestoreTimeoutMs,
+                async ct => await MoveLaPresetZoomDirectAsync(
+                    ez, iz, ct, PresetEoLensTolerance, PresetIrLensTolerance, onlyIr) &&
+                    await WaitPresetZoomArrivalAsync(ez, iz, onlyIr, ct),
+                token,
+                onlyIr);
+
             token.ThrowIfCancellationRequested();
+
+            if (!zoom)
+            {
+                ConsoleLogHelper.Warning("PRESET ZOOM ARRIVAL",
+                    "줌 도착 미확인 / 다음 지점으로 이동하지 않습니다. / " +
+                    "AGENT=" + (IsSelectedControlAgentWebAgent ? "WEB" : "LA") +
+                    " / CHANNEL=" + (onlyIr.HasValue ? (onlyIr.Value ? "IR" : "EO") : "EO/IR") +
+                    " / EO_TARGET=" + ez + " / EO_ACTUAL=" + GetCurrentPresetStandardZoom() +
+                    " / IR_TARGET=" + iz + " / IR_ACTUAL=" + GetCurrentIrZoomStandardPosition());
+                return false;
+            }
+
+            int delayMs = Math.Max(1, Math.Min(60, delaySeconds)) * 1000;
+            var dwell = Stopwatch.StartNew();
+            ConsoleLogHelper.State("PRESET ZOOM ARRIVAL",
+                "선택 채널 줌 도착 확인 / " + (scanTiming ? "지금부터 정지 시간 시작" : "저장 초점 복원 시작") +
+                " / AGENT=" + (IsSelectedControlAgentWebAgent ? "WEB" : "LA") +
+                " / ZOOM_MOVE_MS=" + zoomTimer.ElapsedMilliseconds +
+                " / DELAY_MS=" + (scanTiming ? delayMs : 0));
+
+            // 순회 중 초점 복원은 정지 시간과 병행한다. 초점이 미도달해도 다음 지점의 줌 대기를 막지 않는다.
             bool focus = await RunPresetLensStageAsync(
                 false,
-                Math.Max(
-                1,
-                budgetMs - (int)timer.ElapsedMilliseconds
-            ),
+                scanTiming ? delayMs : PresetFocusRestoreTimeoutMs,
                 ct => MoveLaPresetFocusDirectAsync(
-                ef,
-                iff,
-                ct,
-                PresetEoLensTolerance,
-                PresetIrLensTolerance,
-                onlyIr
-            ),
-                token
-            );
-            long correctionMs = timer.ElapsedMilliseconds;
-            ConsoleLogHelper.State(
-                "PRESET LENS BUDGET",
-                "BUDGET_MS=" + budgetMs + " / CORRECTION_MS=" + correctionMs + " / ZOOM=" + zoom + " / FOCUS=" + focus + " / EO_TARGET=" + ez + "," + ef + " / IR_TARGET=" + iz + "," + iff + " / EO_ACTUAL=" + GetCurrentPresetStandardZoom() + "," + GetCurrentPresetStandardFocus() + " / IR_ACTUAL=" + GetCurrentIrZoomStandardPosition() + "," + GetCurrentIrFocusStandardPosition()
-            );
+                    ef, iff, ct, PresetEoLensTolerance, PresetIrLensTolerance, onlyIr),
+                token,
+                onlyIr);
 
-            if (waitRemaining && timer.ElapsedMilliseconds < budgetMs)
-                await Task.Delay(budgetMs - (int)timer.ElapsedMilliseconds, token);
+            if (scanTiming && dwell.ElapsedMilliseconds < delayMs)
+            {
+                await Task.Delay(delayMs - (int)dwell.ElapsedMilliseconds, token);
+            }
 
             token.ThrowIfCancellationRequested();
-            return zoom && focus;
+            ConsoleLogHelper.State("PRESET LENS RESULT",
+                "줌 도착 후 처리 완료 / ZOOM=" + zoom + " / FOCUS=" + focus +
+                " / SCAN=" + scanTiming + " / DWELL_MS=" + dwell.ElapsedMilliseconds +
+                " / CONFIGURED_DELAY_MS=" + (scanTiming ? delayMs : 0));
+            return scanTiming || focus;
+        }
+
+        /// <summary>
+        /// 선택한 모든 채널의 최신 줌 응답이 두 번 연속 목표 범위에 들어오는지 확인한다.
+        /// </summary>
+        private async Task<bool> WaitPresetZoomArrivalAsync(int eoTarget, int irTarget, bool? onlyIr, CancellationToken token)
+        {
+            var timer = Stopwatch.StartNew();
+            long eoTicks = PresetLensTicks(false, true);
+            long irTicks = PresetLensTicks(true, true);
+            int stable = 0;
+
+            while (timer.ElapsedMilliseconds < 5000)
+            {
+                token.ThrowIfCancellationRequested();
+                long nextEoTicks = PresetLensTicks(false, true);
+                long nextIrTicks = PresetLensTicks(true, true);
+                bool newEo = onlyIr == true || nextEoTicks > eoTicks;
+                bool newIr = onlyIr == false || nextIrTicks > irTicks;
+                bool eoReached = onlyIr == true || HasFreshPresetLens(false, true) &&
+                    Math.Abs(GetCurrentPresetStandardZoom() - eoTarget) <= PresetEoLensTolerance;
+                bool irReached = onlyIr == false || HasFreshPresetLens(true, true) &&
+                    Math.Abs(GetCurrentIrZoomStandardPosition() - irTarget) <= PresetIrLensTolerance;
+
+                if (!eoReached || !irReached)
+                {
+                    stable = 0;
+                }
+
+                if (newEo && newIr)
+                {
+                    eoTicks = nextEoTicks;
+                    irTicks = nextIrTicks;
+                    stable = eoReached && irReached ? stable + 1 : 0;
+
+                    if (stable >= 2)
+                    {
+                        return true;
+                    }
+                }
+
+                await Task.Delay(25, token);
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -142,7 +195,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool zoom,
             int budgetMs,
             Func<CancellationToken, Task<bool>> move,
-            CancellationToken token
+            CancellationToken token,
+            bool? onlyIr = null
         )
         {
             using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(token))
@@ -158,8 +212,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 catch (OperationCanceledException) when (!token.IsCancellationRequested)
                 {
                     ConsoleLogHelper.Warning(
-                        "PRESET LENS BUDGET",
-                        (zoom ? "ZOOM" : "FOCUS") + " limit reached; incomplete, continue without precision retry / LIMIT_MS=" + budgetMs
+                        "PRESET LENS TIMEOUT",
+                        (zoom ? "줌 복원 제한시간 초과 / 순회 중단" : "초점 복원 제한시간 종료 / 줌 도착 기준 유지") + " / LIMIT_MS=" + budgetMs
                     );
                     return false;
                 }
@@ -170,14 +224,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         if (zoom)
                         {
-                            _controlCommandService.StopIrZoom();
-                            _controlCommandService.StopEoZoom();
+                            if (onlyIr != false)
+                                _controlCommandService.StopIrZoom();
+                            if (onlyIr != true)
+                                _controlCommandService.StopEoZoom();
                         }
                         else
                         {
-                            if (!IsPresetFocusProtected(true))
+                            if (onlyIr != false && !IsPresetFocusProtected(true))
                                 _controlCommandService.StopIrFocus();
-                            if (!IsPresetFocusProtected(false))
+                            if (onlyIr != true && !IsPresetFocusProtected(false))
                                 _controlCommandService.StopEoFocus();
                         }
                     }
@@ -190,26 +246,115 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private async Task<bool> RestorePresetIrZoomAsync(int rawTarget, int standardTarget, int tolerance, CancellationToken token)
         {
-            return await EnsurePresetIrLensFeedbackAsync(
-                true,
-                token
-            ) &&
-                await MoveIrZoomToPositionAsync(
-                rawTarget,
-                token,
-                standardTarget,
-                tolerance
-            ) &&
-                HasFreshPresetLens(
-                true,
-                true
-            ) &&
-                IsIrZoomTargetReached(
-                rawTarget,
-                _currentIrZoom,
-                standardTarget,
-                tolerance
-            );
+            if (!await EnsurePresetIrLensFeedbackAsync(true, token))
+            {
+                return false;
+            }
+
+            // LA는 화각 절대 이동을 사용한다. WEB 절대 위치와 기존 SYNC 보정은 변경하지 않는다.
+            bool moved = IsSelectedControlAgentWebAgent
+                ? await MoveIrZoomToPositionAsync(rawTarget, token, standardTarget, tolerance)
+                : await MoveLaPresetIrZoomAbsoluteAsync(rawTarget, standardTarget, tolerance, token);
+
+            return moved && HasFreshPresetLens(true, true) &&
+                IsIrZoomTargetReached(rawTarget, _currentIrZoom, standardTarget, tolerance);
+        }
+
+        /// <summary>
+        /// LA 프리셋은 규격의 화각 위치 이동 0x29를 한 번 송신하고 실제 도착을 확인한다.
+        /// </summary>
+        private async Task<bool> MoveLaPresetIrZoomAbsoluteAsync(
+            int rawTarget, int standardTarget, int tolerance, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (IsSelectedControlAgentWebAgent)
+            {
+                return false;
+            }
+
+            int start = _currentIrZoom;
+            if (HasFreshPresetLens(true, true) &&
+                IsIrZoomTargetReached(rawTarget, start, standardTarget, tolerance))
+            {
+                return true;
+            }
+
+            // LA는 제어값과 수신값의 방향이 반대다. 송신은 저장된 표준 제어값, 판정은 반전된 수신 목표를 사용한다.
+            bool tele = rawTarget < start;
+            int rawDirection = tele ? -1 : 1;
+            long sequence = PresetLensTicks(true, true);
+            var timer = Stopwatch.StartNew();
+            long lastFeedbackMs = 0;
+            bool started = false;
+            bool completed = false;
+            bool reached = false;
+
+            try
+            {
+                started = _controlCommandService.LaIrZoomGoPosition(standardTarget);
+                if (!started)
+                {
+                    return false;
+                }
+
+                ConsoleLogHelper.Command("LA PRESET IR ZOOM",
+                    "LA 줌 절대 이동 송신 / CMD2=0x29 / WIRE_POSITION=" + standardTarget + " / EXPECTED_RAW=" + rawTarget +
+                    " / RAW_START=" + start + " / TARGET=" + standardTarget);
+
+                while (timer.ElapsedMilliseconds < IrZoomSyncTimeoutMs)
+                {
+                    token.ThrowIfCancellationRequested();
+                    long next = PresetLensTicks(true, true);
+                    if (next > sequence)
+                    {
+                        sequence = next;
+                        lastFeedbackMs = timer.ElapsedMilliseconds;
+                        int actual = _currentIrZoom;
+                        if ((actual - start) * rawDirection < -tolerance)
+                        {
+                            ConsoleLogHelper.Warning("LA PRESET IR ZOOM", "반대 방향 응답 / 정지 후 순회 중단");
+                            return false;
+                        }
+
+                        if (IsIrZoomTargetReached(rawTarget, actual, standardTarget, tolerance))
+                        {
+                            reached = true;
+                            break;
+                        }
+                    }
+
+                    if (timer.ElapsedMilliseconds - lastFeedbackMs > 3000)
+                    {
+                        ConsoleLogHelper.Warning("LA PRESET IR ZOOM", "3초간 새 줌 응답 없음 / 정지 후 순회 중단");
+                        return false;
+                    }
+
+                    await Task.Delay(25, token);
+                }
+
+                if (!reached)
+                {
+                    ConsoleLogHelper.Warning("LA PRESET IR ZOOM", "목표 도착 미확인 / 순회 중단");
+                    return false;
+                }
+
+                int settled = await WaitForIrLensSettledPositionAsync(true, token);
+                bool confirmed = HasFreshPresetLens(true, true) &&
+                    IsIrZoomTargetReached(rawTarget, settled, standardTarget, tolerance);
+                ConsoleLogHelper.State("LA PRESET IR ZOOM",
+                    "화각 절대 이동 확인 / 재송신·중간 정지 없음 / TARGET=" + standardTarget +
+                    " / ACTUAL=" + GetCurrentIrZoomStandardPosition() + " / CONFIRMED=" + confirmed);
+                completed = confirmed;
+                return confirmed;
+            }
+            finally
+            {
+                // 정상 절대 이동에는 STOP을 끼워 넣지 않는다. 취소·미도달·통신 단절 시에만 안전 정지한다.
+                if (started && !completed)
+                {
+                    _controlCommandService.StopIrZoom();
+                }
+            }
         }
 
         #endregion
@@ -404,7 +549,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             iz = PresetIrZoomPosition(preset);
-            bool result = await RestorePresetLensWithinDelayAsync(ez, ef, iz, iff, PresetScanDelay, scanTiming, token);
+            bool result = await RestorePresetLensAsync(ez, ef, iz, iff, PresetScanDelay, scanTiming, token);
             ConsoleLogHelper.State(
                 "PRESET LENS",
                 "P" + preset.Number + " / EO_TARGET=" + ez + "," + ef + " / IR_TARGET=" + iz + "," + iff + " / EO_ACTUAL=" + GetCurrentPresetStandardZoom() + "," + GetCurrentPresetStandardFocus() + " / IR_ACTUAL=" + GetCurrentIrZoomStandardPosition() + "," + GetCurrentIrFocusStandardPosition() + " / RESULT=" + result

@@ -1280,6 +1280,20 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
+        /// LA 규격 2.6의 열영상 줌 위치 이동 명령이다. 저장된 제어 위치를 상위 바이트부터 송신한다.
+        /// 반전된 수신 좌표를 송신값으로 재사용하지 않는다. WEB 0xB7과 구분하고 실제 응답으로 도착을 확인한다.
+        /// </summary>
+        public bool LaIrZoomGoPosition(int standardPosition)
+        {
+            if (standardPosition < 0 || standardPosition > 1000)
+            {
+                return false;
+            }
+
+            return SendUnsignedShortCommand(0x29, (ushort)standardPosition);
+        }
+
+        /// <summary>
         /// 2026-10-16: WebAgent IR 줌 절대 위치를 CMD2=0xB7로 요청한다.
         /// 위치 0~1000을 상위/하위 바이트 순서로 송신하며 화각×100 값이 아니다.
         /// 범위를 벗어난 값은 보정해 송신하지 않고 거절한다.

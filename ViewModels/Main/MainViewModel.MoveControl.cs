@@ -873,7 +873,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int eoFocus = ParsePresetPosition(preset.EoFocusText, GetCurrentPresetStandardFocus());
             int irZoom = PresetIrZoomPosition(preset);
             int irFocus = ParsePresetPosition(preset.IrFocusText, GetCurrentIrFocusStandardPosition());
-            bool lensResult = await RestorePresetLensWithinDelayAsync(
+            bool lensResult = panTiltSettled && await RestorePresetLensAsync(
                 eoZoom,
                 eoFocus,
                 irZoom,
@@ -1666,7 +1666,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         LaPresetCommandStatusText =
                             $"SCAN MOVING P{point.Number:00}";
 
-                        var pointTimer = Stopwatch.StartNew();
                         bool moveResult =
                             await MoveLaPresetPointDirectAsync(
                                 point,
@@ -1677,9 +1676,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             "[PRESET 1 / WPF DIRECT SCAN] " +
                             $"P{point.Number:00} MOVE RESULT={moveResult}");
 
-                        int minimumDwellMs = Math.Max(1, Math.Min(60, LaPresetScanDelay)) * 1000;
-                        if (pointTimer.ElapsedMilliseconds < minimumDwellMs)
-                            await Task.Delay(minimumDwellMs - (int)pointTimer.ElapsedMilliseconds, scanCts.Token);
+                        if (!moveResult)
+                        {
+                            ConsoleLogHelper.Warning("PRESET L", "이동 미완료 / 다음 지점 이동 없이 자동 순회를 중단합니다.");
+                            return;
+                        }
 
                     }
 
@@ -1712,22 +1713,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.PrintLine();
             }
 
-        }
-
-        /// <summary>
-        /// 현재 프리셋의 PTZF 복원이 완료된 뒤 설정한 Delay만큼 정확히 대기한다.
-        /// 첫 프리셋은 이 메서드를 거치기 전에 즉시 실행되므로 시작 전 대기는 없다.
-        /// </summary>
-        private async Task WaitAfterPresetMoveAsync(int configuredDelaySeconds, CancellationToken cancellationToken)
-        {
-            int safeDelaySeconds = Math.Max(1, Math.Min(60, configuredDelaySeconds));
-            long delayStartedTimestamp = Stopwatch.GetTimestamp();
-            await Task.Delay(safeDelaySeconds * 1000, cancellationToken);
-            double actualDelaySeconds = (Stopwatch.GetTimestamp() - delayStartedTimestamp) / (double)Stopwatch.Frequency;
-            ConsoleLogHelper.Command(
-                "AUTO SCAN",
-                $"Delay after move completed / " + $"CONFIGURED={safeDelaySeconds}s / " + $"ACTUAL={actualDelaySeconds:F3}s"
-            );
         }
 
         /// <summary>
@@ -2204,7 +2189,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// PRESET 2는 LA Auto Scan(0x99)을 사용하지 않는다.
-        /// WPF가 등록 목록을 순회하며 WEB AGENT에 Pelco-D GOTO PRESET(0x07)을 반복 송신한다.
+        /// WPF가 등록 목록을 순회하며 WEB AGENT는 저장 좌표 직접 이동, 기존 호환 경로는 장비 GOTO를 사용한다.
         /// </summary>
         private async Task RunPreset2DirectScanAsync(CancellationTokenSource scanCts, PresetPointOption[] snapshot)
         {
@@ -2217,6 +2202,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     foreach (PresetPointOption preset in snapshot)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        // 줌 복원을 기다리는 동안에도 현재 순회 대상 번호와 저장 상세를 표시한다.
+                        SelectedPresetPoint = preset;
+                        PresetCommandStatusText = $"SCAN MOVING P{preset.Number:00}";
                         int moveSpeed = Math.Max(1, Math.Min(60, PresetScanSpeed));
                         _presetSkippedFocusMask = 0;
                         if (RequiresDirectPresetRestore)
@@ -2227,6 +2215,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             PresetCommandStatusText = restored
                                 ? FormatPresetCompletion($"P{preset.Number:00} GOTO COMPLETED")
                                 : $"P{preset.Number:00} GOTO INCOMPLETE";
+                            if (!restored)
+                            {
+                                ConsoleLogHelper.Warning("PRESET W", "이동 미완료 / 다음 지점 이동 없이 자동 순회를 중단합니다.");
+                                return;
+                            }
+
                             continue;
                         }
 
@@ -2258,18 +2252,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         if (!panTiltSettled)
                         {
                             PresetCommandStatusText = $"P{preset.Number:00} PAN/TILT SETTLE INCOMPLETE";
-                            ConsoleLogHelper.Warning("PRESET W", $"Loop continuing after settle limit / " + $"P{preset.Number:00}");
+                            ConsoleLogHelper.Warning("PRESET W", $"팬·틸트 미도달 / 순회 중단 / P{preset.Number:00}");
+                            return;
                         }
 
-                        var lensTimer = Stopwatch.StartNew();
                         bool lensRestored = panTiltSettled && await RestoreStoredPresetLensAsync(preset, cancellationToken, true);
                         PresetCommandStatusText = panTiltSettled &&
                             lensRestored ? FormatPresetCompletion($"P{preset.Number:00} GOTO COMPLETED") : $"P{preset.Number:00} GOTO INCOMPLETE";
-                        int delaySeconds = Math.Max(1, Math.Min(60, PresetScanDelay));
-                        int remainingDelayMs = delaySeconds * 1000 - (int)lensTimer.ElapsedMilliseconds;
-
-                        if (remainingDelayMs > 0)
-                            await Task.Delay(remainingDelayMs, cancellationToken);
+                        if (!lensRestored)
+                        {
+                            ConsoleLogHelper.Warning("PRESET W", "줌 도착 미확인 / 다음 지점 이동 없이 자동 순회를 중단합니다.");
+                            return;
+                        }
                     }
                 }
             }

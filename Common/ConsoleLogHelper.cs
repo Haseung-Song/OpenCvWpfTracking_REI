@@ -382,6 +382,8 @@ namespace OpenCvWpfTracking.Common
             string value = (category ?? string.Empty).ToUpperInvariant();
             if (value.Contains("ZONE READINESS")) return "구역 캡처·적용 가능 여부와 대기 이유를 확인합니다.";
             if (value.Contains("ZONE")) return "탐지 구역의 등록·선택·저장 또는 좌표 기준을 처리합니다.";
+            if (value == "PRESET ZOOM ARRIVAL") return "선택 채널의 줌 도착 확인 결과와 정지 시간 시작을 기록합니다.";
+            if (value == "PRESET LENS RESULT") return "줌 도착 후 정지 시간을 확인합니다. 자동 순회에서는 초점 도착을 기다리지 않습니다.";
             if (value.Contains("PRESET LENS")) return "프리셋 렌즈 복원 결과를 확인합니다. 목표와 실제 값이 다르면 미도달입니다.";
             if (value.Contains("PRESET")) return "프리셋 등록·이동·자동 순회 상태를 기록합니다. 송신과 실제 도달은 구분합니다.";
             if (value.Contains("PANORAMA")) return "파노라마 촬영·저장·프리셋 연동 상태를 기록합니다.";
