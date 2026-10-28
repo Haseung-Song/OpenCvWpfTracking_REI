@@ -160,6 +160,67 @@ namespace OpenCvWpfTracking.Services.Position
         public double ReferenceEoFov(int zoom) => new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)zoom);
     }
 
+    /// <summary>정합 순간 실패를 위한 표시 전용 보관소다. 탐지 판정에는 이 결과를 전달하지 않는다.</summary>
+    public sealed class ZoneOverlayDisplayCache
+    {
+        private sealed class Entry
+        {
+            public FireSmokeScene Scene;
+            public ZoneFrameContext Frame;
+            public DateTimeOffset ConfirmedAt;
+        }
+
+        private readonly Dictionary<string, Entry> _entries = new Dictionary<string, Entry>();
+
+        public void Clear() => _entries.Clear();
+
+        public List<FireSmokeScene> Update(string camera, ZoneFrameContext frame, IEnumerable<FireSmokeScene> current,
+            IEnumerable<string> allowedIds, DateTimeOffset confirmedAt, bool ready, out int heldCount)
+        {
+            heldCount = 0;
+            if (!ready || frame == null || !FireSmokeZoneService.ValidPose(frame.Position, camera))
+            {
+                Clear();
+                return new List<FireSmokeScene>();
+            }
+
+            var allowed = new HashSet<string>(allowedIds);
+            foreach (var key in _entries.Keys.ToArray())
+            {
+                var entry = _entries[key];
+                double age = (frame.At - entry.ConfirmedAt).TotalSeconds;
+                if (!allowed.Contains(key) || age < 0 || age > 3 || !SameView(entry.Frame, frame, camera))
+                    _entries.Remove(key);
+            }
+
+            var fresh = new HashSet<string>();
+            foreach (var scene in current)
+            {
+                string key = scene.Id + scene.Revision;
+                double age = (frame.At - confirmedAt).TotalSeconds;
+                if (!allowed.Contains(key) || age < 0 || age > 1.5)
+                    continue;
+
+                fresh.Add(key);
+                Entry previous;
+                // 같은 정합 프레임을 재사용해도 표시 보존 시간을 연장하지 않는다.
+                if (!_entries.TryGetValue(key, out previous) || confirmedAt > previous.ConfirmedAt)
+                    _entries[key] = new Entry { Scene = scene, Frame = frame, ConfirmedAt = confirmedAt };
+            }
+
+            heldCount = _entries.Keys.Count(key => !fresh.Contains(key));
+            return _entries.Values.Select(entry => entry.Scene).ToList();
+        }
+
+        private static bool SameView(ZoneFrameContext previous, ZoneFrameContext current, string camera)
+        {
+            return previous.Key == current.Key && previous.Epoch == current.Epoch &&
+                previous.ChannelEpoch == current.ChannelEpoch && previous.Width == current.Width &&
+                previous.Height == current.Height &&
+                FireSmokeZoneService.IsCameraPoseStable(previous.Position, current.Position, camera);
+        }
+    }
+
     public static class FireSmokeZoneService
     {
         // 정규화 렌즈값 0~1000에서 줌 ±5, 포커스 ±30의 소폭 오차를 허용한다.

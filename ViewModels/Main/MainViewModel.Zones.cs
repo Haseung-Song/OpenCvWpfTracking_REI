@@ -44,6 +44,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private string _irZoneSignature;
 
+        private readonly ZoneOverlayDisplayCache _eoZoneDisplayCache = new ZoneOverlayDisplayCache();
+
+        private readonly ZoneOverlayDisplayCache _irZoneDisplayCache = new ZoneOverlayDisplayCache();
+
+        private string _eoZoneDisplayState;
+
+        private string _irZoneDisplayState;
+
         public bool ShowZoneOverlay
         {
             get => _showZoneOverlay;
@@ -522,15 +530,50 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void RefreshZoneOverlay(ZoneFrameContext frame, string camera)
         {
-            var scenes = ShowZoneOverlay &&
+            bool ready = ShowZoneOverlay &&
                 ZoneFrameReadiness(
                 frame,
                 false
-            ) == null ? _zoneFile.Scenes.Where(ZonePresetCurrent).Select(s => FireSmokeZoneService.ForFrame(
+            ) == null && IsOperationCommandEnabled && !IsPresetScanControlLocked;
+            var eligible = _zoneFile.Scenes.Where(scene => scene.Camera == camera &&
+                scene.Key == frame.Key && !scene.Invalidated && scene.FixedInstallationConfirmed &&
+                ZonePresetCurrent(scene)).ToList();
+            var scenes = ready ? eligible.Select(s => FireSmokeZoneService.ForFrame(
                 s,
                 frame
             )).Where(s => s != null).ToList() : new List<FireSmokeScene>();
-            string signature = frame.Width + ":" + frame.Height + ":" + frame.Position?.Pan + ":" + frame.Position?.Tilt + ":" + frame.HorizontalFov + ":" + string.Join(
+
+            DateTimeOffset confirmedAt = default(DateTimeOffset);
+            lock (_zoneImageLock)
+            {
+                ZoneFrameContext matched;
+                if (frame.RegisteredScenes != null && _zoneImageFrames.TryGetValue(camera, out matched) &&
+                    ReferenceEquals(frame.RegisteredScenes, matched.RegisteredScenes))
+                    confirmedAt = matched.At;
+            }
+
+            int held;
+            var cache = camera == "IR" ? _irZoneDisplayCache : _eoZoneDisplayCache;
+            scenes = cache.Update(camera, frame, scenes, eligible.Select(scene => scene.Id + scene.Revision),
+                confirmedAt, ready, out held);
+            string state = !ready ? "표시 해제 / 연결·상태·작업 조건 확인" :
+                held > 0 ? "정합 재확인 / 마지막 유효 구역 임시 표시 / 탐지 판정 별도" :
+                scenes.Count > 0 ? "최신 정합 구역 표시" : "영상 대조 미확인 / 표시 구역 없음";
+            if (state != (camera == "IR" ? _irZoneDisplayState : _eoZoneDisplayState))
+            {
+                if (camera == "IR")
+                {
+                    _irZoneDisplayState = state;
+                }
+                else
+                {
+                    _eoZoneDisplayState = state;
+                }
+                ConsoleLogHelper.State("ZONE OVERLAY", camera + " / " + state + " / COUNT=" + scenes.Count);
+            }
+
+            // 수신 각도의 미세 변화만으로 컬렉션 전체를 지우지 않는다.
+            string signature = frame.Width + ":" + frame.Height + ":" + string.Join(
                 "|",
                 scenes.Select(s => s.Id + s.Revision + string.Join(
                 ";",
@@ -547,11 +590,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _eoZoneSignature = signature;
 
             var target = camera == "IR" ? IrZoneOverlay : EoZoneOverlay;
-            target.Clear();
+            var boxes = new List<ZoneOverlayBox>();
 
             foreach (var scene in scenes)
                 foreach (var zone in scene.Zones)
-                    target.Add(new ZoneOverlayBox
+                    boxes.Add(new ZoneOverlayBox
                     {
                         Left = zone.X * frame.Width,
                         Top = zone.Y * frame.Height,
@@ -564,6 +607,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         Name = "ZONE " + zone.ToString(),
                         Color = zone.DisplayColor
                     });
+
+            // 기존 항목은 한 번에 빈 목록으로 만들지 않고 필요한 항목만 교체한다.
+            for (int i = 0; i < boxes.Count; i++)
+            {
+                if (i < target.Count)
+                {
+                    target[i] = boxes[i];
+                }
+                else
+                {
+                    target.Add(boxes[i]);
+                }
+            }
+            while (target.Count > boxes.Count)
+                target.RemoveAt(target.Count - 1);
         }
 
         public ZoneFrameContext CaptureZoneFrame(string camera)
@@ -779,6 +837,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void ResetZoneReferenceFrames()
         {
+            _eoZoneDisplayCache.Clear();
+            _irZoneDisplayCache.Clear();
             System.Threading.Interlocked.Increment(ref _zoneEpoch);
             lock (_zoneHistoryLock)
                 _zoneHistory.Clear();
