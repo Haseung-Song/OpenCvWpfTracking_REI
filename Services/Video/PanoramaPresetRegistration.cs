@@ -145,6 +145,10 @@ namespace OpenCvWpfTracking.Services.Video
 
         [DataMember] public List<int> LinkedPresetNumbers { get; set; } = new List<int>();
 
+        /// <summary>null은 기존 수동 연동, false는 명시적 숨김, true는 자동 연동을 뜻한다.</summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool? AutoLinkEnabled { get; set; }
+
         [DataMember]
         public List<PanoramaPresetAnchor> PresetAnchors { get; set; } = new List<PanoramaPresetAnchor>();
     }
@@ -235,6 +239,22 @@ namespace OpenCvWpfTracking.Services.Video
         {
             return ContextIdentity(point.Number + "|" + point.Pan.ToString("R", System.Globalization.CultureInfo.InvariantCulture) +
                 "|" + point.Tilt.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>자동 연동 중에만 현재 번호 목록을 반영하며 저장된 사진 앵커는 유지한다.</summary>
+        public static bool SynchronizeLinkedPresetNumbers(PanoramaCoordinateMetadata data, IEnumerable<PresetPointOption> presets)
+        {
+            if (data?.AutoLinkEnabled != true)
+                return false;
+
+            var numbers = (presets ?? Enumerable.Empty<PresetPointOption>()).Select(point => point.Number)
+                .Distinct().OrderBy(number => number).ToList();
+            if (data.LinkedPresetNumbers != null && data.LinkedPresetNumbers.SequenceEqual(numbers))
+                return false;
+
+            // 삭제된 번호의 앵커도 보관한다. 재등록은 ResolveLink의 등록 키로 구분한다.
+            data.LinkedPresetNumbers = numbers;
+            return true;
         }
 
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> LegacyReferenceStamps =
@@ -386,16 +406,24 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 double panError = Wrap(preset.Pan - panOffset - anchor.BasePan + 180) - 180;
                 double tiltError = preset.Tilt - tiltOffset - anchor.BaseTilt;
-                return new PanoramaPresetLink
+                bool samePosition = Math.Abs(panError) <= .03 && Math.Abs(tiltError) <= .03;
+                if (!allowCapture || samePosition || data.AutoLinkEnabled != true)
                 {
-                    Number = preset.Number,
-                    Fingerprint = PresetIdentity(preset),
-                    Pan = preset.Pan,
-                    Tilt = preset.Tilt,
-                    U = anchor.U,
-                    V = anchor.V,
-                    ReferenceValid = allowCapture && Math.Abs(panError) <= .03 && Math.Abs(tiltError) <= .03
-                };
+                    return new PanoramaPresetLink
+                    {
+                        Number = preset.Number,
+                        Fingerprint = PresetIdentity(preset),
+                        Pan = preset.Pan,
+                        Tilt = preset.Tilt,
+                        U = anchor.U,
+                        V = anchor.V,
+                        ReferenceValid = allowCapture && samePosition
+                    };
+                }
+
+                // 자동 연동 ON의 확인된 기준에서 실제 위치만 바뀌면 그 번호만 다시 투영한다.
+                // 기존 수동 자료는 기준 불일치 표시와 이동 차단 규칙을 그대로 유지한다.
+                // 정상 ZERO는 현재 각도에서 offset을 빼면 같은 위치이므로 위 앵커를 유지한다.
             }
 
             // 미확정 ZERO 중에는 과거 파일을 새 기준으로 변환하여 저장하지 않는다.
@@ -480,7 +508,17 @@ namespace OpenCvWpfTracking.Services.Video
             data.PanoramaFileName = Path.GetFileName(imagePath);
             data.ImageHash = FileIdentity(imagePath);
             WriteAtomic(ConfigPath(data.ContextHash, data.ImageHash), data);
-            RememberImage(imagePath, data.ContextHash);
+            // Config 교체가 끝나면 저장은 확정된다. 보조 경로 실패를 토글 실패로 되돌리지 않는다.
+            try
+            {
+                RememberImage(imagePath, data.ContextHash);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                OpenCvWpfTracking.Common.ConsoleLogHelper.Warning("PANORAMA STORAGE",
+                    "Config 저장 완료 / 마지막 사진 경로 갱신 실패: " + ex.Message);
+            }
+
             try
             {
                 WriteAtomic(Path.ChangeExtension(imagePath, ".json"), data);

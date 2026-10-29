@@ -1548,11 +1548,50 @@
                                               Margin="7,0,10,0"
                                               FontWeight="Bold"/>
                                     <Button x:Name="LinkPanoramaPresetsButton"
-                                            Content="PRESET 연동"
                                             Width="120"
                                             Margin="0,0,8,0"
-                                            ToolTip="현재 저장된 PRESET 번호를 파노라마 좌표에 표시"
-                                            Click="LinkPanoramaPresetsButton_Click"/>
+                                            ToolTip="장비·사진별 PRESET 자동 연동 켜기 / 끄기"
+                                            Click="LinkPanoramaPresetsButton_Click">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                <Setter Property="Content" Value="PRESET 연동"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="Tag" Value="AutoLinked">
+                                                        <Setter Property="Content" Value="PRESET 연동 완료"/>
+                                                        <Setter Property="Background" Value="#145D62"/>
+                                                        <Setter Property="BorderBrush" Value="#63E2D2"/>
+                                                        <Setter Property="BorderThickness" Value="2"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border x:Name="AutoLinkBorder"
+                                                                            Background="{TemplateBinding Background}"
+                                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                                            CornerRadius="2"
+                                                                            Padding="{TemplateBinding Padding}">
+                                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                                          VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="AutoLinkBorder" Property="Background" Value="#19757A"/>
+                                                                        </Trigger>
+                                                                        <Trigger Property="IsPressed" Value="True">
+                                                                            <Setter TargetName="AutoLinkBorder" Property="Background" Value="#0D4449"/>
+                                                                        </Trigger>
+                                                                        <Trigger Property="IsEnabled" Value="False">
+                                                                            <Setter TargetName="AutoLinkBorder" Property="Opacity" Value="0.65"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                     <Button x:Name="NewPanoramaButton"
                                             Content="360° 파노라마 촬영"
                                             Width="165"
