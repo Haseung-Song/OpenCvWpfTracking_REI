@@ -1898,8 +1898,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeSmokeFeatures();
             InitializeFireEventFeatures();
             InitializeZoneFeatures();
-            LoadPresetStorage();
-            RecoverPanoramaPresetReference();
+            InitializeEquipmentPresetFolders();
+            _presetStorageReady = true;
+            SwitchEquipmentPresets();
             ConsoleLogHelper.PrintSection("[CONTROL AGENT]", "Service Initialize Complete");
             ConsoleLogHelper.StateSection(
                 "MAIN",
@@ -2005,6 +2006,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
+            if (propertyName == nameof(ControlAgentIp) || propertyName == nameof(ControlAgentPortText) ||
+                propertyName == nameof(EoSourceAddress) || propertyName == nameof(IrSourceAddress))
+                SwitchEquipmentPresets();
+
             Interlocked.Increment(ref _propertyChangedCount);
             switch (propertyName)
             {

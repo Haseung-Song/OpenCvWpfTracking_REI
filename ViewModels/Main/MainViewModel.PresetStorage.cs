@@ -16,7 +16,216 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
-        private string PresetStoragePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "Presets.csv");
+        private string _presetEquipmentContext;
+
+        private string _presetEquipmentDirectory;
+
+        private bool _presetStorageReady;
+
+        private bool _applyingPresetProfile;
+
+        private bool _presetStorageLoadFailed;
+
+        /// <summary>장비 종류·제어 주소·카메라 조합으로 저장 대상을 구분한다.</summary>
+        private string PresetEquipmentContext =>
+            (SelectedControlAgentProfile?.AgentType.ToString() ?? "Unknown") + "|" +
+            PanoramaDeviceKey + "|" + PresetCameraIdentity(EoSourceAddress) + "|" +
+            PresetCameraIdentity(IrSourceAddress);
+
+        /// <summary>인증정보가 바뀌어도 같은 카메라는 같은 장비 자료를 사용한다.</summary>
+        private static string PresetCameraIdentity(string address)
+        {
+            if (!Uri.TryCreate(address, UriKind.Absolute, out Uri uri))
+                return address ?? string.Empty;
+
+            return uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.PathAndQuery,
+                UriFormat.UriEscaped);
+        }
+
+        // 장비 전환 전 저장은 이전 장비 폴더를 계속 사용한다.
+        private string PresetStoragePath => Path.Combine(
+            _presetEquipmentDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                "Config", "EquipmentPresets", PresetRowHash(new[] { _presetEquipmentContext ?? PresetEquipmentContext })),
+            "Presets.csv");
+
+        /// <summary>장비 설정에 등록된 이름을 파노라마와 같은 규칙으로 준비한다.</summary>
+        private void InitializeEquipmentPresetFolders()
+        {
+            foreach (var profile in ControlAgentProfiles.Where(item => !item.IsDirectInput))
+            {
+                try
+                {
+                    OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.DeviceDirectory(
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets"),
+                        profile.AgentType == ControlAgentType.WebAgent,
+                        profile.DisplayName + "|" + profile.IpAddress + ":" + profile.Port,
+                        profile.DisplayName);
+                }
+                catch (IOException ex)
+                {
+                    ConsoleLogHelper.Warning("PRESET STORAGE", "장비명 폴더 준비 실패 / 원본 유지: " + ex.Message);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    ConsoleLogHelper.Warning("PRESET STORAGE", "장비명 폴더 접근 확인 필요: " + ex.Message);
+                }
+            }
+        }
+
+        /// <summary>표시 이름은 파노라마와 통일하고 다른 카메라 구성은 별도 소유 정보로 구분한다.</summary>
+        private string ResolveEquipmentPresetDirectory(string context)
+        {
+            string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets");
+            string stem = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.DeviceDirectory(
+                root, IsSelectedControlAgentWebAgent, PanoramaDeviceKey, SelectedControlAgentProfile?.DisplayName);
+            string legacyIdentity = PresetRowHash(new[] { context });
+            // Config 행 추가로 표시 순번이 바뀌어도 같은 장비의 폴더를 유지한다.
+            string stableContext = System.Text.RegularExpressions.Regex.Replace(context,
+                @"^([^|]+\|)\s*\d+\.\s*", "$1");
+            string identity = PresetRowHash(new[] { stableContext });
+
+            for (int variant = 1; variant <= 100; variant++)
+            {
+                string directory = variant == 1 ? stem : stem + "_" + variant.ToString(CultureInfo.InvariantCulture);
+                Directory.CreateDirectory(directory);
+                string owner = Path.Combine(directory, ".preset-device");
+                if (File.Exists(owner))
+                {
+                    string previousIdentity = File.ReadAllText(owner);
+                    if (previousIdentity != identity)
+                    {
+                        if (previousIdentity != legacyIdentity)
+                            continue;
+
+                        string temporaryOwner = owner + ".tmp";
+                        File.WriteAllText(temporaryOwner, identity, new UTF8Encoding(false));
+                        File.Replace(temporaryOwner, owner, owner + ".bak");
+                    }
+                }
+                else
+                {
+                    // 소유 정보가 없는 기존 프리셋을 다른 장비 자료로 임의 채택하지 않는다.
+                    if (File.Exists(Path.Combine(directory, "Presets.csv")) ||
+                        File.Exists(Path.Combine(directory, "Presets.tsv")))
+                        continue;
+
+                    try
+                    {
+                        using (var stream = new FileStream(owner, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+                        using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                            writer.Write(identity);
+                    }
+                    catch (IOException)
+                    {
+                        if (!File.Exists(owner) || File.ReadAllText(owner) != identity)
+                            continue;
+                    }
+                }
+
+                RestoreLegacyEquipmentPresets(Path.Combine(root, legacyIdentity), directory);
+                return directory;
+            }
+
+            throw new IOException("장비별 프리셋 폴더 소유 정보를 확인하세요.");
+        }
+
+        /// <summary>해시 이름으로 저장한 자료는 장비명 폴더로 복사하며 기존 원본은 보존한다.</summary>
+        private static void RestoreLegacyEquipmentPresets(string legacy, string directory)
+        {
+            if (!Directory.Exists(legacy) || File.Exists(Path.Combine(directory, "Presets.csv")) ||
+                File.Exists(Path.Combine(directory, "Presets.tsv")))
+                return;
+
+            // 위치 메타데이터를 먼저 복사하고 CSV를 마지막에 확정한다.
+            foreach (string name in new[] { "PresetPositions.xml", "PresetPositions.xml.bak",
+                "Presets.csv.bak", "Presets.tsv.bak", "Presets.tsv", "Presets.csv" })
+            {
+                if (name == "Presets.tsv" && File.Exists(Path.Combine(legacy, "Presets.csv")))
+                    continue;
+
+                string source = Path.Combine(legacy, name);
+                if (!File.Exists(source))
+                    continue;
+
+                string destination = Path.Combine(directory, name);
+                if (File.Exists(destination))
+                {
+                    if (!File.ReadAllBytes(source).SequenceEqual(File.ReadAllBytes(destination)))
+                        throw new IOException("이전 프리셋 복사본 확인 필요 / 원본 유지");
+                    continue;
+                }
+
+                string temporary = destination + ".importing";
+                File.Copy(source, temporary, true);
+                File.Move(temporary, destination);
+            }
+
+            ConsoleLogHelper.State("PRESET STORAGE", "기존 해시 폴더 자료 복원 / 장비명 폴더 사용 / 이전 원본 보존");
+        }
+
+        /// <summary>장비를 바꾸면 이전 목록을 비우고 해당 장비의 저장값만 복원한다.</summary>
+        private void SwitchEquipmentPresets()
+        {
+            if (!_presetStorageReady || _applyingPresetProfile || _isLoadingRtspCommunicationSettings)
+                return;
+
+            string context = PresetEquipmentContext;
+            if (string.Equals(_presetEquipmentContext, context, StringComparison.Ordinal))
+                return;
+
+            // 저장 경로는 이전 장비 문맥을 유지한 채 저장한 뒤 전환한다.
+            if (_presetEquipmentContext != null && !SavePresetStorage())
+                ConsoleLogHelper.State("PRESET EQUIPMENT", "이전 장비 저장 실패 / 원본 파일 확인 필요");
+
+            _isLoadingPresetStorage = true;
+            try
+            {
+                SelectedLaPresetPoint = null;
+                SelectedPresetPoint = null;
+                LaPresetPoints.Clear();
+                PresetPoints.Clear();
+                _presetEquipmentContext = context;
+                _presetEquipmentDirectory = null;
+                _presetStorageLoadFailed = false;
+                _laPresetSlotNumber = 1;
+                _presetSlotNumber = 1;
+                _laPresetCommandStatusText = "READY";
+                _presetCommandStatusText = "READY";
+                _presetScanOrderMode = PresetScanOrderMode.SavedOrder;
+                _laPresetScanSpeed = 10;
+                _presetScanSpeed = 10;
+                _laPresetScanDelay = 1;
+                _presetScanDelay = 1;
+            }
+            finally
+            {
+                _isLoadingPresetStorage = false;
+            }
+
+            try
+            {
+                _presetEquipmentDirectory = ResolveEquipmentPresetDirectory(context);
+                LoadPresetStorage();
+                RecoverPanoramaPresetReference();
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                _presetStorageLoadFailed = true;
+                ConsoleLogHelper.Error("PRESET STORAGE", "장비명 폴더 준비 실패 / 원본 유지 / 저장 보류", ex);
+            }
+            foreach (string name in new[] { nameof(IsPresetSavedOrderMode), nameof(IsPresetNearestOrderMode),
+                nameof(LaPresetScanSpeed), nameof(PresetScanSpeed), nameof(LaPresetScanDelay),
+                nameof(PresetScanDelay), nameof(LaPresetSlotNumber), nameof(PresetSlotNumber),
+                nameof(LaPresetCommandStatusText), nameof(PresetCommandStatusText) })
+                OnPropertyChanged(name);
+
+            ConsoleLogHelper.StateSection("PRESET EQUIPMENT",
+                "장비별 프리셋 전환", string.Empty,
+                "장비: " + SelectedControlAgentProfile?.DisplayName,
+                "목록: LA " + LaPresetPoints.Count + "개 / WEB " + PresetPoints.Count + "개",
+                "저장 위치: " + PresetStoragePath);
+            InvalidatePanoramaReference();
+        }
 
         /// <summary>
         /// 기존 프리셋 파일과 CSV 저장 정보를 읽어 현재 프리셋 목록을 복원한다.
@@ -39,6 +248,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     loadPath,
                     Encoding.UTF8
                 )).Select(row => row.ToArray()).ToList();
+                if (rows.Count == 0 || rows[0].Length == 0 || rows[0][0] != "TYPE")
+                    throw new InvalidDataException("프리셋 파일 헤더 확인 필요");
+
                 var positions = ReadPresetPositions();
                 int coordinateColumn = rows.Count == 0 ? -1 : Array.IndexOf(rows[0], "IR_ZOOM_COORDINATES");
 
@@ -146,9 +358,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             catch (Exception ex)
             {
+                _presetStorageLoadFailed = true;
                 LaPresetPoints.Clear();
                 PresetPoints.Clear();
-                ConsoleLogHelper.Error("PRESET STORAGE", "Load failed; empty lists retained", ex);
+                SelectedLaPresetPoint = null;
+                SelectedPresetPoint = null;
+                ConsoleLogHelper.Error("PRESET STORAGE", "읽기 실패 / 원본 보존 / 해당 장비 등록·복원 확인 필요", ex);
             }
             finally
             {
@@ -161,7 +376,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private bool SavePresetStorage()
         {
-            if (_isLoadingPresetStorage)
+            // 읽기 실패한 파일을 빈 목록으로 덮어쓰지 않는다.
+            if (!_presetStorageReady || _presetEquipmentContext == null ||
+                _isLoadingPresetStorage || _applyingPresetProfile || _presetStorageLoadFailed)
             {
                 return false;
             }

@@ -161,7 +161,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(CurrentIrPowerText));
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(PanTiltZeroRouteText));
-                ApplyControlAgentProfile(value);
+                _applyingPresetProfile = true;
+                try
+                {
+                    ApplyControlAgentProfile(value);
+                }
+                finally
+                {
+                    _applyingPresetProfile = false;
+                }
+
+                SwitchEquipmentPresets();
                 EnsureVisibleCommunicationSettingsTab();
             }
         }
