@@ -162,11 +162,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public double EoOpticalRatioMaximum => ControlTuningFor(false).MaximumRatio;
 
         public string ZoomOpticalStandardText =>
-            $"EO {ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MaximumRatio:0.##} OPTICAL" +
-            (ControlTuningFor(false).Calibration != null ? " · 실측표 / EO 30x 초과 추정" : " (임시 환산)");
+            $"EO {ControlTuningFor(false).MaximumRatio:F1}x / IR {ZoomDisplayMaximum(true):F1}x OPTICAL";
 
         public string ZoomOpticalRangeText =>
-            $"EO {ControlTuningFor(false).MinimumRatio:0.#}~{ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MinimumRatio:0.#}~{ControlTuningFor(true).MaximumRatio:0.##}x 동일 진행률";
+            $"EO {ControlTuningFor(false).MinimumRatio:F1}~{ControlTuningFor(false).MaximumRatio:F1}x / IR {ControlTuningFor(true).MinimumRatio:F1}~{ZoomDisplayMaximum(true):F1}x 동일 진행률";
 
         public double EoSpeedExponent
         {
@@ -265,14 +264,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [기능 처리 함수]
 
-        /// <summary>공통 표시 형식으로 실측표와 EO 미실측 구간을 구분한다.</summary>
+        /// <summary>영상 배지와 상태값의 배율을 소수점 첫째 자리로 통일한다.</summary>
         private string DisplayZoomRatioText(bool ir)
         {
             var curve = ControlTuningFor(ir).Calibration;
-            int position = ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom();
             double ratio = ir ? IrDisplayZoomRatio : EoDisplayZoomRatio;
-            return "x" + (curve != null && curve.IsEstimated(position) ? "~" : "") +
-                ratio.ToString(curve != null ? "0.0#" : "F1");
+
+            // 공통 IR 기준표의 끝점 8.15배는 계산에 보존하고 화면 상한만 8.0배로 표시한다.
+            if (ir && curve != null)
+                ratio = Math.Min(ratio, ZoomDisplayMaximum(true));
+
+            // EO 30~90배는 기존 선형 추정값을 쓰되 화면에서는 같은 한 자리 형식을 사용한다.
+            return "x" + ratio.ToString("F1");
+        }
+
+        /// <summary>설정 안내와 영상 배지에 같은 표시 상한을 사용하며 내부 배율 곡선은 바꾸지 않는다.</summary>
+        private double ZoomDisplayMaximum(bool ir)
+        {
+            var tuning = ControlTuningFor(ir);
+            return ir && tuning.Calibration != null ? Math.Floor(tuning.MaximumRatio) : tuning.MaximumRatio;
         }
 
         /// <summary>표준 줌 위치와 확인된 배율을 상태 문자열로 구성한다.</summary>

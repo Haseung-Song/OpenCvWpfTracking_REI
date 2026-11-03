@@ -45,5 +45,5 @@ using System.Windows;
 //      수정 버전
 //
 [assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("33.1.0.0")]
-[assembly: AssemblyInformationalVersion("TORUSS V33_1 PANORAMA PRESET 2026-10-26")]
+[assembly: AssemblyFileVersion("33.7.0.0")]
+[assembly: AssemblyInformationalVersion("TORUSS V33_7 2026-11-03")]

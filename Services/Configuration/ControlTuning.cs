@@ -202,8 +202,8 @@ namespace OpenCvWpfTracking.Services.Configuration
                     Values[key] = value;
                 }
 
-                // 장비 1의 실측 범위와 EO 카탈로그 추정 범위만 대체한다. 다른 장비·SYNC 표는 변경하지 않는다.
-                if (id == "ER_WATCHER_1" && value.Calibration == null)
+                // 지정 장비는 장비 1 기준표를 공유한다. LA 원시값 반전과 기존 SYNC 매칭표는 별도 경로로 유지한다.
+                if (ZoomCalibrationCurve.SupportsDevice(id) && value.Calibration == null)
                 {
                     value.Calibration = ZoomCalibrationCurve.Get(id, ir);
                     if (value.Calibration != null)

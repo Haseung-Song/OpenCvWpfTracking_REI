@@ -7,7 +7,7 @@ using OpenCvWpfTracking.Common;
 
 namespace OpenCvWpfTracking.Services.Configuration
 {
-    /// <summary>ER-WATCHER 1의 픽셀 거리비 표와 카탈로그 추정 끝점을 읽는 불변 배율 곡선이다.</summary>
+    /// <summary>ER-WATCHER 1 실측표를 사용자 지정 장비에 공통 적용하는 불변 배율 곡선이다.</summary>
     public sealed class ZoomCalibrationCurve
     {
         private readonly int[] _positions;
@@ -23,7 +23,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                 {
                     string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "ER-WATCHER1_ZoomCalibration.csv");
                     var values = Load(path);
-                    ConsoleLogHelper.State("줌 실측표", "ER-WATCHER 1 EO·IR 적용 / EO 30배 초과는 카탈로그 끝점 연결 추정 / 다른 장비 제외");
+                    ConsoleLogHelper.State("줌 실측표", "ER-WATCHER 1 기준표를 납품 장비 1~4·환경부·기동형·LA에 공통 적용 / EO 30배 초과는 카탈로그 끝점 연결 추정 / 개별 장비 실측 아님");
                     return values;
                 }
                 catch (Exception error)
@@ -44,10 +44,29 @@ namespace OpenCvWpfTracking.Services.Configuration
             _lastMeasuredPosition = lastMeasuredPosition;
         }
 
-        /// <summary>장비 식별자가 일치할 때만 곡선을 제공한다. 장비 번호·IP가 같아도 타 장비에는 적용하지 않는다.</summary>
+        /// <summary>사용자가 공통 적용을 지정한 현재 7개 장비만 허용하며 이전 식별자도 호환한다.</summary>
+        public static bool SupportsDevice(string deviceId)
+        {
+            switch (DeviceCatalog.CanonicalDeviceId(deviceId))
+            {
+                case "ER_WATCHER_1":
+                case "ER_WATCHER_2":
+                case "ER_WATCHER_3":
+                case "ER_WATCHER_4":
+                case "MR300_TEST":
+                case "MR500_MOE":
+                case "LR1000_MOBILE":
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>장비 1에서 측정한 표를 지정 장비에 공유한다. 각 장비의 개별 실측을 의미하지 않는다.</summary>
         public static ZoomCalibrationCurve Get(string deviceId, bool ir)
         {
-            if (!string.Equals(DeviceCatalog.CanonicalDeviceId(deviceId), "ER_WATCHER_1", StringComparison.Ordinal))
+            if (!SupportsDevice(deviceId))
                 return null;
 
             ZoomCalibrationCurve curve;
@@ -101,7 +120,7 @@ namespace OpenCvWpfTracking.Services.Configuration
             return result;
         }
 
-        /// <summary>실측점 사이를 선형 보간한다. EO 실측 끝점 이후는 별도로 표시할 추정 구간이다.</summary>
+        /// <summary>실측점 사이를 보간한다. EO 30~90배는 카탈로그 끝점을 연결한 선형 추정이며 실측값은 아니다.</summary>
         public double Ratio(int position)
         {
             int value = Math.Max(0, Math.Min(1000, position));
