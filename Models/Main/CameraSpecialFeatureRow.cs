@@ -43,6 +43,8 @@ namespace OpenCvWpfTracking.Models.Main
 
         private readonly Func<bool> _ready;
 
+        private readonly Func<bool> _isWebAgent;
+
         private readonly Func<bool> _unlocked;
 
         private readonly Func<string> _connectionHint;
@@ -82,6 +84,12 @@ namespace OpenCvWpfTracking.Models.Main
         public string Name => Definition.Name;
 
         public string ProtocolLabel => (Target == 0 ? "EO" : "IR") + " / Feature 0x" + Id.ToString("X2");
+
+        // WEB의 팔레트·극성은 공통 의미 명령으로 선택하며 원시 번호와 섞지 않는다.
+        public bool IsSemanticPalette => _isWebAgent() && Target == 1 && (Id == 0x05 || Id == 0x06);
+
+        private string[] SemanticPaletteLabels => Id == 0x05 ?
+            new[] { "WHITE HOT", "BLACK HOT", "RAINBOW" } : new[] { "WHITE HOT", "BLACK HOT" };
 
         public bool IsBoolean => Definition.ValueType == 0;
 
@@ -141,8 +149,7 @@ namespace OpenCvWpfTracking.Models.Main
             Enumerable.Range(
             Definition.Minimum,
             Definition.Maximum - Definition.Minimum + 1
-        ).Any(v => Capability.Allows(
-            Definition,
+        ).Any(v => Allows(
             v
         )) &&
             _pendingTicks == 0 &&
@@ -154,6 +161,7 @@ namespace OpenCvWpfTracking.Models.Main
 
         public bool CanQuery =>
             !IsTrigger &&
+            !IsSemanticPalette &&
             _ready() &&
             CapabilityKnown &&
             Capability != null &&
@@ -220,12 +228,14 @@ namespace OpenCvWpfTracking.Models.Main
             Func<bool> unlocked,
             Action<CameraSpecialFeatureRow, int> send,
             Action<CameraSpecialFeatureRow> query,
-            Func<string> connectionHint = null
+            Func<string> connectionHint = null,
+            Func<bool> isWebAgent = null
         )
         {
             Definition = definition;
             Target = target;
             _ready = ready;
+            _isWebAgent = isWebAgent ?? (() => false);
             _unlocked = unlocked;
             _send = send;
             _query = query;
@@ -247,7 +257,9 @@ namespace OpenCvWpfTracking.Models.Main
         /// <summary>
         /// 장비가 보고한 지원 범위와 선택값에 포함되는지 확인한다.
         /// </summary>
-        public bool Allows(int value) => Capability != null && Capability.Allows(Definition, value);
+        public bool Allows(int value) => Capability != null && (IsSemanticPalette ?
+            (Capability.Flags & 5) == 5 && value >= 0 && value < SemanticPaletteLabels.Length :
+            Capability.Allows(Definition, value));
 
         /// <summary>
         /// 장비 기능 값을 선택 항목 이름 또는 숫자 문자열로 표시한다.
@@ -287,9 +299,10 @@ namespace OpenCvWpfTracking.Models.Main
             Options.Clear();
             int? previous = _selected?.Value;
 
-            for (int i = 0; i < Definition.Options.Length; i++)
+            string[] labels = IsSemanticPalette ? SemanticPaletteLabels : Definition.Options;
+            for (int i = 0; i < labels.Length; i++)
                 if (Allows(i))
-                    Options.Add(new CameraFeatureOption(i, Definition.Options[i]));
+                    Options.Add(new CameraFeatureOption(i, labels[i]));
 
             _selected = Options.FirstOrDefault(o => o.Value == previous) ?? Options.FirstOrDefault();
             Changed(nameof(SelectedOption));
@@ -327,6 +340,11 @@ namespace OpenCvWpfTracking.Models.Main
                 _pendingTicks = 0;
                 _message = "요청 전송 실패";
             }
+            else if (IsSemanticPalette)
+            {
+                _pendingTicks = 0;
+                _message = "요청 전송 · 영상 확인 필요";
+            }
             else if (IsTrigger)
             {
                 _pendingTicks = 0;
@@ -354,6 +372,14 @@ namespace OpenCvWpfTracking.Models.Main
         public void SetState(bool supported, bool valid, int value, ulong timestamp)
         {
             _queryTicks = 0;
+
+            if (IsSemanticPalette)
+            {
+                // 지원 응답의 원시 색상값을 공통 선택 항목의 번호로 간주하지 않는다.
+                _reported = null;
+                Refresh();
+                return;
+            }
 
             if (!supported)
             {

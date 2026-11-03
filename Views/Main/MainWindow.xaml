@@ -3061,7 +3061,7 @@
                                                                             [열영상 팔레트 / 화재 후보 검출 시험]
 
                                                                             환경장비 팔레트 제어는 WebAgent v1.8의
-                                                                            Feature 0x05 / IR Target / Palette 0x00 ~ 0x05를 사용한다.
+                                                                            WEB은 의미별 팔레트 요청을 사용하고 카메라별 번호 변환은 WebAgent가 수행한다.
 
                                                                             화재 후보 검출은 방사 온도값이 아닌
                                                                             IR 영상의 밝기 및 적색 계열 픽셀을 분석하는
@@ -3085,7 +3085,7 @@
                                                                                     <!-- 2026-08-14: Neutral initially; color changes only after a successful command. -->
                                                                                     <Button Content="BLACK HOT" Height="30" Margin="0,0,3,0" Foreground="{Binding ThermalBlackHotButtonForeground}" Background="{Binding ThermalBlackHotButtonBackground}" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalBlackHotCommand}"/>
                                                                                     <Button Content="WHITE HOT" Height="30" Margin="3,0" Foreground="{Binding ThermalWhiteHotButtonForeground}" Background="{Binding ThermalWhiteHotButtonBackground}" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalWhiteHotCommand}"/>
-                                                                                    <Button Content="RANDOM" Height="30" Margin="3,0,0,0" Foreground="{Binding ThermalRainbowButtonForeground}" Background="{Binding ThermalRainbowButtonBackground}" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalRandomCommand}"/>
+                                                                                    <Button Content="{Binding ThermalColorPaletteButtonText}" Height="30" Margin="3,0,0,0" Foreground="{Binding ThermalRainbowButtonForeground}" Background="{Binding ThermalRainbowButtonBackground}" Style="{StaticResource AiSettingButtonStyle}" Command="{Binding SelectThermalRandomCommand}"/>
                                                                                 </UniformGrid>
 
                                                                                 <UniformGrid Columns="3"

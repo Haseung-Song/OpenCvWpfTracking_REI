@@ -402,8 +402,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void SendThermalPaletteDirectCommand(string paletteName, int paletteType)
         {
-            // 2026-08-14: REI는 ROOFTOP과 ENVIRONMENT가 각각의 제어 경로를 사용한다.
-            bool result = IsEnvironmentStatusSelected ? (paletteType == 0 ? _webAgentThermalPaletteService.SelectBlackHot() : paletteType == 1 ? _webAgentThermalPaletteService.SelectWhiteHot() : _webAgentThermalPaletteService.SelectRainbow()) : (paletteType == 0 ? _controlCommandService.SelectIrBlackHot() : paletteType == 1 ? _controlCommandService.SelectIrWhiteHot() : _controlCommandService.SelectIrRainbow());
+            // 표시 중인 상태 탭이 아니라 실제 선택·연결된 제어 장비로 경로를 정한다.
+            if (!CameraFeatureTransportReady || !IsSelectedConnectionTarget || !IsOperationCommandEnabled || IsControlInputLocked)
+                return;
+
+            bool result = IsSelectedControlAgentWebAgent ? (paletteType == 0 ? _webAgentThermalPaletteService.SelectBlackHot() : paletteType == 1 ? _webAgentThermalPaletteService.SelectWhiteHot() : _webAgentThermalPaletteService.SelectRainbow()) : (paletteType == 0 ? _controlCommandService.SelectIrBlackHot() : paletteType == 1 ? _controlCommandService.SelectIrWhiteHot() : _controlCommandService.SelectIrRainbow());
             LogThermalControlCommandResult("PALETTE " + paletteName, result);
 
             if (result)
@@ -418,10 +421,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void SendThermalNucCommand()
         {
-            // 2026-08-14: C# 7.3에서는 조건식에 메서드 그룹을 직접 사용할 수 없다.
+            if (!CameraFeatureTransportReady || !IsSelectedConnectionTarget || !IsOperationCommandEnabled || IsControlInputLocked)
+                return;
+
+            // 선택 장비의 단발 NUC 요청만 보내며 구형 요청으로 자동 대체하지 않는다.
             System.Func<bool> sendCommand;
 
-            if (IsEnvironmentStatusSelected)
+            if (IsSelectedControlAgentWebAgent)
             {
                 sendCommand = _webAgentThermalPaletteService.RequestNuc;
             }
@@ -445,26 +451,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 장비의 현재 Palette를 추정하지 않고 PREV / NEXT 상대 명령을
-        /// 정확히 한 번만 전송한다.
+        /// WEB NEXT·PREV는 기존 E9 번호 선택 경로, LA는 기존 상대 명령 경로를 유지한다.
+        /// 직접 색상 선택과 번호 순회를 분리한다.
         /// </summary>
         private void ChangeThermalPalette(int offset, bool highlightRandomButton = false)
         {
-            if (IsEnvironmentStatusSelected)
+            if (!CameraFeatureTransportReady || !IsSelectedConnectionTarget || !IsOperationCommandEnabled || IsControlInputLocked)
+                return;
+
+            if (IsSelectedControlAgentWebAgent)
             {
+                if (highlightRandomButton)
+                {
+                    SendThermalPaletteDirectCommand("RAINBOW", 2);
+                    return;
+                }
+
                 bool environmentResult = offset < 0 ? _webAgentThermalPaletteService.SelectPrevious() : _webAgentThermalPaletteService.SelectNext();
                 LogThermalControlCommandResult(offset < 0 ? "ENVIRONMENT PALETTE PREV" : "ENVIRONMENT PALETTE NEXT", environmentResult);
 
                 if (environmentResult)
                 {
-                    if (highlightRandomButton)
-                    {
-                        UpdateThermalPaletteButtonVisual(2);
-                    }
-                    else
-                    {
-                        ResetThermalPaletteButtonVisuals();
-                    }
+                    ResetThermalPaletteButtonVisuals();
 
                     ResetFireSmokeFrameAnalysis("ENVIRONMENT PALETTE CHANGE");
                 }

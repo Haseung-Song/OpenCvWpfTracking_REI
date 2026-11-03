@@ -46,7 +46,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 장비와 제어 주소 및 카메라 채널별 보정 키를 만든다.
         /// </summary>
         private string OpticalCenterKey(bool ir) =>
-            (SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText + "|" + CameraIdentity(ir ? IrSourceAddress : EoSourceAddress) + "|" + (ir ? "IR" : "EO");
+            OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName(SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText + "|" + CameraIdentity(ir ? IrSourceAddress : EoSourceAddress) + "|" + (ir ? "IR" : "EO");
 
         /// <summary>
         /// 현재 채널의 보정 저장 대상 키를 반환한다.
@@ -124,7 +124,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public string PanoramaDeviceKey =>
-            (SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText;
+            OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName(SelectedControlAgentProfile?.DisplayName ?? "DIRECT") + "|" + ControlAgentIp + ":" + ControlAgentPortText;
 
         public bool IsPanoramaIrSource => _activePanTiltZoomSource == 1;
 

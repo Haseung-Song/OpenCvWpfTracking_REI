@@ -374,7 +374,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CancellationToken cancellationToken,
             int standardTarget = -1,
             int tolerance = IrZoomTargetTolerance,
-            bool syncCalibration = false
+            bool syncCalibration = false,
+            bool explicitAbsolute = false
         )
         {
             int target = Math.Max(0, Math.Min(1000, targetPosition));
@@ -388,6 +389,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int previousDirection = 0;
             int directionReversalCount = 0;
             string lastDirection = "NONE";
+
+            if (explicitAbsolute && IsSelectedControlAgentWebAgent)
+                return await TryMoveEnvironmentIrZoomAbsoluteAsync(target, standardTarget, cancellationToken, 1, false) == true;
 
             if (IsIrZoomTargetReached(target, operationStart, standardTarget, tolerance, syncCalibration))
             {
@@ -1147,13 +1151,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 상태 확인:
         /// - Function 0x07의 IR Focus Position 0 ~ 1000
         ///
-        /// 0x2B 직접 절대이동을 우선 시도하고 미지원·무응답·미도달이면
-        /// 기존 0x31 폐루프 제어로 안전하게 전환한다.
+        /// 0x2B 직접 절대이동을 우선 시도한다. WEB은 명시적인 미지원 응답에만
+        /// 기존 제어로 전환하며 단순 지연·미도달에는 명령을 겹쳐 보내지 않는다.
         /// </summary>
         private async Task<bool> MoveIrFocusToPositionAsync(
             int targetPosition,
             CancellationToken cancellationToken,
-            int tolerance = IrFocusSyncTolerance
+            int tolerance = IrFocusSyncTolerance,
+            bool explicitAbsolute = false
         )
         {
             if (targetPosition < 0 || targetPosition > 1000)
@@ -1162,13 +1167,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
+            if (explicitAbsolute && IsSelectedControlAgentWebAgent)
+                return await TryMoveIrFocusDirectAsync(targetPosition, 1, cancellationToken, true);
+
             if (!await EnsurePresetIrLensFeedbackAsync(false, cancellationToken))
                 return false;
+
+            if (IsSelectedControlAgentWebAgent && Math.Abs(targetPosition - _currentIrFocus) <= tolerance)
+            {
+                int? settled = await WaitForIrFocusStableEvidenceAsync(cancellationToken);
+                return settled.HasValue && Math.Abs(settled.Value - targetPosition) <= tolerance;
+            }
 
             if (await TryMoveIrFocusDirectAsync(targetPosition, tolerance, cancellationToken))
             {
                 return true;
             }
+
+            // WEB의 지연·미도달을 미지원으로 간주해 연속 명령을 겹쳐 보내지 않는다.
+            if (IsSelectedControlAgentWebAgent && _irFocusDirectUnavailableSession != _connectionSessionId)
+                return false;
 
             var planner = new IrFocusMotionPlanner();
             var total = Stopwatch.StartNew();
@@ -1342,12 +1360,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private string _irFocusDirectUnavailableSession;
 
-        private async Task<bool> TryMoveIrFocusDirectAsync(int targetPosition, int tolerance, CancellationToken token)
+        private async Task<bool> TryMoveIrFocusDirectAsync(int targetPosition, int tolerance, CancellationToken token, bool explicitAbsolute = false)
         {
             int startPosition = _currentIrFocus;
             string session = _connectionSessionId;
 
-            if (Math.Abs(targetPosition - startPosition) <= tolerance || _irFocusDirectUnavailableSession == session)
+            if ((!explicitAbsolute && Math.Abs(targetPosition - startPosition) <= tolerance) || _irFocusDirectUnavailableSession == session)
             {
                 return false;
             }
@@ -1425,7 +1443,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
 
                     if ((!moved &&
-                        timer.ElapsedMilliseconds >= 1800) ||
+                        timer.ElapsedMilliseconds >= (IsSelectedControlAgentWebAgent ? 5000 : 1800)) ||
                         (moved &&
                         timer.ElapsedMilliseconds - lastMovementMs >= 2500) ||
                         (moved &&
@@ -1453,7 +1471,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 throw new OperationCanceledException("IR Focus 이동 중 연결 세션이 변경되었습니다.");
             }
 
-            _irFocusDirectUnavailableSession = session;
+            if (IsSelectedControlAgentWebAgent)
+            {
+                ConsoleLogHelper.Warning("IR FOCUS DIRECT", "목표 미도달 / 절대 요청을 미지원으로 저장하지 않습니다.");
+                if (explicitAbsolute || _irFocusDirectUnavailableSession != session)
+                    return false;
+            }
+            else
+            {
+                _irFocusDirectUnavailableSession = session;
+            }
+
             await Task.Delay(120, token);
             ConsoleLogHelper.Warning(
                 "IR FOCUS DIRECT",

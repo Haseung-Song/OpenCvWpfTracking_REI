@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="packages\OpenCvSharp4.runtime.win.4.7.0.20230115\build\netstandard\OpenCvSharp4.runtime.win.props" Condition="Exists('packages\OpenCvSharp4.runtime.win.4.7.0.20230115\build\netstandard\OpenCvSharp4.runtime.win.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -68,6 +68,8 @@
     <Compile Include="ViewModels\Main\MainViewModel.WebAgentV292.cs" />
     <Compile Include="Views\Main\MainWindow.WebAgentV292.cs" />
     <Reference Include="System.Runtime.Serialization" />
+    <Compile Include="Services\Communication\WebAgent\WebAgentV293Protocol.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.WebAgentV293.cs" />
     <Compile Include="Services\Video\RtspUriNormalization.cs" />
     <Compile Include="Services\Video\PanoramaReferenceState.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.PanoramaReference.cs" />
@@ -84,6 +86,8 @@
     <Compile Include="Views\Main\CameraSpecialControl.xaml.cs"><DependentUpon>CameraSpecialControl.xaml</DependentUpon></Compile>
     <Page Include="Views\Main\CameraSpecialControl.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
     <Compile Include="Services\Configuration\ControlTuning.cs" />
+    <Compile Include="Services\Configuration\ZoomCalibrationCurve.cs" />
+    <Content Include="Config\ER-WATCHER1_ZoomCalibration.csv"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Compile Include="Services\Input\GlobalControlKeyboard.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.InputCoordinator.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.CameraFeatureControl.cs" />
@@ -198,6 +202,9 @@
     <Compile Include="Services\Configuration\CsvExcelCompanion.cs" />
     <Compile Include="Services\Configuration\DeviceCatalog.cs" />
     <Content Include="Config\Devices.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Config\Devices.xlsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Compile Include="Services\Video\SmokeDetectionService.cs" />

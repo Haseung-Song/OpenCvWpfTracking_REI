@@ -183,6 +183,19 @@ namespace OpenCvWpfTracking.Services.Video
             string identity = ContextIdentity((web ? "WEB|" : "LA|") + endpoint);
             string stem = (web ? "WEB_" : "LA_") + label;
             string address = new string(endpoint.Select(c => char.IsLetterOrDigit(c) || c == '.' || c == '-' ? c : '_').ToArray());
+
+            string previousName = Services.Configuration.DeviceCatalog.StorageDisplayName(displayName);
+            if (previousName != displayName)
+            {
+                string previous = System.Text.RegularExpressions.Regex.Replace(previousName ?? "DEVICE", @"^\s*\d+\.\s*", "");
+                previous = System.Text.RegularExpressions.Regex.Replace(previous, @"\s+EO\s*/\s*IR\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                previous = new string(previous.Select(c => char.IsLetterOrDigit(c) || c == '-' ? c : '_').ToArray());
+                previous = System.Text.RegularExpressions.Regex.Replace(previous, "_+", "_").Trim('_');
+                string oldDirectory = Path.Combine(root, (web ? "WEB_" : "LA_") + previous);
+                string oldOwner = Path.Combine(oldDirectory, ".device");
+                if (File.Exists(oldOwner) && File.ReadAllText(oldOwner) == identity)
+                    return oldDirectory;
+            }
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 string directory = Path.Combine(root, stem + (attempt == 0 ? "" : "_" + address));

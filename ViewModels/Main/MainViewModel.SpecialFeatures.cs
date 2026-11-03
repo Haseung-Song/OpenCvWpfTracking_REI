@@ -108,7 +108,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             !IsControlInputLocked,
                             SendSpecialFeature,
                             QuerySpecialFeatureState,
-                            () => SpecialFeatureAgentName + " 연결 필요"
+                            () => SpecialFeatureAgentName + " 연결 필요",
+                            () => IsSelectedControlAgentWebAgent
                         );
                         (target == 0 ? _eoSpecialFeatures : _irSpecialFeatures).Add(row);
                     }
@@ -186,6 +187,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (!CameraFeatureProtocol.TryCapability(p, out target, out entries))
                 return;
 
+            // NEXT·PREV의 번호 순회만 기존 지원 마스크를 사용한다. 색상 직접 선택과 분리한다.
+            var paletteCapability = entries.FirstOrDefault(entry => entry.Id == 0x05);
+            if (target == 1 && paletteCapability != null)
+                _webAgentThermalPaletteService.ApplyPaletteCapability(paletteCapability.OptionMask);
+
             EnsureSpecialFeatures();
             _specialCapabilityReceived |= (byte)(1 << target);
 
@@ -193,7 +199,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 row.SetCapability(entries.FirstOrDefault(c => c.Id == row.Id));
 
-                if (row.Capability != null &&
+                if (!row.IsSemanticPalette && row.Capability != null &&
                     (row.Capability.Flags & 3) == 3 &&
                     !row.IsTrigger &&
                     row.Id != 0x1D &&
@@ -223,6 +229,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             EnsureSpecialFeatures();
             var row = SpecialFeatureRows.FirstOrDefault(r => r.Target == target && r.Id == id);
             row?.SetState(supported, valid, value, BitConverter.ToUInt64(p, 10));
+
+            if (target == 1 && id == 0x05 && supported && valid)
+                _webAgentThermalPaletteService.ApplyReportedPalette(value);
+
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -264,6 +274,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 r.HasFreshValue(1))))
             {
                 row.Warn("Defog / WDR 동시 사용 불가 · 기존 기능 OFF 후 적용");
+                return;
+            }
+
+            if (row.IsSemanticPalette)
+            {
+                bool result = value == 0 ? _webAgentThermalPaletteService.SelectWhiteHot() :
+                    value == 1 ? _webAgentThermalPaletteService.SelectBlackHot() : _webAgentThermalPaletteService.SelectRainbow();
+                row.MarkSent(value, result);
+                if (result)
+                {
+                    UpdateThermalPaletteButtonVisual(value == 0 ? 1 : value == 1 ? 0 : 2);
+                    ResetFireSmokeFrameAnalysis("WEB 팔레트 요청");
+                }
+                ConsoleLogHelper.Command("WEB 팔레트", "특수기능 의미 선택 / 선택=" + value + " / 전송=" + result);
                 return;
             }
 

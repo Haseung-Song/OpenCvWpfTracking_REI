@@ -2511,11 +2511,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
-                Task<bool> irMoveTask = Interlocked.Read(ref _irLensStatusVersion) > 0 ? MoveIrZoomToPositionAsync(
+                Task<bool> irMoveTask = MoveIrZoomToPositionAsync(
                     irTarget,
                     zoomCts.Token,
-                    eoTarget
-                ) : Task.FromResult(false);
+                    eoTarget,
+                    1,
+                    explicitAbsolute: true
+                );
                 eoSendResult = _webAgentZoomControlService.SetEoZoomPosition((short)eoTarget);
                 commandIntervalMs = (long)((Stopwatch.GetTimestamp() - commandStartedTicks) * 1000.0 / Stopwatch.Frequency);
                 Task<bool> eoMoveTask = eoSendResult ? WaitForEnvironmentEoLensTargetAsync(
@@ -2607,7 +2609,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
                 {
                     eoResult = _controlCommandService.EoFocusGoPosition((short)safePosition);
-                    irResult = await MoveIrFocusToPositionAsync(irRawTargetPosition, focusCts.Token);
+                    irResult = await MoveIrFocusToPositionAsync(irRawTargetPosition, focusCts.Token, 1, explicitAbsolute: true);
                 }
                 else
                 {

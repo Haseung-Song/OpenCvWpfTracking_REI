@@ -151,6 +151,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
+                OnPropertyChanged(nameof(ThermalColorPaletteButtonText));
+                ResetThermalPaletteButtonVisuals();
                 OnPropertyChanged(nameof(IsSelectedControlAgentLaAgent));
                 OnPropertyChanged(nameof(IsContextPanelsVisible));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
@@ -238,6 +240,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string aiEoAddress = settings.SavedAiEoRtspUrl?.Trim();
                 string aiIrAddress = settings.SavedAiIrRtspUrl?.Trim();
 
+                // 이름으로 선택한 AI 입력은 현재 CSV 주소를 따른다. 직접 입력 주소는 보존한다.
+                aiEoAddress = RestoreNamedRtspAddress(EoRtspSourceOptions, settings.SavedAiEoRtspPreset, aiEoAddress);
+                aiIrAddress = RestoreNamedRtspAddress(IrRtspSourceOptions, settings.SavedAiIrRtspPreset, aiIrAddress);
+
                 if (!IsValidRtspAddress(aiEoAddress))
                     aiEoAddress = eoAddress;
 
@@ -254,6 +260,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(SelectedControlAgentProfile));
                 OnPropertyChanged(nameof(IsControlAgentDirectInput));
                 OnPropertyChanged(nameof(IsSelectedControlAgentWebAgent));
+                OnPropertyChanged(nameof(ThermalColorPaletteButtonText));
+                ResetThermalPaletteButtonVisuals();
                 OnPropertyChanged(nameof(IsSelectedControlAgentLaAgent));
                 OnPropertyChanged(nameof(IsImuRpyTabVisible));
                 OnPropertyChanged(nameof(IsContextPanelsVisible));
@@ -432,7 +440,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 2026-10-01: IMU가 장착된 4층 LR1000(기동형) 프로필에서만
         /// IMU/RPY 탭을 표시한다. 직접 입력은 기동형 WebAgent IP인
-        /// 192.168.20.163을 입력한 경우에만 동일하게 표시한다.
+        /// 192.168.0.163을 입력한 경우에만 동일하게 표시한다.
         /// 연결 여부와 Build 지원 여부는 탭 내부에서 별도로 안내한다.
         /// </summary>
         public bool IsImuRpyTabVisible =>
@@ -454,7 +462,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 2026-10-02: GPS는 IMU/RPY와 동일하게
         /// 4층 LR1000(기동형) 프로필에서만 표시한다.
-        /// 직접 입력은 기동형 WebAgent IP 192.168.20.163인 경우에만 표시한다.
+        /// 직접 입력은 기동형 WebAgent IP 192.168.0.163인 경우에만 표시한다.
         /// </summary>
         public bool IsGpsTabVisible => IsImuRpyTabVisible;
 
@@ -515,6 +523,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 저장된 이름과 주소로 영상 소스를 찾아 복원하며 직접 입력 항목도 처리한다.
         /// </summary>
+        private static string RestoreNamedRtspAddress(
+            System.Collections.Generic.IEnumerable<RtspSourceOption> options,
+            string savedDisplayName,
+            string address)
+        {
+            var named = options.FirstOrDefault(option => !option.IsDirectInput && string.Equals(
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName),
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
+                StringComparison.OrdinalIgnoreCase));
+
+            return named?.Address ?? address;
+        }
+
+        /// <summary>이전 표시 이름과 현재 주소를 비교하여 RTSP 선택 항목을 복원한다.</summary>
         private static RtspSourceOption ResolveRtspSource(
             System.Collections.Generic.IEnumerable<RtspSourceOption> options,
             string savedDisplayName,
@@ -522,8 +544,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         )
         {
             RtspSourceOption byName = options.FirstOrDefault(option => string.Equals(
-                option.DisplayName,
-                savedDisplayName,
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName),
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
                 StringComparison.OrdinalIgnoreCase
             ));
 
@@ -555,6 +577,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 return exact;
             }
+
+            // ER-WATCHER 2의 과거 이름을 다른 WATCHER의 첫 항목으로 잘못 복원하지 않는다.
+            var renamed = ControlAgentProfiles.FirstOrDefault(item => !item.IsDirectInput && string.Equals(
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(item.DisplayName),
+                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
+                StringComparison.OrdinalIgnoreCase));
+            if (renamed != null)
+                return renamed;
 
             if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
                 (savedDisplayName.IndexOf(

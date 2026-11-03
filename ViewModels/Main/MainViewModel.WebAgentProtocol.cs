@@ -66,6 +66,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ResetWebAgentTelemetrySession()
         {
             ResetV292Session();
+            ResetWebAgentV293();
             _webAgentTelemetryClock.Reset();
             _webAgentTelemetryClockGeneration = -1;
             Interlocked.Exchange(ref _webAgentTelemetryNegotiationStarted, 0);
@@ -119,6 +120,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ResetDigitalZoomSession();
             BeginWebAgentBuildCheck();
             _controlCommandService.RequestWebAgentIdentity();
+            QueryEquipmentTemperature();
             _controlCommandService.RequestLensCapabilityAndTelemetry(0x00);
             _controlCommandService.RequestLensCapabilityAndTelemetry(0x01);
             _controlCommandService.RequestCameraFeatureCapability(0x01);
@@ -200,6 +202,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         break;
                     case 0x35:
                         ParseAutoFocusV292(payload);
+                        break;
+                    case 0x36:
+                        ParseEquipmentTemperature(payload);
                         break;
                 }
             }
@@ -462,20 +467,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 p[12]
             )
             );
-            int entryCount = p[12];
 
-            for (int index = 0; index < entryCount; index++)
-            {
-                int offset = 13 + index * 12;
-
-                if (offset + 12 > p.Length)
-                    break;
-
-                if (p[offset] == 0x05)
-                {
-                    _webAgentThermalPaletteService.ApplyPaletteCapability(BitConverter.ToUInt32(p, offset + 8));
-                }
-            }
         }
 
         /// <summary>
@@ -752,26 +744,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             )
             );
 
-            if (target != 0x01 || feature != 0x05 || (flags & 0x03) != 0x03)
-                return;
+            // 카메라별 원시 번호는 색 이름이나 직접 버튼 선택 상태로 해석하지 않는다.
 
-            _webAgentThermalPaletteService.ApplyReportedPalette(value);
-            Dispatcher dispatcher = System.Windows.Application.Current?.Dispatcher;
-
-            if (dispatcher == null)
-                return;
-
-            dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (value == 1)
-                    UpdateThermalPaletteButtonVisual(0);
-                else if (value == 0)
-                    UpdateThermalPaletteButtonVisual(1);
-                else if (value == 3)
-                    UpdateThermalPaletteButtonVisual(2);
-                else
-                    ResetThermalPaletteButtonVisuals();
-            }));
         }
 
         /// <summary>
@@ -806,7 +780,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (p.Length < 6)
                 return;
             HandlePrecisionUnavailable(p);
-            if (p[0] == 1 && p[2] == 0 && p[3] == 0x2B)
+            HandleWebAgentV293Unavailable(p);
+            if (p[0] == 1 && p[1] == 0 && p[2] == 0 && p[3] == 0x2B)
             {
                 _irFocusDirectUnavailableSession = _connectionSessionId;
             }

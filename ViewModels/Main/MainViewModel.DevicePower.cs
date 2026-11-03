@@ -495,6 +495,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void DevicePowerFreshnessTimer_Tick(object sender, EventArgs e)
         {
+            RefreshWebAgentV293();
             bool pendingChanged = false;
 
             if (_eoPowerCommandPending &&

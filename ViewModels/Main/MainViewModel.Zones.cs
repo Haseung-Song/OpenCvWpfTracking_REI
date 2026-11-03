@@ -283,7 +283,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text ?? ""))).Replace("-", "");
         }
 
-        public string ZoneEquipmentKey => ZoneHash(SelectedControlAgentProfile.DisplayName + "|" + ControlAgentIp + "|" + ControlAgentPortText);
+        public string ZoneEquipmentKey => ZoneHash(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName(SelectedControlAgentProfile.DisplayName) + "|" + ControlAgentIp + "|" + ControlAgentPortText);
 
         private string ZoneKey(string camera) =>
             ZoneHash(ZoneEquipmentKey + "|" + camera + "|" + (camera == "IR" ? IrSourceAddress : EoSourceAddress));

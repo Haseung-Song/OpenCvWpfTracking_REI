@@ -99,6 +99,9 @@ namespace OpenCvWpfTracking.Services.Configuration
 
         public bool UseMeasuredSyncAnchors;
 
+        // 실측표는 장비 식별자가 일치할 때만 적용한다.
+        public ZoomCalibrationCurve Calibration;
+
         #endregion
 
         #region [기능 처리 함수]
@@ -112,7 +115,7 @@ namespace OpenCvWpfTracking.Services.Configuration
         /// 표준 위치를 실측 매칭표 또는 기존 선형 모델로 광학 배율에 환산한다.
         /// </summary>
         public double Ratio(int position) =>
-            UseMeasuredSyncAnchors ? Services.Control.FieldOfViewSyncService.EstimateEoOpticalRatio(
+            Calibration != null ? Calibration.Ratio(position) : UseMeasuredSyncAnchors ? Services.Control.FieldOfViewSyncService.EstimateEoOpticalRatio(
             position,
             WideHorizontalFov,
             24.5,
@@ -132,7 +135,7 @@ namespace OpenCvWpfTracking.Services.Configuration
         {
             ratio = Math.Max(MinimumRatio, Math.Min(MaximumRatio, ratio));
 
-            if (!UseMeasuredSyncAnchors)
+            if (Calibration == null && !UseMeasuredSyncAnchors)
                 return (int)Math.Round(1000 * (ratio - MinimumRatio) / (MaximumRatio - MinimumRatio));
 
             int low = 0, high = 1000;
@@ -187,16 +190,29 @@ namespace OpenCvWpfTracking.Services.Configuration
         /// </summary>
         public static LensControlTuning Get(string id, bool ir)
         {
+            id = id == null ? null : DeviceCatalog.CanonicalDeviceId(id);
             lock (Values)
             {
                 LensControlTuning value;
                 string key = (id ?? "Default") + (ir ? "/IR" : "/EO");
 
-                if (Values.TryGetValue(key, out value))
-                    return value;
+                if (!Values.TryGetValue(key, out value))
+                {
+                    value = (LensControlTuning)Values["Default" + (ir ? "/IR" : "/EO")].Clone();
+                    Values[key] = value;
+                }
 
-                value = (LensControlTuning)Values["Default" + (ir ? "/IR" : "/EO")].Clone();
-                Values[key] = value;
+                // 장비 1의 실측 범위와 EO 카탈로그 추정 범위만 대체한다. 다른 장비·SYNC 표는 변경하지 않는다.
+                if (id == "ER_WATCHER_1" && value.Calibration == null)
+                {
+                    value.Calibration = ZoomCalibrationCurve.Get(id, ir);
+                    if (value.Calibration != null)
+                    {
+                        value.MinimumRatio = value.Calibration.MinimumRatio;
+                        value.MaximumRatio = value.Calibration.MaximumRatio;
+                    }
+                }
+
                 return value;
             }
         }
@@ -277,7 +293,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                             value.WideHorizontalFov >= 170)
                             throw new FormatException("Invalid tuning limits.");
 
-                        result[(string)device.Attribute("Id") + "/" + channel] = value;
+                        result[DeviceCatalog.CanonicalDeviceId((string)device.Attribute("Id")) + "/" + channel] = value;
                     }
             }
             catch (Exception ex)

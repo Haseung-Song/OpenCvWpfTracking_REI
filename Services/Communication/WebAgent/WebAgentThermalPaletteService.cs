@@ -1,21 +1,11 @@
-﻿namespace OpenCvWpfTracking.Services.Communication.WebAgent
+namespace OpenCvWpfTracking.Services.Communication.WebAgent
 {
-    /// <summary>WEB AGENT의 열상 팔레트 명령과 상태 응답을 연결한다.</summary>
+    /// <summary>직접 색상 선택과 기존 번호 기반 NEXT·PREV를 분리해 WEB에 전달한다.</summary>
     public sealed class WebAgentThermalPaletteService
     {
-        private const byte IrTarget = 0x01;
-
-        private const byte NucFeature = 0x04;
-
-        private const byte PaletteFeature = 0x05;
-
-        private const byte PolarityFeature = 0x06;
-
-        private const int PaletteCount = 6;
-
         private readonly ControlCommandService _controlCommandService;
 
-        private readonly object _sync = new object();
+        private readonly object _relativeSync = new object();
 
         private int _currentPalette = 1;
 
@@ -30,60 +20,64 @@
 
         public bool SelectNext() => SelectRelative(1);
 
-        public bool SelectBlackHot() => SelectPalette(1);
+        public bool SelectBlackHot() => SendPalette(0xF4);
 
-        public bool SelectWhiteHot() => SelectPalette(0);
+        public bool SelectWhiteHot() => SendPalette(0xF3);
 
-        public bool SelectRainbow() => SelectPalette(3);
+        public bool SelectRainbow() => SendPalette(0xF5);
 
-        public bool RequestNuc() => _controlCommandService.SetCameraFeature(NucFeature, IrTarget, 0x01);
+        /// <summary>WEB NUC는 공통 단발 요청만 사용하며 구형 명령으로 재시도하지 않는다.</summary>
+        public bool RequestNuc() => _controlCommandService.SetCameraFeature(0x04, 0x01, 0x01);
 
-        public bool RequestCapability() => _controlCommandService.RequestCameraFeatureCapability(IrTarget);
-
-        public bool RequestPaletteState() => _controlCommandService.RequestCameraFeatureState(IrTarget, PaletteFeature);
-
-        public bool RequestPolarityState() => _controlCommandService.RequestCameraFeatureState(IrTarget, PolarityFeature);
-
+        /// <summary>V33_5와 같은 지원 마스크를 사용하며 원시 번호로 색상 이름을 추정하지 않는다.</summary>
         public void ApplyPaletteCapability(uint optionMask)
         {
-            lock (_sync)
+            lock (_relativeSync)
                 _supportedPaletteMask = optionMask;
         }
 
         public void ApplyReportedPalette(int palette)
         {
-            if (palette < 0 || palette >= PaletteCount)
+            if (palette < 0 || palette >= 6)
                 return;
 
-            lock (_sync)
+            lock (_relativeSync)
                 _currentPalette = palette;
         }
 
-        private bool SelectRelative(int offset)
+        /// <summary>장비·세션 전환 시 이전 장비의 순회 번호와 마스크를 재사용하지 않는다.</summary>
+        public void ResetRelativeSelection()
         {
-            lock (_sync)
+            lock (_relativeSync)
             {
-                return SelectPalette((_currentPalette + offset + PaletteCount) % PaletteCount);
+                _currentPalette = 1;
+                _supportedPaletteMask = 0x3F;
             }
         }
 
-        private bool SelectPalette(int palette)
+        /// <summary>정상 동작하던 V33_5의 E9 Feature 05 선택 후 E7 조회 순서를 유지한다.</summary>
+        private bool SelectRelative(int offset)
         {
-            lock (_sync)
+            lock (_relativeSync)
             {
+                int palette = (_currentPalette + offset + 6) % 6;
                 if ((_supportedPaletteMask & (1u << palette)) == 0)
                     return false;
 
-                bool sent = _controlCommandService.SetCameraFeature(PaletteFeature, IrTarget, (byte)palette);
-
+                bool sent = _controlCommandService.SetCameraFeature(0x05, 0x01, (byte)palette);
                 if (sent)
                 {
                     _currentPalette = palette;
-                    _controlCommandService.RequestCameraFeatureState(IrTarget, PaletteFeature);
+                    _controlCommandService.RequestCameraFeatureState(0x01, 0x05);
                 }
 
                 return sent;
             }
+        }
+
+        private bool SendPalette(byte operation)
+        {
+            return _controlCommandService.SendCommand(0x00, 0x31, operation, 0x00);
         }
     }
 }

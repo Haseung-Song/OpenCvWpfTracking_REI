@@ -162,10 +162,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public double EoOpticalRatioMaximum => ControlTuningFor(false).MaximumRatio;
 
         public string ZoomOpticalStandardText =>
-            $"EO {ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MaximumRatio:0.#} OPTICAL (임시 환산)";
+            $"EO {ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MaximumRatio:0.##} OPTICAL" +
+            (ControlTuningFor(false).Calibration != null ? " · 실측표 / EO 30x 초과 추정" : " (임시 환산)");
 
         public string ZoomOpticalRangeText =>
-            $"EO {ControlTuningFor(false).MinimumRatio:0.#}~{ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MinimumRatio:0.#}~{ControlTuningFor(true).MaximumRatio:0.#}x 동일 진행률";
+            $"EO {ControlTuningFor(false).MinimumRatio:0.#}~{ControlTuningFor(false).MaximumRatio:0.#}x / IR {ControlTuningFor(true).MinimumRatio:0.#}~{ControlTuningFor(true).MaximumRatio:0.##}x 동일 진행률";
 
         public double EoSpeedExponent
         {
@@ -256,19 +257,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [속성 및 상태 표시]
 
-        public string EoZoomRatioOverlayText => IsLensFresh(false) ? "EO x" + EoDisplayZoomRatio.ToString("F1") : "EO —";
+        public string EoZoomRatioOverlayText => IsLensFresh(false) ? "EO " + DisplayZoomRatioText(false) : "EO —";
 
-        public string IrZoomRatioOverlayText => IsLensFresh(true) ? "IR x" + IrDisplayZoomRatio.ToString("F1") : "IR —";
+        public string IrZoomRatioOverlayText => IsLensFresh(true) ? "IR " + DisplayZoomRatioText(true) : "IR —";
 
         #endregion
 
         #region [기능 처리 함수]
 
-        /// <summary>
-        /// 표준 줌 위치와 확인된 배율을 상태 문자열로 구성한다.
-        /// </summary>
+        /// <summary>공통 표시 형식으로 실측표와 EO 미실측 구간을 구분한다.</summary>
+        private string DisplayZoomRatioText(bool ir)
+        {
+            var curve = ControlTuningFor(ir).Calibration;
+            int position = ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom();
+            double ratio = ir ? IrDisplayZoomRatio : EoDisplayZoomRatio;
+            return "x" + (curve != null && curve.IsEstimated(position) ? "~" : "") +
+                ratio.ToString(curve != null ? "0.0#" : "F1");
+        }
+
+        /// <summary>표준 줌 위치와 확인된 배율을 상태 문자열로 구성한다.</summary>
         private string ZoomRatioStatus(bool ir) =>
-            (ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom()) + " / 1000 (" + (IsLensFresh(ir) ? "x" + (ir ? IrDisplayZoomRatio : EoDisplayZoomRatio).ToString("F1") : "배율 미확인") + ")";
+            (ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom()) + " / 1000 (" + (IsLensFresh(ir) ? DisplayZoomRatioText(ir) : "배율 미확인") + ")";
 
         #endregion
 

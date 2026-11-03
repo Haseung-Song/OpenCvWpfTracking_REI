@@ -1,0 +1,45 @@
+﻿# ER-WATCHER 1 전용 / 2026-11-02 보고용 실측표 기준
+# EO 17배 RAW 877 및 19배 RAW 900은 사용자 확인값을 반영한다.
+# EO RAW 974 초과는 30배~90배 선형 추정이다. RAW 1000의 90배는 카탈로그 끝점 가정이며 실측이 아니다.
+# EO 광각 HFOV 65.24도 / IR 센서 픽셀피치 미확인으로 절대 HFOV는 기존 잠정값을 유지한다.
+Channel,Raw,Ratio,Basis
+EO,0,1,Measured
+EO,262,2,Measured
+EO,390,3,Measured
+EO,472,4,Measured
+EO,537,5,Measured
+EO,592,6,Measured
+EO,638,7,Measured
+EO,678,8,Measured
+EO,716,9,Measured
+EO,750,10,Measured
+EO,780,11,Measured
+EO,805,12,Measured
+EO,820,13,Measured
+EO,837,14,Measured
+EO,850,15,Measured
+EO,864,16,Measured
+EO,877,17,Measured
+EO,890,18,Measured
+EO,900,19,Measured
+EO,911,20,Measured
+EO,923,21,Measured
+EO,937,22,Measured
+EO,945,23,Measured
+EO,951,24,Measured
+EO,958,25,Measured
+EO,965,26,Measured
+EO,970,27,Measured
+EO,972,28,Measured
+EO,973,29,Measured
+EO,974,30,Measured
+EO,1000,90,CatalogEstimate
+IR,0,1,Measured
+IR,334,2,Measured
+IR,524,3,Measured
+IR,659,4,Measured
+IR,769,5,Measured
+IR,852,6,Measured
+IR,927,7,Measured
+IR,989,8,Measured
+IR,1000,8.15,Measured

@@ -111,6 +111,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                 if (rows.Count == 0 || rows.Count > 1048576 || rows.Any(r => r.Count > 16384))
                     throw new InvalidDataException("Excel row/column limit; CSV retained.");
 
+                string sheetName = string.Equals(Path.GetFileName(csvPath), "Devices.csv", StringComparison.OrdinalIgnoreCase) ? "Devices" : "Data";
                 string destination = Path.ChangeExtension(csvPath, "xlsx");
                 temp = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
                 using (var file = File.Create(temp))
@@ -129,7 +130,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                     Part(
                         zip,
                         "xl/workbook.xml",
-                        "<workbook xmlns=\"" + Ns + "\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"Data\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>"
+                        "<workbook xmlns=\"" + Ns + "\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"" + sheetName + "\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>"
                     );
                     Part(
                         zip,

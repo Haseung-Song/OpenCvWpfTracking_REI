@@ -59,10 +59,34 @@ namespace OpenCvWpfTracking.Services.Configuration
 
         public static IReadOnlyList<DeviceEntry> Entries => Cache.Value;
 
+        /// <summary>설치 장소 표시는 UI에 유지하되 기존 장비 저장 키에서는 장소 접미사만 제외한다.</summary>
+        public static string StorageDisplayName(string displayName)
+        {
+            return System.Text.RegularExpressions.Regex.Replace(displayName ?? "",
+                @"(ER-WATCHER\s+[1-4])\s*\([^)]*\)", "$1",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        /// <summary>장비 번호와 EO/IR 구분을 유지하여 과거 이름을 현재 선택 항목에 대응한다.</summary>
+        public static string DisplayIdentity(string displayName)
+        {
+            return System.Text.RegularExpressions.Regex.Replace(StorageDisplayName(displayName), @"^\s*\d+\.\s*", "").Trim();
+        }
+
         /// <summary>
         /// 장비 식별자로 CSV 항목을 찾으며 항목이 없으면 빈 설정 객체를 반환한다.
         /// </summary>
-        public static DeviceEntry Get(string id) => Entries.FirstOrDefault(e => e.Id == id) ?? new DeviceEntry
+        public static string CanonicalDeviceId(string id)
+        {
+            if (string.Equals(id, "MR300_ERWATCHER", StringComparison.OrdinalIgnoreCase))
+                return "ER_WATCHER_1";
+
+            return System.Text.RegularExpressions.Regex.Replace(id ?? "", @"^ER_?WATCHER_([1-4])$", "ER_WATCHER_$1",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        /// <summary>이전 장비 ID로 조회해도 통일한 현재 ID의 설정을 사용한다.</summary>
+        public static DeviceEntry Get(string id) => Entries.FirstOrDefault(e => CanonicalDeviceId(e.Id) == CanonicalDeviceId(id)) ?? new DeviceEntry
         {
             Name = "",
             EoUrl = "",
