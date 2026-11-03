@@ -33,7 +33,6 @@ namespace OpenCvWpfTracking.Services.Communication
     public sealed class CtecCameraCommandService
     {
         #region [상수]
-
         /// <summary>
         /// [CTEC] 고정 Header / Camera Code
         /// </summary>
@@ -85,9 +84,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private const int MaximumResponseLogLength = 500;
 
         #endregion
-
         #region [필드]
-
         /// <summary>
         /// CTEC 명령 순차 송신 보호
         ///
@@ -116,64 +113,26 @@ namespace OpenCvWpfTracking.Services.Communication
         private int _digestNonceCount;
 
         #endregion
-
         #region [줌 연속 제어]
-
         /// <summary>
         /// [EO] 주간 카메라 [Zoom Tele] 연속 제어 시작
         ///
         /// [P = 2] : Tele
         /// [Q = 1 ~ 7] : Speed
         /// </summary>
-        public Task<bool> StartZoomTeleAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            byte speed = MaximumControlSpeed
-        )
+        public Task<bool> StartZoomTeleAsync(string cameraIp, string userName, string password, bool useHttps, byte speed = MaximumControlSpeed)
         {
             speed = ClampControlSpeed(speed);
-            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO ZOOM TELE",
-                0x81,
-                0x01,
-                0x04,
-                0x07,
-                (byte)(0x20 | speed),
-                0xFF
-            ));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO ZOOM TELE", 0x81, 0x01, 0x04, 0x07, (byte)(0x20 | speed), 0xFF));
         }
 
         /// <summary>
         /// [EO] 주간 카메라 [Zoom Wide] 연속 제어 시작
         /// </summary>
-        public Task<bool> StartZoomWideAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            byte speed = MaximumControlSpeed
-        )
+        public Task<bool> StartZoomWideAsync(string cameraIp, string userName, string password, bool useHttps, byte speed = MaximumControlSpeed)
         {
             speed = ClampControlSpeed(speed);
-            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO ZOOM WIDE",
-                0x81,
-                0x01,
-                0x04,
-                0x07,
-                (byte)(0x30 | speed),
-                0xFF
-            ));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO ZOOM WIDE", 0x81, 0x01, 0x04, 0x07, (byte)(0x30 | speed), 0xFF));
         }
 
         /// <summary>
@@ -181,25 +140,11 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public Task<bool> StopZoomAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO ZOOM STOP",
-                0x81,
-                0x01,
-                0x04,
-                0x07,
-                0x00,
-                0xFF
-            ));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO ZOOM STOP", 0x81, 0x01, 0x04, 0x07, 0x00, 0xFF));
         }
 
         #endregion
-
         #region [줌 절대 위치 제어]
-
         /// <summary>
         /// [EO] 주간 카메라 Optical Zoom 목표 위치 직접 이동
         ///
@@ -223,27 +168,25 @@ namespace OpenCvWpfTracking.Services.Communication
             byte positionNibble3 = (byte)((safePosition >> 4) & 0x0F);
             byte positionNibble4 = (byte)(safePosition & 0x0F);
             return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                $"EO ZOOM DIRECT / {safePosition}",
-                0x81,
-                0x01,
-                0x04,
-                0x47,
-                positionNibble1,
-                positionNibble2,
-                positionNibble3,
-                positionNibble4,
-                0xFF
-            ));
+                    cameraIp,
+                    userName,
+                    password,
+                    useHttps,
+                    $"EO ZOOM DIRECT / {safePosition}",
+                    0x81,
+                    0x01,
+                    0x04,
+                    0x47,
+                    positionNibble1,
+                    positionNibble2,
+                    positionNibble3,
+                    positionNibble4,
+                    0xFF
+                ));
         }
 
         #endregion
-
         #region [초점 절대 위치 제어]
-
         /// <summary>
         /// [EO] 주간 카메라 Focus 목표 위치 직접 이동
         ///
@@ -277,41 +220,33 @@ namespace OpenCvWpfTracking.Services.Communication
 
                 await Task.Delay(FocusManualApplyDelayMs);
                 return await SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    $"EO FOCUS DIRECT / {safePosition}",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x48,
-                    positionNibble1,
-                    positionNibble2,
-                    positionNibble3,
-                    positionNibble4,
-                    0xFF
-                );
+                        cameraIp,
+                        userName,
+                        password,
+                        useHttps,
+                        $"EO FOCUS DIRECT / {safePosition}",
+                        0x81,
+                        0x01,
+                        0x04,
+                        0x48,
+                        positionNibble1,
+                        positionNibble2,
+                        positionNibble3,
+                        positionNibble4,
+                        0xFF
+                    );
             });
         }
 
         #endregion
-
         #region [초점 연속 제어]
-
         /// <summary>
         /// [EO] 주간 카메라 [Focus Near] 연속 제어 시작
         ///
         /// 문서 기준 Focus 제어 전
         /// Focus Mode Manual 명령을 먼저 송신한다.
         /// </summary>
-        public Task<bool> StartFocusNearAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            byte speed = MaximumControlSpeed
-        )
+        public Task<bool> StartFocusNearAsync(string cameraIp, string userName, string password, bool useHttps, byte speed = MaximumControlSpeed)
         {
             speed = ClampControlSpeed(speed);
             return ExecuteControlLockedAsync(async () =>
@@ -325,18 +260,18 @@ namespace OpenCvWpfTracking.Services.Communication
 
                 await Task.Delay(FocusManualApplyDelayMs);
                 return await SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO FOCUS NEAR",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x08,
-                    (byte)(0x30 | speed),
-                    0xFF
-                );
+                        cameraIp,
+                        userName,
+                        password,
+                        useHttps,
+                        "EO FOCUS NEAR",
+                        0x81,
+                        0x01,
+                        0x04,
+                        0x08,
+                        (byte)(0x30 | speed),
+                        0xFF
+                    );
             });
         }
 
@@ -346,13 +281,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 문서 기준 Focus 제어 전
         /// Focus Mode Manual 명령을 먼저 송신한다.
         /// </summary>
-        public Task<bool> StartFocusFarAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            byte speed = MaximumControlSpeed
-        )
+        public Task<bool> StartFocusFarAsync(string cameraIp, string userName, string password, bool useHttps, byte speed = MaximumControlSpeed)
         {
             speed = ClampControlSpeed(speed);
             return ExecuteControlLockedAsync(async () =>
@@ -365,19 +294,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 }
 
                 await Task.Delay(FocusManualApplyDelayMs);
-                return await SendCameraCommandCoreAsync(
-                    cameraIp,
-                    userName,
-                    password,
-                    useHttps,
-                    "EO FOCUS FAR",
-                    0x81,
-                    0x01,
-                    0x04,
-                    0x08,
-                    (byte)(0x20 | speed),
-                    0xFF
-                );
+                return await SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO FOCUS FAR", 0x81, 0x01, 0x04, 0x08, (byte)(0x20 | speed), 0xFF);
             });
         }
 
@@ -386,19 +303,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public Task<bool> StopFocusAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO FOCUS STOP",
-                0x81,
-                0x01,
-                0x04,
-                0x08,
-                0x00,
-                0xFF
-            ));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO FOCUS STOP", 0x81, 0x01, 0x04, 0x08, 0x00, 0xFF));
         }
 
         /// <summary>
@@ -406,19 +311,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public Task<bool> OnePushFocusAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO ONE PUSH FOCUS",
-                0x81,
-                0x01,
-                0x04,
-                0x18,
-                0x01,
-                0xFF
-            ));
+            return ExecuteControlLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO ONE PUSH FOCUS", 0x81, 0x01, 0x04, 0x18, 0x01, 0xFF));
         }
 
         /// <summary>
@@ -426,25 +319,11 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private Task<bool> SendFocusManualCoreAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO FOCUS MODE MANUAL",
-                0x81,
-                0x01,
-                0x04,
-                0x38,
-                0x03,
-                0xFF
-            );
+            return SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO FOCUS MODE MANUAL", 0x81, 0x01, 0x04, 0x38, 0x03, 0xFF);
         }
 
         #endregion
-
         #region [카메라 조회 명령]
-
         /// <summary>
         /// [EO] 주간 카메라 현재 [Optical Zoom Position] 조회
         ///
@@ -457,18 +336,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public Task<bool> RequestZoomPositionAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO ZOOM POSITION INQUIRY",
-                0x81,
-                0x09,
-                0x04,
-                0x47,
-                0xFF
-            ));
+            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO ZOOM POSITION INQUIRY", 0x81, 0x09, 0x04, 0x47, 0xFF));
         }
 
         /// <summary>
@@ -479,18 +347,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public Task<bool> RequestFocusPositionAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO FOCUS POSITION INQUIRY",
-                0x81,
-                0x09,
-                0x04,
-                0x48,
-                0xFF
-            ));
+            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO FOCUS POSITION INQUIRY", 0x81, 0x09, 0x04, 0x48, 0xFF));
         }
 
         /// <summary>
@@ -505,24 +362,11 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public Task<bool> RequestFocusModeAsync(string cameraIp, string userName, string password, bool useHttps)
         {
-            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(
-                cameraIp,
-                userName,
-                password,
-                useHttps,
-                "EO FOCUS MODE INQUIRY",
-                0x81,
-                0x09,
-                0x04,
-                0x38,
-                0xFF
-            ));
+            return ExecuteInquiryLockedAsync(() => SendCameraCommandCoreAsync(cameraIp, userName, password, useHttps, "EO FOCUS MODE INQUIRY", 0x81, 0x09, 0x04, 0x38, 0xFF));
         }
 
         #endregion
-
         #region [CGI / 패킷 처리 함수]
-
         /// <summary>
         /// CTEC 명령 송신 순서 보호 실행
         /// </summary>
@@ -564,14 +408,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// [CTEC] 외부 Frame에 [VISCA Protocol]을 결합한 뒤
         /// 카메라 [HTTP / HTTPS CGI]로 직접 송신한다.
         /// </summary>
-        private async Task<bool> SendCameraCommandCoreAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            string commandName,
-            params byte[] viscaProtocol
-        )
+        private async Task<bool> SendCameraCommandCoreAsync(string cameraIp, string userName, string password, bool useHttps, string commandName, params byte[] viscaProtocol)
         {
             if (string.IsNullOrWhiteSpace(cameraIp))
             {
@@ -598,14 +435,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 옥상 MR300 카메라는 실제 웹 설정이 HTTPS이므로
         /// HTTP Redirect에 의존하지 않고 HTTPS 주소로 직접 요청한다.
         /// </summary>
-        private async Task<bool> SendCgiRequestAsync(
-            string cameraIp,
-            string userName,
-            string password,
-            bool useHttps,
-            string commandName,
-            byte[] packet
-        )
+        private async Task<bool> SendCgiRequestAsync(string cameraIp, string userName, string password, bool useHttps, string commandName, byte[] packet)
         {
             string packetHex = BitConverter.ToString(packet).Replace("-", string.Empty);
             string scheme = useHttps ? "https" : "http";
@@ -639,10 +469,7 @@ namespace OpenCvWpfTracking.Services.Communication
                      * 카메라의 401 Digest Challenge를 수신한다.
                      */
                     using (HttpRequestMessage challengeRequest = CreateRequestMessage(requestUri))
-                    using (HttpResponseMessage challengeResponse = await client.SendAsync(
-                        challengeRequest,
-                        HttpCompletionOption.ResponseContentRead
-                    ).ConfigureAwait(false))
+                    using (HttpResponseMessage challengeResponse = await client.SendAsync(challengeRequest, HttpCompletionOption.ResponseContentRead).ConfigureAwait(false))
                     {
                         if (challengeResponse.IsSuccessStatusCode)
                         {
@@ -654,8 +481,12 @@ namespace OpenCvWpfTracking.Services.Communication
 
                         if (challengeResponse.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            string challengeErrorText = challengeResponse.Content == null ? string.Empty : await challengeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            Console.WriteLine($"[CTEC CGI] CHALLENGE RESULT : " + $"{(int)challengeResponse.StatusCode} " + $"{challengeResponse.StatusCode}");
+                            string challengeErrorText = challengeResponse.Content == null
+                                ? string.Empty
+                                : await challengeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            Console.WriteLine($"[CTEC CGI] CHALLENGE RESULT : " +
+                                $"{(int)challengeResponse.StatusCode} " +
+                                $"{challengeResponse.StatusCode}");
                             LogResponseSummary(challengeErrorText);
                             Console.WriteLine("[CTEC CGI] SEND RESULT : False");
                             ConsoleLogHelper.PrintLine();
@@ -689,14 +520,15 @@ namespace OpenCvWpfTracking.Services.Communication
                         using (HttpRequestMessage authenticatedRequest = CreateRequestMessage(requestUri))
                         {
                             authenticatedRequest.Headers.TryAddWithoutValidation("Authorization", authorizationValue);
-                            using (HttpResponseMessage authenticatedResponse = await client.SendAsync(
-                                authenticatedRequest,
-                                HttpCompletionOption.ResponseContentRead
-                            ).ConfigureAwait(false))
+                            using (HttpResponseMessage authenticatedResponse = await client.SendAsync(authenticatedRequest, HttpCompletionOption.ResponseContentRead).ConfigureAwait(false))
                             {
-                                string responseText = authenticatedResponse.Content == null ? string.Empty : await authenticatedResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                string responseText = authenticatedResponse.Content == null
+                                    ? string.Empty
+                                    : await authenticatedResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
                                 string contentType = authenticatedResponse.Content?.Headers?.ContentType?.MediaType ?? string.Empty;
-                                Console.WriteLine($"[CTEC CGI] RESULT : " + $"{(int)authenticatedResponse.StatusCode} " + $"{authenticatedResponse.StatusCode}");
+                                Console.WriteLine($"[CTEC CGI] RESULT : " +
+                                    $"{(int)authenticatedResponse.StatusCode} " +
+                                    $"{authenticatedResponse.StatusCode}");
 
                                 if (!string.IsNullOrWhiteSpace(contentType))
                                 {
@@ -806,29 +638,16 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             string[] challenges = values.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
-            string md5Challenge = challenges.FirstOrDefault(value => value.IndexOf(
-                "Digest",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0 &&
-                Regex.IsMatch(
-                value,
-                @"algorithm\s*=\s*""?MD5""?(?:,|$)",
-                RegexOptions.IgnoreCase
-            ));
+            string md5Challenge = challenges.FirstOrDefault(value => value.IndexOf("Digest", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                Regex.IsMatch(value, @"algorithm\s*=\s*""?MD5""?(?:,|$)", RegexOptions.IgnoreCase));
 
             if (!string.IsNullOrWhiteSpace(md5Challenge))
             {
                 return md5Challenge;
             }
 
-            return challenges.FirstOrDefault(value => value.IndexOf(
-                "Digest",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0 &&
-                value.IndexOf(
-                "SHA-256",
-                StringComparison.OrdinalIgnoreCase
-            ) < 0);
+            return challenges.FirstOrDefault(value => value.IndexOf("Digest", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                value.IndexOf("SHA-256", StringComparison.OrdinalIgnoreCase) < 0);
         }
 
         /// <summary>
@@ -936,11 +755,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 return quotedMatch.Groups["value"].Value;
             }
 
-            Match tokenMatch = Regex.Match(
-                challenge,
-                @"(?:^|[,\s])" + Regex.Escape(parameterName) + @"\s*=\s*(?<value>[^,\s]+)",
-                RegexOptions.IgnoreCase
-            );
+            Match tokenMatch = Regex.Match(challenge, @"(?:^|[,\s])" + Regex.Escape(parameterName) + @"\s*=\s*(?<value>[^,\s]+)", RegexOptions.IgnoreCase);
             return tokenMatch.Success ? tokenMatch.Groups["value"].Value : null;
         }
 
@@ -1019,18 +834,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 return false;
             }
 
-            return responseText.IndexOf(
-                "Page Redirection",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0 ||
-                responseText.IndexOf(
-                "admin_password_status",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0 ||
-                responseText.IndexOf(
-                "/viewer/viewer.html",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0;
+            return responseText.IndexOf("Page Redirection", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                responseText.IndexOf("admin_password_status", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                responseText.IndexOf("/viewer/viewer.html", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         /// <summary>
@@ -1077,9 +883,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
-
         #region [값 변환 보조 함수]
-
         /// <summary>
         /// Zoom / Focus 속도를 문서 허용 범위 [1 ~ 7]로 보정한다.
         /// </summary>
@@ -1097,7 +901,6 @@ namespace OpenCvWpfTracking.Services.Communication
 
             return speed;
         }
-
         #endregion
     }
 }

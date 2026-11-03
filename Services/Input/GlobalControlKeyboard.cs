@@ -15,13 +15,10 @@ namespace OpenCvWpfTracking.Services.Input
     public sealed class GlobalControlKeyboard : IDisposable
     {
         #region [내부 자료형]
-
         private delegate IntPtr HookProc(int code, IntPtr message, IntPtr data);
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         private readonly HookProc _callback;
 
         private readonly Dispatcher _dispatcher;
@@ -35,9 +32,7 @@ namespace OpenCvWpfTracking.Services.Input
         public event Action<Key, bool> KeyChanged;
 
         #endregion
-
         #region [초기화]
-
         /// <summary>
         /// 비차단 키보드 훅과 키 놓침 복구용 100ms 감시를 시작한다.
         /// </summary>
@@ -73,9 +68,7 @@ namespace OpenCvWpfTracking.Services.Input
         }
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 전역 제어에서 처리하는 키인지 확인한다.
         /// </summary>
@@ -114,9 +107,7 @@ namespace OpenCvWpfTracking.Services.Input
         }
 
         /// <summary>
-
         /// 주입 키와 시스템 조합을 제외하고 누름/해제를 추적한다. Z/C 반복은 유지한다.
-
         /// </summary>
         private void HandleHook(int code, IntPtr message, IntPtr data)
         {
@@ -157,24 +148,23 @@ namespace OpenCvWpfTracking.Services.Input
         }
 
         /// <summary>
-
         /// 종료 중이 아닌 UI Dispatcher에 키 상태 전달을 예약한다.
-
         /// </summary>
         private void Dispatch(int vk, bool down)
         {
             if (!_dispatcher.HasShutdownStarted)
-                _dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                _dispatcher.BeginInvoke(
+                    DispatcherPriority.Input,
+                    new Action(() =>
                 {
                     if (_hook != IntPtr.Zero)
                         KeyChanged?.Invoke(KeyInterop.KeyFromVirtualKey(vk), down);
-                }));
+                })
+                );
         }
 
         /// <summary>
-
         /// 감시와 네이티브 훅을 해제하고 보유 키 및 구독자를 정리한다.
-
         /// </summary>
         public void Dispose()
         {
@@ -220,7 +210,6 @@ namespace OpenCvWpfTracking.Services.Input
         /// </summary>
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr GetModuleHandle(string name);
-
         #endregion
     }
 }

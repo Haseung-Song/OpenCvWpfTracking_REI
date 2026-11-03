@@ -5,7 +5,7 @@ namespace OpenCvWpfTracking.Services.Communication
 {
     /// <summary>
     /// [TORUSS] 감시장비 제어 명령 [Packet] 생성 / 송신 서비스
-    /// 
+    ///
     /// 제어 [Packet] 형식:
     /// [0] Sync Code  : 0xFF
     /// [1] Unit ID    : 0x01
@@ -24,14 +24,14 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [Unit ID]
-        /// 
+        ///
         /// [TORUSS] 문서 기준 기본 [0x01] 고정 사용.
         /// [Packet] 생성 이후 변경되지 않으므로
         /// [readonly]로 선언한다.
         /// </summary>
         private readonly byte _unitId = 0x01;
 
-        private readonly object _irPaletteSync = new object();
+        private readonly object _irPaletteSync = new object ();
 
         private const int IrPaletteCount = 10;
 
@@ -77,7 +77,8 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             if (tilt ? !UseUnsignedWebAgentTiltCoordinates : !UseUnsignedWebAgentPanCoordinates)
                 return false;
-            return _tcpClientService.Send(WebAgentV292Protocol.Absolute(_unitId, tilt, guiAngle, speed, maximum));
+
+            return _tcpClientService.Send(WebAgentMotionFocusProtocol.Absolute(_unitId, tilt, guiAngle, speed, maximum));
         }
 
         /// <summary>정밀 조그는 방향을 명령 첫째 바이트에 넣는다. 영 방향은 양 축 정지이다.</summary>
@@ -85,13 +86,14 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             if (!UseUnsignedWebAgentPanCoordinates || !UseUnsignedWebAgentTiltCoordinates)
                 return false;
-            return _tcpClientService.Send(WebAgentV292Protocol.Jog(_unitId, direction, panSpeed, tiltSpeed, maximum));
+
+            return _tcpClientService.Send(WebAgentMotionFocusProtocol.Jog(_unitId, direction, panSpeed, tiltSpeed, maximum));
         }
 
         /// <summary>자동 초점 조회·설정·한 번 실행을 구분하여 전송한다.</summary>
-        public bool SendAutoFocusV292(byte command, byte target, byte value)
+        public bool SendAutoFocusCommand(byte command, byte target, byte value)
         {
-            return _tcpClientService.Send(WebAgentV292Protocol.AutoFocus(_unitId, command, target, value));
+            return _tcpClientService.Send(WebAgentMotionFocusProtocol.AutoFocus(_unitId, command, target, value));
         }
 
         /// <summary>
@@ -196,11 +198,7 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             if (frequencyHz > 10)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(frequencyHz),
-                    frequencyHz,
-                    "GPS auto TX rate must be between 0 and 10 Hz."
-                );
+                throw new ArgumentOutOfRangeException(nameof(frequencyHz), frequencyHz, "GPS auto TX rate must be between 0 and 10 Hz.");
             }
 
             byte[] packet =
@@ -258,11 +256,7 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             if (deviceCode != 0x00 && deviceCode != 0x01)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(deviceCode),
-                    deviceCode,
-                    "GUI device power control supports EO(0x00) and IR(0x01)."
-                );
+                throw new ArgumentOutOfRangeException(nameof(deviceCode), deviceCode, "GUI device power control supports EO(0x00) and IR(0x01).");
             }
 
             byte[] packet =
@@ -287,11 +281,7 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             if (frequencyHz > 30)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(frequencyHz),
-                    frequencyHz,
-                    "RPY auto TX rate must be between 0 and 30 Hz."
-                );
+                throw new ArgumentOutOfRangeException(nameof(frequencyHz), frequencyHz, "RPY auto TX rate must be between 0 and 30 Hz.");
             }
 
             return _tcpClientService.Send(BuildRpyAutoTxRatePacket(frequencyHz));
@@ -305,11 +295,7 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             if (frequencyHz > 30)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(frequencyHz),
-                    frequencyHz,
-                    "RPY auto TX rate must be between 0 and 30 Hz."
-                );
+                throw new ArgumentOutOfRangeException(nameof(frequencyHz), frequencyHz, "RPY auto TX rate must be between 0 and 30 Hz.");
             }
 
             byte[] packet =
@@ -434,10 +420,9 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public static byte[] BuildSystemDateTimePacket(DateTime dateTime)
         {
-            DateTime utcDateTime = dateTime.Kind == DateTimeKind.Local ? dateTime.ToUniversalTime() : DateTime.SpecifyKind(
-                dateTime,
-                DateTimeKind.Utc
-            );
+            DateTime utcDateTime = dateTime.Kind == DateTimeKind.Local
+                ? dateTime.ToUniversalTime()
+                : DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
 
             if (utcDateTime.Year < 1970 || utcDateTime.Year > 9999)
             {
@@ -886,7 +871,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [Pan] 위치 제어 명령
-        /// 
+        ///
         /// 입력 기준은 -180 ~ 180도이다.
         ///
         /// 범위를 벗어난 내부 계산값은 signed Pan 범위로 정규화한 뒤,
@@ -902,8 +887,10 @@ namespace OpenCvWpfTracking.Services.Communication
 
             while (pan > 180.0)
                 pan -= 360.0;
+
             while (pan < -180.0)
                 pan += 360.0;
+
             short value = pan < 0 ? (short)((pan - 0.005) * 100) : (short)((pan + 0.005) * 100);
             byte data1 = (byte)((value >> 8) & 0xFF);
             byte data2 = (byte)(value & 0xFF);
@@ -953,7 +940,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [PAN] 우측 연속 이동 시작
-        /// 
+        ///
         /// [Command2 Bit0 = Pan Right]
         /// [Data1 = Pan Speed Level] [0 ~ 63]
         /// </summary>
@@ -965,7 +952,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [PAN] 좌측 연속 이동 시작
-        /// 
+        ///
         /// [Command2 Bit1 = Pan Left]
         /// [Data1 = Pan Speed Level] [0 ~ 63]
         /// </summary>
@@ -987,8 +974,10 @@ namespace OpenCvWpfTracking.Services.Communication
 
             while (tilt > 180.0)
                 tilt -= 360.0;
+
             while (tilt < -180.0)
                 tilt += 360.0;
+
             short value = tilt < 0 ? (short)((tilt - 0.005) * 100) : (short)((tilt + 0.005) * 100);
             byte data1 = (byte)((value >> 8) & 0xFF);
             byte data2 = (byte)(value & 0xFF);
@@ -997,7 +986,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [TILT] 위쪽 연속 이동 시작
-        /// 
+        ///
         /// [Command2 Bit2 = Tilt Up]
         /// [Data2 = Tilt Speed Level] [0 ~ 63]
         /// </summary>
@@ -1009,7 +998,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [TILT] 아래쪽 연속 이동 시작
-        /// 
+        ///
         /// [Command2 Bit3 = Tilt Down]
         /// [Data2 = Tilt Speed Level] [0 ~ 63]
         /// </summary>
@@ -1161,7 +1150,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [EO] [ZOOM] [Tele] 연속제어 시작
-        /// 
+        ///
         /// [Command2 Bit5 = Zoom Tele]
         /// </summary>
         public bool StartEoZoomTele()
@@ -1171,7 +1160,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [EO] [ZOOM] [Wide] 연속제어 시작
-        /// 
+        ///
         /// [Command2 Bit6 = Zoom Wide]
         /// </summary>
         public bool StartEoZoomWide()
@@ -1233,7 +1222,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [EO] [FOCUS] [Near] 연속제어 시작
-        /// 
+        ///
         /// [Command2 Bit0 = Focus Near]
         /// </summary>
         public bool StartEoFocusNear()
@@ -1243,7 +1232,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [EO] [FOCUS] [Far] 연속제어 시작
-        /// 
+        ///
         /// [Command1 Bit7 = Focus Far]
         /// </summary>
         public bool StartEoFocusFar()
@@ -1340,7 +1329,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [ZOOM] [Tele] 연속제어 시작
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x00] : Zoom In Start
         /// [Data2 = 0x00]
@@ -1352,7 +1341,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [ZOOM] [Wide] 연속제어 시작
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x01] : Zoom Out Start
         /// [Data2 = 0x00]
@@ -1364,7 +1353,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [ZOOM] 연속제어 정지
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0xFF] : Zoom Stop
         /// [Data2 = 0x00]
@@ -1384,10 +1373,7 @@ namespace OpenCvWpfTracking.Services.Communication
         {
             if (focus < 0 || focus > 1000)
             {
-                ConsoleLogHelper.Warning(
-                    "WEB AGENT IR FOCUS",
-                    $"RESULT=INVALID_POSITION / CMD2=0x2B / POSITION={focus} / RANGE=0~1000"
-                );
+                ConsoleLogHelper.Warning("WEB AGENT IR FOCUS", $"RESULT=INVALID_POSITION / CMD2=0x2B / POSITION={focus} / RANGE=0~1000");
                 return false;
             }
 
@@ -1398,7 +1384,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [FOCUS] [Near] 연속제어 시작
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x03] : Focus Near Start
         /// [Data2 = 0x00]
@@ -1410,7 +1396,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [FOCUS] [Far] 연속제어 시작
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x04] : Focus Far Start
         /// [Data2 = 0x00]
@@ -1422,7 +1408,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [FOCUS] 연속제어 정지
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x05] : Focus Stop
         /// [Data2 = 0x00]
@@ -1434,7 +1420,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [Digital Zoom] 확대 시작
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x07] : Digital Zoom In Start
         /// [Data2 = 0x00]
@@ -1446,7 +1432,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [Digital Zoom] 축소 시작
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x08] : Digital Zoom Out Start
         /// [Data2 = 0x00]
@@ -1458,7 +1444,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [Digital Zoom] 정지
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x06] : Digital Zoom Stop
         /// [Data2 = 0x00]
@@ -1470,7 +1456,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// [IR] 열영상 카메라 [Auto Focus] 요청
-        /// 
+        ///
         /// [Command2 = 0x31]
         /// [Data1 = 0x02] : Auto Focus
         /// [Data2 = 0x00]
@@ -1481,7 +1467,6 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #region [IR 열상 영상 제어]
-
         /// <summary>
         /// SendIrImageControlCommand 송신 함수.
         /// </summary>
@@ -1641,10 +1626,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
-
         /// <summary>
         /// 거리측정기 [1회] 측정 요청
-        /// 
+        ///
         /// [Command2 = 0x57]
         /// </summary>
         public bool ReadOnceLrfValue()

@@ -51,7 +51,7 @@ namespace OpenCvWpfTracking.Services.Video
 
         private DateTime _lastZoomResetLogTime = DateTime.MinValue;
 
-        private readonly object _diagnosticSync = new object();
+        private readonly object _diagnosticSync = new object ();
 
         private StreamWriter _diagnosticWriter;
 
@@ -85,7 +85,8 @@ namespace OpenCvWpfTracking.Services.Video
                 _diagnosticSnapshotCount = 0;
                 _diagnosticSnapshotLimitLogged = false;
                 _diagnosticWriter = new StreamWriter(Path.Combine(directory, "smoke_candidates.csv"), false, new UTF8Encoding(true));
-                _diagnosticWriter.WriteLine("FRAME,INPUT,STAGE,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA,FILL,ASPECT,EDGE_DENSITY," + "SEEN,MISSING,DYNAMIC,UPWARD,EXPANSION,DEFORMATION,STATIONARY,RESULT,REJECT_REASON");
+                _diagnosticWriter.WriteLine("FRAME,INPUT,STAGE,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA,FILL,ASPECT,EDGE_DENSITY," +
+                    "SEEN,MISSING,DYNAMIC,UPWARD,EXPANSION,DEFORMATION,STATIONARY,RESULT,REJECT_REASON");
                 _diagnosticWriter.Flush();
             }
 
@@ -121,10 +122,7 @@ namespace OpenCvWpfTracking.Services.Video
                 _diagnosticWriter.Dispose();
 
                 if (_diagnosticDirectory != null)
-                    OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(
-                        _diagnosticDirectory,
-                        "smoke_candidates.csv"
-                    ));
+                    OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_diagnosticDirectory, "smoke_candidates.csv"));
 
                 _diagnosticWriter = null;
             }
@@ -146,8 +144,7 @@ namespace OpenCvWpfTracking.Services.Video
                 }
 
                 _diagnosticFrameIndex++;
-                bool captureStageImages = (_diagnosticFrameIndex == 1 ||
-                    _diagnosticFrameIndex % DiagnosticSnapshotIntervalFrames == 0) &&
+                bool captureStageImages = (_diagnosticFrameIndex == 1 || _diagnosticFrameIndex % DiagnosticSnapshotIntervalFrames == 0) &&
                     _diagnosticSnapshotCount < DiagnosticMaximumSnapshotCount;
                 return new SmokeDiagnosticCapture(captureStageImages);
             }
@@ -178,21 +175,9 @@ namespace OpenCvWpfTracking.Services.Video
                     candidateIndex++;
                     Rect rectangle = record.Rectangle;
                     _diagnosticWriter.WriteLine(string.Join(
-                        ",",
-                        new[] { _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), isInfrared ? "IR" : "EO", record.Stage, candidateIndex.ToString(CultureInfo.InvariantCulture), rectangle.X.ToString(CultureInfo.InvariantCulture), rectangle.Y.ToString(CultureInfo.InvariantCulture), rectangle.Width.ToString(CultureInfo.InvariantCulture), rectangle.Height.ToString(CultureInfo.InvariantCulture), record.Area.ToString(
-                        "0.###",
-                        CultureInfo.InvariantCulture
-                    ), record.FillRatio.ToString(
-                        "0.####",
-                        CultureInfo.InvariantCulture
-                    ), record.AspectRatio.ToString(
-                        "0.####",
-                        CultureInfo.InvariantCulture
-                    ), record.EdgeDensity.ToString(
-                        "0.####",
-                        CultureInfo.InvariantCulture
-                    ), record.SeenFrames.ToString(CultureInfo.InvariantCulture), record.MissingFrames.ToString(CultureInfo.InvariantCulture), record.DynamicSamples.ToString(CultureInfo.InvariantCulture), record.UpwardSamples.ToString(CultureInfo.InvariantCulture), record.ExpansionSamples.ToString(CultureInfo.InvariantCulture), record.DeformationSamples.ToString(CultureInfo.InvariantCulture), record.StationaryFrames.ToString(CultureInfo.InvariantCulture), record.Result, record.Reason }
-                    ));
+                            ",",
+                            new[] { _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), isInfrared ? "IR" : "EO", record.Stage, candidateIndex.ToString(CultureInfo.InvariantCulture), rectangle.X.ToString(CultureInfo.InvariantCulture), rectangle.Y.ToString(CultureInfo.InvariantCulture), rectangle.Width.ToString(CultureInfo.InvariantCulture), rectangle.Height.ToString(CultureInfo.InvariantCulture), record.Area.ToString("0.###", CultureInfo.InvariantCulture), record.FillRatio.ToString("0.####", CultureInfo.InvariantCulture), record.AspectRatio.ToString("0.####", CultureInfo.InvariantCulture), record.EdgeDensity.ToString("0.####", CultureInfo.InvariantCulture), record.SeenFrames.ToString(CultureInfo.InvariantCulture), record.MissingFrames.ToString(CultureInfo.InvariantCulture), record.DynamicSamples.ToString(CultureInfo.InvariantCulture), record.UpwardSamples.ToString(CultureInfo.InvariantCulture), record.ExpansionSamples.ToString(CultureInfo.InvariantCulture), record.DeformationSamples.ToString(CultureInfo.InvariantCulture), record.StationaryFrames.ToString(CultureInfo.InvariantCulture), record.Result, record.Reason }
+                        ));
                 }
 
                 // CSV는 연속 분석용으로 유지하되, 용량을 크게 차지하는 단계 이미지는
@@ -201,13 +186,7 @@ namespace OpenCvWpfTracking.Services.Video
 
                 if (snapshotDue && _diagnosticSnapshotCount < DiagnosticMaximumSnapshotCount)
                 {
-                    string frameDirectory = Path.Combine(
-                        _diagnosticDirectory,
-                        "frame_" + _diagnosticFrameIndex.ToString(
-                        "D6",
-                        CultureInfo.InvariantCulture
-                    )
-                    );
+                    string frameDirectory = Path.Combine(_diagnosticDirectory, "frame_" + _diagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
                     Directory.CreateDirectory(frameDirectory);
 
                     foreach (KeyValuePair<string, Mat> stage in diagnostic.StageMasks)
@@ -222,7 +201,8 @@ namespace OpenCvWpfTracking.Services.Video
                     _diagnosticSnapshotLimitLogged = true;
                     ConsoleLogHelper.State(
                         "SMOKE DIAGNOSTIC",
-                        "Snapshot limit reached; CSV recording continues / CHANNEL=" + _diagnosticChannel + " / LIMIT=" + DiagnosticMaximumSnapshotCount
+                        "Snapshot limit reached; CSV recording continues / CHANNEL=" + _diagnosticChannel +
+                        " / LIMIT=" + DiagnosticMaximumSnapshotCount
                     );
                 }
 
@@ -243,20 +223,7 @@ namespace OpenCvWpfTracking.Services.Video
             ResetDetectionState(false);
         }
 
-        internal SmokeDetectionResult Process(
-            Mat frame,
-            bool isEnabled,
-            bool isInfrared,
-            double minimumAreaRatio,
-            double changeThresholdRatio,
-            Rect fireCandidateRect,
-            IList<Rect> aiSmokeCandidates,
-            IList<Rect> aiVehicleCandidates,
-            int smokeBoxGroupingMode,
-            bool compensateCameraMotion = false,
-            bool aiDetectorAvailable = true,
-            int zoomPosition = 0
-        )
+        internal SmokeDetectionResult Process(Mat frame, bool isEnabled, bool isInfrared, double minimumAreaRatio, double changeThresholdRatio, Rect fireCandidateRect, IList<Rect> aiSmokeCandidates, IList<Rect> aiVehicleCandidates, int smokeBoxGroupingMode, bool compensateCameraMotion = false, bool aiDetectorAvailable = true, int zoomPosition = 0)
         {
             if (!isEnabled || frame == null || frame.Empty())
             {
@@ -314,7 +281,9 @@ namespace OpenCvWpfTracking.Services.Video
                     _lastReportedConfirmationFrames = confirmationFrames;
                     ConsoleLogHelper.State(
                         "SMOKE FALLBACK",
-                        "AI-independent confirmation mode / CHANNEL=" + (isInfrared ? "IR" : "EO") + " / ACTIVE=" + standaloneFallbackMode + " / CONFIRM_FRAMES=" + confirmationFrames
+                        "AI-independent confirmation mode / CHANNEL=" + (isInfrared ? "IR" : "EO") +
+                        " / ACTIVE=" + standaloneFallbackMode +
+                        " / CONFIRM_FRAMES=" + confirmationFrames
                     );
                 }
 
@@ -344,7 +313,10 @@ namespace OpenCvWpfTracking.Services.Video
                         _lastRigidMotionLogTime = now;
                         ConsoleLogHelper.State(
                             "SMOKE ROAD MOTION",
-                            "Moving-object/source candidate suppressed / CHANNEL=" + (isInfrared ? "IR" : "EO") + " / RIGID=" + analysis.RigidMotionSuppressedCount + " / SOURCE=" + analysis.MovingSourceSuppressedCount + " / TRAFFIC=" + analysis.TrafficAggregateSuppressedCount
+                            "Moving-object/source candidate suppressed / CHANNEL=" + (isInfrared ? "IR" : "EO") +
+                            " / RIGID=" + analysis.RigidMotionSuppressedCount +
+                            " / SOURCE=" + analysis.MovingSourceSuppressedCount +
+                            " / TRAFFIC=" + analysis.TrafficAggregateSuppressedCount
                         );
                     }
 
@@ -360,7 +332,8 @@ namespace OpenCvWpfTracking.Services.Video
                         _wasAiSmokeSuppressionActive = aiSuppressionActive;
                         ConsoleLogHelper.State(
                             "SMOKE HYBRID",
-                            "AI overlap suppression " + (aiSuppressionActive ? "started" : "ended") + " / CHANNEL=" + (isInfrared ? "IR" : "EO")
+                            "AI overlap suppression " + (aiSuppressionActive ? "started" : "ended") +
+                            " / CHANNEL=" + (isInfrared ? "IR" : "EO")
                         );
                     }
 
@@ -390,7 +363,8 @@ namespace OpenCvWpfTracking.Services.Video
                         _wasAiVehicleSuppressionActive = vehicleSuppressionActive;
                         ConsoleLogHelper.State(
                             "SMOKE VEHICLE FUSION",
-                            "AI vehicle corridor suppression " + (vehicleSuppressionActive ? "started" : "ended") + " / CHANNEL=" + (isInfrared ? "IR" : "EO")
+                            "AI vehicle corridor suppression " + (vehicleSuppressionActive ? "started" : "ended") +
+                            " / CHANNEL=" + (isInfrared ? "IR" : "EO")
                         );
                     }
 
@@ -415,15 +389,17 @@ namespace OpenCvWpfTracking.Services.Video
                     // 제한 로그로 남겨 다중 플룸의 동시 ACTIVE 연속성을 확인한다.
                     bool candidateCountChanged = visibleCandidates.Count != _lastReportedVisibleCandidateCount;
 
-                    if ((candidateCountChanged ||
-                        analysis.ContinuityHeldCount > 0) &&
+                    if ((candidateCountChanged || analysis.ContinuityHeldCount > 0) &&
                         (now - _lastContinuityLogTime).TotalSeconds >= (candidateCountChanged ? 0.5 : 2.0))
                     {
                         _lastContinuityLogTime = now;
                         _lastReportedVisibleCandidateCount = visibleCandidates.Count;
                         ConsoleLogHelper.State(
                             "SMOKE TRACK CONTINUITY",
-                            "Independent plume tracks / CHANNEL=" + (isInfrared ? "IR" : "EO") + " / VISIBLE=" + visibleCandidates.Count + " / HELD=" + analysis.ContinuityHeldCount + " / VERIFIED=" + analysis.VerifiedVisibleCount
+                            "Independent plume tracks / CHANNEL=" + (isInfrared ? "IR" : "EO") +
+                            " / VISIBLE=" + visibleCandidates.Count +
+                            " / HELD=" + analysis.ContinuityHeldCount +
+                            " / VERIFIED=" + analysis.VerifiedVisibleCount
                         );
                     }
 
@@ -455,13 +431,12 @@ namespace OpenCvWpfTracking.Services.Video
 
                     // 2026-08-31: 확정 연기의 마스크가 잠시 끊겨도 마지막 안정 BBox를
                     // 유지하여 Overlay와 이벤트가 프레임 단위로 깜빡이지 않도록 한다.
-                    IList<Rect> displayCandidates = visibleCandidates.Count > 0 ? visibleCandidates : _isDetected ? _lastVisibleCandidates : visibleCandidates;
-                    IList<double> displayScores = _isDetected ? AssignVisionScores(
-                        displayCandidates,
-                        frame.Width,
-                        frame.Height,
-                        isInfrared
-                    ) : new List<double>();
+                    IList<Rect> displayCandidates = visibleCandidates.Count > 0
+                        ? visibleCandidates
+                        : _isDetected ? _lastVisibleCandidates : visibleCandidates;
+                    IList<double> displayScores = _isDetected
+                        ? AssignVisionScores(displayCandidates, frame.Width, frame.Height, isInfrared)
+                        : new List<double>();
                     _latchedVisionScore = displayScores.Count > 0 ? displayScores[0] : 0.0;
 
                     if (_isDetected)
@@ -505,11 +480,7 @@ namespace OpenCvWpfTracking.Services.Video
                 if ((now - _lastErrorLogTime).TotalSeconds >= 5)
                 {
                     _lastErrorLogTime = now;
-                    ConsoleLogHelper.Error(
-                        "SMOKE DETECTOR",
-                        "Candidate processing failed / CHANNEL=" + (isInfrared ? "IR" : "EO"),
-                        exception
-                    );
+                    ConsoleLogHelper.Error("SMOKE DETECTOR", "Candidate processing failed / CHANNEL=" + (isInfrared ? "IR" : "EO"), exception);
                 }
 
                 return ResetDetectionState(isInfrared);
@@ -533,19 +504,7 @@ namespace OpenCvWpfTracking.Services.Video
             _lastReportedVisibleCandidateCount = -1;
             _lastDetectionWasVerified = false;
             _analyzer.Reset();
-            return new SmokeDetectionResult(
-                isInfrared,
-                stateChanged,
-                0.0,
-                Rect.Empty,
-                0,
-                false,
-                0,
-                0,
-                0.0,
-                new List<Rect>(),
-                new List<double>()
-            );
+            return new SmokeDetectionResult(isInfrared, stateChanged, 0.0, Rect.Empty, 0, false, 0, 0, 0.0, new List<Rect>(), new List<double>());
         }
 
         private static IList<Rect> ApplySmokeGroupingMode(IList<Rect> candidates, int mode)
@@ -593,22 +552,12 @@ namespace OpenCvWpfTracking.Services.Video
                 Cv2.Rectangle(
                     frame,
                     new Rect(
-                    labelX,
-                    labelTop,
-                    Math.Min(
-                    labelSize.Width + 6,
-                    frame.Width - labelX
-                ),
-                    Math.Min(
-                    labelSize.Height + baseline + 7,
-                    frame.Height - labelTop
-                )
-                ),
-                    new Scalar(
-                    24,
-                    24,
-                    24
-                ),
+                        labelX,
+                        labelTop,
+                        Math.Min(labelSize.Width + 6, frame.Width - labelX),
+                        Math.Min(labelSize.Height + baseline + 7, frame.Height - labelTop)
+                    ),
+                    new Scalar(24, 24, 24),
                     -1
                 );
                 Cv2.PutText(frame, label, new Point(labelX + 3, labelY), HersheyFonts.HersheySimplex, fontScale, color, fontThickness);
@@ -745,21 +694,17 @@ namespace OpenCvWpfTracking.Services.Video
                 if (!matched.IsScoreFinalized)
                 {
                     double elapsedSeconds = Math.Max(0.0, (nowUtc - matched.FirstSeenUtc).TotalSeconds);
-                    matched.Score = CalculateCandidateVisionScore(
-                        matched,
-                        candidate,
-                        frameWidth,
-                        frameHeight,
-                        isInfrared,
-                        elapsedSeconds
-                    );
+                    matched.Score = CalculateCandidateVisionScore(matched, candidate, frameWidth, frameHeight, isInfrared, elapsedSeconds);
 
                     if (elapsedSeconds >= 1.5)
                     {
                         matched.IsScoreFinalized = true;
                         ConsoleLogHelper.State(
                             "SMOKE V.SCORE",
-                            "Track score finalized / CAMERA=" + (isInfrared ? "IR" : "EO") + " / SCORE=" + matched.Score.ToString("F1") + " / BBOX=" + candidate.Width + "x" + candidate.Height
+                            "Track score finalized / CAMERA=" + (isInfrared ? "IR" : "EO") +
+                            " / SCORE=" + matched.Score.ToString("F1") +
+                            " / BBOX=" + candidate.Width +
+                            "x" + candidate.Height
                         );
                     }
                 }
@@ -775,30 +720,14 @@ namespace OpenCvWpfTracking.Services.Video
 
         // 2026-08-31: V.SCORE는 확률이 아니라 Track의 시공간 연기 증거 점수이다.
         // 최초 약 1~2초 동안 지속·상향 이동·확산·형상 변화를 누적한 뒤 고정한다.
-        // 2026-09-08 V23: 짧게 나타났다 사라지는 오탐은 지속성 감점을 적용해
+        // 2026-09-08 짧게 나타났다 사라지는 오탐은 지속성 감점을 적용해
         // 낮은 점수로 표시하고, 1.5초 이상 유지된 후보의 기존 점수는 보존한다.
-        private static double CalculateCandidateVisionScore(
-            VisionScoreTrack track,
-            Rect candidate,
-            int frameWidth,
-            int frameHeight,
-            bool isInfrared,
-            double elapsedSeconds
-        )
+        private static double CalculateCandidateVisionScore(VisionScoreTrack track, Rect candidate, int frameWidth, int frameHeight, bool isInfrared, double elapsedSeconds)
         {
             double frameArea = Math.Max(1.0, frameWidth * (double)frameHeight);
             double areaRatio = candidate.Width * candidate.Height / frameArea;
             double verticality = candidate.Height / (double)Math.Max(1, candidate.Width + candidate.Height);
-            double aspectBalance = Math.Min(
-                candidate.Width,
-                candidate.Height
-            ) / (double)Math.Max(
-                1,
-                Math.Max(
-                candidate.Width,
-                candidate.Height
-            )
-            );
+            double aspectBalance = Math.Min(candidate.Width, candidate.Height) / (double)Math.Max(1, Math.Max(candidate.Width, candidate.Height));
             double initialArea = Math.Max(1.0, track.InitialRectangle.Width * (double)track.InitialRectangle.Height);
             double currentArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
             double expansionRatio = currentArea / initialArea - 1.0;
@@ -814,39 +743,9 @@ namespace OpenCvWpfTracking.Services.Video
             double initialAspect = track.InitialRectangle.Width / (double)Math.Max(1, track.InitialRectangle.Height);
             double currentAspect = candidate.Width / (double)Math.Max(1, candidate.Height);
             double shapeChange = Math.Abs(currentAspect - initialAspect) / Math.Max(0.25, initialAspect);
-            // 2026-09-17 V25: SMOKE도 30점에서 시작하여 지속·상향·확산·형상
+            // 2026-09-17 SMOKE도 30점에서 시작하여 지속·상향·확산·형상
             // 증거를 합산한다. 단발성 구름/반사 후보가 즉시 고득점이 되는 것을 막는다.
-            double score = 30.0 + Math.Min(
-                12.0,
-                Math.Sqrt(Math.Max(
-                0.0,
-                areaRatio
-            )) * 46.0
-            ) + Math.Min(
-                4.0,
-                verticality * 7.0
-            ) + Math.Min(
-                3.0,
-                aspectBalance * 3.0
-            ) + Math.Min(
-                20.0,
-                elapsedSeconds / 1.5 * 20.0
-            ) + Math.Min(
-                8.0,
-                upwardRatio * 160.0
-            ) + Math.Min(
-                10.0,
-                Math.Max(
-                0.0,
-                expansionRatio
-            ) * 12.0
-            ) + Math.Min(
-                5.0,
-                motionRatio * 100.0
-            ) + Math.Min(
-                5.0,
-                shapeChange * 8.0
-            );
+            double score = 30.0 + Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) + Math.Min(4.0, verticality * 7.0) + Math.Min(3.0, aspectBalance * 3.0) + Math.Min(20.0, elapsedSeconds / 1.5 * 20.0) + Math.Min(8.0, upwardRatio * 160.0) + Math.Min(10.0, Math.Max(0.0, expansionRatio) * 12.0) + Math.Min(5.0, motionRatio * 100.0) + Math.Min(5.0, shapeChange * 8.0);
             double persistenceRatio = Math.Min(1.0, elapsedSeconds / 1.5);
             score -= (1.0 - persistenceRatio) * 30.0;
 
@@ -900,17 +799,8 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 Rect intersection = fireCandidate & smokeCandidate;
                 double intersectionArea = Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
-                double smallerArea = Math.Max(
-                    1.0,
-                    Math.Min(
-                    fireCandidate.Width * fireCandidate.Height,
-                    smokeCandidate.Width * smokeCandidate.Height
-                )
-                );
-                Point smokeCenter = new Point(
-                    smokeCandidate.X + smokeCandidate.Width / 2,
-                    smokeCandidate.Y + smokeCandidate.Height / 2
-                );
+                double smallerArea = Math.Max(1.0, Math.Min(fireCandidate.Width * fireCandidate.Height, smokeCandidate.Width * smokeCandidate.Height));
+                Point smokeCenter = new Point(smokeCandidate.X + smokeCandidate.Width / 2, smokeCandidate.Y + smokeCandidate.Height / 2);
 
                 if (intersectionArea / smallerArea < 0.25 && !fireCandidate.Contains(smokeCenter))
                 {
@@ -927,19 +817,7 @@ namespace OpenCvWpfTracking.Services.Video
     /// </summary>
     internal struct SmokeDetectionResult
     {
-        internal SmokeDetectionResult(
-            bool isDetected,
-            bool stateChanged,
-            double candidateArea,
-            Rect candidateRect,
-            int candidateCount,
-            bool isInfraredSupport,
-            int frameWidth,
-            int frameHeight,
-            double visionScore,
-            IList<Rect> candidateRects,
-            IList<double> candidateScores
-        )
+        internal SmokeDetectionResult(bool isDetected, bool stateChanged, double candidateArea, Rect candidateRect, int candidateCount, bool isInfraredSupport, int frameWidth, int frameHeight, double visionScore, IList<Rect> candidateRects, IList<double> candidateScores)
         {
             IsDetected = isDetected;
             StateChanged = stateChanged;

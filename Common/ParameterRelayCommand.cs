@@ -7,7 +7,7 @@ namespace OpenCvWpfTracking.Common
     /*
     *  @class  ParameterRelayCommand
     *  @brief  ICommand를 상속 받아  UI에서 이벤트 받아 처리하는 함수 구현
-    *  @warning 
+    *  @warning
     */
     public class ParameterRelayCommand : ICommand
     {
@@ -87,8 +87,8 @@ namespace OpenCvWpfTracking.Common
 
         /*
          * @brief CanExecuteChaged 이벤트를 발생시킵니다
-         * @param   
-         * @return  
+         * @param
+         * @return
          * @exception
          */
         /// <summary>
@@ -101,8 +101,8 @@ namespace OpenCvWpfTracking.Common
 
         /*
         * @brief CanExecuteChaged 이벤트를 발생시킵니다
-        * @param   
-        * @return  
+        * @param
+        * @return
         * @exception
         */
         /// <summary>

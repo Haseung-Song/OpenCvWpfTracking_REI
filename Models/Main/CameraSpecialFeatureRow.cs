@@ -14,33 +14,26 @@ namespace OpenCvWpfTracking.Models.Main
     public sealed class CameraFeatureOption
     {
         #region [속성 및 상태 표시]
-
         public int Value { get; private set; }
 
         public string Label { get; private set; }
 
         #endregion
-
         #region [초기화]
-
         public CameraFeatureOption(int value, string label)
         {
             Value = value;
             Label = label;
         }
-
         #endregion
     }
 
     /// <summary>
-
-    /// 2026-10-14 V31_5: 입력 후보와 장비 상태를 분리하는 특수기능 한 행. UI 스레드에서만 갱신한다.
-
+    /// 2026-10-14 입력 후보와 장비 상태를 분리하는 특수기능 한 행. UI 스레드에서만 갱신한다.
     /// </summary>
     public sealed class CameraSpecialFeatureRow : INotifyPropertyChanged
     {
         #region [필드 및 상태 정보]
-
         private readonly Func<bool> _ready;
 
         private readonly Func<bool> _isWebAgent;
@@ -53,24 +46,32 @@ namespace OpenCvWpfTracking.Models.Main
 
         private readonly Action<CameraSpecialFeatureRow> _query;
 
-        private string _input = "50", _message, _lastSignature;
+        private string _input = "50";
+
+        private string _message;
+
+        private string _lastSignature;
 
         private CameraFeatureOption _selected;
 
         private bool _dirty;
 
-        private long _validTicks, _pendingTicks, _nextActionTicks;
+        private long _validTicks;
+
+        private long _pendingTicks;
+
+        private long _nextActionTicks;
 
         private long _queryTicks;
 
         private ulong _lastDeviceTimestamp;
 
-        private int? _reported, _requested;
+        private int? _reported;
+
+        private int? _requested;
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         public CameraFeatureDefinition Definition { get; private set; }
 
         public byte Target { get; private set; }
@@ -88,8 +89,20 @@ namespace OpenCvWpfTracking.Models.Main
         // WEB의 팔레트·극성은 공통 의미 명령으로 선택하며 원시 번호와 섞지 않는다.
         public bool IsSemanticPalette => _isWebAgent() && Target == 1 && (Id == 0x05 || Id == 0x06);
 
-        private string[] SemanticPaletteLabels => Id == 0x05 ?
-            new[] { "WHITE HOT", "BLACK HOT", "RAINBOW" } : new[] { "WHITE HOT", "BLACK HOT" };
+        private string[] SemanticPaletteLabels =>
+            Id == 0x05
+            ? new[]
+        {
+            "WHITE HOT",
+            "BLACK HOT",
+            "RAINBOW"
+        }
+
+            : new[]
+        {
+            "WHITE HOT",
+            "BLACK HOT"
+        };
 
         public bool IsBoolean => Definition.ValueType == 0;
 
@@ -146,12 +159,7 @@ namespace OpenCvWpfTracking.Models.Main
             Capability != null &&
             (Capability.Flags & 5) == 5 &&
             Capability.ValueType == Definition.ValueType &&
-            Enumerable.Range(
-            Definition.Minimum,
-            Definition.Maximum - Definition.Minimum + 1
-        ).Any(v => Allows(
-            v
-        )) &&
+            Enumerable.Range(Definition.Minimum, Definition.Maximum - Definition.Minimum + 1).Any(v => Allows(v)) &&
             _pendingTicks == 0 &&
             DateTime.UtcNow.Ticks >= _nextActionTicks;
 
@@ -169,15 +177,15 @@ namespace OpenCvWpfTracking.Models.Main
             DateTime.UtcNow.Ticks >= _nextActionTicks;
 
         public string RangeText =>
-            CapabilityKnown &&
-            Capability != null &&
-            (Capability.Flags & 1) != 0 ? (HasOptions ? "지원 선택값만 표시" : IsBoolean ? Definition.Options[0] + " / " + Definition.Options[1] : IsTrigger ? "단발 실행" : "입력 " + Math.Max(
-            Definition.Minimum,
-            Capability.Minimum
-        ) + "~" + Math.Min(
-            Definition.Maximum,
-            Capability.Maximum
-        )) : IsNumeric ? "입력 0~100 (지원 조회 필요)" : "지원 조회 필요";
+            CapabilityKnown && Capability != null && (Capability.Flags & 1) != 0
+            ? (HasOptions
+                ? "지원 선택값만 표시"
+                : IsBoolean
+                    ? Definition.Options[0] + " / " + Definition.Options[1]
+                    : IsTrigger
+                        ? "단발 실행"
+                        : "입력 " + Math.Max(Definition.Minimum, Capability.Minimum) + "~" + Math.Min(Definition.Maximum, Capability.Maximum))
+            : IsNumeric ? "입력 0~100 (지원 조회 필요)" : "지원 조회 필요";
 
         public string StatusText
         {
@@ -212,25 +220,12 @@ namespace OpenCvWpfTracking.Models.Main
         }
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         public event PropertyChangedEventHandler PropertyChanged;
 
         #endregion
-
         #region [초기화]
-
-        public CameraSpecialFeatureRow(
-            CameraFeatureDefinition definition,
-            byte target,
-            Func<bool> ready,
-            Func<bool> unlocked,
-            Action<CameraSpecialFeatureRow, int> send,
-            Action<CameraSpecialFeatureRow> query,
-            Func<string> connectionHint = null,
-            Func<bool> isWebAgent = null
-        )
+        public CameraSpecialFeatureRow(CameraFeatureDefinition definition, byte target, Func<bool> ready, Func<bool> unlocked, Action<CameraSpecialFeatureRow, int> send, Action<CameraSpecialFeatureRow> query, Func<string> connectionHint = null, Func<bool> isWebAgent = null)
         {
             Definition = definition;
             Target = target;
@@ -243,30 +238,36 @@ namespace OpenCvWpfTracking.Models.Main
             ApplyCommand = new RelayCommand(ApplyInput, () => CanEdit);
             OffCommand = new RelayCommand(() => Apply(0), () => CanOff);
             OnCommand = new RelayCommand(() => Apply(1), () => CanOn);
-            QueryCommand = new RelayCommand(() =>
+            QueryCommand = new RelayCommand(
+                () =>
             {
                 if (CanQuery)
                     _query(this);
-            }, () => CanQuery);
+            },
+                () => CanQuery
+            );
         }
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 장비가 보고한 지원 범위와 선택값에 포함되는지 확인한다.
         /// </summary>
-        public bool Allows(int value) => Capability != null && (IsSemanticPalette ?
-            (Capability.Flags & 5) == 5 && value >= 0 && value < SemanticPaletteLabels.Length :
-            Capability.Allows(Definition, value));
+        public bool Allows(int value) =>
+            Capability != null &&
+            (IsSemanticPalette
+            ? (Capability.Flags & 5) == 5 &&
+            value >= 0 &&
+            value < SemanticPaletteLabels.Length
+            : Capability.Allows(Definition, value));
 
         /// <summary>
         /// 장비 기능 값을 선택 항목 이름 또는 숫자 문자열로 표시한다.
         /// </summary>
         public string Format(int value) =>
-            value >= 0 &&
-            value < Definition.Options.Length ? Definition.Options[value] : value.ToString(CultureInfo.InvariantCulture);
+            value >= 0 && value < Definition.Options.Length
+            ? Definition.Options[value]
+            : value.ToString(CultureInfo.InvariantCulture);
 
         /// <summary>
         /// 각 세션에서 이전 장비 지원·값·진행 요청을 폐기한다.
@@ -298,8 +299,8 @@ namespace OpenCvWpfTracking.Models.Main
             _validTicks = 0;
             Options.Clear();
             int? previous = _selected?.Value;
-
             string[] labels = IsSemanticPalette ? SemanticPaletteLabels : Definition.Options;
+
             for (int i = 0; i < labels.Length; i++)
                 if (Allows(i))
                     Options.Add(new CameraFeatureOption(i, labels[i]));
@@ -365,9 +366,7 @@ namespace OpenCvWpfTracking.Models.Main
         }
 
         /// <summary>
-
         /// supported/valid/범위 검증을 통과한 응답만 현재값과 요청 일치 판단에 사용한다.
-
         /// </summary>
         public void SetState(bool supported, bool valid, int value, ulong timestamp)
         {
@@ -444,8 +443,8 @@ namespace OpenCvWpfTracking.Models.Main
         /// <summary>
         /// 최근에 확인한 장비 상태가 지정값과 일치하는지 검사한다.
         /// </summary>
-        public bool HasFreshValue(int value) => _reported == value &&
-            DateTime.UtcNow.Ticks - _validTicks <= TimeSpan.FromSeconds(10).Ticks;
+        public bool HasFreshValue(int value) =>
+            _reported == value && DateTime.UtcNow.Ticks - _validTicks <= TimeSpan.FromSeconds(10).Ticks;
 
         /// <summary>
         /// 미지원 또는 실행 거절 응답을 반영하고 현재값 확인을 해제한다.
@@ -518,9 +517,7 @@ namespace OpenCvWpfTracking.Models.Main
         }
 
         /// <summary>
-
         /// 응답 대기 만료 및 연결/운용 잠금 변화만 알리고 불필요한 UI 갱신은 억제한다.
-
         /// </summary>
         public bool Refresh()
         {
@@ -568,7 +565,6 @@ namespace OpenCvWpfTracking.Models.Main
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
-
         #endregion
     }
 }

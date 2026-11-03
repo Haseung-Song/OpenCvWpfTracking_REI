@@ -102,47 +102,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        public string LastAiEventTimeText => _lastAiDetectedTime.HasValue ? _lastAiDetectedTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : "-";
+        public string LastAiEventTimeText =>
+            _lastAiDetectedTime.HasValue ? _lastAiDetectedTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : "-";
 
-        public string AiAlertStatusText => ActiveAiCount > 0 ? "AI OBJECT DETECTED" : AiPowerStatusText == "ON" ? "MONITORING" : "DISCONNECTED";
+        public string AiAlertStatusText =>
+            ActiveAiCount > 0 ? "AI OBJECT DETECTED" : AiPowerStatusText == "ON" ? "MONITORING" : "DISCONNECTED";
 
         /// <summary>
         /// 2026-08-25: AI 활성 이벤트는 FIRE 빨간색과 구분되는 시안색으로 강조한다.
         /// </summary>
         public Brush AiAlertHeaderBrush =>
-            ActiveAiCount > 0 ? LegacyVideoIntegration.EventBrush("AI") : new SolidColorBrush(Color.FromRgb(
-            208,
-            215,
-            222
-        ));
+            ActiveAiCount > 0 ? LegacyVideoIntegration.EventBrush("AI") : new SolidColorBrush(Color.FromRgb(208, 215, 222));
 
         /// <summary>
         /// 2026-08-26: 가장 최근 탐지로 선택된 하위 탭의 색상을 상위 탭에 즉시 반영한다.
         /// </summary>
         public Brush EventAlertHeaderBrush =>
-            SelectedEventAlertTabIndex == 1 &&
-            ActiveFireCount > 0 ? new SolidColorBrush(Color.FromRgb(
-            255,
-            143,
-            163
-        )) : SelectedEventAlertTabIndex == 0 &&
-            ActiveAiCount > 0 ? new SolidColorBrush(Color.FromRgb(
-            94,
-            231,
-            247
-        )) : ActiveFireCount > 0 ? new SolidColorBrush(Color.FromRgb(
-            255,
-            143,
-            163
-        )) : ActiveAiCount > 0 ? new SolidColorBrush(Color.FromRgb(
-            94,
-            231,
-            247
-        )) : new SolidColorBrush(Color.FromRgb(
-            208,
-            215,
-            222
-        ));
+            SelectedEventAlertTabIndex == 1 && ActiveFireCount > 0
+            ? new SolidColorBrush(Color.FromRgb(255, 143, 163))
+            : SelectedEventAlertTabIndex == 0 && ActiveAiCount > 0
+                ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
+                : ActiveFireCount > 0
+                    ? new SolidColorBrush(Color.FromRgb(255, 143, 163))
+                    : ActiveAiCount > 0
+                        ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
+                        : new SolidColorBrush(Color.FromRgb(208, 215, 222));
 
         public string EventAlertHeaderText
         {
@@ -225,26 +209,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     null,
                     camera,
                     resolvedDetectionType,
-                    (box.NormalizedConfidence * 100).ToString(
-                    "F1",
-                    CultureInfo.InvariantCulture
-                ) + "%",
+                    (box.NormalizedConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
                     1,
-                    Math.Max(
-                    0,
-                    box.Width
-                ),
-                    Math.Max(
-                    0,
-                    box.Height
-                ),
-                    Math.Max(
-                    0,
-                    box.Width
-                ) * (double)Math.Max(
-                    0,
-                    box.Height
-                ),
+                    Math.Max(0, box.Width),
+                    Math.Max(0, box.Height),
+                    Math.Max(0, box.Width) * (double)Math.Max(0, box.Height),
                     "AI AGENT",
                     "ACTIVE",
                     CapturePositionSnapshot("AI_EVENT")
@@ -271,7 +240,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 AppendFireEventAudit(aiEvent, "DETECTED");
                 ConsoleLogHelper.Warning(
                     "AI EVENT",
-                    "ACTION=CREATE / EVENT_ID=" + aiEvent.EventId + " / CAMERA=" + camera + " / OBJECT_ID=" + box.ObjectId + " / CLASS=" + resolvedDetectionType
+                    "ACTION=CREATE / EVENT_ID=" + aiEvent.EventId +
+                    " / CAMERA=" + camera +
+                    " / OBJECT_ID=" + box.ObjectId +
+                    " / CLASS=" + resolvedDetectionType
                 );
             }
 
@@ -284,7 +256,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _activeAiEvents.Remove(pair.Key);
                 ConsoleLogHelper.State(
                     "AI EVENT",
-                    "ACTION=CLEAR / EVENT_ID=" + pair.Value.Event.EventId + " / OBJECT_ID=" + pair.Value.ObjectId + " / REASON=HOLD_EXPIRED"
+                    "ACTION=CLEAR / EVENT_ID=" + pair.Value.Event.EventId +
+                    " / OBJECT_ID=" + pair.Value.ObjectId +
+                    " / REASON=HOLD_EXPIRED"
                 );
             }
 
@@ -294,7 +268,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private static string GetAiEventKey(int rtspIndex, AiDetectionBox box)
         {
-            return rtspIndex.ToString(CultureInfo.InvariantCulture) + ":" + box.ObjectId.ToString(CultureInfo.InvariantCulture) + ":" + box.ClassIndex.ToString(CultureInfo.InvariantCulture);
+            return rtspIndex.ToString(CultureInfo.InvariantCulture) +
+                ":" + box.ObjectId.ToString(CultureInfo.InvariantCulture) +
+                ":" + box.ClassIndex.ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -327,7 +303,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             catch (IOException)
             {
-                // 테스트 프로그램이 같은 순간에 기록 중이면 다음 Tick에서 다시 읽는다.
+            // 테스트 프로그램이 같은 순간에 기록 중이면 다음 Tick에서 다시 읽는다.
             }
         }
 
@@ -339,12 +315,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string[] fields = (line ?? string.Empty).Split('|');
 
             if (fields.Length < 7 ||
-                !DateTime.TryParse(
-                fields[0],
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.RoundtripKind,
-                out DateTime eventTime
-            ))
+                !DateTime.TryParse(fields[0], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime eventTime))
             {
                 return;
             }
@@ -357,22 +328,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-08-31: 신규 9필드 형식은 V.SCORE와 FIRE/SMOKE 종류를 포함한다.
             // 기존 7/8필드 기록도 계속 읽어 이전 테스트 결과와 호환한다.
             double visionScore = 0.0;
-            bool hasVisionScore = fields.Length >= 9 &&
-                double.TryParse(
-                fields[6],
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out visionScore
-            );
+            bool hasVisionScore = fields.Length >= 9 && double.TryParse(fields[6], NumberStyles.Float, CultureInfo.InvariantCulture, out visionScore);
             string scoreText = hasVisionScore ? visionScore.ToString("F1", CultureInfo.InvariantCulture) + "%" : "N/A";
             int detectionTypeIndex = hasVisionScore ? 7 : 6;
             int sourceNameIndex = hasVisionScore ? 8 : 7;
             string detectionType = fields.Length > detectionTypeIndex &&
-                string.Equals(
-                fields[detectionTypeIndex],
-                "SMOKE",
-                StringComparison.OrdinalIgnoreCase
-            ) ? "SMOKE" : "FIRE";
+                string.Equals(fields[detectionTypeIndex], "SMOKE", StringComparison.OrdinalIgnoreCase)
+                ? "SMOKE"
+                : "FIRE";
             string sourceName = fields.Length > sourceNameIndex ? fields[sourceNameIndex] : fields[Math.Min(6, fields.Length - 1)];
 
             if (transition == "DETECTED")
@@ -384,22 +347,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "TEST",
                     detectionType,
                     scoreText,
-                    Math.Max(
-                    1,
-                    objectCount
-                ),
-                    Math.Max(
-                    0,
-                    width
-                ),
-                    Math.Max(
-                    0,
-                    height
-                ),
-                    Math.Max(
-                    0,
-                    area
-                ),
+                    Math.Max(1, objectCount),
+                    Math.Max(0, width),
+                    Math.Max(0, height),
+                    Math.Max(0, area),
                     string.IsNullOrWhiteSpace(sourceName) ? "TEST PROGRAM" : sourceName,
                     "ACTIVE",
                     CapturePositionSnapshot("TEST_" + detectionType + "_EVENT")
@@ -420,21 +371,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 NotifyFireEventSummaryChanged();
                 ConsoleLogHelper.Warning(
                     "FIRE/SMOKE EVENT",
-                    "Test program candidate detected / TYPE=" + detectionType + " / EVENT_ID=" + testEvent.EventId + " / CSV_LIVE=" + testEvent.IsLiveAfterCsvLoad + " / OBJECTS=" + testEvent.ObjectCount + " / BBOX=" + testEvent.PixelSizeText + " / V.SCORE=" + testEvent.Confidence + " / PIXEL_AREA=" + testEvent.PixelArea.ToString(
-                    "F0",
-                    CultureInfo.InvariantCulture
-                )
+                    "Test program candidate detected / TYPE=" + detectionType +
+                    " / EVENT_ID=" + testEvent.EventId +
+                    " / CSV_LIVE=" + testEvent.IsLiveAfterCsvLoad +
+                    " / OBJECTS=" + testEvent.ObjectCount +
+                    " / BBOX=" + testEvent.PixelSizeText +
+                    " / V.SCORE=" + testEvent.Confidence +
+                    " / PIXEL_AREA=" + testEvent.PixelArea.ToString("F0", CultureInfo.InvariantCulture)
                 );
                 return;
             }
 
             if (transition == "CLEARED" && _activeTestFireEvents.Count > 0)
             {
-                List<FireEventRecord> clearedEvents = _activeTestFireEvents.Where(item => string.Equals(
-                    item.DetectionType,
-                    detectionType,
-                    StringComparison.OrdinalIgnoreCase
-                )).ToList();
+                List<FireEventRecord> clearedEvents = _activeTestFireEvents.Where(item => string.Equals(item.DetectionType, detectionType, StringComparison.OrdinalIgnoreCase)).ToList();
 
                 foreach (FireEventRecord clearedEvent in clearedEvents)
                 {
@@ -491,12 +441,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             catch (Exception exception)
             {
                 ConsoleLogHelper.Error("AI EVENT", "Event CSV save failed", exception);
-                MessageBox.Show(
-                    "AI 이벤트 CSV 저장에 실패했습니다.\n" + exception.Message,
-                    "CSV 저장 실패",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error
-                );
+                MessageBox.Show("AI 이벤트 CSV 저장에 실패했습니다.\n" + exception.Message, "CSV 저장 실패", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -522,16 +467,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ValidateEventCsvKind(loaded, true);
                 AiDetectionEvents.Clear();
 
-                foreach (FireEventRecord item in loaded.Where(item => string.Equals(
-                    item.DetectionSource,
-                    "AI AGENT",
-                    StringComparison.OrdinalIgnoreCase
-                ) ||
-                    string.Equals(
-                    item.DetectionType,
-                    "AI",
-                    StringComparison.OrdinalIgnoreCase
-                )).OrderByDescending(item => item.EventId).Take(MaximumEventHistoryCount))
+                foreach (FireEventRecord item in loaded.Where(item => string.Equals(item.DetectionSource, "AI AGENT", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(item.DetectionType, "AI", StringComparison.OrdinalIgnoreCase)).OrderByDescending(item => item.EventId).Take(MaximumEventHistoryCount))
                 {
                     item.MarkImportedFromCsv();
                     AiDetectionEvents.Add(item);
@@ -541,12 +478,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _nextAiEventId = AiDetectionEvents.Count == 0 ? 1 : AiDetectionEvents.Max(item => item.EventId) + 1;
                 _isAiCsvHistoryLoaded = true;
                 ActiveAiCount = 0;
-                _lastAiDetectedTime = AiDetectionEvents.Count == 0 ? (DateTime?)null : AiDetectionEvents.Max(item => item.DetectedTime);
+                _lastAiDetectedTime = AiDetectionEvents.Count == 0 ? (DateTime? )null : AiDetectionEvents.Max(item => item.DetectedTime);
                 NotifyAiEventSummaryChanged();
-                ConsoleLogHelper.State(
-                    "AI EVENT",
-                    "Event CSV loaded / PATH=" + dialog.FileName + " / COUNT=" + AiDetectionEvents.Count
-                );
+                ConsoleLogHelper.State("AI EVENT", "Event CSV loaded / PATH=" + dialog.FileName + " / COUNT=" + AiDetectionEvents.Count);
                 MessageBox.Show(
                     "AI 이벤트 CSV 불러오기가 완료되었습니다.\n" + "불러온 이벤트: " + AiDetectionEvents.Count + "건",
                     "CSV 불러오기 완료",
@@ -606,6 +540,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private static void TrimEventCollection(ObservableCollection<FireEventRecord> events)
         {
             int removedCount = 0;
+
             while (events.Count > MaximumEventHistoryCount)
             {
                 events.RemoveAt(events.Count - 1);
@@ -615,10 +550,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (removedCount > 0)
             {
                 // 2026-08-26: 100페이지 초과 시 신규 이벤트는 유지하고 삭제된 과거 이력을 기록한다.
-                ConsoleLogHelper.State(
-                    "EVENT RETENTION",
-                    "Oldest event removed / REMOVED=" + removedCount + " / RETAINED=" + events.Count
-                );
+                ConsoleLogHelper.State("EVENT RETENTION", "Oldest event removed / REMOVED=" + removedCount + " / RETAINED=" + events.Count);
             }
         }
 

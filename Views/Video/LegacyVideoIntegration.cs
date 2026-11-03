@@ -17,20 +17,39 @@ namespace OpenCvWpfTracking
     internal static class LegacyVideoIntegration
     {
         #region [필드 및 상태 정보]
-
         // 2026-10-15: 기존 최종본의 채널 색상과 변경 불가능한 공유 브러시를 유지한다.
-        internal const string EoColor = "#C9E987", IrColor = "#C4AFF3", AiColor = "#39FF14", FireColor = "#FF3B30", SmokeColor = "#D8D0AB";
+        internal const string EoColor = "#C9E987";
 
-        internal const string AlertAiColor = "#55EE32", AlertFireColor = "#FF8178";
+        internal const string IrColor = "#C4AFF3";
 
-        private static readonly Brush Eo = FrozenBrush(EoColor), Ir = FrozenBrush(IrColor), Ai = FrozenBrush(AlertAiColor), Fire = FrozenBrush(AlertFireColor), Smoke = FrozenBrush(SmokeColor);
+        internal const string AiColor = "#39FF14";
 
-        private static readonly Brush FireBackground = FrozenBrush("#652D2A"), SmokeBackground = FrozenBrush("#595645"), AiBackground = FrozenBrush("#29452F");
+        internal const string FireColor = "#FF3B30";
+
+        internal const string SmokeColor = "#D8D0AB";
+
+        internal const string AlertAiColor = "#55EE32";
+
+        internal const string AlertFireColor = "#FF8178";
+
+        private static readonly Brush Eo = FrozenBrush(EoColor);
+
+        private static readonly Brush Ir = FrozenBrush(IrColor);
+
+        private static readonly Brush Ai = FrozenBrush(AlertAiColor);
+
+        private static readonly Brush Fire = FrozenBrush(AlertFireColor);
+
+        private static readonly Brush Smoke = FrozenBrush(SmokeColor);
+
+        private static readonly Brush FireBackground = FrozenBrush("#652D2A");
+
+        private static readonly Brush SmokeBackground = FrozenBrush("#595645");
+
+        private static readonly Brush AiBackground = FrozenBrush("#29452F");
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 수정 불가능한 공유 색상 브러시를 만든다.
         /// </summary>
@@ -77,12 +96,11 @@ namespace OpenCvWpfTracking
                 string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Snapshots");
                 Directory.CreateDirectory(dir);
                 string file = Path.Combine(
-                    dir,
-                    (ir ? "IR_" : "EO_") + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + "_" + Guid.NewGuid().ToString("N").Substring(
-                    0,
-                    8
-                ) + ".png"
-                );
+                        dir,
+                        (ir ? "IR_" : "EO_") + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") +
+                    "_" + Guid.NewGuid().ToString("N").Substring(0, 8) +
+                    ".png"
+                    );
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(frame));
                 using (var stream = new FileStream(file, FileMode.CreateNew, FileAccess.Write, FileShare.None))
@@ -121,9 +139,8 @@ namespace OpenCvWpfTracking
 
             if (marker.IsLoaded)
                 timer.Start();
-            // 추가 파노라마 및 이미지 저장 컨텍스트 메뉴는 복구 대상에서 제외한다.
+        // 추가 파노라마 및 이미지 저장 컨텍스트 메뉴는 복구 대상에서 제외한다.
         }
-
         #endregion
     }
 }

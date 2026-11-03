@@ -17,7 +17,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public partial class MainViewModel
     {
         #region [필드 및 상태 정보]
-
         // 2026-10-08: 창과 입력 장치가 하나의 축별 누름 상태를 공유한다.
         private readonly Dictionary<string, Tuple<string, int, int>> _controlInputs = new Dictionary<string, Tuple<string, int, int>>();
 
@@ -39,7 +38,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private long _irLensReceivedTicks;
 
-        private DispatcherTimer _v30StatusTimer;
+        private DispatcherTimer _controlStatusTimer;
 
         private string _lastZoomNotification;
 
@@ -73,9 +72,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         };
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다.
         /// </summary>
@@ -87,9 +84,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         public bool IsFovSpeedEnabled
         {
             get => _isFovSpeedEnabled;
@@ -138,9 +133,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
-        /// 2026-10-14 V31_6: 모든 EO/IR 메인·서브·분리 영상의 배율 배지만 표시/숨긴다. 제어값은 바꾸지 않는다.
-
+        /// 2026-10-14 모든 EO/IR 메인·서브·분리 영상의 배율 배지만 표시/숨긴다. 제어값은 바꾸지 않는다.
         /// </summary>
         public bool IsZoomRatioOverlayVisible
         {
@@ -167,34 +160,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string ZoomOpticalRangeText =>
             $"EO {ControlTuningFor(false).MinimumRatio:F1}~{ControlTuningFor(false).MaximumRatio:F1}x / IR {ControlTuningFor(true).MinimumRatio:F1}~{ZoomDisplayMaximum(true):F1}x 동일 진행률";
 
-        public double EoSpeedExponent
-        {
-            get => ControlTuningFor(false).Exponent;
-            set => SetExponent(false, value);
-        }
+        public double EoSpeedExponent { get => ControlTuningFor(false).Exponent; set => SetExponent(false, value); }
 
-        public double IrSpeedExponent
-        {
-            get => ControlTuningFor(true).Exponent;
-            set => SetExponent(true, value);
-        }
+        public double IrSpeedExponent { get => ControlTuningFor(true).Exponent; set => SetExponent(true, value); }
 
-        public int EoMinimumSpeed
-        {
-            get => ControlTuningFor(false).MinimumSpeed;
-            set => SetMinimum(false, value);
-        }
+        public int EoMinimumSpeed { get => ControlTuningFor(false).MinimumSpeed; set => SetMinimum(false, value); }
 
-        public int IrMinimumSpeed
-        {
-            get => ControlTuningFor(true).MinimumSpeed;
-            set => SetMinimum(true, value);
-        }
+        public int IrMinimumSpeed { get => ControlTuningFor(true).MinimumSpeed; set => SetMinimum(true, value); }
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 유효 범위의 채널별 감속 지수를 반영하고 현재 PT 속도를 갱신한다.
         /// </summary>
@@ -209,9 +184,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 채널별 최소 PT 속도를 1~60 범위에서 갱신한다.
-
         /// </summary>
         private void SetMinimum(bool ir, int value)
         {
@@ -224,11 +197,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// Z/C 반복 입력을 포함하여 공통 설정 속도를 1~60으로 제한해 증감한다.
-
         /// </summary>
-        public void AdjustControlSpeed(int delta) => PanTiltSpeedLevel = (byte)Math.Max(1, Math.Min(60, PanTiltSpeedLevel + delta));
+        public void AdjustControlSpeed(int delta) =>
+            PanTiltSpeedLevel = (byte)Math.Max(1, Math.Min(60, PanTiltSpeedLevel + delta));
 
         /// <summary>
         /// 표시 속도를 갱신하고 이미 동작 중인 PT 축에만 변경 속도를 재적용한다.
@@ -253,17 +225,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DateTime.UtcNow.Ticks - (ir ? Interlocked.Read(ref _irLensReceivedTicks) : Interlocked.Read(ref _eoLensReceivedTicks)) < TimeSpan.FromSeconds(3).Ticks;
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         public string EoZoomRatioOverlayText => IsLensFresh(false) ? "EO " + DisplayZoomRatioText(false) : "EO —";
 
         public string IrZoomRatioOverlayText => IsLensFresh(true) ? "IR " + DisplayZoomRatioText(true) : "IR —";
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>영상 배지와 상태값의 배율을 소수점 첫째 자리로 통일한다.</summary>
         private string DisplayZoomRatioText(bool ir)
         {
@@ -287,18 +255,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>표준 줌 위치와 확인된 배율을 상태 문자열로 구성한다.</summary>
         private string ZoomRatioStatus(bool ir) =>
-            (ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom()) + " / 1000 (" + (IsLensFresh(ir) ? DisplayZoomRatioText(ir) : "배율 미확인") + ")";
+            (ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom()) +
+            " / 1000 (" + (IsLensFresh(ir) ? DisplayZoomRatioText(ir) : "배율 미확인") +
+            ")";
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         private string _lastOpticalSpeedSignature;
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 채널별 렌즈 응답 시각을 원자적으로 기록한다.
         /// </summary>
@@ -311,20 +277,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 250ms 상태 표시 감시를 한 번만 시작한다. 디지털 추정으로 PT를 재송신하지 않는다.
-
         /// </summary>
-        public void InitializeV30Status()
+        public void InitializeControlStatusMonitor()
         {
-            if (_v30StatusTimer != null)
+            if (_controlStatusTimer != null)
                 return;
 
-            _v30StatusTimer = new DispatcherTimer(DispatcherPriority.Background)
+            _controlStatusTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromMilliseconds(250)
             };
-            _v30StatusTimer.Tick += (s, e) =>
+            _controlStatusTimer.Tick += (s, e) =>
             {
                 TickDigitalZoom();
                 TickSpecialFeatures();
@@ -348,7 +312,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         OnPropertyChanged(name);
 
                     // 표시용 디지털 배율 추정은 PT 명령 재전송을 유발하지 않는다.
-                    string optical = GetCurrentPresetStandardZoom() + "/" + GetCurrentIrZoomStandardPosition() + "/" + IsLensFresh(false) + "/" + IsLensFresh(true);
+                    string optical = GetCurrentPresetStandardZoom() +
+                        "/" + GetCurrentIrZoomStandardPosition() +
+                        "/" + IsLensFresh(false) +
+                        "/" + IsLensFresh(true);
 
                     if (optical != _lastOpticalSpeedSignature)
                     {
@@ -372,25 +339,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if ((!_isDeviceConnectionRequested || !_laTcpService.IsConnected) && _controlInputs.Count != 0)
                     ReleaseAllControlInputs("Disconnected");
             };
-            _v30StatusTimer.Start();
+            _controlStatusTimer.Start();
         }
 
         /// <summary>
-
         /// 상태 타이머를 중지하고 종료 시 남은 제어 입력을 해제한다.
-
         /// </summary>
-        public void ShutdownV30Control()
+        public void ShutdownControlInputMonitor()
         {
             StopRoute();
-            _v30StatusTimer?.Stop();
+            _controlStatusTimer?.Stop();
             ReleaseAllControlInputs("Shutdown");
         }
 
         /// <summary>
-
         /// 입력 소유자/채널별 키를 축 명령으로 변환하고 키 해제 및 반복을 처리한다.
-
         /// </summary>
         public bool HandleControlKey(string owner, Key key, bool down, bool ir, bool repeat = false)
         {
@@ -459,24 +422,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 연결/잠금 검증 후 누름 입력을 등록하며 수동 입력은 절대 위치 이동보다 우선한다.
-
         /// </summary>
         public void PressControlInput(string token, string axis, int x, int y, bool ir)
         {
-            if ((axis == "EF" && IsAf292FocusBlocked(false)) || (axis == "IF" && IsAf292FocusBlocked(true)))
+            if ((axis == "EF" && IsAutoFocusBlockingManualFocus(false)) || (axis == "IF" && IsAutoFocusBlockingManualFocus(true)))
                 return;
+
             // 2026-10-12: 거절한 화면 입력은 원인을 진단할 수 있도록 기록한다.
-            string blocked = IsControlInputLocked ? "CONTROL_LOCK" : !IsOperationCommandEnabled ? "OPERATION_LOCK" : !_isDeviceConnectionRequested ? "NO_REQUESTED_CONNECTION" : !_laTcpService.IsConnected ? "TCP_DISCONNECTED" : null;
+            string blocked = IsControlInputLocked
+                ? "CONTROL_LOCK"
+                : !IsOperationCommandEnabled
+                    ? "OPERATION_LOCK"
+                    : !_isDeviceConnectionRequested
+                        ? "NO_REQUESTED_CONNECTION"
+                        : !_laTcpService.IsConnected ? "TCP_DISCONNECTED" : null;
+
             if (blocked != null)
             {
-                ConsoleLogHelper.Warning("PTZF INPUT", "REJECTED / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / REASON=" + blocked);
+                ConsoleLogHelper.Warning(
+                    "PTZF INPUT",
+                    "REJECTED / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / REASON=" + blocked
+                );
                 return;
             }
 
             if (_controlInputs.ContainsKey(token))
                 return;
+
             // 2026-10-12: 수동 입력은 대기 중이거나 실행 중인 클릭 중심 이동보다 우선한다.
             if (_videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue)
             {
@@ -487,14 +460,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             SetActivePanTiltZoomSource(ir);
             _controlInputs[token] = Tuple.Create(axis, x, y);
-            ConsoleLogHelper.Command("PTZF INPUT", "PRESS / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / X=" + x + " / Y=" + y);
+            ConsoleLogHelper.Command(
+                "PTZF INPUT",
+                "PRESS / OWNER=" + token + " / AXIS=" + axis + " / CAMERA=" + (ir ? "IR" : "EO") + " / X=" + x + " / Y=" + y
+            );
             ReconcileControlInputs();
         }
 
         /// <summary>
-
         /// 해당 토큰만 해제하고 다른 소유자가 누르고 있는 축은 유지한다.
-
         /// </summary>
         public void ReleaseControlInput(string token)
         {
@@ -506,9 +480,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 지정 창/입력 소유자의 토큰만 일괄 해제한다.
-
         /// </summary>
         public void ReleaseControlOwner(string owner)
         {
@@ -521,9 +493,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 입력 세대를 갱신해 대기 명령을 무효화하고 필요할 때 전체 PTZF를 정지한다.
-
         /// </summary>
         public void ReleaseAllControlInputs(string reason)
         {
@@ -546,9 +516,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 같은 축의 누름 방향을 합산하고 서로 상쇄된 축은 제외한다.
-
         /// </summary>
         internal Dictionary<string, Tuple<int, int>> DesiredControlAxes()
         {
@@ -569,9 +537,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 축 변경을 직렬 송신한다. await 이후에는 세대와 최신 누름 상태를 다시 검증한다.
-
         /// </summary>
         private async void ReconcileControlInputs()
         {
@@ -656,9 +622,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 축 코드별 기존 PT/줌/포커스 시작 함수를 호출하고 EO 제어 소스를 보존한다.
-
         /// </summary>
         private async Task StartControlAxis(string axis, int x, int y)
         {
@@ -713,9 +677,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 해당 축만 정지하며 EO는 시작 당시 제어 소스로 정지 명령을 보낸다.
-
         /// </summary>
         private async Task StopControlAxis(string axis)
         {
@@ -740,7 +702,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     break;
             }
         }
-
         #endregion
     }
 }

@@ -28,9 +28,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>장비 종류·제어 주소·카메라 조합으로 저장 대상을 구분한다.</summary>
         private string PresetEquipmentContext =>
-            (SelectedControlAgentProfile?.AgentType.ToString() ?? "Unknown") + "|" +
-            PanoramaDeviceKey + "|" + PresetCameraIdentity(EoSourceAddress) + "|" +
-            PresetCameraIdentity(IrSourceAddress);
+            (SelectedControlAgentProfile?.AgentType.ToString() ?? "Unknown") +
+            "|" + PanoramaDeviceKey +
+            "|" + PresetCameraIdentity(EoSourceAddress) +
+            "|" + PresetCameraIdentity(IrSourceAddress);
 
         /// <summary>인증정보가 바뀌어도 같은 카메라는 같은 장비 자료를 사용한다.</summary>
         private static string PresetCameraIdentity(string address)
@@ -38,15 +39,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (!Uri.TryCreate(address, UriKind.Absolute, out Uri uri))
                 return address ?? string.Empty;
 
-            return uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.PathAndQuery,
-                UriFormat.UriEscaped);
+            return uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.PathAndQuery, UriFormat.UriEscaped);
         }
 
         // 장비 전환 전 저장은 이전 장비 폴더를 계속 사용한다.
-        private string PresetStoragePath => Path.Combine(
-            _presetEquipmentDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                "Config", "EquipmentPresets", PresetRowHash(new[] { _presetEquipmentContext ?? PresetEquipmentContext })),
-            "Presets.csv");
+        private string PresetStoragePath =>
+            Path.Combine(
+            _presetEquipmentDirectory ?? Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Config",
+                "EquipmentPresets",
+                PresetRowHash(new[] { _presetEquipmentContext ?? PresetEquipmentContext })
+            ),
+            "Presets.csv"
+        );
 
         /// <summary>장비 설정에 등록된 이름을 파노라마와 같은 규칙으로 준비한다.</summary>
         private void InitializeEquipmentPresetFolders()
@@ -59,7 +65,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets"),
                         profile.AgentType == ControlAgentType.WebAgent,
                         profile.DisplayName + "|" + profile.IpAddress + ":" + profile.Port,
-                        profile.DisplayName);
+                        profile.DisplayName
+                    );
                 }
                 catch (IOException ex)
                 {
@@ -76,12 +83,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private string ResolveEquipmentPresetDirectory(string context)
         {
             string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets");
-            string stem = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.DeviceDirectory(
-                root, IsSelectedControlAgentWebAgent, PanoramaDeviceKey, SelectedControlAgentProfile?.DisplayName);
+            string stem = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.DeviceDirectory(root, IsSelectedControlAgentWebAgent, PanoramaDeviceKey, SelectedControlAgentProfile?.DisplayName);
             string legacyIdentity = PresetRowHash(new[] { context });
             // Config 행 추가로 표시 순번이 바뀌어도 같은 장비의 폴더를 유지한다.
-            string stableContext = System.Text.RegularExpressions.Regex.Replace(context,
-                @"^([^|]+\|)\s*\d+\.\s*", "$1");
+            string stableContext = System.Text.RegularExpressions.Regex.Replace(context, @"^([^|]+\|)\s*\d+\.\s*", "$1");
             string identity = PresetRowHash(new[] { stableContext });
 
             for (int variant = 1; variant <= 100; variant++)
@@ -89,9 +94,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string directory = variant == 1 ? stem : stem + "_" + variant.ToString(CultureInfo.InvariantCulture);
                 Directory.CreateDirectory(directory);
                 string owner = Path.Combine(directory, ".preset-device");
+
                 if (File.Exists(owner))
                 {
                     string previousIdentity = File.ReadAllText(owner);
+
                     if (previousIdentity != identity)
                     {
                         if (previousIdentity != legacyIdentity)
@@ -105,8 +112,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 else
                 {
                     // 소유 정보가 없는 기존 프리셋을 다른 장비 자료로 임의 채택하지 않는다.
-                    if (File.Exists(Path.Combine(directory, "Presets.csv")) ||
-                        File.Exists(Path.Combine(directory, "Presets.tsv")))
+                    if (File.Exists(Path.Combine(directory, "Presets.csv")) || File.Exists(Path.Combine(directory, "Presets.tsv")))
                         continue;
 
                     try
@@ -132,26 +138,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>해시 이름으로 저장한 자료는 장비명 폴더로 복사하며 기존 원본은 보존한다.</summary>
         private static void RestoreLegacyEquipmentPresets(string legacy, string directory)
         {
-            if (!Directory.Exists(legacy) || File.Exists(Path.Combine(directory, "Presets.csv")) ||
+            if (!Directory.Exists(legacy) ||
+                File.Exists(Path.Combine(directory, "Presets.csv")) ||
                 File.Exists(Path.Combine(directory, "Presets.tsv")))
                 return;
 
             // 위치 메타데이터를 먼저 복사하고 CSV를 마지막에 확정한다.
-            foreach (string name in new[] { "PresetPositions.xml", "PresetPositions.xml.bak",
-                "Presets.csv.bak", "Presets.tsv.bak", "Presets.tsv", "Presets.csv" })
+            foreach (string name in new[]
+            {
+                "PresetPositions.xml",
+                "PresetPositions.xml.bak",
+                "Presets.csv.bak",
+                "Presets.tsv.bak",
+                "Presets.tsv",
+                "Presets.csv"
+            }
+
+            )
             {
                 if (name == "Presets.tsv" && File.Exists(Path.Combine(legacy, "Presets.csv")))
                     continue;
 
                 string source = Path.Combine(legacy, name);
+
                 if (!File.Exists(source))
                     continue;
 
                 string destination = Path.Combine(directory, name);
+
                 if (File.Exists(destination))
                 {
                     if (!File.ReadAllBytes(source).SequenceEqual(File.ReadAllBytes(destination)))
                         throw new IOException("이전 프리셋 복사본 확인 필요 / 원본 유지");
+
                     continue;
                 }
 
@@ -170,6 +189,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
 
             string context = PresetEquipmentContext;
+
             if (string.Equals(_presetEquipmentContext, context, StringComparison.Ordinal))
                 return;
 
@@ -178,6 +198,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State("PRESET EQUIPMENT", "이전 장비 저장 실패 / 원본 파일 확인 필요");
 
             _isLoadingPresetStorage = true;
+
             try
             {
                 SelectedLaPresetPoint = null;
@@ -208,22 +229,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 LoadPresetStorage();
                 RecoverPanoramaPresetReference();
             }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            catch (Exception ex)when (ex is IOException || ex is UnauthorizedAccessException)
             {
                 _presetStorageLoadFailed = true;
                 ConsoleLogHelper.Error("PRESET STORAGE", "장비명 폴더 준비 실패 / 원본 유지 / 저장 보류", ex);
             }
-            foreach (string name in new[] { nameof(IsPresetSavedOrderMode), nameof(IsPresetNearestOrderMode),
-                nameof(LaPresetScanSpeed), nameof(PresetScanSpeed), nameof(LaPresetScanDelay),
-                nameof(PresetScanDelay), nameof(LaPresetSlotNumber), nameof(PresetSlotNumber),
-                nameof(LaPresetCommandStatusText), nameof(PresetCommandStatusText) })
+
+            foreach (string name in new[]
+            {
+                nameof(IsPresetSavedOrderMode),
+                nameof(IsPresetNearestOrderMode),
+                nameof(LaPresetScanSpeed),
+                nameof(PresetScanSpeed),
+                nameof(LaPresetScanDelay),
+                nameof(PresetScanDelay),
+                nameof(LaPresetSlotNumber),
+                nameof(PresetSlotNumber),
+                nameof(LaPresetCommandStatusText),
+                nameof(PresetCommandStatusText)
+            }
+
+            )
                 OnPropertyChanged(name);
 
-            ConsoleLogHelper.StateSection("PRESET EQUIPMENT",
-                "장비별 프리셋 전환", string.Empty,
+            ConsoleLogHelper.StateSection(
+                "PRESET EQUIPMENT",
+                "장비별 프리셋 전환",
+                string.Empty,
                 "장비: " + SelectedControlAgentProfile?.DisplayName,
                 "목록: LA " + LaPresetPoints.Count + "개 / WEB " + PresetPoints.Count + "개",
-                "저장 위치: " + PresetStoragePath);
+                "저장 위치: " + PresetStoragePath
+            );
             InvalidatePanoramaReference();
         }
 
@@ -244,10 +280,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 _isLoadingPresetStorage = true;
-                var rows = legacy ? File.ReadAllLines(loadPath).Select(line => line.Split('\t')).ToList() : DeviceCatalog.Parse(File.ReadAllText(
-                    loadPath,
-                    Encoding.UTF8
-                )).Select(row => row.ToArray()).ToList();
+                var rows = legacy
+                    ? File.ReadAllLines(loadPath).Select(line => line.Split('\t')).ToList()
+                    : DeviceCatalog.Parse(File.ReadAllText(loadPath, Encoding.UTF8)).Select(row => row.ToArray()).ToList();
+
                 if (rows.Count == 0 || rows[0].Length == 0 || rows[0][0] != "TYPE")
                     throw new InvalidDataException("프리셋 파일 헤더 확인 필요");
 
@@ -281,26 +317,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         continue;
                     }
 
-                    if (!int.TryParse(
-                        p[1],
-                        out int order
-                    ) ||
-                        !int.TryParse(
-                        p[2],
-                        out int number
-                    ) ||
-                        !double.TryParse(
-                        p[4],
-                        NumberStyles.Float,
-                        CultureInfo.InvariantCulture,
-                        out double pan
-                    ) ||
-                        !double.TryParse(
-                        p[5],
-                        NumberStyles.Float,
-                        CultureInfo.InvariantCulture,
-                        out double tilt
-                    ))
+                    if (!int.TryParse(p[1], out int order) ||
+                        !int.TryParse(p[2], out int number) ||
+                        !double.TryParse(p[4], NumberStyles.Float, CultureInfo.InvariantCulture, out double pan) ||
+                        !double.TryParse(p[5], NumberStyles.Float, CultureInfo.InvariantCulture, out double tilt))
                     {
                         continue;
                     }
@@ -316,21 +336,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     if (positionSnapshot == null && p.Length >= 12 && positions.TryGetValue(PresetRowHash(p), out savedPosition))
                         PositionSnapshot.TryParseExportFields(savedPosition, 0, out positionSnapshot);
 
-                    PresetPointOption preset = new PresetPointOption(
-                        number,
-                        pan,
-                        tilt,
-                        p[6],
-                        p[7],
-                        p[8],
-                        p[9],
-                        p[3],
-                        order,
-                        positionSnapshot
-                    );
-
-                    preset.UsesLegacyIrZoomCalibration = p[0] == "W" &&
-                        (coordinateColumn < 0 || p.Length <= coordinateColumn || p[coordinateColumn] != "DEVICE_POSITION");
+                    PresetPointOption preset = new PresetPointOption(number, pan, tilt, p[6], p[7], p[8], p[9], p[3], order, positionSnapshot);
+                    preset.UsesLegacyIrZoomCalibration = p[0] == "W" && (coordinateColumn < 0 || p.Length <= coordinateColumn || p[coordinateColumn] != "DEVICE_POSITION");
 
                     if (p[0] == "L")
                     {
@@ -377,8 +384,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool SavePresetStorage()
         {
             // 읽기 실패한 파일을 빈 목록으로 덮어쓰지 않는다.
-            if (!_presetStorageReady || _presetEquipmentContext == null ||
-                _isLoadingPresetStorage || _applyingPresetProfile || _presetStorageLoadFailed)
+            if (!_presetStorageReady ||
+                _presetEquipmentContext == null ||
+                _isLoadingPresetStorage ||
+                _applyingPresetProfile ||
+                _presetStorageLoadFailed)
             {
                 return false;
             }
@@ -390,11 +400,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 string temporaryPath = PresetStoragePath + ".tmp";
                 List<string> lines = new List<string>
                 {
-                    "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" + "POSITION_CAPTURED_AT\tPOSITION_SOURCE\tIR_ZOOM_COORDINATES",
+                    "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" +
+                    "POSITION_CAPTURED_AT\tPOSITION_SOURCE\tIR_ZOOM_COORDINATES",
                     string.Join(
-                        "\t",
-                        new[] { "SETTINGS", "0", "0", _presetScanOrderMode.ToString(), _laPresetScanSpeed.ToString(), _laPresetScanDelay.ToString(), _presetScanSpeed.ToString(), _presetScanDelay.ToString(), "-", "-", "", "" }
-                    )
+                    "\t",
+                    new[] { "SETTINGS", "0", "0", _presetScanOrderMode.ToString(), _laPresetScanSpeed.ToString(), _laPresetScanDelay.ToString(), _presetScanSpeed.ToString(), _presetScanDelay.ToString(), "-", "-", "", "" }
+                )
                 };
                 var positions = new XElement("PresetPositions", new XAttribute("Version", 1));
                 AppendPresetStorageLines(lines, "L", LaPresetPoints, positions);
@@ -432,42 +443,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private static void AppendPresetStorageLines(
-            ICollection<string> lines,
-            string type,
-            IEnumerable<PresetPointOption> presets,
-            XElement positions
-        )
+        private static void AppendPresetStorageLines(ICollection<string> lines, string type, IEnumerable<PresetPointOption> presets, XElement positions)
         {
             foreach (PresetPointOption preset in presets.OrderBy(p => p.SavedOrder))
             {
                 string safeName = (preset.Name ?? $"P{preset.Number:00}").Replace("\t", " ").Replace("\r", " ").Replace("\n", " ");
-                List<string> fields = new List<string>(new[] { type, preset.SavedOrder.ToString(CultureInfo.InvariantCulture), preset.Number.ToString(CultureInfo.InvariantCulture), safeName, preset.Pan.ToString(
-                    "R",
-                    CultureInfo.InvariantCulture
-                ), preset.Tilt.ToString(
-                    "R",
-                    CultureInfo.InvariantCulture
-                ), preset.EoZoomText, preset.EoFocusText, preset.IrZoomText, preset.IrFocusText });
-                string[] positionFields = preset.PositionSnapshot?.ToExportFields() ?? Enumerable.Repeat(
-                    string.Empty,
-                    PositionSnapshot.ExportFieldCount
-                ).ToArray();
+                List<string> fields = new List<string>(new[] { type, preset.SavedOrder.ToString(CultureInfo.InvariantCulture), preset.Number.ToString(CultureInfo.InvariantCulture), safeName, preset.Pan.ToString("R", CultureInfo.InvariantCulture), preset.Tilt.ToString("R", CultureInfo.InvariantCulture), preset.EoZoomText, preset.EoFocusText, preset.IrZoomText, preset.IrFocusText });
+                string[] positionFields = preset.PositionSnapshot?.ToExportFields() ?? Enumerable.Repeat(string.Empty, PositionSnapshot.ExportFieldCount).ToArray();
                 fields.AddRange(positionFields.Take(2).Select(SanitizePresetStorageField));
                 fields.Add(preset.UsesLegacyIrZoomCalibration ? "LEGACY_SYNC" : "DEVICE_POSITION");
 
                 if (preset.PositionSnapshot != null)
                     positions.Add(new XElement(
-                        "Preset",
-                        new XAttribute(
-                        "Hash",
-                        PresetRowHash(fields)
-                    ),
-                        positionFields.Select(v => new XElement(
-                        "Field",
-                        v ?? ""
-                    ))
-                    ));
+                            "Preset",
+                            new XAttribute("Hash", PresetRowHash(fields)),
+                            positionFields.Select(v => new XElement("Field", v ?? ""))
+                        ));
 
                 lines.Add(string.Join(",", fields.Select(value => "\"" + (value ?? string.Empty).Replace("\"", "\"\"") + "\"")));
             }
@@ -504,10 +495,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     if (new FileInfo(candidate).Length > 4000000)
                         throw new InvalidDataException("Preset metadata too large.");
 
-                    using (var reader = XmlReader.Create(
-                        candidate,
-                        new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null }
-                    ))
+                    using (var reader = XmlReader.Create(candidate, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null }))
                     {
                         var data = XDocument.Load(reader);
 
@@ -547,13 +535,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 프리셋 추가·갱신 전에 저장에 필요한 항목을 준비한다.
         /// </summary>
-        private void PreparePresetForUpsert(
-            PresetPointOption newPreset,
-            IEnumerable<PresetPointOption> presets,
-            PresetPointOption existingPreset
-        )
+        private void PreparePresetForUpsert(PresetPointOption newPreset, IEnumerable<PresetPointOption> presets, PresetPointOption existingPreset)
         {
-            newPreset.SavedOrder = existingPreset != null ? existingPreset.SavedOrder : presets.Select(p => p.SavedOrder).DefaultIfEmpty(0).Max() + 1;
+            newPreset.SavedOrder = existingPreset != null
+                ? existingPreset.SavedOrder
+                : presets.Select(p => p.SavedOrder).DefaultIfEmpty(0).Max() + 1;
         }
 
         /// <summary>
@@ -588,7 +574,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: 본 GUI에서 NEAREST는 PAN/TILT 공간거리가 아니라
             // 등록된 PRESET 번호의 오름차순을 의미한다. SAVED ORDER는 사용자가
             // 저장한 순서를 그대로 보존하며 기본 모드로 유지한다.
-            PresetPointOption[] result = _presetScanOrderMode == PresetScanOrderMode.SavedOrder ? registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).ToArray() : registered.OrderBy(p => p.Number).ThenBy(p => p.SavedOrder).ToArray();
+            PresetPointOption[] result = _presetScanOrderMode == PresetScanOrderMode.SavedOrder
+                ? registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).ToArray()
+                : registered.OrderBy(p => p.Number).ThenBy(p => p.SavedOrder).ToArray();
 
             if (IsPresetPanOrderMode)
                 result = result.OrderBy(p => NormalizeToSignedAngle(p.Pan)).ThenBy(p => p.Tilt).ToArray();
@@ -598,13 +586,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "PRESET SCAN ORDER",
-                "MODE=" + _presetScanOrderMode + " / REGISTERED=" + string.Join(
-                "->",
-                registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).Select(p => p.Number)
-            ) + " / EXECUTION=" + string.Join(
-                "->",
-                result.Select(p => p.Number)
-            )
+                "MODE=" + _presetScanOrderMode +
+                " / REGISTERED=" + string.Join("->", registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).Select(p => p.Number)) +
+                " / EXECUTION=" + string.Join("->", result.Select(p => p.Number))
             );
             return result;
         }

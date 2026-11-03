@@ -1,7 +1,7 @@
-<UserControl x:Class="OpenCvWpfTracking.EventAlertControl"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="Transparent">
+﻿<UserControl x:Class="OpenCvWpfTracking.EventAlertControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="Transparent">
     <UserControl.Resources>
         <Style x:Key="EventGridStyle" TargetType="{x:Type DataGrid}">
             <Setter Property="AutoGenerateColumns" Value="False"/>
@@ -36,11 +36,11 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TabItem}">
                         <Border x:Name="HeaderBorder" Height="34"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1,1,1,0" CornerRadius="5,5,0,0">
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1,1,1,0" CornerRadius="5,5,0,0">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              ContentSource="Header" Margin="{TemplateBinding Padding}"/>
+                                ContentSource="Header" Margin="{TemplateBinding Padding}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
@@ -65,7 +65,7 @@
                             </Grid.RowDefinitions>
                             <UniformGrid Grid.Row="0" Columns="2" IsItemsHost="True"/>
                             <Border Grid.Row="1" Background="#4B5259" BorderBrush="#91A4AF"
-                                    BorderThickness="1" Padding="5">
+                                BorderThickness="1" Padding="5">
                                 <ContentPresenter ContentSource="SelectedContent"/>
                             </Border>
                         </Grid>
@@ -105,8 +105,8 @@
 
         <!-- 2026-08-31: 날짜와 초를 유지하면서 가독성을 높이고 Condensed 폭으로 열 안에 제한한다. -->
         <Style x:Key="CompactEventTimeCellTextStyle"
-               TargetType="{x:Type TextBlock}"
-               BasedOn="{StaticResource CenteredEventCellTextStyle}">
+            TargetType="{x:Type TextBlock}"
+            BasedOn="{StaticResource CenteredEventCellTextStyle}">
             <Setter Property="FontSize" Value="9"/>
             <Setter Property="FontStretch" Value="Condensed"/>
             <Setter Property="Padding" Value="0"/>
@@ -115,8 +115,8 @@
 
         <!-- 2026-09-08: IR SMOKE 등 TYPE 문자열이 인접 열로 넘어가지 않도록 압축 표시한다. -->
         <Style x:Key="CompactEventTypeCellTextStyle"
-               TargetType="{x:Type TextBlock}"
-               BasedOn="{StaticResource CenteredEventCellTextStyle}">
+            TargetType="{x:Type TextBlock}"
+            BasedOn="{StaticResource CenteredEventCellTextStyle}">
             <Setter Property="FontSize" Value="8.5"/>
             <Setter Property="FontStretch" Value="Condensed"/>
             <Setter Property="Padding" Value="0"/>
@@ -138,7 +138,7 @@
                     <Setter Property="Background" Value="#3F5550"/>
                     <Setter Property="Foreground" Value="#D0D7DE"/>
                 </DataTrigger>
-                <!-- 2026-10-15: loaded history is blue; live ACTIVE/CLEARED keep their own status colors. -->
+                <!-- 2026-10-15: 불러온 이력은 파란색으로 구분하고 실시간 활성·해제 상태는 기존 색상을 유지한다. -->
                 <DataTrigger Binding="{Binding IsImportedFromCsv}" Value="True">
                     <Setter Property="Background" Value="#176B87"/>
                     <Setter Property="Foreground" Value="White"/>
@@ -149,8 +149,8 @@
     </UserControl.Resources>
 
     <TabControl x:Name="EventTypeTabControl"
-                Margin="0" Style="{StaticResource EventSubTabControlStyle}"
-                SelectedIndex="{Binding SelectedEventAlertTabIndex, Mode=TwoWay}">
+        Margin="0" Style="{StaticResource EventSubTabControlStyle}"
+        SelectedIndex="{Binding SelectedEventAlertTabIndex, Mode=TwoWay}">
         <TabItem Header="AI DETECTION">
             <Grid Margin="5">
                 <Grid.RowDefinitions>
@@ -161,7 +161,7 @@
                 </Grid.RowDefinitions>
 
                 <Border Grid.Row="0" Background="#40464D" BorderBrush="#95A5B0"
-                        BorderThickness="1.5" CornerRadius="5" Padding="8" Margin="0,0,0,6">
+                    BorderThickness="1.5" CornerRadius="5" Padding="8" Margin="0,0,0,6">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -170,22 +170,22 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="AI DETECTION" Foreground="#55EE32"
-                                       FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding AiAlertStatusText}" Foreground="{Binding AiAlertHeaderBrush}"
-                                       FontSize="10" FontWeight="Bold" Margin="0,3,0,0"
-                                       HorizontalAlignment="Center"/>
+                                FontSize="10" FontWeight="Bold" Margin="0,3,0,0"
+                                HorizontalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="ACTIVE" Foreground="#A9D6E5" FontSize="10"
-                                       HorizontalAlignment="Center"/>
+                                HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding ActiveAiCount}" Foreground="{Binding AiAlertHeaderBrush}"
-                                       FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="LAST DETECTED" Foreground="#A9D6E5" FontSize="10"
-                                       HorizontalAlignment="Center"/>
+                                HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding LastAiEventTimeText}" Foreground="White"
-                                       FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -193,12 +193,12 @@
                 <!-- 2026-09-17: DataGrid의 사각 배경이 하단 둥근 외곽 밖으로
                      돌출되지 않도록 하단 2px을 Border 내부 배경으로 마감한다. -->
                 <Border Grid.Row="1" Background="#464D54" BorderBrush="#81909A"
-                        BorderThickness="1" CornerRadius="0,0,5,5" Padding="0,0,0,2">
+                    BorderThickness="1" CornerRadius="0,0,5,5" Padding="0,0,0,2">
                     <DataGrid x:Name="AiEventGrid" ItemsSource="{Binding AiDetectionEvents}"
-                              Style="{StaticResource EventGridStyle}"
-                              MouseDoubleClick="ZoneEventDetail_MouseDoubleClick"
-                              Sorting="EventGrid_Sorting"
-                              SelectionChanged="EventGrid_SelectionChanged">
+                        Style="{StaticResource EventGridStyle}"
+                        MouseDoubleClick="ZoneEventDetail_MouseDoubleClick"
+                        Sorting="EventGrid_Sorting"
+                        SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="28" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="96" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
@@ -212,39 +212,39 @@
                 </Border>
 
                 <Grid Grid.Row="2" Margin="0,6,0,0"
-                      IsEnabled="{Binding IsEventAlertControlEnabled}">
+                    IsEnabled="{Binding IsEventAlertControlEnabled}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/><ColumnDefinition Width="72"/>
                         <ColumnDefinition Width="52"/><ColumnDefinition Width="72"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="AiTotalText" Grid.Column="0" Foreground="#9DD8FA"
-                               FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                        FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
                     <RepeatButton x:Name="AiPreviousButton" Grid.Column="1" Content="PREVIOUS" Height="27"
-                                  Delay="350" Interval="90"
-                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
-                                  Click="AiPreviousButton_Click"/>
+                        Delay="350" Interval="90"
+                        PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                        Click="AiPreviousButton_Click"/>
                     <TextBlock x:Name="AiPageText" Grid.Column="2" Text="1 / 1" Foreground="White"
-                               FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <RepeatButton x:Name="AiNextButton" Grid.Column="3" Content="NEXT" Height="27"
-                                  Delay="350" Interval="90"
-                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
-                                  Click="AiNextButton_Click"/>
+                        Delay="350" Interval="90"
+                        PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                        Click="AiNextButton_Click"/>
                     <TextBlock x:Name="AiSelectedText" Grid.Column="4" Foreground="#9DD8FA"
-                               FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
-                               VerticalAlignment="Center"/>
+                        FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                        VerticalAlignment="Center"/>
                 </Grid>
 
                 <UniformGrid Grid.Row="3" Columns="4" Margin="0,6,0,0"
-                             IsEnabled="{Binding IsEventAlertControlEnabled}">
+                    IsEnabled="{Binding IsEventAlertControlEnabled}">
                     <Button Content="SAVE AI CSV" Height="31" FontSize="10.5" Margin="0,0,3,0"
-                            Command="{Binding SaveAiEventsCommand}"/>
+                        Command="{Binding SaveAiEventsCommand}"/>
                     <Button Content="LOAD AI CSV" Height="31" FontSize="10.5" Margin="2,0"
-                            Command="{Binding LoadAiEventsCommand}"/>
+                        Command="{Binding LoadAiEventsCommand}"/>
                     <Button Content="DELETE SELECTED" Height="31" Margin="2,0"
-                            Background="#705A31" Click="AiDeleteSelectedButton_Click"/>
+                        Background="#705A31" Click="AiDeleteSelectedButton_Click"/>
                     <Button Content="DELETE ALL" Height="31" Margin="3,0,0,0" Background="#7A3434"
-                            Command="{Binding ClearAiEventsCommand}"/>
+                        Command="{Binding ClearAiEventsCommand}"/>
                 </UniformGrid>
             </Grid>
         </TabItem>
@@ -259,7 +259,7 @@
                 </Grid.RowDefinitions>
 
                 <Border Grid.Row="0" Background="#40464D" BorderBrush="#95A5B0"
-                        BorderThickness="1.5" CornerRadius="5" Padding="8" Margin="0,0,0,6">
+                    BorderThickness="1.5" CornerRadius="5" Padding="8" Margin="0,0,0,6">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -268,34 +268,34 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="FIRE / SMOKE" Foreground="#FF8178"
-                                       FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding FireAlertStatusText}"
-                                       Foreground="{Binding FireAlertHeaderBrush}"
-                                       FontSize="10" FontWeight="Bold" Margin="0,3,0,0"
-                                       HorizontalAlignment="Center"/>
+                                Foreground="{Binding FireAlertHeaderBrush}"
+                                FontSize="10" FontWeight="Bold" Margin="0,3,0,0"
+                                HorizontalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="ACTIVE" Foreground="#A9D6E5" FontSize="10"
-                                       HorizontalAlignment="Center"/>
+                                HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding ActiveFireCount}" Foreground="{Binding FireAlertHeaderBrush}"
-                                       FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="LAST DETECTED" Foreground="#A9D6E5" FontSize="10"
-                                       HorizontalAlignment="Center"/>
+                                HorizontalAlignment="Center"/>
                             <TextBlock Text="{Binding LastFireEventTimeText}" Foreground="White"
-                                       FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Border>
 
                 <Border Grid.Row="1" Background="#464D54" BorderBrush="#81909A"
-                        BorderThickness="1" CornerRadius="0,0,5,5" Padding="0,0,0,2">
+                    BorderThickness="1" CornerRadius="0,0,5,5" Padding="0,0,0,2">
                     <DataGrid x:Name="FireEventGrid" ItemsSource="{Binding FireDetectionEvents}"
-                              Style="{StaticResource EventGridStyle}"
-                              MouseDoubleClick="ZoneEventDetail_MouseDoubleClick"
-                              Sorting="EventGrid_Sorting"
-                              SelectionChanged="EventGrid_SelectionChanged">
+                        Style="{StaticResource EventGridStyle}"
+                        MouseDoubleClick="ZoneEventDetail_MouseDoubleClick"
+                        Sorting="EventGrid_Sorting"
+                        SelectionChanged="EventGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="ID" SortMemberPath="EventId" Binding="{Binding EventId}" Width="28" ElementStyle="{StaticResource CenteredEventCellTextStyle}"/>
                             <DataGridTextColumn Header="TIME" SortMemberPath="DetectedTime" Binding="{Binding DetectedTimeShortText}" Width="96" ElementStyle="{StaticResource CompactEventTimeCellTextStyle}"/>
@@ -309,39 +309,39 @@
                 </Border>
 
                 <Grid Grid.Row="2" Margin="0,6,0,0"
-                      IsEnabled="{Binding IsEventAlertControlEnabled}">
+                    IsEnabled="{Binding IsEventAlertControlEnabled}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/><ColumnDefinition Width="72"/>
                         <ColumnDefinition Width="52"/><ColumnDefinition Width="72"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="FireTotalText" Grid.Column="0" Foreground="#9DD8FA"
-                               FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                        FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
                     <RepeatButton x:Name="FirePreviousButton" Grid.Column="1" Content="PREVIOUS" Height="27"
-                                  Delay="350" Interval="90"
-                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
-                                  Click="FirePreviousButton_Click"/>
+                        Delay="350" Interval="90"
+                        PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                        Click="FirePreviousButton_Click"/>
                     <TextBlock x:Name="FirePageText" Grid.Column="2" Text="1 / 1" Foreground="White"
-                               FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <RepeatButton x:Name="FireNextButton" Grid.Column="3" Content="NEXT" Height="27"
-                                  Delay="350" Interval="90"
-                                  PreviewKeyDown="EventPageButton_PreviewKeyDown"
-                                  Click="FireNextButton_Click"/>
+                        Delay="350" Interval="90"
+                        PreviewKeyDown="EventPageButton_PreviewKeyDown"
+                        Click="FireNextButton_Click"/>
                     <TextBlock x:Name="FireSelectedText" Grid.Column="4" Foreground="#9DD8FA"
-                               FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
-                               VerticalAlignment="Center"/>
+                        FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                        VerticalAlignment="Center"/>
                 </Grid>
 
                 <UniformGrid Grid.Row="3" Columns="4" Margin="0,6,0,0"
-                             IsEnabled="{Binding IsEventAlertControlEnabled}">
+                    IsEnabled="{Binding IsEventAlertControlEnabled}">
                     <Button Content="SAVE F/S CSV" Height="31" FontSize="10.5" Margin="0,0,3,0"
-                            Command="{Binding SaveFireEventsCommand}"/>
+                        Command="{Binding SaveFireEventsCommand}"/>
                     <Button Content="LOAD F/S CSV" Height="31" FontSize="10.5" Margin="2,0"
-                            Command="{Binding LoadFireEventsCommand}"/>
+                        Command="{Binding LoadFireEventsCommand}"/>
                     <Button Content="DELETE SELECTED" Height="31" Margin="2,0"
-                            Background="#705A31" Click="FireDeleteSelectedButton_Click"/>
+                        Background="#705A31" Click="FireDeleteSelectedButton_Click"/>
                     <Button Content="DELETE ALL" Height="31" Margin="3,0,0,0" Background="#7A3434"
-                            Command="{Binding ClearFireEventsCommand}"/>
+                        Command="{Binding ClearFireEventsCommand}"/>
                 </UniformGrid>
             </Grid>
         </TabItem>

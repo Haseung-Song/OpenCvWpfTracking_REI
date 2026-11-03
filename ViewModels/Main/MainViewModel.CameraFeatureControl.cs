@@ -11,7 +11,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public partial class MainViewModel
     {
         #region [필드 및 상태 정보]
-
         // 2026-10-12: 공통 DIGITAL_ZOOM은 켜짐/꺼짐 명령이며 단계별 배율 제어가 아니다.
         private readonly byte[] _digitalCaps = new byte[2];
 
@@ -23,9 +22,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private long _digitalEstimateTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 단조 시계의 경과 시간을 계산해 EO/IR 디지털 추정 모델을 함께 갱신한다.
         /// </summary>
@@ -39,9 +36,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 명시적으로 활성화한 추정값만 연결·상태 신선도·광학 끝점 조건으로 갱신한다.
-
         /// </summary>
         private void AdvanceDigitalEstimate(bool ir, double elapsed)
         {
@@ -58,9 +53,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 이전 방향의 경과 시간을 먼저 반영한 후 추정 배율의 증감 방향을 변경한다.
-
         /// </summary>
         private void SetDigitalEstimateDirection(int direction, bool ir = false)
         {
@@ -69,21 +62,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         private double EoDisplayZoomRatio =>
-            ControlTuningFor(false).Ratio(GetCurrentPresetStandardZoom()) * (GetCurrentPresetStandardZoom() >= 1000 &&
-            _eoDigitalEstimate.Enabled ? _eoDigitalEstimate.Factor : 1);
+            ControlTuningFor(false).Ratio(GetCurrentPresetStandardZoom()) * (GetCurrentPresetStandardZoom() >= 1000 && _eoDigitalEstimate.Enabled ? _eoDigitalEstimate.Factor : 1);
 
         private double IrDisplayZoomRatio =>
-            ControlTuningFor(true).Ratio(GetCurrentIrZoomStandardPosition()) * (GetCurrentIrZoomStandardPosition() >= 1000 &&
-            _irDigitalEstimate.Enabled ? _irDigitalEstimate.Factor : 1);
+            ControlTuningFor(true).Ratio(GetCurrentIrZoomStandardPosition()) * (GetCurrentIrZoomStandardPosition() >= 1000 && _irDigitalEstimate.Enabled ? _irDigitalEstimate.Factor : 1);
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         private readonly bool[] _digitalCapsKnown = new bool[2];
 
         private readonly int[] _digitalState =
@@ -121,9 +108,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _centerMoveEpoch;
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         private bool CameraFeatureTransportReady => _isDeviceConnectionRequested && _laTcpService.IsConnected;
 
         public bool CanSetEoDigitalZoom => CanSetDigitalZoom(0);
@@ -140,23 +125,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 마우스 hover에 따른 EO/IR 채널 전환이 진행 중인 클릭 이동을
         /// 중단하지 않도록 MainWindow에서 사용합니다.
         /// </summary>
-        public bool IsVideoCenterMoveActive => _videoCenterBusy ||
-            _activePanAbsoluteTarget.HasValue ||
-            _activeTiltAbsoluteTarget.HasValue;
+        public bool IsVideoCenterMoveActive =>
+            _videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue;
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
-        /// 채널의 연결과 지원 플래그 및 요청 대기를 확인한다.
+        /// 채널의 연결·운용 잠금·요청 대기를 확인한다. IR은 지원 조회와 무관하게 수동 요청을 허용한다.
         /// </summary>
         private bool CanSetDigitalZoom(int i) =>
             CameraFeatureTransportReady &&
             IsOperationCommandEnabled &&
             !IsControlInputLocked &&
-            _digitalCapsKnown[i] &&
-            (_digitalCaps[i] & 5) == 5 &&
+            (i == 1 || (_digitalCapsKnown[i] && (_digitalCaps[i] & 5) == 5)) &&
             _digitalPendingTicks[i] == 0;
 
         /// <summary>
@@ -167,18 +148,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (!CameraFeatureTransportReady)
                 return "D-ZOOM · 미연결";
 
-            if (i == 1 && _digitalCapsKnown[i] && (_digitalCaps[i] & 5) != 5)
+            if (i == 1 && _digitalRequestedState[i] < 0 && _digitalCapsKnown[i] && (_digitalCaps[i] & 5) != 5)
                 return "D-ZOOM · IR 설정 미지원";
 
-            if (i == 1 && !_digitalCapsKnown[i])
+            if (i == 1 && _digitalRequestedState[i] < 0 && !_digitalCapsKnown[i])
                 return "D-ZOOM · IR 지원 조회 중";
 
             if (_digitalTxFailed[i])
                 return "D-ZOOM · 요청 전송 실패";
 
             if (_digitalState[i] >= 0 && DateTime.UtcNow.Ticks - _digitalStateTicks[i] <= TimeSpan.FromSeconds(10).Ticks)
-                return "장비 " + (_digitalState[i] == 0 ? "OFF" : "ON") + " 확인" + (_digitalRequestedState[i] >= 0 &&
-                    _digitalRequestedState[i] != _digitalState[i] ? " · 요청 불일치" : "");
+                return "장비 " + (_digitalState[i] == 0 ? "OFF" : "ON") +
+                    " 확인" + (_digitalRequestedState[i] >= 0 && _digitalRequestedState[i] != _digitalState[i] ? " · 요청 불일치" : "");
 
             if (_digitalRequestedState[i] >= 0)
                 return (_digitalRequestedState[i] == 0 ? "OFF" : "ON") + " 요청 전송 · " + (_digitalPendingTicks[i] != 0 ? "응답 대기" : "적용 미확인");
@@ -190,9 +171,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         // 2026-10-13: 알림 순서를 바꾸지 않고 속성명 목록을 재사용한다.
         private static readonly string[] DigitalZoomPropertyNames =
         {
@@ -203,9 +182,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         };
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// D-ZOOM 가능 여부 및 상태 표시의 바인딩을 갱신한다.
         /// </summary>
@@ -216,17 +193,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 연결 세션의 capability·응답·요청·추정 및 클릭 증거를 초기화한다.
-
         /// </summary>
         private void ResetDigitalZoomSession()
         {
-            ResetV292Session();
+            ResetWebAgentControlSession();
             ResetSpecialFeatureSession();
             ResetPresetLensEvidence();
             _eoDigitalEstimate.Enable(false);
             _irDigitalEstimate.Enable(false);
+
             for (int i = 0; i < 2; i++)
             {
                 _digitalCaps[i] = 0;
@@ -245,9 +221,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// EO/IR 기능 지원 조회를 연결 중 최대 초당 한 번 요청한다.
-
         /// </summary>
         public void QueryDigitalZoomSupport()
         {
@@ -263,9 +237,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 길이와 BOOLEAN 범위를 확인한 capability 응답으로 조회/설정 지원을 갱신한다.
-
         /// </summary>
         private void ApplyDigitalZoomCapability(byte[] p)
         {
@@ -300,7 +272,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-12: 설정만 지원하는 카메라와 상태 응답 누락을 구분한다.
             ConsoleLogHelper.State(
                 "DIGITAL ZOOM",
-                "CAPABILITY / TARGET=" + i + " / FLAGS=0x" + flags.ToString("X2") + " / SUPPORTED=" + ((flags & 1) != 0) + " / READABLE=" + ((flags & 2) != 0) + " / SETTABLE=" + ((flags & 4) != 0)
+                "CAPABILITY / TARGET=" + i +
+                " / FLAGS=0x" + flags.ToString("X2") +
+                " / SUPPORTED=" + ((flags & 1) != 0) +
+                " / READABLE=" + ((flags & 2) != 0) +
+                " / SETTABLE=" + ((flags & 4) != 0)
             );
 
             if ((flags & 3) == 3)
@@ -311,9 +287,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 유효한 장비 ON/OFF 응답을 적용하며 요청 확인과 추정 억제 상태를 갱신한다.
-
         /// </summary>
         private void ApplyDigitalZoomState(byte[] p)
         {
@@ -326,10 +300,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (_digitalState[i] >= 0)
             {
                 TickDigitalEstimate();
-                (i == 0 ? _eoDigitalEstimate : _irDigitalEstimate).Enable(_digitalState[i] == 1 &&
-                    (i == 0 ||
-                    (_digitalCapsKnown[i] &&
-                    (_digitalCaps[i] & 5) == 5)));
+                (i == 0 ? _eoDigitalEstimate : _irDigitalEstimate).Enable(_digitalState[i] == 1 && (i == 0 || (_digitalCapsKnown[i] && (_digitalCaps[i] & 5) == 5)));
             }
 
             _digitalStateTicks[i] = DateTime.UtcNow.Ticks;
@@ -338,15 +309,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 운용 잠금 검증 후 BOOLEAN 명령을 송신한다. 송신 성공을 장비 적용 확인으로 취급하지 않는다.
-
         /// </summary>
         public bool SetDigitalZoom(bool ir, bool on)
         {
             int i = ir ? 1 : 0;
 
-            // EO의 기존 설정 전용 흐름은 유지하며 IR은 아래 지원 응답도 필요하다.
+            // EO의 기존 설정 전용 흐름을 유지하며 IR도 지원 조회만으로 차단하지 않는다.
             // 실제 전송 결과와 장비 적용 확인은 별도로 유지한다.
             if (IsControlInputLocked || !IsOperationCommandEnabled)
             {
@@ -354,10 +323,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            // EO의 설정 전용 흐름을 유지하고 IR에는 명시적인 설정 지원을 요구한다.
+            // IR은 미연결·운용 잠금·중복 요청만 차단한다.
             if (ir && !CanSetIrDigitalZoom)
             {
-                ConsoleLogHelper.Warning("DIGITAL ZOOM", "Rejected / TARGET=1 / IR capability, connection or pending request");
+                ConsoleLogHelper.Warning("DIGITAL ZOOM", "IR 요청 거절 / 연결·운용 잠금·응답 대기 확인 필요");
                 return false;
             }
 
@@ -370,25 +339,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _digitalState[i] = -1;
                 _digitalPendingTicks[i] = DateTime.UtcNow.Ticks;
                 TickDigitalEstimate();
-                (i == 0 ? _eoDigitalEstimate : _irDigitalEstimate).Enable(on);
+                // 지원 미확인 IR에는 요청만 보내며 배율 추정을 실제 상태로 가정하지 않는다.
+                (i == 0 ? _eoDigitalEstimate : _irDigitalEstimate).Enable(on && (i == 0 || (_digitalCapsKnown[i] && (_digitalCaps[i] & 5) == 5)));
                 ConsoleLogHelper.State(
                     "D-ZOOM ESTIMATE",
-                    "CAMERA=" + (ir ? "IR" : "EO") + " / LOCAL REQUEST / ENABLED=" + on + " / MAX=" + ControlTuningFor(ir).DigitalEstimateMaximum + " / SECONDS=" + ControlTuningFor(ir).DigitalEstimateSeconds + " / ESTIMATED / NOT TELEMETRY"
+                    "CAMERA=" + (ir ? "IR" : "EO") +
+                    " / LOCAL REQUEST / ENABLED=" + on +
+                    " / MAX=" + ControlTuningFor(ir).DigitalEstimateMaximum +
+                    " / SECONDS=" + ControlTuningFor(ir).DigitalEstimateSeconds +
+                    " / ESTIMATED / NOT TELEMETRY"
                 );
             }
 
-            ConsoleLogHelper.Command(
-                "DIGITAL ZOOM",
-                "TARGET=" + i + " / REQUEST=" + (on ? "ON" : "OFF") + " / TX=" + sent + " / not a device ACK"
-            );
+            ConsoleLogHelper.Command("DIGITAL ZOOM", "TARGET=" + i + " / REQUEST=" + (on ? "ON" : "OFF") + " / TX=" + sent + " / not a device ACK");
             NotifyDigitalZoom();
             return sent;
         }
 
         /// <summary>
-
-        /// DIGITAL_ZOOM 거절 응답 시 요청·추정을 해제하고 IR 설정 버튼을 비활성화한다.
-
+        /// DIGITAL_ZOOM 거절 응답 시 요청·추정을 해제한다. 수동 재요청 버튼은 유지한다.
         /// </summary>
         private void ApplyDigitalZoomUnavailable(int target)
         {
@@ -399,17 +368,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _digitalCaps[target] = 0;
             _digitalCapsKnown[target] = true;
             (target == 0 ? _eoDigitalEstimate : _irDigitalEstimate).Enable(false);
-            ConsoleLogHelper.Warning(
-                "D-ZOOM ESTIMATE",
-                "CAMERA=" + (target == 0 ? "EO" : "IR") + " / DEVICE REJECTED / ESTIMATE RESET"
-            );
+            ConsoleLogHelper.Warning("D-ZOOM ESTIMATE", "CAMERA=" + (target == 0 ? "EO" : "IR") + " / DEVICE REJECTED / ESTIMATE RESET");
             NotifyDigitalZoom();
         }
 
         /// <summary>
-
         /// 클릭 이동 기한, D-ZOOM 응답 대기 및 주기 조회를 기존 간격으로 감시한다.
-
         /// </summary>
         private void TickDigitalZoom()
         {
@@ -460,15 +424,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         private string _lastDigitalUiSignature;
 
         #endregion
-
         #region [기능 처리 함수]
-
         // 2026-10-12: 시간 기반 이동이 아닌 핀홀 광선 투영을 사용한다. 임시 화각은 현장 보정이 필요하다.
         /// <summary>
         /// 정규화된 영상 클릭 좌표를 핀홀 광선 모델로 PT 절대 목표 각도에 환산한다.
@@ -483,7 +443,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ny,
                 hfov,
                 aspect
-            }.AnyInvalid() || Math.Abs(nx) > 1 || Math.Abs(ny) > 1 || hfov <= 0 || hfov >= 170 || aspect <= 0 || Math.Abs(tilt) > 85)
+            }.AnyInvalid() ||
+                Math.Abs(nx) > 1 ||
+                Math.Abs(ny) > 1 ||
+                hfov <= 0 ||
+                hfov >= 170 ||
+                aspect <= 0 ||
+                Math.Abs(tilt) > 85)
                 return null;
 
             double r = Math.PI / 180, x = nx * Math.Tan(hfov * r / 2), y = -ny * Math.Tan(hfov * r / 2) / aspect;
@@ -494,9 +460,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-
         /// 영상·렌즈·자세의 신선도와 제어 잠금을 검증한 뒤 줌 보정 PT 절대 이동을 요청한다.
-
         /// </summary>
         public async Task<bool> CenterVideoPointAsync(bool ir, double nx, double ny, double aspect)
         {
@@ -514,14 +478,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _controlInputs.Count > 0 ||
                 pose == null ||
                 now - pose.Item3 > TimeSpan.FromSeconds(2).Ticks ||
-                (!ir &&
-                !IsLensFresh(false)) ||
+                (!ir && !IsLensFresh(false)) ||
                 now - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]) > TimeSpan.FromSeconds(1).Ticks ||
                 status == null ||
-                !status.EndsWith(
-                "] Connected",
-                StringComparison.Ordinal
-            ) ||
+                !status.EndsWith("] Connected", StringComparison.Ordinal) ||
                 now - _lastCenterClickTicks < TimeSpan.FromMilliseconds(300).Ticks)
             {
                 ConsoleLogHelper.Warning(
@@ -563,16 +523,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 한 번에 각 축 최대 3°만 요청하여 오래된 배율로 큰 이동이 발생하지 않게 한다.
                 double deltaPan = (target.Item1 - pose.Item1 + 540) % 360 - 180;
                 target = Tuple.Create(
-                    (pose.Item1 + Clamp(
-                    deltaPan,
-                    -3.0,
-                    3.0
-                ) + 540) % 360 - 180,
-                    pose.Item2 + Clamp(
-                    target.Item2 - pose.Item2,
-                    -3.0,
-                    3.0
-                )
+                    (pose.Item1 + Clamp(deltaPan, -3.0, 3.0) + 540) % 360 - 180,
+                    pose.Item2 + Clamp(target.Item2 - pose.Item2, -3.0, 3.0)
                 );
             }
 
@@ -633,22 +585,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _lastPanAbsoluteTarget = target.Item1;
                 double panDistance = Math.Abs((target.Item1 - pose.Item1 + 540) % 360 - 180), tiltDistance = Math.Abs(tilt - pose.Item2);
                 _centerMoveEpoch = epoch;
-                _centerDeadlineTicks = DateTime.UtcNow.AddSeconds(Math.Min(
-                    120,
-                    Math.Max(
-                    5,
-                    2 * Math.Max(
-                    panDistance,
-                    tiltDistance
-                ) / Math.Max(
-                    1,
-                    speed
-                ) + 3
-                )
-                )).Ticks;
+                _centerDeadlineTicks = DateTime.UtcNow.AddSeconds(Math.Min(120, Math.Max(5, 2 * Math.Max(panDistance, tiltDistance) / Math.Max(1, speed) + 3))).Ticks;
                 ConsoleLogHelper.Command(
                     "VIDEO CENTER",
-                    "SOURCE=VIDEO_CLICK / CAMERA=" + (ir ? "IR" : "EO") + " / APPROXIMATE_IR=" + approximateIr + " / MODEL=" + (tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") + " / RAW_ZOOM=" + zoom + " / OPTICAL_RATIO=" + opticalRatio + " / DIGITAL_ESTIMATE=" + digitalFactor + " / EFFECTIVE_RATIO=" + effectiveRatio + " / XY=" + nx + "," + ny + " / ESTIMATED_HFOV=" + hfov + " / TARGET=" + target.Item1 + "," + tilt + " / TX_ONLY, arrival not confirmed"
+                    "SOURCE=VIDEO_CLICK / CAMERA=" + (ir ? "IR" : "EO") +
+                    " / APPROXIMATE_IR=" + approximateIr +
+                    " / MODEL=" + (tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") +
+                    " / RAW_ZOOM=" + zoom +
+                    " / OPTICAL_RATIO=" + opticalRatio +
+                    " / DIGITAL_ESTIMATE=" + digitalFactor +
+                    " / EFFECTIVE_RATIO=" + effectiveRatio +
+                    " / XY=" + nx +
+                    "," + ny +
+                    " / ESTIMATED_HFOV=" + hfov +
+                    " / TARGET=" + target.Item1 +
+                    "," + tilt +
+                    " / TX_ONLY, arrival not confirmed"
                 );
                 return true;
             }
@@ -663,14 +615,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _videoCenterBusy = false;
             }
         }
-
         #endregion
     }
 
     internal static class CameraNumberValidation
     {
         #region [기능 처리 함수]
-
         /// <summary>
         /// 좌표 계산에 사용할 값에 유효하지 않은 수가 포함되었는지 확인한다.
         /// </summary>
@@ -682,7 +632,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             return false;
         }
-
         #endregion
     }
 }

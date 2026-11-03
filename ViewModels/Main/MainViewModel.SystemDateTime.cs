@@ -193,7 +193,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool sent = _controlCommandService.SetSystemDateTimeUtc(pcUtc);
             ConsoleLogHelper.Command(
                 "SYSTEM TIME SET TX",
-                "PC_LOCAL=" + FormatDateTime(pcLocal) + " / UTC=" + FormatDateTime(pcUtc) + " / PACKET=" + ToHex(packet) + " / SENT=" + sent
+                "PC_LOCAL=" + FormatDateTime(pcLocal) +
+                " / UTC=" + FormatDateTime(pcUtc) +
+                " / PACKET=" + ToHex(packet) +
+                " / SENT=" + sent
             );
 
             if (!sent)
@@ -273,20 +276,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 bool clockChanged;
 
-                if (_webAgentTelemetryClock.Observe(
-                    new DateTimeOffset(utcDateTime).ToUnixTimeMilliseconds(),
-                    querySentAt,
-                    receivedAt,
-                    out clockChanged
-                ) &&
+                if (_webAgentTelemetryClock.Observe(new DateTimeOffset(utcDateTime).ToUnixTimeMilliseconds(), querySentAt, receivedAt, out clockChanged) &&
                     clockChanged)
                 {
                     ConsoleLogHelper.State(
                         "WEB AGENT CLOCK",
-                        "F1 clock reference established/reset; no EF time write / PC_MINUS_SBC_SECONDS=" + (DateTime.UtcNow - utcDateTime).TotalSeconds.ToString(
-                        "F1",
-                        CultureInfo.InvariantCulture
-                    )
+                        "F1 clock reference established/reset; no EF time write / PC_MINUS_SBC_SECONDS=" + (DateTime.UtcNow - utcDateTime).TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)
                     );
                 }
             }
@@ -302,7 +297,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             });
             ConsoleLogHelper.State(
                 "SYSTEM TIME RX",
-                "VERSION=" + version + " / OP=" + operationText + " / STATUS=0x" + status.ToString("X2") + "(" + statusText + ")" + " / UTC=" + FormatDateTime(utcDateTime) + " / LOCAL=" + FormatDateTime(utcDateTime.ToLocalTime())
+                "VERSION=" + version +
+                " / OP=" + operationText +
+                " / STATUS=0x" + status.ToString("X2") +
+                "(" + statusText +
+                ")" +
+                " / UTC=" + FormatDateTime(utcDateTime) +
+                " / LOCAL=" + FormatDateTime(utcDateTime.ToLocalTime())
             );
 
             // 2026-10-06: 시간 설정 성공 직후 실제 적용값을 단건 재조회한다.
@@ -312,8 +313,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        /// <summary>
-        /// V32_5: 연결 직후와 다른 탭에서도 5초마다 읽기 전용 F1 조회.
+        /// 2026-11-03 정비: <summary>
+        /// 연결 직후와 다른 탭에서도 5초마다 읽기 전용 F1 조회.
         /// SYSTEM TIME 탭은 기존 1Hz이며 응답 대기 중에는 중복 송신하지 않는다.
         /// </summary>
         private void StartSystemTimePollingAfterConnection()
@@ -374,10 +375,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _manualSystemTimeQueryPending = false;
                 _systemTimeQueryInFlight = false;
                 SystemDateTimeStatusText = "Timeout: 장비 시간 응답 없음";
-                ConsoleLogHelper.Warning(
-                    "SYSTEM TIME QUERY",
-                    "Manual query timeout after 2 seconds; automatic polling remains available"
-                );
+                ConsoleLogHelper.Warning("SYSTEM TIME QUERY", "Manual query timeout after 2 seconds; automatic polling remains available");
                 return;
             }
 

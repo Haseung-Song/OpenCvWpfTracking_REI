@@ -16,7 +16,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
-        private readonly object _gpsTelemetrySync = new object();
+        private readonly object _gpsTelemetrySync = new object ();
 
         private readonly Stopwatch _gpsRxRateWindow = Stopwatch.StartNew();
 
@@ -246,12 +246,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (!int.TryParse(
-                GpsAutoTxRateInput,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out int frequencyHz
-            ) ||
+            if (!int.TryParse(GpsAutoTxRateInput, NumberStyles.Integer, CultureInfo.InvariantCulture, out int frequencyHz) ||
                 frequencyHz < 0 ||
                 frequencyHz > 10)
             {
@@ -378,25 +373,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     GpsStatusText = fixValid ? "GPS DATA VALID" : "GPS DATA INVALID / FIX 0";
                     GpsCoordinatesDisplay = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "LAT {0:F7}° / LON {1:F7}° / ALT {2:F3} m",
-                        gps.Latitude,
-                        gps.Longitude,
-                        gps.Altitude
-                    );
+                            CultureInfo.InvariantCulture,
+                            "LAT {0:F7}° / LON {1:F7}° / ALT {2:F3} m",
+                            gps.Latitude,
+                            gps.Longitude,
+                            gps.Altitude
+                        );
                     GpsMotionDisplay = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "SPEED {0:F2} (MCB ×0.01) / GPS COURSE {1:F2}°",
-                        gps.Speed,
-                        gps.CourseDegrees
-                    );
+                            CultureInfo.InvariantCulture,
+                            "SPEED {0:F2} (MCB ×0.01) / GPS COURSE {1:F2}°",
+                            gps.Speed,
+                            gps.CourseDegrees
+                        );
                     GpsQualityDisplay = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "HDOP {0:F2} / SAT {1} / FIX {2}",
-                        gps.Hdop,
-                        gps.SatelliteCount,
-                        gps.FixStatus
-                    );
+                            CultureInfo.InvariantCulture,
+                            "HDOP {0:F2} / SAT {1} / FIX {2}",
+                            gps.Hdop,
+                            gps.SatelliteCount,
+                            gps.FixStatus
+                        );
                     GpsRxTimeDisplay = "GUI RX TIME " + receivedAt.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
                     UpdateGpsHeadingReferenceDisplay();
                     UpdateGpsRateDisplay();
@@ -408,18 +403,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State(
                     "WEB AGENT GPS RX",
                     string.Format(
-                    CultureInfo.InvariantCulture,
-                    "LAT={0:F7} / LON={1:F7} / ALT={2:F3}m / SPEED={3:F2}(MCB) / COURSE={4:F2} / HDOP={5:F2} / SAT={6} / FIX={7} / RX_RATE={8:F1}Hz",
-                    gps.Latitude,
-                    gps.Longitude,
-                    gps.Altitude,
-                    gps.Speed,
-                    gps.CourseDegrees,
-                    gps.Hdop,
-                    gps.SatelliteCount,
-                    gps.FixStatus,
-                    _measuredGpsPacketRate ?? 0.0
-                )
+                        CultureInfo.InvariantCulture,
+                        "LAT={0:F7} / LON={1:F7} / ALT={2:F3}m / SPEED={3:F2}(MCB) / COURSE={4:F2} / HDOP={5:F2} / SAT={6} / FIX={7} / RX_RATE={8:F1}Hz",
+                        gps.Latitude,
+                        gps.Longitude,
+                        gps.Altitude,
+                        gps.Speed,
+                        gps.CourseDegrees,
+                        gps.Hdop,
+                        gps.SatelliteCount,
+                        gps.FixStatus,
+                        _measuredGpsPacketRate ?? 0.0
+                    )
                 );
             }
         }
@@ -436,20 +431,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void UpdateGpsHeadingReferenceDisplay()
         {
-            string gpsText = _latestGpsCourseDegrees.HasValue ? _latestGpsCourseDegrees.Value.ToString(
-                "F2",
-                CultureInfo.InvariantCulture
-            ) + "°" : "--";
-            string imuText = _latestImuRawYawDegrees.HasValue ? _latestImuRawYawDegrees.Value.ToString(
-                "F2",
-                CultureInfo.InvariantCulture
-            ) + "°" : "--";
-            double? trueNorth = _latestImuRawYawDegrees.HasValue &&
-                _storedRpyYawOffset.HasValue ? NormalizeHeadingDegrees(_latestImuRawYawDegrees.Value + _storedRpyYawOffset.Value) : (double?)null;
-            string offsetText = _storedRpyYawOffset.HasValue ? _storedRpyYawOffset.Value.ToString(
-                "F2",
-                CultureInfo.InvariantCulture
-            ) + "°" : "--";
+            string gpsText = _latestGpsCourseDegrees.HasValue
+                ? _latestGpsCourseDegrees.Value.ToString("F2", CultureInfo.InvariantCulture) + "°"
+                : "--";
+            string imuText = _latestImuRawYawDegrees.HasValue
+                ? _latestImuRawYawDegrees.Value.ToString("F2", CultureInfo.InvariantCulture) + "°"
+                : "--";
+            double? trueNorth = _latestImuRawYawDegrees.HasValue && _storedRpyYawOffset.HasValue
+                ? NormalizeHeadingDegrees(_latestImuRawYawDegrees.Value + _storedRpyYawOffset.Value)
+                : (double? )null;
+            string offsetText = _storedRpyYawOffset.HasValue
+                ? _storedRpyYawOffset.Value.ToString("F2", CultureInfo.InvariantCulture) + "°"
+                : "--";
             string trueNorthText = trueNorth.HasValue ? trueNorth.Value.ToString("F2", CultureInfo.InvariantCulture) + "°" : "--";
             GpsHeadingReferenceDisplay = "GPS COURSE " + gpsText + " / IMU RAW YAW " + imuText + " / OFFSET " + offsetText + " / 진북 " + trueNorthText;
         }
@@ -497,11 +490,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void UpdateGpsRateDisplay()
         {
             string configured = _gpsAutoTxRate.HasValue ? _gpsAutoTxRate.Value.ToString(CultureInfo.InvariantCulture) + " Hz" : "조회 대기";
-            string measured = _measuredGpsPacketRate.HasValue ? string.Format(
-                CultureInfo.InvariantCulture,
-                "약 {0:F1} Hz",
-                _measuredGpsPacketRate.Value
-            ) : "측정 대기";
+            string measured = _measuredGpsPacketRate.HasValue
+                ? string.Format(CultureInfo.InvariantCulture, "약 {0:F1} Hz", _measuredGpsPacketRate.Value)
+                : "측정 대기";
             CurrentGpsRateDisplay = "현재 설정: " + configured + " / GUI 수신 패킷률: " + measured;
         }
 
@@ -615,11 +606,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 sample[18] = 12;
                 sample[19] = 3;
 
-                if (!TryParseGpsPayload(
-                    sample,
-                    out GpsTelemetryData gps,
-                    out string error
-                ) ||
+                if (!TryParseGpsPayload(sample, out GpsTelemetryData gps, out string error) ||
                     Math.Abs(gps.Latitude - 36.4186235) > 0.00000001 ||
                     Math.Abs(gps.Longitude - 127.4118881) > 0.00000001 ||
                     Math.Abs(gps.CourseDegrees - 123.45) > 0.001 ||
@@ -652,16 +639,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private sealed class GpsTelemetryData
         {
-            public GpsTelemetryData(
-                double latitude,
-                double longitude,
-                double altitude,
-                double speed,
-                double courseDegrees,
-                double hdop,
-                byte satelliteCount,
-                byte fixStatus
-            )
+            public GpsTelemetryData(double latitude, double longitude, double altitude, double speed, double courseDegrees, double hdop, byte satelliteCount, byte fixStatus)
             {
                 Latitude = latitude;
                 Longitude = longitude;

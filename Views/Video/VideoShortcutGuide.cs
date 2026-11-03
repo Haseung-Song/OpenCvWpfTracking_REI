@@ -16,26 +16,18 @@ namespace OpenCvWpfTracking
     internal static class VideoShortcutGuide
     {
         #region [기능 처리 함수]
-
         /// <summary>
         /// 영상 영역 크기에 맞는 단축키 안내 배율을 계산한다.
         /// </summary>
-        internal static double Scale(double width, double height) => Math.Max(.4, Math.Min(1.15, Math.Min(width / 1280, height / 720)));
+        internal static double Scale(double width, double height) =>
+            Math.Max(.4, Math.Min(1.15, Math.Min(width / 1280, height / 720)));
 
         // IR 서브 영상에서도 문구 가독성을 유지하고 도움말만 추가 축소를 허용한다.
         /// <summary>
         /// 작은 영상에서도 읽을 수 있는 표시 문구 배율을 계산한다.
         /// </summary>
-        internal static double LabelScale(double width, double height) => Math.Max(
-            1.0,
-            Math.Min(
-            1.3,
-            Math.Min(
-            width / 1280,
-            height / 720
-        )
-        )
-        );
+        internal static double LabelScale(double width, double height) =>
+            Math.Max(1.0, Math.Min(1.3, Math.Min(width / 1280, height / 720)));
 
         // 2026-10-15: 두 채널과 모든 창에서 같은 Uniform 원본 영상 표시 영역을 사용한다.
         /// <summary>
@@ -106,19 +98,16 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// 실제 영상 우측 상단에 화재와 연기 경고를 겹치지 않게 배치한다.
         /// </summary>
-        internal static void AttachVideoAlarmPositions(
-            FrameworkElement host,
-            StackPanel panel,
-            FrameworkElement video,
-            Func<double> aspect
-        )
+        internal static void AttachVideoAlarmPositions(FrameworkElement host, StackPanel panel, FrameworkElement video, Func<double> aspect)
         {
             if (host == null || panel == null || video == null || aspect == null)
                 return;
 
             Rect previous = Rect.Empty;
             double previousWidth = -1, previousHeight = -1;
-            WatchOverlayLayout(host, () =>
+            WatchOverlayLayout(
+                host,
+                () =>
             {
                 Rect area = VideoContentRect(host, video, aspect());
 
@@ -152,19 +141,14 @@ namespace OpenCvWpfTracking
                             banner.BorderBrush = text.Foreground;
                         }
                     }
-            });
+            }
+            );
         }
 
         /// <summary>
         /// 연결 상태와 실제 영상 영역에 따라 배율 및 연결 문구를 배치한다.
         /// </summary>
-        internal static void AttachVideoLabelPositions(
-            FrameworkElement host,
-            FrameworkElement video,
-            FrameworkElement ratio,
-            TextBlock status,
-            Func<double> aspect
-        )
+        internal static void AttachVideoLabelPositions(FrameworkElement host, FrameworkElement video, FrameworkElement ratio, TextBlock status, Func<double> aspect)
         {
             if (host == null || video == null || ratio == null || status == null || aspect == null)
                 return;
@@ -173,7 +157,9 @@ namespace OpenCvWpfTracking
             Rect previous = Rect.Empty;
             Size previousSize = new Size();
             bool? previousConnected = null;
-            WatchOverlayLayout(host, () =>
+            WatchOverlayLayout(
+                host,
+                () =>
             {
                 bool connected = (status.Text ?? "").EndsWith("] Connected", StringComparison.Ordinal);
                 Rect area = connected ? VideoContentRect(host, video, aspect()) : Rect.Empty;
@@ -203,7 +189,8 @@ namespace OpenCvWpfTracking
                 previous = area;
                 previousSize = size;
                 previousConnected = connected;
-            });
+            }
+            );
         }
 
         /// <summary>
@@ -301,24 +288,7 @@ namespace OpenCvWpfTracking
         internal static StackPanel CreateContent(bool ir)
         {
             var panel = new StackPanel();
-            Action<string, string, double, bool> add = (
-                text,
-                color,
-                size,
-                bold
-            ) => panel.Children.Add(new TextBlock
-            {
-                Text = text,
-                Foreground = (Brush)new BrushConverter().ConvertFromString(color),
-                FontSize = size,
-                FontWeight = bold ? FontWeights.Bold : FontWeights.Normal,
-                Margin = new Thickness(
-                0,
-                panel.Children.Count == 0 ? 0 : 4,
-                0,
-                0
-            )
-            });
+            Action<string, string, double, bool> add = (text, color, size, bold) => panel.Children.Add(new TextBlock { Text = text, Foreground = (Brush)new BrushConverter().ConvertFromString(color), FontSize = size, FontWeight = bold ? FontWeights.Bold : FontWeights.Normal, Margin = new Thickness(0, panel.Children.Count == 0 ? 0 : 4, 0, 0) });
             add(
                 (ir ? "IR" : "EO") + " CAMERA / SHORTCUT CONTROL",
                 ir ? LegacyVideoIntegration.IrColor : LegacyVideoIntegration.EoColor,
@@ -345,103 +315,73 @@ namespace OpenCvWpfTracking
             panel.Children.Add(warning);
             return panel;
         }
-
         #endregion
     }
 
     internal sealed class DeviceOnOffBrushConverter : IValueConverter
     {
         #region [필드 및 상태 정보]
-
         private static readonly Brush OnBrush = LegacyVideoIntegration.FrozenBrush("#55D187");
 
         private static readonly Brush OffBrush = LegacyVideoIntegration.FrozenBrush("#FF6B6B");
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 화면 바인딩 값을 해당 표시 형식으로 변환한다.
         /// </summary>
-        public object Convert(
-            object value,
-            Type targetType,
-            object parameter,
-            CultureInfo culture
-        ) =>
-            string.Equals(
-            value as string,
-            "ON",
-            StringComparison.OrdinalIgnoreCase
-        ) ? OnBrush : OffBrush;
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            string.Equals(value as string, "ON", StringComparison.OrdinalIgnoreCase) ? OnBrush : OffBrush;
 
         /// <summary>
         /// 역방향 바인딩에서 사용할 값을 반환한다.
         /// </summary>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
-
         #endregion
     }
 
     internal sealed class ConnectedVideoVisibilityConverter : IValueConverter
     {
         #region [기능 처리 함수]
-
         /// <summary>
         /// 화면 바인딩 값을 해당 표시 형식으로 변환한다.
         /// </summary>
-        public object Convert(
-            object value,
-            Type targetType,
-            object parameter,
-            CultureInfo culture
-        ) =>
-            value is string status &&
-            status.EndsWith(
-            "] Connected",
-            StringComparison.Ordinal
-        ) ? Visibility.Visible : Visibility.Collapsed;
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            value is string status && status.EndsWith("] Connected", StringComparison.Ordinal)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         /// <summary>
         /// 역방향 바인딩에서 사용할 값을 반환한다.
         /// </summary>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
-
         #endregion
     }
 
     internal sealed class ConnectedRatioVisibilityConverter : IMultiValueConverter
     {
         #region [기능 처리 함수]
-
         /// <summary>
         /// 화면 바인딩 값을 해당 표시 형식으로 변환한다.
         /// </summary>
-        public object Convert(
-            object[] values,
-            Type targetType,
-            object parameter,
-            CultureInfo culture
-        ) =>
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture) =>
             values.Length == 2 &&
             values[0] is string status &&
-            status.EndsWith(
-            "] Connected",
-            StringComparison.Ordinal
-        ) &&
+            status.EndsWith("] Connected", StringComparison.Ordinal) &&
             values[1] is bool visible &&
-            visible ? Visibility.Visible : Visibility.Collapsed;
+            visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         /// <summary>
         /// 역방향 바인딩에서 사용할 값을 반환한다.
         /// </summary>
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) => new object[]
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>
+            new object[]
         {
             Binding.DoNothing,
             Binding.DoNothing
         };
-
         #endregion
     }
 }

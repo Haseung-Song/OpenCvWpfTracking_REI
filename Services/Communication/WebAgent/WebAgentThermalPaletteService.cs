@@ -1,11 +1,11 @@
-namespace OpenCvWpfTracking.Services.Communication.WebAgent
+﻿namespace OpenCvWpfTracking.Services.Communication.WebAgent
 {
     /// <summary>직접 색상 선택과 기존 번호 기반 NEXT·PREV를 분리해 WEB에 전달한다.</summary>
     public sealed class WebAgentThermalPaletteService
     {
         private readonly ControlCommandService _controlCommandService;
 
-        private readonly object _relativeSync = new object();
+        private readonly object _relativeSync = new object ();
 
         private int _currentPalette = 1;
 
@@ -29,7 +29,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         /// <summary>WEB NUC는 공통 단발 요청만 사용하며 구형 명령으로 재시도하지 않는다.</summary>
         public bool RequestNuc() => _controlCommandService.SetCameraFeature(0x04, 0x01, 0x01);
 
-        /// <summary>V33_5와 같은 지원 마스크를 사용하며 원시 번호로 색상 이름을 추정하지 않는다.</summary>
+        /// <summary>와 같은 지원 마스크를 사용하며 원시 번호로 색상 이름을 추정하지 않는다.</summary>
         public void ApplyPaletteCapability(uint optionMask)
         {
             lock (_relativeSync)
@@ -55,16 +55,18 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             }
         }
 
-        /// <summary>정상 동작하던 V33_5의 E9 Feature 05 선택 후 E7 조회 순서를 유지한다.</summary>
+        /// <summary>정상 동작하던 의 E9 Feature 05 선택 후 E7 조회 순서를 유지한다.</summary>
         private bool SelectRelative(int offset)
         {
             lock (_relativeSync)
             {
                 int palette = (_currentPalette + offset + 6) % 6;
+
                 if ((_supportedPaletteMask & (1u << palette)) == 0)
                     return false;
 
                 bool sent = _controlCommandService.SetCameraFeature(0x05, 0x01, (byte)palette);
+
                 if (sent)
                 {
                     _currentPalette = palette;

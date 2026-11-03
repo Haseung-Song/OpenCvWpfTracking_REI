@@ -19,15 +19,12 @@ namespace OpenCvWpfTracking
     public sealed class OpticalCalibrationSession
     {
         #region [필드 및 상태 정보]
-
         private readonly List<Point> points = new List<Point>();
 
         private readonly List<int> zooms = new List<int>();
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         public bool Active { get; private set; }
 
         public bool FourPoint { get; private set; }
@@ -45,9 +42,7 @@ namespace OpenCvWpfTracking
         public IReadOnlyList<Point> SelectedPoints => points;
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 현재 위치와 장비 기준을 고정하여 십자선 보정 점 선택을 시작한다.
         /// </summary>
@@ -132,7 +127,9 @@ namespace OpenCvWpfTracking
 
             if (points.Count < 4)
             {
-                Status = points.Count == 1 ? "2/4 · 같은 낮은 줌에서 기준물 B 클릭" : points.Count == 2 ? "3/4 · 줌만 확대 후 같은 기준물 A 클릭" : "4/4 · 같은 높은 줌에서 기준물 B 클릭";
+                Status = points.Count == 1
+                    ? "2/4 · 같은 낮은 줌에서 기준물 B 클릭"
+                    : points.Count == 2 ? "3/4 · 줌만 확대 후 같은 기준물 A 클릭" : "4/4 · 같은 높은 줌에서 기준물 B 클릭";
                 return;
             }
 
@@ -141,13 +138,7 @@ namespace OpenCvWpfTracking
             if (Math.Abs(zooms[0] - zooms[1]) > 12 ||
                 Math.Abs(zooms[2] - zooms[3]) > 12 ||
                 zooms[2] - zooms[0] < 50 ||
-                !OpticalCenterCalibration.TryIntersection(
-                points[0],
-                points[1],
-                points[2],
-                points[3],
-                out center
-            ))
+                !OpticalCenterCalibration.TryIntersection(points[0], points[1], points[2], points[3], out center))
             {
                 Cancel();
                 Status = "교점 계산 불가 · 줌 차이/대응점 확인 후 다시 시작";
@@ -162,29 +153,14 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// 후보와 현재 장비 및 줌 상태가 저장 조건을 만족하는지 확인한다.
         /// </summary>
-        public bool CanSave(
-            int zoom,
-            Point pose,
-            string device,
-            bool fresh
-        ) =>
-            Active &&
-            Candidate.HasValue &&
-            fresh &&
-            zoom == CandidateZoom &&
-            device == Device &&
-            PoseError(
-            Pose,
-            pose
-        ) <= .005;
-
+        public bool CanSave(int zoom, Point pose, string device, bool fresh) =>
+            Active && Candidate.HasValue && fresh && zoom == CandidateZoom && device == Device && PoseError(Pose, pose) <= .005;
         #endregion
     }
 
     internal sealed class InlineOpticalCalibration
     {
         #region [필드 및 상태 정보]
-
         private static readonly ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration> controllers = new ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration>();
 
         private readonly FrameworkElement image;
@@ -213,22 +189,20 @@ namespace OpenCvWpfTracking
 
         private Rect markerArea = Rect.Empty;
 
-        private int markerVersion, paintedVersion = -1;
+        private int markerVersion;
+
+        private int paintedVersion = -1;
 
         private string overlayDeviceKey;
 
         private bool hidingForSelection;
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         internal FrameworkElement SettingsPanel { get; private set; }
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 영상에 연결된 십자선 설정 요소를 반환한다.
         /// </summary>
@@ -255,9 +229,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [속성 및 상태 표시]
-
         internal Point? Preview
         {
             get
@@ -273,9 +245,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 해당 영상에서 보정 점 선택을 진행 중인지 확인한다.
         /// </summary>
@@ -286,9 +256,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [초기화]
-
         internal InlineOpticalCalibration(Grid host, FrameworkElement viewport, MainViewModel model, Func<bool> infrared)
         {
             image = viewport;
@@ -312,17 +280,18 @@ namespace OpenCvWpfTracking
                 Margin = new Thickness(3, 2, 3, 2),
                 ToolTip = "십자선 표시/숨김은 EO / IR 공통 적용"
             };
-            visible.SetBinding(
-                ToggleButton.IsCheckedProperty,
-                new Binding("IsCrosshairVisible") { Source = vm, Mode = BindingMode.TwoWay }
-            );
+            visible.SetBinding(ToggleButton.IsCheckedProperty, new Binding("IsCrosshairVisible") { Source = vm, Mode = BindingMode.TwoWay });
             tools.Children.Add(visible);
             var buttons = new Grid();
             buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.45, GridUnitType.Star) });
             buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             tools.Children.Add(buttons);
             fourPointButton = Add(buttons, 0, "수동 계산(4점)", () => Begin(true));
-            Add(buttons, 1, "기본 중심", () =>
+            Add(
+                buttons,
+                1,
+                "기본 중심",
+                () =>
             {
                 try
                 {
@@ -336,7 +305,8 @@ namespace OpenCvWpfTracking
                     OpenCvWpfTracking.Common.ConsoleLogHelper.Error("십자선 보정", "기본 중심 복원 실패 · 기존 저장값 유지", e);
                     Notice(e.Message);
                 }
-            });
+            }
+            );
             status = new TextBlock
             {
                 Foreground = Brushes.White,
@@ -439,14 +409,7 @@ namespace OpenCvWpfTracking
                 settingsToggle.Foreground = LegacyVideoIntegration.ChannelBrush(channel);
                 settingsBorder.BorderBrush = settingsToggle.Foreground;
                 bool connected = (channel ? vm.IrStatusText : vm.EoStatusText).EndsWith("] Connected", StringComparison.Ordinal);
-                Rect area = VideoShortcutGuide.VideoContentRect(
-                    host,
-                    image,
-                    VideoShortcutGuide.SourceAspect(
-                    image,
-                    channel ? 1.25 : 16.0 / 9
-                )
-                );
+                Rect area = VideoShortcutGuide.VideoContentRect(host, image, VideoShortcutGuide.SourceAspect(image, channel ? 1.25 : 16.0 / 9));
 
                 if (!connected || area.IsEmpty || area.Width < 100 || area.Height < 80)
                 {
@@ -507,9 +470,9 @@ namespace OpenCvWpfTracking
 
                 Point p = e.GetPosition(image);
                 p = new Point(
-                    (p.X - (image.ActualWidth - bitmap.PixelWidth * scale) / 2) / (bitmap.PixelWidth * scale),
-                    (p.Y - (image.ActualHeight - bitmap.PixelHeight * scale) / 2) / (bitmap.PixelHeight * scale)
-                );
+                            (p.X - (image.ActualWidth - bitmap.PixelWidth * scale) / 2) / (bitmap.PixelWidth * scale),
+                            (p.Y - (image.ActualHeight - bitmap.PixelHeight * scale) / 2) / (bitmap.PixelHeight * scale)
+                        );
                 SelectPoint(p);
                 e.Handled = true;
             }),
@@ -525,9 +488,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 현재 위치와 장비 기준을 고정하여 십자선 보정 점 선택을 시작한다.
         /// </summary>
@@ -792,12 +753,8 @@ namespace OpenCvWpfTracking
             session.Cancel();
             ClearGeometry();
             pickingHint.Visibility = Visibility.Collapsed;
-            OpenCvWpfTracking.Common.ConsoleLogHelper.State(
-                "OPTICAL CENTER",
-                (ir() ? "IR" : "EO") + " / CALIBRATION_CANCELED / DIGITAL_ZOOM_ON"
-            );
+            OpenCvWpfTracking.Common.ConsoleLogHelper.State("OPTICAL CENTER", (ir() ? "IR" : "EO") + " / CALIBRATION_CANCELED / DIGITAL_ZOOM_ON");
         }
-
         #endregion
     }
 }

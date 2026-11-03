@@ -19,10 +19,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private static readonly TimeSpan PositionTelemetryMaximumAge = TimeSpan.FromSeconds(30);
 
-        private readonly PositionSnapshotService _positionSnapshotService = new PositionSnapshotService(
-            PositionStateMaximumAge,
-            PositionTelemetryMaximumAge
-        );
+        private readonly PositionSnapshotService _positionSnapshotService = new PositionSnapshotService(PositionStateMaximumAge, PositionTelemetryMaximumAge);
 
         private PositionSnapshot _lastPositionSnapshot;
 
@@ -37,12 +34,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get
             {
                 PositionSnapshot snapshot = _positionSnapshotService.Capture("UI_STATUS");
-                return "PTZ " + ToUiStatus(snapshot.PtzStatus) + "  /  EO " + ToUiStatus(snapshot.EoLensStatus) + "  /  IR " + ToUiStatus(snapshot.IrLensStatus) + "  /  GPS " + ToUiStatus(snapshot.GpsStatus) + "  /  IMU " + ToUiStatus(snapshot.ImuStatus);
+                return "PTZ " + ToUiStatus(snapshot.PtzStatus) +
+                    "  /  EO " + ToUiStatus(snapshot.EoLensStatus) +
+                    "  /  IR " + ToUiStatus(snapshot.IrLensStatus) +
+                    "  /  GPS " + ToUiStatus(snapshot.GpsStatus) +
+                    "  /  IMU " + ToUiStatus(snapshot.ImuStatus);
             }
         }
 
         public string LastPositionSnapshotText =>
-            _lastPositionSnapshot == null ? "LAST SNAPSHOT : --" : "LAST SNAPSHOT : " + _lastPositionSnapshot.Source + "  /  " + _lastPositionSnapshot.CapturedAt.ToString("HH:mm:ss") + "  /  " + _lastPositionSnapshot.PositionSummary;
+            _lastPositionSnapshot == null
+            ? "LAST SNAPSHOT : --"
+            : "LAST SNAPSHOT : " + _lastPositionSnapshot.Source +
+            "  /  " + _lastPositionSnapshot.CapturedAt.ToString("HH:mm:ss") +
+            "  /  " + _lastPositionSnapshot.PositionSummary;
 
         /// <summary>
         /// 위치 상태 저장소에 현재 장비의 연결 여부를 반영한다.
@@ -72,17 +77,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueuePositionStatusNotification();
         }
 
-        private void UpdatePositionGps(
-            double latitude,
-            double longitude,
-            double altitude,
-            double speed,
-            double course,
-            double hdop,
-            int satelliteCount,
-            int fixStatus,
-            bool valid
-        )
+        private void UpdatePositionGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid)
         {
             _positionSnapshotService.UpdateGps(latitude, longitude, altitude, speed, course, hdop, satelliteCount, fixStatus, valid);
             QueuePositionStatusNotification();
@@ -149,7 +144,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         return;
                     }
 
-                    _ = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                    _ = dispatcher.BeginInvoke(
+                            DispatcherPriority.Background,
+                            new Action(() =>
                     {
                         Interlocked.Exchange(ref _positionStatusNotificationPending, 0);
                         OnPropertyChanged(nameof(PositionStatusText));
@@ -158,7 +155,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         {
                             OnPropertyChanged(nameof(LastPositionSnapshotText));
                         }
-                    }));
+                    })
+                        );
                     queued = true;
                 }
                 finally
@@ -199,48 +197,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "POSITION SNAPSHOT",
-                "SOURCE=" + snapshot.Source + " / PRESET=" + (snapshot.PresetId?.ToString(CultureInfo.InvariantCulture) ?? "-") + " / PAN=" + FormatSnapshotValue(
-                snapshot.Pan,
-                snapshot.PtzStatus,
-                "F2"
-            ) + " / TILT=" + FormatSnapshotValue(
-                snapshot.Tilt,
-                snapshot.PtzStatus,
-                "F2"
-            ) + " / EO_ZOOM=" + FormatSnapshotValue(
-                snapshot.EoZoom,
-                snapshot.EoLensStatus
-            ) + " / IR_ZOOM=" + FormatSnapshotValue(
-                snapshot.IrZoom,
-                snapshot.IrLensStatus
-            ) + " / PTZ=" + snapshot.PtzStatus + " / EO_LENS=" + snapshot.EoLensStatus + " / IR_LENS=" + snapshot.IrLensStatus + " / GPS=" + snapshot.GpsStatus + " / GPS_COURSE=" + FormatSnapshotValue(
-                snapshot.GpsCourse,
-                snapshot.GpsStatus,
-                "F2"
-            ) + " / GPS_HDOP=" + FormatSnapshotValue(
-                snapshot.GpsHdop,
-                snapshot.GpsStatus,
-                "F2"
-            ) + " / GPS_SAT=" + FormatSnapshotValue(
-                snapshot.GpsSatelliteCount,
-                snapshot.GpsStatus
-            ) + " / GPS_FIX=" + FormatSnapshotValue(
-                snapshot.GpsFixStatus,
-                snapshot.GpsStatus
-            ) + " / IMU=" + snapshot.ImuStatus + " / CONNECTED=" + snapshot.WebAgentConnected + " / CAPTURED_AT=" + snapshot.CapturedAt.ToString(
-                "O",
-                CultureInfo.InvariantCulture
-            )
+                "SOURCE=" + snapshot.Source +
+                " / PRESET=" + (snapshot.PresetId?.ToString(CultureInfo.InvariantCulture) ?? "-") +
+                " / PAN=" + FormatSnapshotValue(snapshot.Pan, snapshot.PtzStatus, "F2") +
+                " / TILT=" + FormatSnapshotValue(snapshot.Tilt, snapshot.PtzStatus, "F2") +
+                " / EO_ZOOM=" + FormatSnapshotValue(snapshot.EoZoom, snapshot.EoLensStatus) +
+                " / IR_ZOOM=" + FormatSnapshotValue(snapshot.IrZoom, snapshot.IrLensStatus) +
+                " / PTZ=" + snapshot.PtzStatus +
+                " / EO_LENS=" + snapshot.EoLensStatus +
+                " / IR_LENS=" + snapshot.IrLensStatus +
+                " / GPS=" + snapshot.GpsStatus +
+                " / GPS_COURSE=" + FormatSnapshotValue(snapshot.GpsCourse, snapshot.GpsStatus, "F2") +
+                " / GPS_HDOP=" + FormatSnapshotValue(snapshot.GpsHdop, snapshot.GpsStatus, "F2") +
+                " / GPS_SAT=" + FormatSnapshotValue(snapshot.GpsSatelliteCount, snapshot.GpsStatus) +
+                " / GPS_FIX=" + FormatSnapshotValue(snapshot.GpsFixStatus, snapshot.GpsStatus) +
+                " / IMU=" + snapshot.ImuStatus +
+                " / CONNECTED=" + snapshot.WebAgentConnected +
+                " / CAPTURED_AT=" + snapshot.CapturedAt.ToString("O", CultureInfo.InvariantCulture)
             );
         }
 
         private static string FormatSnapshotValue(double? value, PositionDataStatus status, string format)
         {
-            return status == PositionDataStatus.Valid &&
-                value.HasValue ? value.Value.ToString(
-                format,
-                CultureInfo.InvariantCulture
-            ) : "N/A";
+            return status == PositionDataStatus.Valid && value.HasValue
+                ? value.Value.ToString(format, CultureInfo.InvariantCulture)
+                : "N/A";
         }
 
         private static string FormatSnapshotValue(int? value, PositionDataStatus status)

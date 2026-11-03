@@ -1,13 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Window x:Class="FireCandidateValidator.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FIRE / SMOKE DETECTOR TEST PROGRAM"
-        Width="1500" Height="900" MinWidth="1100" MinHeight="700"
-        Background="#20262D" WindowStartupLocation="CenterScreen"
-        Closing="Window_Closing">
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="FIRE / SMOKE DETECTOR TEST PROGRAM"
+    Width="1500" Height="900" MinWidth="1100" MinHeight="700"
+    Background="#20262D" WindowStartupLocation="CenterScreen"
+    Closing="Window_Closing">
     <Window.Resources>
-        <!-- 2026-08-14: Explicit keys avoid ResourceDictionary designer errors. -->
+        <!-- 2026-08-14: 리소스 키를 명시하여 사전 편집기의 오류를 방지한다. -->
         <Style x:Key="ValidatorButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Height" Value="34"/>
             <Setter Property="Margin" Value="4"/>

@@ -64,12 +64,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Services\Communication\WebAgent\WebAgentV292Protocol.cs" />
-    <Compile Include="ViewModels\Main\MainViewModel.WebAgentV292.cs" />
-    <Compile Include="Views\Main\MainWindow.WebAgentV292.cs" />
+    <Compile Include="Services\Communication\WebAgent\WebAgentMotionFocusProtocol.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.WebAgentMotionFocus.cs" />
+    <Compile Include="Views\Main\MainWindow.PrecisionMotion.cs" />
     <Reference Include="System.Runtime.Serialization" />
-    <Compile Include="Services\Communication\WebAgent\WebAgentV293Protocol.cs" />
-    <Compile Include="ViewModels\Main\MainViewModel.WebAgentV293.cs" />
+    <Compile Include="Services\Communication\WebAgent\WebAgentEquipmentProtocol.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.WebAgentEquipment.cs" />
     <Compile Include="Services\Video\RtspUriNormalization.cs" />
     <Compile Include="Services\Video\PanoramaReferenceState.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.PanoramaReference.cs" />
@@ -102,7 +102,6 @@
     <Compile Include="ViewModels\Main\MainViewModel.Routes.cs" />
     <Compile Include="Views\Video\LegacyVideoIntegration.cs" />
     <Compile Include="Views\Video\PanoramaLinkedView.cs" />
-    <Compile Include="Views\Main\MainWindow.LegacyFeatures.cs" />
     <Compile Include="Services\Control\IrFocusMotionPlanner.cs" />
     <Resource Include="Images\Demo\Toruss.ico" />
     <Reference Include="FFmpeg.AutoGen, Version=8.1.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -254,6 +253,7 @@
     <Compile Include="Common\AsyncRelayCommand.cs" />
     <Compile Include="Common\ConsoleLogHelper.cs" />
     <Compile Include="Common\ParameterRelayCommand.cs" />
+    <Compile Include="Common\ControlShortcutKeys.cs" />
     <Compile Include="Common\RelayCommand.cs" />
     <Compile Include="Converters\MatToBitmapSourceConverter.cs" />
     <Compile Include="Models\AI\AiDetectionBox.cs" />

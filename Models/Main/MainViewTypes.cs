@@ -16,6 +16,7 @@ namespace OpenCvWpfTracking.Models.Main
         /// </summary>
         CtecCgi
     }
+
     /// <summary>
     /// CURRENT STATUS 화면에 표시할 장비 구성
     /// </summary>
@@ -32,12 +33,14 @@ namespace OpenCvWpfTracking.Models.Main
         /// </summary>
         Environment
     }
+
     /// <summary>CONNECT 창에서 선택되는 실제 제어 Agent. UI 모드의 단일 결정 기준이다.</summary>
     public enum ControlAgentType
     {
         LaAgent,
         WebAgent
     }
+
     /// <summary>
     /// [Pan Absolute] 이동 시 사용할 선회 방향 계산 모드
     ///
@@ -57,6 +60,7 @@ namespace OpenCvWpfTracking.Models.Main
         /// </summary>
         Short
     }
+
     public enum PresetScanOrderMode
     {
         SavedOrder,
@@ -147,7 +151,6 @@ namespace OpenCvWpfTracking.Models.Main
         /// <summary>구형 WEB 프리셋의 IR 줌이 SYNC 보정 좌표로 저장됐는지 나타낸다.</summary>
         public bool UsesLegacyIrZoomCalibration { get; set; }
 
-
         /// <summary>
         /// 등록 명령 송신 시점의 IR Focus 표시값
         /// </summary>
@@ -168,23 +171,18 @@ namespace OpenCvWpfTracking.Models.Main
         /// 선택된 프리셋 상세 표시 문자열
         /// </summary>
         public string DetailText =>
-            $"PAN      : {Pan:F2}°\n" + $"TILT     : {Tilt:F2}°\n" + $"EO ZOOM  : {EoZoomText} / 1000\n" + $"EO FOCUS : {EoFocusText} / 1000\n" + $"IR ZOOM  : {IrZoomText} / 1000\n" + $"IR FOCUS : {IrFocusText} / 1000\n" + $"POSITION : {(PositionSnapshot == null ? "LEGACY / N/A" : PositionSnapshot.PtzStatus.ToString().ToUpperInvariant())}";
+            $"PAN      : {Pan:F2}°\n" +
+            $"TILT     : {Tilt:F2}°\n" +
+            $"EO ZOOM  : {EoZoomText} / 1000\n" +
+            $"EO FOCUS : {EoFocusText} / 1000\n" +
+            $"IR ZOOM  : {IrZoomText} / 1000\n" +
+            $"IR FOCUS : {IrFocusText} / 1000\n" +
+            $"POSITION : {(PositionSnapshot == null ? "LEGACY / N/A" : PositionSnapshot.PtzStatus.ToString().ToUpperInvariant())}";
 
         /// <summary>
         /// PresetPointOption 동작 수행 함수.
         /// </summary>
-        public PresetPointOption(
-            int number,
-            double pan,
-            double tilt,
-            string eoZoomText,
-            string eoFocusText,
-            string irZoomText,
-            string irFocusText,
-            string name = null,
-            int savedOrder = 0,
-            PositionSnapshot positionSnapshot = null
-        )
+        public PresetPointOption(int number, double pan, double tilt, string eoZoomText, string eoFocusText, string irZoomText, string irFocusText, string name = null, int savedOrder = 0, PositionSnapshot positionSnapshot = null)
         {
             Number = number;
             Pan = pan;
@@ -258,16 +256,7 @@ namespace OpenCvWpfTracking.Models.Main
         /// 별도 직접 제어 정보가 없으면
         /// 기존 Control Agent 제어 방식으로 처리한다.
         /// </summary>
-        public RtspSourceOption(
-            string displayName,
-            string address,
-            CameraControlType controlType = CameraControlType.ControlAgent,
-            string controlIp = null,
-            string controlUserName = null,
-            string controlPassword = null,
-            bool useHttps = false,
-            bool isDirectInput = false
-        )
+        public RtspSourceOption(string displayName, string address, CameraControlType controlType = CameraControlType.ControlAgent, string controlIp = null, string controlUserName = null, string controlPassword = null, bool useHttps = false, bool isDirectInput = false)
         {
             DisplayName = displayName;
             Address = address;

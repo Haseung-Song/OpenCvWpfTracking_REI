@@ -20,9 +20,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public partial class MainViewModel
     {
         #region [화면 명령 구현]
-
         #region [표시 오버레이 명령]
-
         /// <summary>
         /// [EO / IR] 영상 중앙 십자선 표시 상태 전환 [Command]
         /// </summary>
@@ -79,9 +77,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ICommand StopFocusSyncCommand { get; }
 
         #endregion
-
         #region [영상 명령]
-
         /// <summary>
         /// 영상 [Connect] 버튼 [Command]
         /// </summary>
@@ -93,9 +89,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ICommand DisconnectCommand { get; }
 
         #endregion
-
         #region [팬·틸트 명령]
-
         /// <summary>
         /// [PAN] 왼쪽 위치 이동 테스트 [Command]
         /// </summary>
@@ -117,9 +111,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ICommand TiltDownCommand { get; }
 
         #endregion
-
         #region [줌·초점 명령]
-
         /// <summary>
         /// [ZOOM] 확대 테스트 [Command]
         /// </summary>
@@ -141,9 +133,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ICommand FocusNearCommand { get; }
 
         #endregion
-
         #region [이동 제어 명령]
-
         /// <summary>
         /// Pan / Tilt Home Position 실행 [Command]
         /// </summary>
@@ -256,27 +246,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ICommand StopActivePresetScanCommand { get; }
 
         #endregion
-
         #region [LRF 명령]
-
         /// <summary>
         /// [LRF] 거리측정 [1회] 요청 [Command]
         /// </summary>
         public ICommand LrfMeasureCommand { get; }
 
         #endregion
-
         #region [STOP 명령]
-
         /// <summary>
         /// [PT] 연속 이동 정지 [Command]
         /// </summary>
         public ICommand StopMoveCommand { get; }
 
         #endregion
-
         #region [AI 검출기 설정 명령]
-
         /// <summary>
         /// [AI Detector Agent] 수동 연결 [Command]
         /// </summary>
@@ -303,11 +287,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ICommand RefreshAiSettingCommand { get; }
 
         #endregion
-
         #endregion
-
         #region [장비 상태 / 줌 동기화 속성]
-
         /// <summary>
         /// [Environment Equipment / Zoom Synchronization]
         ///
@@ -411,21 +392,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ConvertPanTiltValuesForSelectedCoordinateMode()
         {
             _currentPan = NormalizeToSignedAngle(_currentPan);
-            _currentTilt = Math.Max(
+            _currentTilt = Math.Max(CurrentMoveControlTiltMinimum, Math.Min(CurrentMoveControlTiltMaximum, NormalizeToSignedAngle(_currentTilt)));
+            PanAbsoluteValue = PanAbsoluteValue.HasValue ? NormalizeToSignedAngle(PanAbsoluteValue.Value) : (double? )null;
+            TiltAbsoluteValue = TiltAbsoluteValue.HasValue
+                ? Math.Max(
                 CurrentMoveControlTiltMinimum,
-                Math.Min(
-                CurrentMoveControlTiltMaximum,
-                NormalizeToSignedAngle(_currentTilt)
+                Math.Min(CurrentMoveControlTiltMaximum, NormalizeToSignedAngle(TiltAbsoluteValue.Value))
             )
-            );
-            PanAbsoluteValue = PanAbsoluteValue.HasValue ? NormalizeToSignedAngle(PanAbsoluteValue.Value) : (double?)null;
-            TiltAbsoluteValue = TiltAbsoluteValue.HasValue ? Math.Max(
-                CurrentMoveControlTiltMinimum,
-                Math.Min(
-                CurrentMoveControlTiltMaximum,
-                NormalizeToSignedAngle(TiltAbsoluteValue.Value)
-            )
-            ) : (double?)null;
+                : (double? )null;
             OnPropertyChanged(nameof(CurrentPanText));
             OnPropertyChanged(nameof(CurrentTiltText));
         }
@@ -464,7 +438,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool IsPanTiltZeroCommandEnabled => true;
 
         public string PanTiltZeroRouteText =>
-            _selectedControlAgentProfile?.AgentType == ControlAgentType.LaAgent ? "LA AGENT : MCB DIRECT ZERO" : "WEB AGENT : ZERO REQUEST (0xB3)";
+            _selectedControlAgentProfile?.AgentType == ControlAgentType.LaAgent
+            ? "LA AGENT : MCB DIRECT ZERO"
+            : "WEB AGENT : ZERO REQUEST (0xB3)";
 
         public string HomeControlHeaderText => "HOME / ZERO";
 
@@ -545,7 +521,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsOperationCommandEnabled =>
             !IsPanoramaPresetRunning &&
-            !_precisionActive && !_precisionStopUncertain &&
+            !_precisionActive &&
+            !_precisionStopUncertain &&
             !IsHomePositionMoving &&
             !IsPresetScanControlLocked &&
             !IsPanoramaCaptureRunning &&
@@ -640,47 +617,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public bool IsControlInputLocked =>
             IsPanoramaPresetRunning ||
-            _precisionActive || _precisionStopUncertain ||
+            _precisionActive ||
+            _precisionStopUncertain ||
             IsHomePositionMoving ||
             IsPresetScanControlLocked ||
             IsPanoramaCaptureRunning ||
             IsPanoramaProcessingRunning;
 
         public string ControlLockTitle =>
-            IsPanoramaPresetRunning ? "PANORAMA PRESET MOVING" :
-            _precisionStopUncertain ? "정밀 이동 정지 송신 미확인" :
-            _precisionActive ? "정밀 이동 시험 중" :
-            IsPanoramaCompleted
-                ? "360° PANORAMA COMPLETED"
-                : IsPanoramaCancellationCompleted
-                ? "360° PANORAMA CANCELED"
-                : IsPanoramaCancellationRequested
-                ? "360° PANORAMA CANCELING"
-                : IsPanoramaProcessingRunning
-                ? "360° PANORAMA OPERATION"
-                : IsPresetScanControlLocked
-                ? "AUTO SCAN OPERATION"
-                : HomeZeroLockTitle;
+            IsPanoramaPresetRunning
+            ? "PANORAMA PRESET MOVING"
+            : _precisionStopUncertain
+                ? "정밀 이동 정지 송신 미확인"
+                : _precisionActive
+                    ? "정밀 이동 시험 중"
+                    : IsPanoramaCompleted
+                        ? "360° PANORAMA COMPLETED"
+                        : IsPanoramaCancellationCompleted
+                            ? "360° PANORAMA CANCELED"
+                            : IsPanoramaCancellationRequested
+                                ? "360° PANORAMA CANCELING"
+                                : IsPanoramaProcessingRunning
+                                    ? "360° PANORAMA OPERATION"
+                                    : IsPresetScanControlLocked ? "AUTO SCAN OPERATION" : HomeZeroLockTitle;
 
         public string ControlLockMessage =>
-            IsPanoramaPresetRunning ? "STOP TO CANCEL PRESET MOVE" :
-            _precisionStopUncertain ? "다른 제어 잠금 / STOP 재시도 및 장비 정지 여부 현장 확인 필요" :
-            _precisionActive ? "다른 제어 잠금 / 정밀 이동 STOP 또는 수동 STOP 사용" :
-            IsPanoramaCompleted
-                ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED"
-                : IsPanoramaCancellationCompleted
-                ? "CAPTURE CANCELED / START POSITION RESTORED"
-                : IsPanoramaCancellationRequested
-                ? "CANCELING / RETURNING TO START POSITION..."
-                : IsPanoramaProcessingRunning
-                ? IsPanoramaCaptureRunning
-                    ? "EO CAMERA AUTO PAN / CAPTURING..."
-                    : "FEATURE MATCHING / BLENDING / SAVING..."
-                : IsLaPresetScanRunning
-                ? "PRESET L AUTO SCAN RUNNING"
-                : IsPresetScanRunning
-                    ? "PRESET W AUTO SCAN RUNNING"
-                    : HomeZeroLockMessage;
+            IsPanoramaPresetRunning
+            ? "STOP TO CANCEL PRESET MOVE"
+            : _precisionStopUncertain
+                ? "다른 제어 잠금 / STOP 재시도 및 장비 정지 여부 현장 확인 필요"
+                : _precisionActive
+                    ? "다른 제어 잠금 / 정밀 이동 STOP 또는 수동 STOP 사용"
+                    : IsPanoramaCompleted
+                        ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED"
+                        : IsPanoramaCancellationCompleted
+                            ? "CAPTURE CANCELED / START POSITION RESTORED"
+                            : IsPanoramaCancellationRequested
+                                ? "CANCELING / RETURNING TO START POSITION..."
+                                : IsPanoramaProcessingRunning
+                                    ? IsPanoramaCaptureRunning ? "EO CAMERA AUTO PAN / CAPTURING..." : "FEATURE MATCHING / BLENDING / SAVING..."
+                                    : IsLaPresetScanRunning
+                                        ? "PRESET L AUTO SCAN RUNNING"
+                                        : IsPresetScanRunning ? "PRESET W AUTO SCAN RUNNING" : HomeZeroLockMessage;
 
         /// <summary>
         /// 현재 선택된 Zoom Sync Level
@@ -797,9 +775,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [이동 제어 속성]
-
         /// <summary>
         /// Pan Absolute 이동 시 장비 최단거리 모드(0x4D / 0x02)를 사용하는지 여부
         /// </summary>
@@ -946,7 +922,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get => _zoomRatioValue;
             set
             {
-                double? roundedValue = value.HasValue ? Math.Round(value.Value, 1, MidpointRounding.AwayFromZero) : (double?)null;
+                double? roundedValue = value.HasValue ? Math.Round(value.Value, 1, MidpointRounding.AwayFromZero) : (double? )null;
 
                 if (_zoomRatioValue == roundedValue)
                 {
@@ -1024,7 +1000,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public string CurrentLaPresetSnapshotText =>
-            $"PAN      : {_currentPan:F2}°\n" + $"TILT     : {_currentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
+            $"PAN      : {_currentPan:F2}°\n" +
+            $"TILT     : {_currentTilt:F2}°\n" +
+            $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" +
+            $"EO FOCUS : {CurrentEoFocusText} / 1000\n" +
+            $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" +
+            $"IR FOCUS : {CurrentIrFocusText} / 1000";
 
         public string SelectedLaPresetDetailText =>
             SelectedLaPresetPoint == null ? "프리셋 미등록 상태. 등록된 프리셋을 선택하세요." : SelectedLaPresetPoint.DetailText;
@@ -1188,13 +1169,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이 상태를 선택 슬롯의 화면 확인용 정보로 저장한다.
         /// </summary>
         public string CurrentPresetSnapshotText =>
-            $"PAN      : {_currentPan:F2}°\n" + $"TILT     : {_currentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
+            $"PAN      : {_currentPan:F2}°\n" +
+            $"TILT     : {_currentTilt:F2}°\n" +
+            $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" +
+            $"EO FOCUS : {CurrentEoFocusText} / 1000\n" +
+            $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" +
+            $"IR FOCUS : {CurrentIrFocusText} / 1000";
 
         /// <summary>
         /// ComboBox에서 선택한 프리셋 상세값
         /// </summary>
-        public string SelectedPresetDetailText => SelectedPresetPoint == null ? "WEB 프리셋 미등록 / 연결 후 REGISTER / UPDATE로 등록하세요." : SelectedPresetPoint.DetailText.Replace(
-            "IR ZOOM  : " + SelectedPresetPoint.IrZoomText, "IR ZOOM  : " + PresetIrZoomPosition(SelectedPresetPoint));
+        public string SelectedPresetDetailText =>
+            SelectedPresetPoint == null
+            ? "WEB 프리셋 미등록 / 연결 후 REGISTER / UPDATE로 등록하세요."
+            : SelectedPresetPoint.DetailText.Replace("IR ZOOM  : " + SelectedPresetPoint.IrZoomText, "IR ZOOM  : " + PresetIrZoomPosition(SelectedPresetPoint));
 
         /// <summary>
         /// 오토 스캔 이동 속도
@@ -1292,22 +1280,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [화면 연결 속성]
-
         #region [소스 주소 속성]
-
         /// <summary>
         /// [EO] 주간 [RTSP] 주소
         ///
         /// 통신 설정 탭의 EO 카메라 선택 ComboBox와 양방향 바인딩한다.
         /// </summary>
         /// <summary>UI 전용 주소는 인증정보만 사람이 읽는 형태로 표시한다.</summary>
-        public string EoSourceDisplayAddress
-        {
-            get => OpenCvWpfTracking.Services.Video.RtspUriNormalization.Display(EoSourceAddress);
-            set => EoSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
-        }
+        public string EoSourceDisplayAddress { get => OpenCvWpfTracking.Services.Video.RtspUriNormalization.Display(EoSourceAddress); set => EoSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value); }
 
         /// <summary>프로필·AI 연동·연결에 사용하는 내부 인코딩 주소다.</summary>
         public string EoSourceAddress
@@ -1351,10 +1332,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get
             {
                 return _selectedEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(option => string.Equals(
-                    OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
-                    EoSourceAddress,
-                    StringComparison.OrdinalIgnoreCase
-                )) ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+                        OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
+                        EoSourceAddress,
+                        StringComparison.OrdinalIgnoreCase
+                    )) ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             }
 
             set
@@ -1386,11 +1367,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 통신 설정 탭의 IR 카메라 선택 ComboBox와 양방향 바인딩한다.
         /// </summary>
         /// <summary>IR 직접 입력 UI와 내부 연결 주소를 분리한다.</summary>
-        public string IrSourceDisplayAddress
-        {
-            get => OpenCvWpfTracking.Services.Video.RtspUriNormalization.Display(IrSourceAddress);
-            set => IrSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
-        }
+        public string IrSourceDisplayAddress { get => OpenCvWpfTracking.Services.Video.RtspUriNormalization.Display(IrSourceAddress); set => IrSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value); }
 
         /// <summary>내부 IR 연결과 설정 저장에는 인코딩 주소를 유지한다.</summary>
         public string IrSourceAddress
@@ -1417,7 +1394,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public RtspSourceOption SelectedIrRtspSource
         {
             get =>
-                _selectedIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(option => string.Equals(
+            _selectedIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(option => string.Equals(
                 OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
                 IrSourceAddress,
                 StringComparison.OrdinalIgnoreCase
@@ -1450,9 +1427,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool IsIrRtspDirectInput => SelectedIrRtspSource?.IsDirectInput == true;
 
         #endregion
-
         #region [제어 에이전트 설정 속성]
-
         /// <summary>
         /// Control Agent 제어 TCP 연결 IP
         /// </summary>
@@ -1516,9 +1491,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [영상 속성]
-
         /// <summary>
         /// [EOCameraImage] 값 변경 시,
         /// [XAML]의 [Image Source]가 갱신된다.
@@ -1554,14 +1527,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [AI 오버레이 영상 크기 속성]
-
         /// <summary>
         /// [EO] [RTSP] 원본 영상 너비
         ///
         /// [FFmpegDecoderService]에서 읽은 실제 [RTSP] 원본 해상도를
-        /// [AI] [Bounding Box] [Overlay] 기준 너비로 사용한다.
+        /// AI 검출 상자 오버레이 기준 너비로 사용한다.
         /// </summary>
         public int EoVideoWidth
         {
@@ -1577,7 +1548,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [EO] [RTSP] 원본 영상 높이
         ///
         /// [FFmpegDecoderService]에서 읽은 실제 [RTSP] 원본 해상도를
-        /// [AI] [Bounding Box] [Overlay] 기준 높이로 사용한다.
+        /// AI 검출 상자 오버레이 기준 높이로 사용한다.
         /// </summary>
         public int EoVideoHeight
         {
@@ -1593,7 +1564,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [IR] [RTSP] 원본 영상 너비
         ///
         /// [FFmpegDecoderService]에서 읽은 실제 [RTSP] 원본 해상도를
-        /// [AI] [Bounding Box] [Overlay] 기준 너비로 사용한다.
+        /// AI 검출 상자 오버레이 기준 너비로 사용한다.
         /// </summary>
         public int IrVideoWidth
         {
@@ -1609,7 +1580,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [IR] [RTSP] 원본 영상 높이
         ///
         /// [FFmpegDecoderService]에서 읽은 실제 [RTSP] 원본 해상도를
-        /// [AI] [Bounding Box] [Overlay] 기준 높이로 사용한다.
+        /// AI 검출 상자 오버레이 기준 높이로 사용한다.
         /// </summary>
         public int IrVideoHeight
         {
@@ -1622,9 +1593,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [AI 검출기 설정 속성]
-
         /// <summary>
         /// [AI Detector Agent] 연결 [IP]
         /// </summary>
@@ -1696,11 +1665,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public RtspSourceOption SelectedAiEoRtspSource
         {
             get =>
-                _selectedAiEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(option => string.Equals(
-                option.Address,
-                AiRtsp0Address,
-                StringComparison.OrdinalIgnoreCase
-            )) ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            _selectedAiEoRtspSource ?? EoRtspSourceOptions.FirstOrDefault(option => string.Equals(option.Address, AiRtsp0Address, StringComparison.OrdinalIgnoreCase)) ?? EoRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             set
             {
                 if (value == null)
@@ -1724,11 +1689,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public RtspSourceOption SelectedAiIrRtspSource
         {
             get =>
-                _selectedAiIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(option => string.Equals(
-                option.Address,
-                AiRtsp1Address,
-                StringComparison.OrdinalIgnoreCase
-            )) ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
+            _selectedAiIrRtspSource ?? IrRtspSourceOptions.FirstOrDefault(option => string.Equals(option.Address, AiRtsp1Address, StringComparison.OrdinalIgnoreCase)) ?? IrRtspSourceOptions.FirstOrDefault(option => option.IsDirectInput);
             set
             {
                 if (value == null)
@@ -1888,7 +1849,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         /// <summary>
         /// [AI Tracking] 자동 추적 사용 여부
         /// </summary>
@@ -1906,7 +1866,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #region [표시 오버레이 속성]
-
         /// <summary>
         /// [EO / IR] 영상 중앙 십자선 표시 여부
         ///
@@ -1946,20 +1905,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public Brush CrosshairBrush => _crosshairBrush;
 
         #endregion
-
         #region [제어 에이전트 통신 속성]
-
         /// <summary>
         /// Control Agent TCP 연결 상태 표시 문자열
         /// </summary>
-        // 지도·파노라마는 LA/WEB 공통으로 Control Agent TCP 연결 완료 시 표시한다.
+         // 지도·파노라마는 LA/WEB 공통으로 Control Agent TCP 연결 완료 시 표시한다.
         // RTSP 영상 수신 여부와 저장된 사진·프리셋의 보존 여부는 이 조건과 분리한다.
         public bool IsContextPanelsVisible =>
-            string.Equals(
-            ControlAgentConnectionStatusText,
-            "Connected",
-            StringComparison.Ordinal
-        );
+            string.Equals(ControlAgentConnectionStatusText, "Connected", StringComparison.Ordinal);
 
         public string ControlAgentConnectionStatusText
         {
@@ -1999,9 +1952,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [제어 상태 표시 속성]
-
         /// <summary>
         /// [PAN / TILT] 속도제어 현재 속도 [Level]
         ///
@@ -2052,7 +2003,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public string PanTiltSpeedDisplayText =>
-            $"SET : {PanTiltSpeedLevel} / " + $"ACTIVE({(_activePanTiltZoomSource == 1 ? "IR" : "EO")}) : " + $"{EffectivePanTiltSpeedLevel} / 60";
+            $"SET : {PanTiltSpeedLevel} / " +
+            $"ACTIVE({(_activePanTiltZoomSource == 1 ? "IR" : "EO")}) : " +
+            $"{EffectivePanTiltSpeedLevel} / 60";
 
         /// <summary>
         /// [LRF] 최근 거리측정 값 표시 문자열
@@ -2074,9 +2027,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [Status 속성]
-
         public string EoStatusText
         {
             get => _eoAlreadyConnectedNotice ? "[EO] Already Connected..." : _eoStatusText;
@@ -2093,9 +2044,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (IsSelectedConnectionTarget &&
                     value == "[EO] Connected" &&
-                    (!IsGpsTabVisible ||
-                    !_hasDevicePowerStatus ||
-                    _isDevicePowerStatusStale))
+                    (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale))
                     RememberCameraPower("EO", true);
 
                 ZoneChannelChanged("EO");
@@ -2136,9 +2085,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (IsSelectedConnectionTarget &&
                     value == "[IR] Connected" &&
-                    (!IsGpsTabVisible ||
-                    !_hasDevicePowerStatus ||
-                    _isDevicePowerStatusStale))
+                    (!IsGpsTabVisible || !_hasDevicePowerStatus || _isDevicePowerStatusStale))
                     RememberCameraPower("IR", true);
 
                 ZoneChannelChanged("IR");
@@ -2313,7 +2260,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #region [현재 장비 상태 속성]
-
         /// <summary>
         /// 현재 Pan 위치 표시 문자열
         /// </summary>
@@ -2403,8 +2349,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
                 {
-                    return _hasDevicePowerStatus &&
-                        !_isDevicePowerStatusStale ? ToOnOff((_currentMcbPowerStatus & 0x01) != 0) : "UNKNOWN";
+                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
+                        ? ToOnOff((_currentMcbPowerStatus & 0x01) != 0)
+                        : "UNKNOWN";
                 }
 
                 bool isPanOn = (_currentPowerStatus & 0x80) != 0;
@@ -2422,8 +2369,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
                 {
-                    return _hasDevicePowerStatus &&
-                        !_isDevicePowerStatusStale ? ToOnOff((_currentScbPowerStatus & 0x01) != 0) : "UNKNOWN";
+                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
+                        ? ToOnOff((_currentScbPowerStatus & 0x01) != 0)
+                        : "UNKNOWN";
                 }
 
                 return GetLegacyCameraPowerText(_eoStatusText, "EO");
@@ -2439,8 +2387,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (_controlCommandService != null && IsGpsTabVisible && _hasDevicePowerStatus)
                 {
-                    return _hasDevicePowerStatus &&
-                        !_isDevicePowerStatusStale ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0) : "UNKNOWN";
+                    return _hasDevicePowerStatus && !_isDevicePowerStatusStale
+                        ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0)
+                        : "UNKNOWN";
                 }
 
                 return GetLegacyCameraPowerText(_irStatusText, "IR");
@@ -2456,13 +2405,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #endregion
-
         #endregion
-
         #region [화면 연결 목록]
-
         /// <summary>
         /// 통신 설정 탭의 [EO RTSP] 카메라 선택 목록
         ///
@@ -2471,19 +2416,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 4층 LR1000(기동형, WebAgent) / 4층 MR300(ER-WATCHER, WebAgent)의
         /// 장비 주소를 UI에서 선택하도록 제공한다.
         /// </summary>
-        public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; } = new ObservableCollection<RtspSourceOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(
-            e.EoLabel,
-            e.EoAddress,
-            e.EoControlType,
-            e.ControlIp,
-            e.ControlUser,
-            e.ControlPassword,
-            e.UseHttps
-        )).Concat(new[] { new RtspSourceOption(
-            "직접 입력",
-            string.Empty,
-            isDirectInput: true
-        ) }));
+        public ObservableCollection<RtspSourceOption> EoRtspSourceOptions { get; } = new ObservableCollection<RtspSourceOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(e.EoLabel, e.EoAddress, e.EoControlType, e.ControlIp, e.ControlUser, e.ControlPassword, e.UseHttps)).Concat(new[] { new RtspSourceOption("직접 입력", string.Empty, isDirectInput: true) }));
 
         /// <summary>
         /// 통신 설정 탭의 [IR RTSP] 카메라 선택 목록
@@ -2491,14 +2424,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// EO와 별도로 IR 카메라를 선택할 수 있으며,
         /// 선택된 Address가 IrSourceAddress에 반영된다.
         /// </summary>
-        public ObservableCollection<RtspSourceOption> IrRtspSourceOptions { get; } = new ObservableCollection<RtspSourceOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(
-            e.IrLabel,
-            e.IrAddress
-        )).Concat(new[] { new RtspSourceOption(
-            "직접 입력",
-            string.Empty,
-            isDirectInput: true
-        ) }));
+        public ObservableCollection<RtspSourceOption> IrRtspSourceOptions { get; } = new ObservableCollection<RtspSourceOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new RtspSourceOption(e.IrLabel, e.IrAddress)).Concat(new[] { new RtspSourceOption("직접 입력", string.Empty, isDirectInput: true) }));
 
         /// <summary>
         /// [EO] 화면에 표시할 [AI Detector] [Bounding Box] 목록
@@ -2558,11 +2484,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             return boxes.Any(box => box != null &&
-                alarmClasses.Any(alarmClass => string.Equals(
-                box.ClassName?.Trim(),
-                alarmClass,
-                StringComparison.OrdinalIgnoreCase
-            )));
+                alarmClasses.Any(alarmClass => string.Equals(box.ClassName?.Trim(), alarmClass, StringComparison.OrdinalIgnoreCase)));
         }
 
         /// <summary>
@@ -2596,14 +2518,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(isInfrared ? nameof(IsIrSmokeWarningVisible) : nameof(IsEoSmokeWarningVisible));
         }
 
-        private static void LogDetectionWarningTransition(
-            string detectionType,
-            string channel,
-            bool current,
-            bool local,
-            bool ai,
-            ref bool previous
-        )
+        private static void LogDetectionWarningTransition(string detectionType, string channel, bool current, bool local, bool ai, ref bool previous)
         {
             if (current == previous)
             {
@@ -2653,7 +2568,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [CMD 56] 응답 결과를 화면에 표시하기 위해 사용한다.
         /// </summary>
         public ObservableCollection<AiMappingInfo> AiMappingList { get; } = new ObservableCollection<AiMappingInfo>();
-
         #endregion
     }
 }

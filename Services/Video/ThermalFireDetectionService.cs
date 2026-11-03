@@ -19,7 +19,7 @@ namespace OpenCvWpfTracking.Services.Video
     {
         private readonly StaticStructureFilter _staticStructures = new StaticStructureFilter();
 
-        // 2026-09-17 V25: 순간 IR 노이즈가 4프레임만으로 BBox가 되는 것을 막고,
+        // 2026-09-17 순간 IR 노이즈가 4프레임만으로 BBox가 되는 것을 막고,
         // 연기 검출처럼 동일 위치 Track의 시간 누적 증거를 확인한다(30fps 기준 약 0.4초).
         private const int ConfirmFrameCount = 12;
 
@@ -60,7 +60,7 @@ namespace OpenCvWpfTracking.Services.Video
         // 흔들리는 화염을 구분하기 위한 직전 후보 마스크이다.
         private Mat _previousCandidateMask = new Mat();
 
-        private readonly object _diagnosticSync = new object();
+        private readonly object _diagnosticSync = new object ();
 
         private StreamWriter _diagnosticWriter;
 
@@ -117,10 +117,7 @@ namespace OpenCvWpfTracking.Services.Video
             _diagnosticWriter?.Dispose();
 
             if (_diagnosticWriter != null && _diagnosticDirectory != null)
-                OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(
-                    _diagnosticDirectory,
-                    "fire_candidates.csv"
-                ));
+                OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_diagnosticDirectory, "fire_candidates.csv"));
 
             _diagnosticWriter = null;
             _diagnosticDirectory = null;
@@ -148,9 +145,9 @@ namespace OpenCvWpfTracking.Services.Video
                 if (candidates == null || candidates.Count == 0)
                 {
                     _diagnosticWriter.WriteLine(string.Join(
-                        ",",
-                        new[] { _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), _diagnosticChannel, "0", "0", "0", "0", "0", "0", detected ? "TRUE" : "FALSE" }
-                    ));
+                            ",",
+                            new[] { _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), _diagnosticChannel, "0", "0", "0", "0", "0", "0", detected ? "TRUE" : "FALSE" }
+                        ));
                 }
                 else
                 {
@@ -159,12 +156,9 @@ namespace OpenCvWpfTracking.Services.Video
                         Rect rectangle = candidates[index];
                         double areaRatio = rectangle.Width * (double)rectangle.Height / frameArea;
                         _diagnosticWriter.WriteLine(string.Join(
-                            ",",
-                            new[] { _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), _diagnosticChannel, (index + 1).ToString(CultureInfo.InvariantCulture), rectangle.X.ToString(CultureInfo.InvariantCulture), rectangle.Y.ToString(CultureInfo.InvariantCulture), rectangle.Width.ToString(CultureInfo.InvariantCulture), rectangle.Height.ToString(CultureInfo.InvariantCulture), areaRatio.ToString(
-                            "0.######",
-                            CultureInfo.InvariantCulture
-                        ), detected ? "TRUE" : "FALSE" }
-                        ));
+                                ",",
+                                new[] { _diagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), _diagnosticChannel, (index + 1).ToString(CultureInfo.InvariantCulture), rectangle.X.ToString(CultureInfo.InvariantCulture), rectangle.Y.ToString(CultureInfo.InvariantCulture), rectangle.Width.ToString(CultureInfo.InvariantCulture), rectangle.Height.ToString(CultureInfo.InvariantCulture), areaRatio.ToString("0.######", CultureInfo.InvariantCulture), detected ? "TRUE" : "FALSE" }
+                            ));
                     }
                 }
 
@@ -172,13 +166,7 @@ namespace OpenCvWpfTracking.Services.Video
 
                 if (snapshotDue && _diagnosticSnapshotCount < DiagnosticMaximumSnapshotCount)
                 {
-                    string frameDirectory = Path.Combine(
-                        _diagnosticDirectory,
-                        "frame_" + _diagnosticFrameIndex.ToString(
-                        "D6",
-                        CultureInfo.InvariantCulture
-                    )
-                    );
+                    string frameDirectory = Path.Combine(_diagnosticDirectory, "frame_" + _diagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
                     Directory.CreateDirectory(frameDirectory);
                     Cv2.ImWrite(Path.Combine(frameDirectory, "RAW.png"), frame);
                     Cv2.ImWrite(Path.Combine(frameDirectory, "CANDIDATE_MASK.png"), candidateMask);
@@ -202,7 +190,8 @@ namespace OpenCvWpfTracking.Services.Video
                     _diagnosticSnapshotLimitLogged = true;
                     ConsoleLogHelper.State(
                         "FIRE DIAGNOSTIC",
-                        "Snapshot limit reached; CSV recording continues / CHANNEL=" + _diagnosticChannel + " / LIMIT=" + DiagnosticMaximumSnapshotCount
+                        "Snapshot limit reached; CSV recording continues / CHANNEL=" + _diagnosticChannel +
+                        " / LIMIT=" + DiagnosticMaximumSnapshotCount
                     );
                 }
 
@@ -224,14 +213,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// <summary>
         /// Process 처리 함수.
         /// </summary>
-        internal ThermalFireDetectionResult Process(
-            Mat frame,
-            bool isEnabled,
-            double hotThresholdRatio,
-            double minimumAreaRatio,
-            int fireBoxGroupingMode,
-            IList<Rect> aiFireCandidates
-        )
+        internal ThermalFireDetectionResult Process(Mat frame, bool isEnabled, double hotThresholdRatio, double minimumAreaRatio, int fireBoxGroupingMode, IList<Rect> aiFireCandidates)
         {
             try
             {
@@ -254,14 +236,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// <summary>
         /// 2026-08-25 REI/MOE 공통 화재 후보 판정 본체.
         /// </summary>
-        private ThermalFireDetectionResult ProcessCore(
-            Mat frame,
-            bool isEnabled,
-            double hotThresholdRatio,
-            double minimumAreaRatio,
-            int fireBoxGroupingMode,
-            IList<Rect> aiFireCandidates
-        )
+        private ThermalFireDetectionResult ProcessCore(Mat frame, bool isEnabled, double hotThresholdRatio, double minimumAreaRatio, int fireBoxGroupingMode, IList<Rect> aiFireCandidates)
         {
             if (!isEnabled || frame == null || frame.Empty())
             {
@@ -352,15 +327,11 @@ namespace OpenCvWpfTracking.Services.Video
                     // 2026-08-24: 큰 세로형·불규칙 화염은 RTSP 압축으로 프레임 차가
                     // 작아져도 보존한다. 작은 고정 점광원에는 기존 시간축 검사를 유지한다.
                     bool isStrongLargeFireCandidate = rectangleAreaRatio >= 0.0015 &&
-                        rect.Height >= Math.Max(
-                        32,
-                        frame.Height * 0.04
-                    ) &&
+                        rect.Height >= Math.Max(32, frame.Height * 0.04) &&
                         aspectRatio >= 0.08 &&
                         aspectRatio <= 1.60 &&
                         fillRatio >= 0.025 &&
-                        (irregularity >= 1.20 ||
-                        solidity <= 0.92);
+                        (irregularity >= 1.20 || solidity <= 0.92);
 
                     if (!isSmallFireCandidate && area < configuredMinimumArea)
                     {
@@ -392,27 +363,17 @@ namespace OpenCvWpfTracking.Services.Video
                     bool strongLargeTemporalEvidence = hasMotionReference &&
                         hasCandidateReference &&
                         globalMotionRatio <= 0.25 &&
-                        (motionRatio >= 0.004 ||
-                        hotMotionRatio >= 0.008 ||
-                        shapeChangeRatio >= 0.012);
+                        (motionRatio >= 0.004 || hotMotionRatio >= 0.008 || shapeChangeRatio >= 0.012);
 
                     // 2026-08-18: 색상만 고온인 고정 구조물은 후보가 아니다.
                     // 실제 화염은 국부 픽셀 움직임과 외곽 형상 변화가 함께
                     // 지속되어야 하며, 카메라 전체가 움직인 프레임도 제외한다.
                     if (fillRatio < 0.005 ||
-                        (rectangleAreaRatio > 0.75 &&
-                        fillRatio > 0.30) ||
-                        (rectangleAreaRatio > 0.08 &&
-                        aspectRatio > 2.2 &&
-                        fillRatio > 0.18 &&
-                        solidity > 0.72) ||
-                        (!isSmallFireCandidate &&
-                        solidity > 0.90 &&
-                        fillRatio > 0.50 &&
-                        irregularity < 1.25) ||
-                        (isStrongLargeFireCandidate &&
-                        !strongLargeTemporalEvidence) ||
-                    // 2026-08-24: 작은 정적 전등도 시간축 검사를 반드시 통과시킨다.
+                        (rectangleAreaRatio > 0.75 && fillRatio > 0.30) ||
+                        (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 && fillRatio > 0.18 && solidity > 0.72) ||
+                        (!isSmallFireCandidate && solidity > 0.90 && fillRatio > 0.50 && irregularity < 1.25) ||
+                        (isStrongLargeFireCandidate && !strongLargeTemporalEvidence) ||
+                        // 2026-08-24: 작은 정적 전등도 시간축 검사를 반드시 통과시킨다.
                     // 실제 작은 화염은 미세 움직임 또는 외곽 변화 중 하나로 유지한다.
                     (!isStrongLargeFireCandidate &&
                         (!hasMotionReference ||
@@ -449,22 +410,14 @@ namespace OpenCvWpfTracking.Services.Video
 
                 int heldFireCandidateCount;
                 int suppressedStaticHotspotCount;
-                IList<Rect> persistentRects = UpdatePersistentCandidateTracks(
-                    mergedRects,
-                    frame.Width,
-                    frame.Height,
-                    out heldFireCandidateCount,
-                    out suppressedStaticHotspotCount
-                );
+                IList<Rect> persistentRects = UpdatePersistentCandidateTracks(mergedRects, frame.Width, frame.Height, out heldFireCandidateCount, out suppressedStaticHotspotCount);
                 // 불꽃 중심 후보는 유지하고 단단한 비화염 구조물만 걸러낸다.
                 persistentRects = _staticStructures.Filter(frame, persistentRects, _staticStructures.Clock());
                 suppressedStaticHotspotCount += _staticStructures.SuppressedCount;
                 DateTime continuityNow = DateTime.Now;
-                bool fireTrackCountChanged = persistentRects.Count != _lastReportedTrackCount ||
-                    suppressedStaticHotspotCount != _lastReportedStaticHotspotCount;
+                bool fireTrackCountChanged = persistentRects.Count != _lastReportedTrackCount || suppressedStaticHotspotCount != _lastReportedStaticHotspotCount;
 
-                if ((fireTrackCountChanged ||
-                    heldFireCandidateCount > 0) &&
+                if ((fireTrackCountChanged || heldFireCandidateCount > 0) &&
                     (continuityNow - _lastTrackContinuityLogTime).TotalSeconds >= (fireTrackCountChanged ? 0.5 : 2.0))
                 {
                     _lastTrackContinuityLogTime = continuityNow;
@@ -472,7 +425,9 @@ namespace OpenCvWpfTracking.Services.Video
                     _lastReportedStaticHotspotCount = suppressedStaticHotspotCount;
                     ConsoleLogHelper.State(
                         "THERMAL FIRE TRACK",
-                        "Independent fire candidates / VISIBLE=" + persistentRects.Count + " / HELD=" + heldFireCandidateCount + " / STATIC_HOTSPOT_SUPPRESSED=" + suppressedStaticHotspotCount
+                        "Independent fire candidates / VISIBLE=" + persistentRects.Count +
+                        " / HELD=" + heldFireCandidateCount +
+                        " / STATIC_HOTSPOT_SUPPRESSED=" + suppressedStaticHotspotCount
                     );
                 }
 
@@ -506,7 +461,7 @@ namespace OpenCvWpfTracking.Services.Video
                 }
 
                 bool previousState = _isFireCandidateDetected;
-                // 2026-09-22 V25: 기존 contour 판정은 유지하되 Track 단계에서
+                // 2026-09-22 기존 contour 판정은 유지하되 Track 단계에서
                 // 장시간 고정 고온물체로 확정된 후보는 최종 FIRE 상태에 반영하지 않는다.
                 UpdateConfirmation(persistentRects.Count > 0);
 
@@ -520,11 +475,9 @@ namespace OpenCvWpfTracking.Services.Video
                     ConsoleLogHelper.Error("FIRE DIAGNOSTIC", "Live diagnostic write failed", diagnosticException);
                 }
 
-                IList<double> fireVisionScores = _isFireCandidateDetected ? AssignVisionScores(
-                    persistentRects,
-                    frame.Width,
-                    frame.Height
-                ) : new List<double>();
+                IList<double> fireVisionScores = _isFireCandidateDetected
+                    ? AssignVisionScores(persistentRects, frame.Width, frame.Height)
+                    : new List<double>();
 
                 if (!_isFireCandidateDetected && _visionScoreTracks.Count > 0)
                 {
@@ -673,31 +626,18 @@ namespace OpenCvWpfTracking.Services.Video
             Cv2.Rectangle(
                 frame,
                 new Rect(
-                labelX,
-                labelTop,
-                Math.Min(
-                labelSize.Width + 6,
-                frame.Width - labelX
-            ),
-                Math.Min(
-                labelSize.Height + baseline + 7,
-                frame.Height - labelTop
-            )
-            ),
-                new Scalar(
-                24,
-                24,
-                24
-            ),
+                    labelX,
+                    labelTop,
+                    Math.Min(labelSize.Width + 6, frame.Width - labelX),
+                    Math.Min(labelSize.Height + baseline + 7, frame.Height - labelTop)
+                ),
+                new Scalar(24, 24, 24),
                 -1
             );
             Cv2.PutText(
                 frame,
                 label,
-                new Point(
-                labelX + 3,
-                labelY
-            ),
+                new Point(labelX + 3, labelY),
                 HersheyFonts.HersheySimplex,
                 labelFontScale,
                 fireOverlayColor,
@@ -823,10 +763,7 @@ namespace OpenCvWpfTracking.Services.Video
                     double intersectionArea = Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
                     double smallerArea = Math.Max(
                         1.0,
-                        Math.Min(
-                        track.Rectangle.Width * (double)track.Rectangle.Height,
-                        candidate.Width * (double)candidate.Height
-                    )
+                        Math.Min(track.Rectangle.Width * (double)track.Rectangle.Height, candidate.Width * (double)candidate.Height)
                     );
                     double match = intersectionArea / smallerArea;
 
@@ -857,7 +794,9 @@ namespace OpenCvWpfTracking.Services.Video
                         matched.IsScoreFinalized = true;
                         ConsoleLogHelper.State(
                             "FIRE V.SCORE",
-                            "Track score finalized / CAMERA=IR / SCORE=" + matched.Score.ToString("F1") + " / BBOX=" + candidate.Width + "x" + candidate.Height
+                            "Track score finalized / CAMERA=IR / SCORE=" + matched.Score.ToString("F1") +
+                            " / BBOX=" + candidate.Width +
+                            "x" + candidate.Height
                         );
                     }
                 }
@@ -871,27 +810,12 @@ namespace OpenCvWpfTracking.Services.Video
             return scores;
         }
 
-        private static double CalculateVisionScore(
-            FireVisionScoreTrack track,
-            Rect candidate,
-            int frameWidth,
-            int frameHeight,
-            double elapsedSeconds
-        )
+        private static double CalculateVisionScore(FireVisionScoreTrack track, Rect candidate, int frameWidth, int frameHeight, double elapsedSeconds)
         {
             double frameArea = Math.Max(1.0, frameWidth * (double)frameHeight);
             double areaRatio = candidate.Width * candidate.Height / frameArea;
             double verticality = candidate.Height / (double)Math.Max(1, candidate.Width + candidate.Height);
-            double aspectBalance = Math.Min(
-                candidate.Width,
-                candidate.Height
-            ) / (double)Math.Max(
-                1,
-                Math.Max(
-                candidate.Width,
-                candidate.Height
-            )
-            );
+            double aspectBalance = Math.Min(candidate.Width, candidate.Height) / (double)Math.Max(1, Math.Max(candidate.Width, candidate.Height));
             double initialArea = Math.Max(1.0, track.InitialRectangle.Width * (double)track.InitialRectangle.Height);
             double currentArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
             double expansionRatio = currentArea / initialArea - 1.0;
@@ -907,41 +831,11 @@ namespace OpenCvWpfTracking.Services.Video
             double initialAspect = track.InitialRectangle.Width / (double)Math.Max(1, track.InitialRectangle.Height);
             double currentAspect = candidate.Width / (double)Math.Max(1, candidate.Height);
             double shapeChange = Math.Abs(currentAspect - initialAspect) / Math.Max(0.25, initialAspect);
-            // 2026-09-17 V25: 단일 IR 명암 후보가 처음부터 50점 이상이 되지 않도록
+            // 2026-09-17 단일 IR 명암 후보가 처음부터 50점 이상이 되지 않도록
             // 35점에서 시작하고 지속·상향·확산·이동·형상 증거를 합산한다.
             // 검출 판정과 표시 점수를 분리해 순간 열반사 오탐의 V.SCORE를 낮춘다.
-            double score = 35.0 + Math.Min(
-                12.0,
-                Math.Sqrt(Math.Max(
-                0.0,
-                areaRatio
-            )) * 46.0
-            ) + Math.Min(
-                4.0,
-                verticality * 7.0
-            ) + Math.Min(
-                3.0,
-                aspectBalance * 3.0
-            ) + Math.Min(
-                20.0,
-                elapsedSeconds / 1.5 * 20.0
-            ) + Math.Min(
-                8.0,
-                upwardRatio * 160.0
-            ) + Math.Min(
-                10.0,
-                Math.Max(
-                0.0,
-                expansionRatio
-            ) * 12.0
-            ) + Math.Min(
-                5.0,
-                motionRatio * 100.0
-            ) + Math.Min(
-                5.0,
-                shapeChange * 8.0
-            );
-            // 2026-09-08 V23: 순간 열반사·노이즈 후보는 낮게 시작한다.
+            double score = 35.0 + Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) + Math.Min(4.0, verticality * 7.0) + Math.Min(3.0, aspectBalance * 3.0) + Math.Min(20.0, elapsedSeconds / 1.5 * 20.0) + Math.Min(8.0, upwardRatio * 160.0) + Math.Min(10.0, Math.Max(0.0, expansionRatio) * 12.0) + Math.Min(5.0, motionRatio * 100.0) + Math.Min(5.0, shapeChange * 8.0);
+            // 2026-09-08 순간 열반사·노이즈 후보는 낮게 시작한다.
             // 1.5초 이상 유지된 실제 화점은 기존의 성숙 점수 산식을 그대로 사용한다.
             double persistenceRatio = Math.Min(1.0, elapsedSeconds / 1.5);
             score -= (1.0 - persistenceRatio) * 30.0;
@@ -958,13 +852,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// 2026-09-02: 여러 화점 후보를 독립 Track으로 관리한다. 한 후보가 잠깐
         /// 약해져도 다른 화점의 검출 여부와 무관하게 마지막 BBox를 유지한다.
         /// </summary>
-        private IList<Rect> UpdatePersistentCandidateTracks(
-            IList<Rect> candidates,
-            int frameWidth,
-            int frameHeight,
-            out int heldCandidateCount,
-            out int suppressedStaticHotspotCount
-        )
+        private IList<Rect> UpdatePersistentCandidateTracks(IList<Rect> candidates, int frameWidth, int frameHeight, out int heldCandidateCount, out int suppressedStaticHotspotCount)
         {
             foreach (FireCandidateTrack track in _candidateTracks)
             {
@@ -988,13 +876,7 @@ namespace OpenCvWpfTracking.Services.Video
                     double iou = IntersectionOverUnion(track.Rectangle, candidate);
                     double trackCenterX = track.Rectangle.X + track.Rectangle.Width / 2.0;
                     double trackCenterY = track.Rectangle.Y + track.Rectangle.Height / 2.0;
-                    double centerDistance = Math.Sqrt(Math.Pow(
-                        candidateCenterX - trackCenterX,
-                        2
-                    ) + Math.Pow(
-                        candidateCenterY - trackCenterY,
-                        2
-                    ));
+                    double centerDistance = Math.Sqrt(Math.Pow(candidateCenterX - trackCenterX, 2) + Math.Pow(candidateCenterY - trackCenterY, 2));
                     double allowedDistance = Math.Max(18.0, Math.Max(track.Rectangle.Width, track.Rectangle.Height) * 0.65);
                     double score = iou;
 
@@ -1020,29 +902,14 @@ namespace OpenCvWpfTracking.Services.Video
                 Rect previous = bestTrack.Rectangle;
                 double previousCenterX = previous.X + previous.Width / 2.0;
                 double previousCenterY = previous.Y + previous.Height / 2.0;
-                double centerMovement = Math.Sqrt(Math.Pow(
-                    candidateCenterX - previousCenterX,
-                    2
-                ) + Math.Pow(
-                    candidateCenterY - previousCenterY,
-                    2
-                ));
+                double centerMovement = Math.Sqrt(Math.Pow(candidateCenterX - previousCenterX, 2) + Math.Pow(candidateCenterY - previousCenterY, 2));
                 double previousArea = Math.Max(1.0, previous.Width * (double)previous.Height);
                 double candidateArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
                 double areaChangeRatio = Math.Abs(candidateArea - previousArea) / previousArea;
-                double rectangleDiagonal = Math.Max(
-                    1.0,
-                    Math.Sqrt(previous.Width * (double)previous.Width + previous.Height * (double)previous.Height)
-                );
-                bool hasDynamicShape = centerMovement >= Math.Max(
-                    2.5,
-                    rectangleDiagonal * 0.035
-                ) ||
+                double rectangleDiagonal = Math.Max(1.0, Math.Sqrt(previous.Width * (double)previous.Width + previous.Height * (double)previous.Height));
+                bool hasDynamicShape = centerMovement >= Math.Max(2.5, rectangleDiagonal * 0.035) ||
                     areaChangeRatio >= 0.12 ||
-                    IntersectionOverUnion(
-                    previous,
-                    candidate
-                ) < 0.78;
+                    IntersectionOverUnion(previous, candidate) < 0.78;
 
                 if (hasDynamicShape)
                 {
@@ -1057,28 +924,16 @@ namespace OpenCvWpfTracking.Services.Video
                 }
 
                 bestTrack.Rectangle = new Rect(
-                    Math.Max(
-                    0,
-                    (int)Math.Round(previous.X * (1.0 - currentWeight) + candidate.X * currentWeight)
-                ),
-                    Math.Max(
-                    0,
-                    (int)Math.Round(previous.Y * (1.0 - currentWeight) + candidate.Y * currentWeight)
-                ),
-                    Math.Max(
-                    1,
-                    (int)Math.Round(previous.Width * (1.0 - currentWeight) + candidate.Width * currentWeight)
-                ),
-                    Math.Max(
-                    1,
-                    (int)Math.Round(previous.Height * (1.0 - currentWeight) + candidate.Height * currentWeight)
-                )
+                    Math.Max(0, (int)Math.Round(previous.X * (1.0 - currentWeight) + candidate.X * currentWeight)),
+                    Math.Max(0, (int)Math.Round(previous.Y * (1.0 - currentWeight) + candidate.Y * currentWeight)),
+                    Math.Max(1, (int)Math.Round(previous.Width * (1.0 - currentWeight) + candidate.Width * currentWeight)),
+                    Math.Max(1, (int)Math.Round(previous.Height * (1.0 - currentWeight) + candidate.Height * currentWeight))
                 );
                 bestTrack.Rectangle = ExpandRect(bestTrack.Rectangle, 0, 0, frameWidth, frameHeight);
                 bestTrack.SeenFrames++;
                 bestTrack.MissingFrames = 0;
                 bestTrack.Matched = true;
-                // 2026-09-22 V25: 진단 영상에서 화면 경계의 용기 반사점과 물체
+                // 2026-09-22 진단 영상에서 화면 경계의 용기 반사점과 물체
                 // 모서리가 동일 BBox로 수천 프레임 반복됐다. 기존 화재 후보식은
                 // 그대로 두고 Track이 장시간 거의 변하지 않을 때만 보조 억제한다.
                 bool touchesFrameEdge = bestTrack.Rectangle.X <= 2 ||
@@ -1176,19 +1031,10 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     Rect intersection = candidate & aiFire;
                     double intersectionArea = Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
-                    double smallerArea = Math.Max(
-                        1.0,
-                        Math.Min(
-                        candidate.Width * (double)candidate.Height,
-                        aiFire.Width * (double)aiFire.Height
-                    )
-                    );
+                    double smallerArea = Math.Max(1.0, Math.Min(candidate.Width * (double)candidate.Height, aiFire.Width * (double)aiFire.Height));
                     double centerX = candidate.X + candidate.Width / 2.0;
                     double centerY = candidate.Y + candidate.Height / 2.0;
-                    bool centerInside = centerX >= aiFire.X &&
-                        centerX <= aiFire.Right &&
-                        centerY >= aiFire.Y &&
-                        centerY <= aiFire.Bottom;
+                    bool centerInside = centerX >= aiFire.X && centerX <= aiFire.Right && centerY >= aiFire.Y && centerY <= aiFire.Bottom;
 
                     if (IntersectionOverUnion(candidate, aiFire) >= 0.08 || intersectionArea / smallerArea >= 0.30 || centerInside)
                     {
@@ -1321,7 +1167,9 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 ConsoleLogHelper.State(
                     "THERMAL FIRE",
-                    _isFireCandidateDetected ? "Candidate confirmed / PERSISTENCE=4 frames" : "Candidate cleared / PERSISTENCE=" + ClearFrameCount + " frames"
+                    _isFireCandidateDetected
+                    ? "Candidate confirmed / PERSISTENCE=4 frames"
+                    : "Candidate cleared / PERSISTENCE=" + ClearFrameCount + " frames"
                 );
             }
         }
@@ -1408,16 +1256,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// <summary>
         /// ThermalFireDetectionResult 동작 수행 함수.
         /// </summary>
-        internal ThermalFireDetectionResult(
-            bool isDetected,
-            bool stateChanged,
-            double candidateArea,
-            Rect candidateRect,
-            int candidateCount,
-            double visionScore,
-            IList<Rect> candidateRects,
-            IList<double> candidateScores
-        )
+        internal ThermalFireDetectionResult(bool isDetected, bool stateChanged, double candidateArea, Rect candidateRect, int candidateCount, double visionScore, IList<Rect> candidateRects, IList<double> candidateScores)
         {
             IsDetected = isDetected;
             StateChanged = stateChanged;

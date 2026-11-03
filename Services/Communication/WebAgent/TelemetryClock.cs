@@ -9,7 +9,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     internal sealed class TelemetryClock
     {
-        private readonly object _gate = new object();
+        private readonly object _gate = new object ();
 
         private bool _ready;
 
@@ -69,14 +69,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// 장비 측정 시각을 로컬 취득 시각으로 환산하고 미래값·오래된 상태를 거부한다.
         /// </summary>
-        internal bool TryGetLocalSampleTime(
-            ulong sample,
-            double monotonicNow,
-            DateTimeOffset localNow,
-            out DateTimeOffset localSample,
-            out int generation,
-            bool requireFresh = true
-        )
+        internal bool TryGetLocalSampleTime(ulong sample, double monotonicNow, DateTimeOffset localNow, out DateTimeOffset localSample, out int generation, bool requireFresh = true)
         {
             localSample = default(DateTimeOffset);
             lock (_gate)

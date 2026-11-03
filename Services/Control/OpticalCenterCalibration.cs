@@ -14,15 +14,12 @@ namespace OpenCvWpfTracking.Services.Control
     public sealed class OpticalCenterCalibration
     {
         #region [필드 및 상태 정보]
-
         private readonly List<Tuple<string, int, double, double>> anchors = new List<Tuple<string, int, double, double>>();
 
         private readonly string file;
 
         #endregion
-
         #region [초기화]
-
         public OpticalCenterCalibration(string filePath)
         {
             file = filePath;
@@ -49,21 +46,12 @@ namespace OpenCvWpfTracking.Services.Control
         }
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 원본 영상의 정규화 좌표가 유한한 화면 내부 값인지 확인한다.
         /// </summary>
         public static bool Valid(double x, double y) =>
-            !double.IsNaN(x) &&
-            !double.IsNaN(y) &&
-            !double.IsInfinity(x) &&
-            !double.IsInfinity(y) &&
-            x >= 0 &&
-            x <= 1 &&
-            y >= 0 &&
-            y <= 1;
+            !double.IsNaN(x) && !double.IsNaN(y) && !double.IsInfinity(x) && !double.IsInfinity(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1;
 
         /// <summary>
         /// 같은 장비의 줌 구간별 보정값을 조회하고 필요한 구간은 보간한다.
@@ -82,10 +70,7 @@ namespace OpenCvWpfTracking.Services.Control
                 if (zoom <= a[i].Item2)
                 {
                     double t = (zoom - a[i - 1].Item2) / (double)(a[i].Item2 - a[i - 1].Item2);
-                    return new Point(
-                        a[i - 1].Item3 + t * (a[i].Item3 - a[i - 1].Item3),
-                        a[i - 1].Item4 + t * (a[i].Item4 - a[i - 1].Item4)
-                    );
+                    return new Point(a[i - 1].Item3 + t * (a[i].Item3 - a[i - 1].Item3), a[i - 1].Item4 + t * (a[i].Item4 - a[i - 1].Item4));
                 }
 
             return new Point(a[a.Length - 1].Item3, a[a.Length - 1].Item4);
@@ -124,37 +109,16 @@ namespace OpenCvWpfTracking.Services.Control
         {
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             var doc = new XDocument(new XElement(
-                "OpticalCenters",
-                new XAttribute(
-                "Version",
-                1
-            ),
-                next.Select(p => new XElement(
-                "Point",
-                new XAttribute(
-                "Device",
-                p.Item1
-            ),
-                new XAttribute(
-                "Zoom",
-                p.Item2
-            ),
-                new XAttribute(
-                "X",
-                p.Item3.ToString(
-                "R",
-                CultureInfo.InvariantCulture
-            )
-            ),
-                new XAttribute(
-                "Y",
-                p.Item4.ToString(
-                "R",
-                CultureInfo.InvariantCulture
-            )
-            )
-            ))
-            ));
+                    "OpticalCenters",
+                    new XAttribute("Version", 1),
+                    next.Select(p => new XElement(
+                            "Point",
+                            new XAttribute("Device", p.Item1),
+                            new XAttribute("Zoom", p.Item2),
+                            new XAttribute("X", p.Item3.ToString("R", CultureInfo.InvariantCulture)),
+                            new XAttribute("Y", p.Item4.ToString("R", CultureInfo.InvariantCulture))
+                        ))
+                ));
             string tmp = file + ".tmp";
             doc.Save(tmp);
 
@@ -182,7 +146,6 @@ namespace OpenCvWpfTracking.Services.Control
             center = aLow + t * a;
             return Valid(center.X, center.Y);
         }
-
         #endregion
     }
 }

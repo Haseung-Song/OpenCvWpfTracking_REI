@@ -80,34 +80,7 @@ namespace OpenCvWpfTracking.Models.Position
 
         public bool WebAgentConnected { get; }
 
-        public PositionSnapshot(
-            DateTimeOffset capturedAt,
-            string source,
-            int? presetId,
-            double? pan,
-            double? tilt,
-            int? eoZoom,
-            int? eoFocus,
-            int? irZoom,
-            int? irFocus,
-            double? latitude,
-            double? longitude,
-            double? altitude,
-            double? gpsSpeed,
-            double? gpsCourse,
-            double? gpsHdop,
-            int? gpsSatelliteCount,
-            int? gpsFixStatus,
-            double? roll,
-            double? pitch,
-            double? yaw,
-            PositionDataStatus ptzStatus,
-            PositionDataStatus eoLensStatus,
-            PositionDataStatus irLensStatus,
-            PositionDataStatus gpsStatus,
-            PositionDataStatus imuStatus,
-            bool webAgentConnected
-        )
+        public PositionSnapshot(DateTimeOffset capturedAt, string source, int? presetId, double? pan, double? tilt, int? eoZoom, int? eoFocus, int? irZoom, int? irFocus, double? latitude, double? longitude, double? altitude, double? gpsSpeed, double? gpsCourse, double? gpsHdop, int? gpsSatelliteCount, int? gpsFixStatus, double? roll, double? pitch, double? yaw, PositionDataStatus ptzStatus, PositionDataStatus eoLensStatus, PositionDataStatus irLensStatus, PositionDataStatus gpsStatus, PositionDataStatus imuStatus, bool webAgentConnected)
         {
             CapturedAt = capturedAt;
             Source = string.IsNullOrWhiteSpace(source) ? "UNKNOWN" : source.Trim();
@@ -140,15 +113,40 @@ namespace OpenCvWpfTracking.Models.Position
         /// <summary>영점 변경 시 위치 각도만 변환하고 촬영 시각·렌즈·GPS·IMU 근거는 보존한다.</summary>
         public PositionSnapshot WithReferenceOffset(double panDelta, double tiltDelta)
         {
-            double? pan = Pan.HasValue ? (double?)(((Pan.Value + panDelta + 180) % 360 + 360) % 360 - 180) : null;
-            double? tilt = Tilt.HasValue ? (double?)(Tilt.Value + tiltDelta) : null;
-            return new PositionSnapshot(CapturedAt, Source, PresetId, pan, tilt,
-                EoZoom, EoFocus, IrZoom, IrFocus, Latitude, Longitude, Altitude,
-                GpsSpeed, GpsCourse, GpsHdop, GpsSatelliteCount, GpsFixStatus,
-                Roll, Pitch, Yaw, PtzStatus, EoLensStatus, IrLensStatus, GpsStatus, ImuStatus, WebAgentConnected);
+            double? pan = Pan.HasValue ? (double? )(((Pan.Value + panDelta + 180) % 360 + 360) % 360 - 180) : null;
+            double? tilt = Tilt.HasValue ? (double? )(Tilt.Value + tiltDelta) : null;
+            return new PositionSnapshot(
+                CapturedAt,
+                Source,
+                PresetId,
+                pan,
+                tilt,
+                EoZoom,
+                EoFocus,
+                IrZoom,
+                IrFocus,
+                Latitude,
+                Longitude,
+                Altitude,
+                GpsSpeed,
+                GpsCourse,
+                GpsHdop,
+                GpsSatelliteCount,
+                GpsFixStatus,
+                Roll,
+                Pitch,
+                Yaw,
+                PtzStatus,
+                EoLensStatus,
+                IrLensStatus,
+                GpsStatus,
+                ImuStatus,
+                WebAgentConnected
+            );
         }
 
-        public string PositionSummary => "PAN " + FormatDouble(Pan, PtzStatus, "F2") + " / TILT " + FormatDouble(Tilt, PtzStatus, "F2");
+        public string PositionSummary =>
+            "PAN " + FormatDouble(Pan, PtzStatus, "F2") + " / TILT " + FormatDouble(Tilt, PtzStatus, "F2");
 
         public string[] ToExportFields()
         {
@@ -191,12 +189,7 @@ namespace OpenCvWpfTracking.Models.Position
                 return false;
             }
 
-            if (!DateTimeOffset.TryParse(
-                fields[startIndex],
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.RoundtripKind,
-                out DateTimeOffset capturedAt
-            ))
+            if (!DateTimeOffset.TryParse(fields[startIndex], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset capturedAt))
             {
                 return false;
             }
@@ -215,7 +208,7 @@ namespace OpenCvWpfTracking.Models.Position
             double? roll = ParseNullableDouble(fields[startIndex + 12]);
             double? pitch = ParseNullableDouble(fields[startIndex + 13]);
             double? yaw = ParseNullableDouble(fields[startIndex + 14]);
-            // 기존 V27의 20필드 파일도 계속 읽는다. 상세 GPS 필드는 존재할 때만 복원한다.
+            // 기존 의 20필드 파일도 계속 읽는다. 상세 GPS 필드는 존재할 때만 복원한다.
             bool hasExtendedGps = fields.Count >= startIndex + ExportFieldCount;
             double? gpsSpeed = hasExtendedGps ? ParseNullableDouble(fields[startIndex + 20]) : null;
             double? gpsCourse = hasExtendedGps ? ParseNullableDouble(fields[startIndex + 21]) : null;
@@ -223,26 +216,11 @@ namespace OpenCvWpfTracking.Models.Position
             int? gpsSatelliteCount = hasExtendedGps ? ParseNullableInt(fields[startIndex + 23]) : null;
             int? gpsFixStatus = hasExtendedGps ? ParseNullableInt(fields[startIndex + 24]) : null;
 
-            if (!TryParseStatus(
-                fields[startIndex + 15],
-                out PositionDataStatus ptzStatus
-            ) ||
-                !TryParseStatus(
-                fields[startIndex + 16],
-                out PositionDataStatus eoLensStatus
-            ) ||
-                !TryParseStatus(
-                fields[startIndex + 17],
-                out PositionDataStatus irLensStatus
-            ) ||
-                !TryParseStatus(
-                fields[startIndex + 18],
-                out PositionDataStatus gpsStatus
-            ) ||
-                !TryParseStatus(
-                fields[startIndex + 19],
-                out PositionDataStatus imuStatus
-            ))
+            if (!TryParseStatus(fields[startIndex + 15], out PositionDataStatus ptzStatus) ||
+                !TryParseStatus(fields[startIndex + 16], out PositionDataStatus eoLensStatus) ||
+                !TryParseStatus(fields[startIndex + 17], out PositionDataStatus irLensStatus) ||
+                !TryParseStatus(fields[startIndex + 18], out PositionDataStatus gpsStatus) ||
+                !TryParseStatus(fields[startIndex + 19], out PositionDataStatus imuStatus))
             {
                 return false;
             }
@@ -285,41 +263,35 @@ namespace OpenCvWpfTracking.Models.Position
 
         private static int? ParseNullableInt(string value)
         {
-            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) ? parsed : (int?)null;
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) ? parsed : (int? )null;
         }
 
         private static double? ParseNullableDouble(string value)
         {
-            return double.TryParse(
-                value,
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out double parsed
-            ) ? parsed : (double?)null;
+            return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed)
+                ? parsed
+                : (double? )null;
         }
 
         private static string FormatExportInt(int? value, PositionDataStatus status)
         {
-            return status == PositionDataStatus.Valid &&
-                value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : string.Empty;
+            return status == PositionDataStatus.Valid && value.HasValue
+                ? value.Value.ToString(CultureInfo.InvariantCulture)
+                : string.Empty;
         }
 
         private static string FormatExportDouble(double? value, PositionDataStatus status)
         {
-            return status == PositionDataStatus.Valid &&
-                value.HasValue ? value.Value.ToString(
-                "R",
-                CultureInfo.InvariantCulture
-            ) : string.Empty;
+            return status == PositionDataStatus.Valid && value.HasValue
+                ? value.Value.ToString("R", CultureInfo.InvariantCulture)
+                : string.Empty;
         }
 
         private static string FormatDouble(double? value, PositionDataStatus status, string format)
         {
-            return status == PositionDataStatus.Valid &&
-                value.HasValue ? value.Value.ToString(
-                format,
-                CultureInfo.InvariantCulture
-            ) + "°" : "N/A";
+            return status == PositionDataStatus.Valid && value.HasValue
+                ? value.Value.ToString(format, CultureInfo.InvariantCulture) + "°"
+                : "N/A";
         }
     }
 }

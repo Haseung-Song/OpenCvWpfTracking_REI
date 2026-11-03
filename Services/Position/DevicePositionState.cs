@@ -9,7 +9,7 @@ namespace OpenCvWpfTracking.Services.Position
     /// </summary>
     public sealed class DevicePositionState
     {
-        private readonly object _sync = new object();
+        private readonly object _sync = new object ();
 
         private bool _connected;
 
@@ -132,18 +132,7 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
-        public void UpdateGps(
-            double latitude,
-            double longitude,
-            double altitude,
-            double speed,
-            double course,
-            double hdop,
-            int satelliteCount,
-            int fixStatus,
-            bool valid,
-            DateTimeOffset receivedAt
-        )
+        public void UpdateGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid, DateTimeOffset receivedAt)
         {
             lock (_sync)
             {
@@ -172,13 +161,7 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
-        public PositionSnapshot Capture(
-            string source,
-            int? presetId,
-            TimeSpan maximumPtzLensAge,
-            TimeSpan maximumTelemetryAge,
-            DateTimeOffset capturedAt
-        )
+        public PositionSnapshot Capture(string source, int? presetId, TimeSpan maximumPtzLensAge, TimeSpan maximumTelemetryAge, DateTimeOffset capturedAt)
         {
             lock (_sync)
             {

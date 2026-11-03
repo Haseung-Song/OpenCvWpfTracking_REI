@@ -14,13 +14,12 @@ namespace OpenCvWpfTracking
     /// </summary>
     public partial class App : Application
     {
-        #region [창s 시스템 연동]
-
+        #region [윈도우 시스템 연동]
         /// <summary>
         /// [Windows] 콘솔 창 생성 함수
-        /// 
+        ///
         /// [C++] [AllocConsole()]과 동일하다.
-        /// 
+        ///
         /// [WPF]는 기본적으로 콘솔 프로그램이 아니므로,
         /// 별도로 콘솔 창을 생성해야 한다.
         /// </summary>
@@ -29,7 +28,7 @@ namespace OpenCvWpfTracking
 
         /// <summary>
         /// 생성한 콘솔 창 해제 함수
-        /// 
+        ///
         /// 프로그램 종료 시 사용한다.
         /// </summary>
         [DllImport("kernel32.dll", SetLastError = true)]
@@ -37,28 +36,20 @@ namespace OpenCvWpfTracking
 
         /// <summary>
         /// [Windows API]
-        /// 
+        ///
         /// 콘솔 출력 장치([CONOUT$])를 여는 함수
-        /// 
+        ///
         /// [WPF]는 [Console.WriteLine()] 출력 대상이 없기 때문에,
         /// [CreateFile()]을 사용해서 실제 콘솔 출력 핸들을 가져온다.
         /// </summary>
         [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern SafeFileHandle CreateFile(
-            string fileName,
-            uint desiredAccess,
-            uint shareMode,
-            IntPtr securityAttributes,
-            uint creationDisposition,
-            uint flagsAndAttributes,
-            IntPtr templateFile
-        );
+        private static extern SafeFileHandle CreateFile(string fileName, uint desiredAccess, uint shareMode, IntPtr securityAttributes, uint creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
 
         /// <summary>
         /// [Windows API]
-        /// 
+        ///
         /// 표준 출력 핸들을 새 콘솔 핸들로 변경하는 함수
-        /// 
+        ///
         /// 이 작업을 하지 않으면,
         /// [Console.WriteLine()]이 [Visual Studio] 출력창으로 갈 수 있다.
         /// </summary>
@@ -66,9 +57,7 @@ namespace OpenCvWpfTracking
         private static extern bool SetStdHandle(int nStdHandle, SafeFileHandle handle);
 
         #endregion
-
         #region [상수]
-
         /// <summary>
         /// 표준 출력([stdout]) 핸들 번호
         /// </summary>
@@ -95,12 +84,10 @@ namespace OpenCvWpfTracking
         private const uint OPEN_EXISTING = 3;
 
         #endregion
-
         #region [FFmpeg 초기화]
-
         /// <summary>
         /// [FFmpeg] [Native DLL] 경로 설정
-        /// 
+        ///
         /// [avcodec] / [avformat] / [avutil] / [swscale] [DLL]을 찾도록 지정한다.
         /// </summary>
         private void InitializeFFmpeg()
@@ -111,12 +98,10 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [프로그램 시작]
-
         /// <summary>
         /// [WPF] 프로그램 시작 시 최초 실행되는 함수
-        /// 
+        ///
         /// 콘솔 창 생성 및 [Console.WriteLine()] 출력 연결을 수행한다.
         /// </summary>
         protected override void OnStartup(StartupEventArgs e)
@@ -136,7 +121,7 @@ namespace OpenCvWpfTracking
             Environment.SetEnvironmentVariable("OPENCV_FFMPEG_DEBUG", "0");
             /// <summary>
             /// [OpenCV] 경고 및 정보 로그 숨김
-            /// 
+            ///
             /// [ERROR] 로그만 출력한다.
             /// </summary>
             Environment.SetEnvironmentVariable("OPENCV_LOG_LEVEL", "ERROR");
@@ -148,11 +133,7 @@ namespace OpenCvWpfTracking
             AppLogger.Initialize();
             // 2026-09-18: 호출부에서 놓친 최상위 예외도 운용자용 오류 요약에 남긴다.
             DispatcherUnhandledException += (sender, args) => ConsoleLogHelper.Error("APPLICATION UI", "처리되지 않은 UI 오류", args.Exception);
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) => ConsoleLogHelper.Error(
-                "APPLICATION PROCESS",
-                "처리되지 않은 프로세스 오류",
-                args.ExceptionObject as Exception
-            );
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) => ConsoleLogHelper.Error("APPLICATION PROCESS", "처리되지 않은 프로세스 오류", args.ExceptionObject as Exception);
             System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (sender, args) =>
             {
                 ConsoleLogHelper.Error("APPLICATION TASK", "확인되지 않은 비동기 작업 오류", args.Exception);
@@ -160,106 +141,74 @@ namespace OpenCvWpfTracking
             };
             InitializeFFmpeg();
 #if DEBUG
-
             /// <summary>
             /// [Debug] 콘솔 창 생성
             /// </summary>
             AllocConsole();
-
             /// <summary>
             /// 콘솔 창 제목 설정
             /// </summary>
             Console.Title = "OpenCV WPF Debug Console";
-
             /// <summary>
             /// [BOM] 없는 [UTF8] 사용
-            /// 
+            ///
             /// 한글 출력 깨짐 방지 목적
             /// </summary>
             Console.OutputEncoding = new UTF8Encoding(false);
-
             /// <summary>
             /// 실제 콘솔 출력 장치([CONOUT$]) 열기
-            /// 
+            ///
             /// 이 핸들을 통해,
             /// [Console.WriteLine()] 출력 대상을
             /// [Visual Studio] 출력창에서 실제 콘솔창으로 변경한다.
             /// </summary>
-            SafeFileHandle consoleHandle = CreateFile(
-                "CONOUT$",
-                GENERIC_WRITE,
-                FILE_SHARE_WRITE,
-                IntPtr.Zero,
-                OPEN_EXISTING,
-                0,
-                IntPtr.Zero);
-
+            SafeFileHandle consoleHandle = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
             /// <summary>
             /// 표준 출력([stdout]) 핸들을
             /// 새 콘솔 핸들로 변경한다.
             /// </summary>
-            SetStdHandle(
-                STD_OUTPUT_HANDLE,
-                consoleHandle);
-
+            SetStdHandle(STD_OUTPUT_HANDLE, consoleHandle);
             /// <summary>
             /// 표준 에러([stderr]) 핸들도
             /// 같은 콘솔로 연결한다.
             /// </summary>
-            SetStdHandle(
-                STD_ERROR_HANDLE,
-                consoleHandle);
-
+            SetStdHandle(STD_ERROR_HANDLE, consoleHandle);
             /// <summary>
             /// 콘솔 출력 핸들을 [C#] [Stream]으로 변환한다.
             /// </summary>
-            var consoleStream = new FileStream(
-                consoleHandle,
-                FileAccess.Write);
-
+            var consoleStream = new FileStream(consoleHandle, FileAccess.Write);
             /// <summary>
             /// [UTF8] 기반 [StreamWriter] 생성
-            /// 
+            ///
             /// [AutoFlush] = true : [Console.WriteLine()] 호출 즉시 출력
             /// </summary>
-            var consoleWriter = new StreamWriter(
-                consoleStream,
-                new UTF8Encoding(false))
+            var consoleWriter = new StreamWriter(consoleStream, new UTF8Encoding(false))
             {
                 AutoFlush = true
             };
-
             /// <summary>
             /// [Console.WriteLine()] 출력 연결
             /// </summary>
             Console.SetOut(consoleWriter);
-
             /// <summary>
             /// [Console.Error] 출력 연결
             /// </summary>
             Console.SetError(consoleWriter);
-
-            ConsoleLogHelper.PrintSection(
-                "[CONSOLE]",
-                "OpenCV WPF Debug Console Start");
-
+            ConsoleLogHelper.PrintSection("[CONSOLE]", "OpenCV WPF Debug Console Start");
 #endif
         }
 
         #endregion
-
         #region [프로그램 종료]
-
         /// <summary>
         /// [WPF] 프로그램 종료 시 호출 함수
-        /// 
+        ///
         /// 콘솔 종료 및 리소스 정리를 수행한다.
         /// </summary>
         protected override void OnExit(ExitEventArgs e)
         {
             ConsoleLogHelper.PrintSection("[CONSOLE]", "OpenCV WPF Debug Console End");
 #if DEBUG
-
             /// <summary>
             /// [Debug] 콘솔 창 해제
             /// </summary>
@@ -268,7 +217,6 @@ namespace OpenCvWpfTracking
             AppLogger.Shutdown();
             base.OnExit(e);
         }
-
         #endregion
     }
 }

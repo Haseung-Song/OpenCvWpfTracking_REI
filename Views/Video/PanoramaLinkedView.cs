@@ -21,18 +21,10 @@ namespace OpenCvWpfTracking
             "Source",
             typeof(ImageSource),
             typeof(PanoramaLinkedView),
-            new FrameworkPropertyMetadata(
-            null,
-            FrameworkPropertyMetadataOptions.AffectsRender,
-            (d, e) => ((PanoramaLinkedView)d).InvalidateReference()
-        )
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, (d, e) => ((PanoramaLinkedView)d).InvalidateReference())
         );
 
-        public ImageSource Source
-        {
-            get => (ImageSource)GetValue(SourceProperty);
-            set => SetValue(SourceProperty, value);
-        }
+        public ImageSource Source { get => (ImageSource)GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
 
         private readonly MainViewModel vm;
 
@@ -40,15 +32,39 @@ namespace OpenCvWpfTracking
 
         private readonly DispatcherTimer timer;
 
-        private bool registered, registerNext, follow;
+        private bool registered;
 
-        private double anchorU = .5, anchorV = .5, anchorPan, anchorTilt, verticalSpan = 24;
+        private bool registerNext;
 
-        private string key, lastKey;
+        private bool follow;
+
+        private double anchorU = .5;
+
+        private double anchorV = .5;
+
+        private double anchorPan;
+
+        private double anchorTilt;
+
+        private double verticalSpan = 24;
+
+        private string key;
+
+        private string lastKey;
 
         private Rect area;
 
-        private double centerU, centerV, worldWidth, worldHeight, imageX, imageY;
+        private double centerU;
+
+        private double centerV;
+
+        private double worldWidth;
+
+        private double worldHeight;
+
+        private double imageX;
+
+        private double imageY;
 
         private readonly string file = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "PanoramaRegistration.xml");
 
@@ -121,10 +137,7 @@ namespace OpenCvWpfTracking
                 {
                     var doc = XDocument.Load(file);
 
-                    foreach (var entry in doc.Root.Elements("Image").Where(p => ((string)p.Attribute("Key") ?? "").StartsWith(
-                        vm.PanoramaDeviceKey + "|",
-                        StringComparison.Ordinal
-                    )))
+                    foreach (var entry in doc.Root.Elements("Image").Where(p => ((string)p.Attribute("Key") ?? "").StartsWith(vm.PanoramaDeviceKey + "|", StringComparison.Ordinal)))
                         entry.SetAttributeValue("Invalid", true);
 
                     WriteRegistration(doc);
@@ -159,10 +172,7 @@ namespace OpenCvWpfTracking
             anchorPan = (double)p.Attribute("Pan");
             anchorTilt = (double)p.Attribute("Tilt");
             verticalSpan = (double)p.Attribute("Span");
-            registered = Services.Control.OpticalCenterCalibration.Valid(
-                anchorU,
-                anchorV
-            ) &&
+            registered = Services.Control.OpticalCenterCalibration.Valid(anchorU, anchorV) &&
                 verticalSpan > 0 &&
                 verticalSpan <= 180 &&
                 !double.IsNaN(anchorPan) &&
@@ -177,41 +187,23 @@ namespace OpenCvWpfTracking
         }
 
         private XElement ReadEntry() =>
-            !referenceWriteFailed &&
-            File.Exists(file) ? XDocument.Load(file).Root.Elements("Image").FirstOrDefault(p => (string)p.Attribute("Key") == key &&
-            (bool?)p.Attribute("Invalid") != true) : null;
+            !referenceWriteFailed && File.Exists(file)
+            ? XDocument.Load(file).Root.Elements("Image").FirstOrDefault(p => (string)p.Attribute("Key") == key && (bool? )p.Attribute("Invalid") != true)
+            : null;
 
         private void Save()
         {
             var doc = File.Exists(file) ? XDocument.Load(file) : new XDocument(new XElement("Panoramas"));
             doc.Root.Elements("Image").Where(p => (string)p.Attribute("Key") == key).Remove();
             doc.Root.Add(new XElement(
-                "Image",
-                new XAttribute(
-                "Key",
-                key
-            ),
-                new XAttribute(
-                "U",
-                anchorU
-            ),
-                new XAttribute(
-                "V",
-                anchorV
-            ),
-                new XAttribute(
-                "Pan",
-                anchorPan
-            ),
-                new XAttribute(
-                "Tilt",
-                anchorTilt
-            ),
-                new XAttribute(
-                "Span",
-                verticalSpan
-            )
-            ));
+                    "Image",
+                    new XAttribute("Key", key),
+                    new XAttribute("U", anchorU),
+                    new XAttribute("V", anchorV),
+                    new XAttribute("Pan", anchorPan),
+                    new XAttribute("Tilt", anchorTilt),
+                    new XAttribute("Span", verticalSpan)
+                ));
             WriteRegistration(doc);
             referenceWriteFailed = false;
         }
@@ -301,18 +293,9 @@ namespace OpenCvWpfTracking
 
                         for (int copy = -1; copy <= 1; copy++)
                             dc.DrawLine(
-                                new Pen(
-                                color,
-                                1.5
-                            ),
-                                previous.Value + new Vector(
-                                copy * worldWidth,
-                                0
-                            ),
-                                end + new Vector(
-                                copy * worldWidth,
-                                0
-                            )
+                                new Pen(color, 1.5),
+                                previous.Value + new Vector(copy * worldWidth, 0),
+                                end + new Vector(copy * worldWidth, 0)
                             );
                     }
 
@@ -320,16 +303,7 @@ namespace OpenCvWpfTracking
                     {
                         Point shown = pos + new Vector(copy * worldWidth, 0);
                         bool active = vm.SelectedRoutePoint != null && vm.SelectedRoutePoint.Order == p.Order;
-                        dc.DrawEllipse(
-                            active ? Brushes.White : color,
-                            new Pen(
-                            Brushes.Black,
-                            1
-                        ),
-                            shown,
-                            active ? 6 : 4,
-                            active ? 6 : 4
-                        );
+                        dc.DrawEllipse(active ? Brushes.White : color, new Pen(Brushes.Black, 1), shown, active ? 6 : 4, active ? 6 : 4);
 
                         if (route.Points.Count < 120 || active)
                             DrawText(dc, p.Order.ToString(), shown + new Vector(6, -14), color);
@@ -347,27 +321,22 @@ namespace OpenCvWpfTracking
                 for (int copy = -1; copy <= 1; copy++)
                     dc.DrawRectangle(
                         null,
-                        new Pen(
-                        LegacyVideoIntegration.ChannelBrush(ir),
-                        2
-                    ),
-                        new Rect(
-                        c.X + copy * worldWidth - w / 2,
-                        c.Y - h / 2,
-                        w,
-                        h
-                    )
+                        new Pen(LegacyVideoIntegration.ChannelBrush(ir), 2),
+                        new Rect(c.X + copy * worldWidth - w / 2, c.Y - h / 2, w, h)
                     );
             }
 
             dc.Pop();
             DrawText(
                 dc,
-                registerNext ? "현재 영상과 같은 기준물을 사진에서 클릭" : !registered ? "상단 '사진 기준 맞춤'으로 현재 시선 연결" : !vm.PanoramaPoseFresh ? "위치 수신 대기 · 표시 중지" : (follow ? "시선 따라가기" : "전체 보기") + " · " + vm.CurrentRoute.Name + " / " + vm.CurrentRoute.Points.Count + "점",
-                new Point(
-                8,
-                5
-            ),
+                registerNext
+                ? "현재 영상과 같은 기준물을 사진에서 클릭"
+                : !registered
+                    ? "상단 '사진 기준 맞춤'으로 현재 시선 연결"
+                    : !vm.PanoramaPoseFresh
+                        ? "위치 수신 대기 · 표시 중지"
+                        : (follow ? "시선 따라가기" : "전체 보기") + " · " + vm.CurrentRoute.Name + " / " + vm.CurrentRoute.Points.Count + "점",
+                new Point(8, 5),
                 Brushes.LightSteelBlue
             );
         }
@@ -381,6 +350,7 @@ namespace OpenCvWpfTracking
             {
                 while (x < -worldWidth / 2)
                     x += worldWidth;
+
                 while (x > ActualWidth + worldWidth / 2)
                     x -= worldWidth;
             }
@@ -391,15 +361,7 @@ namespace OpenCvWpfTracking
         private static void DrawText(DrawingContext dc, string text, Point at, Brush color)
         {
             dc.DrawText(
-                new FormattedText(
-                text,
-                CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight,
-                new Typeface("Malgun Gothic"),
-                11,
-                color,
-                1
-            ),
+                new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Malgun Gothic"), 11, color, 1),
                 at
             );
         }
@@ -435,20 +397,7 @@ namespace OpenCvWpfTracking
                 return;
 
             // 360도 이음매 양쪽의 투영 사본도 선택 대상으로 포함한다.
-            var hit = vm.CurrentRoute.Points.Select(p => new
-            {
-                Point = p,
-                Distance = Enumerable.Range(
-                -1,
-                3
-            ).Min(copy => (Project(
-                p.Pan,
-                p.Tilt
-            ) + new Vector(
-                copy * worldWidth,
-                0
-            ) - mouse).Length)
-            }).OrderBy(p => p.Distance).FirstOrDefault();
+            var hit = vm.CurrentRoute.Points.Select(p => new { Point = p, Distance = Enumerable.Range(-1, 3).Min(copy => (Project(p.Pan, p.Tilt) + new Vector(copy * worldWidth, 0) - mouse).Length) }).OrderBy(p => p.Distance).FirstOrDefault();
 
             if (hit != null && hit.Distance < 14)
             {

@@ -84,14 +84,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// SendPacketsAsync 송신 함수.
         /// </summary>
-        private async Task<bool> SendPacketsAsync(
-            string ipAddress,
-            int port,
-            byte[][] packets,
-            string commandName,
-            int interPacketDelayMs = InterPacketDelayMs,
-            int postSendDelayMs = 0
-        )
+        private async Task<bool> SendPacketsAsync(string ipAddress, int port, byte[][] packets, string commandName, int interPacketDelayMs = InterPacketDelayMs, int postSendDelayMs = 0)
         {
             if (string.IsNullOrWhiteSpace(ipAddress) || port <= 0 || port > 65535 || packets == null || packets.Length == 0)
             {
@@ -170,7 +163,8 @@ namespace OpenCvWpfTracking.Services.Communication
                 faultedTask =>
             {
                 Exception observedException = faultedTask.Exception;
-                Debug.WriteLine($"[MCB DIRECT CONNECT TIMEOUT CLEANUP] {commandName} / " + $"{ipAddress}:{port} / " + observedException?.GetBaseException().Message);
+                Debug.WriteLine($"[MCB DIRECT CONNECT TIMEOUT CLEANUP] {commandName} / " +
+                    $"{ipAddress}:{port} / " + observedException?.GetBaseException().Message);
             },
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,

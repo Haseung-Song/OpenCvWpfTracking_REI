@@ -190,35 +190,17 @@ namespace OpenCvWpfTracking
 
             string row = string.Join(
                 ",",
-                DateTime.Now.ToString(
-                "O",
-                CultureInfo.InvariantCulture
-            ),
+                DateTime.Now.ToString("O", CultureInfo.InvariantCulture),
                 result.Level.ToString(CultureInfo.InvariantCulture),
                 vm.CurrentEoZoomText,
                 vm.CurrentIrZoomText,
                 eoFrameWidth.ToString(CultureInfo.InvariantCulture),
                 irFrameWidth.ToString(CultureInfo.InvariantCulture),
-                result.EoPixelWidth.ToString(
-                "F2",
-                CultureInfo.InvariantCulture
-            ),
-                result.IrPixelWidth.ToString(
-                "F2",
-                CultureInfo.InvariantCulture
-            ),
-                result.EoNormalizedWidth.ToString(
-                "F6",
-                CultureInfo.InvariantCulture
-            ),
-                result.IrNormalizedWidth.ToString(
-                "F6",
-                CultureInfo.InvariantCulture
-            ),
-                result.ErrorPercent.ToString(
-                "F2",
-                CultureInfo.InvariantCulture
-            ),
+                result.EoPixelWidth.ToString("F2", CultureInfo.InvariantCulture),
+                result.IrPixelWidth.ToString("F2", CultureInfo.InvariantCulture),
+                result.EoNormalizedWidth.ToString("F6", CultureInfo.InvariantCulture),
+                result.IrNormalizedWidth.ToString("F6", CultureInfo.InvariantCulture),
+                result.ErrorPercent.ToString("F2", CultureInfo.InvariantCulture),
                 result.Passed ? "PASS" : "FAIL"
             );
             File.AppendAllText(path, row + Environment.NewLine, new UTF8Encoding(true));
@@ -229,11 +211,7 @@ namespace OpenCvWpfTracking
             sourcePoint = new Point();
             BitmapSource source = image.Source as BitmapSource;
 
-            if (source == null ||
-                source.PixelWidth <= 0 ||
-                source.PixelHeight <= 0 ||
-                image.ActualWidth <= 0 ||
-                image.ActualHeight <= 0)
+            if (source == null || source.PixelWidth <= 0 || source.PixelHeight <= 0 || image.ActualWidth <= 0 || image.ActualHeight <= 0)
             {
                 return false;
             }

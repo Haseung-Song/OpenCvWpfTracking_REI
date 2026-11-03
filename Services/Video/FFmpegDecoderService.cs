@@ -68,24 +68,23 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #region [필드]
-
         /// <summary>
         /// [RTSP] / 영상 파일 입력 [Format Context]
-        /// 
+        ///
         /// [avformat_open_input()] 성공 시 생성되는 입력 컨텍스트
         /// </summary>
         private AVFormatContext* _formatContext;
 
         /// <summary>
         /// 영상 [Decode]용 [Codec Context]
-        /// 
+        ///
         /// [H.264] / [H.265] 등 실제 영상 [Codec] [Decode] 담당
         /// </summary>
         private AVCodecContext* _codecContext;
 
         /// <summary>
         /// [FFmpeg] [Packet]
-        /// 
+        ///
         /// [RTSP] [Stream]에서 읽어온 압축 데이터 저장용
         /// </summary>
         private AVPacket* _packet;
@@ -94,14 +93,14 @@ namespace OpenCvWpfTracking.Services.Video
 
         /// <summary>
         /// [FFmpeg] [Frame]
-        /// 
+        ///
         /// [Packet] [Decode] 후 실제 영상 [Frame] 저장용
         /// </summary>
         private AVFrame* _frame;
 
         /// <summary>
         /// [Pixel Format] 변환 [Context]
-        /// 
+        ///
         /// [AVFrame]을 [WPF] 출력에 사용 가능한 [BGR24] [Mat]으로 변환할 때 사용
         /// </summary>
         private SwsContext* _swsContext;
@@ -117,11 +116,11 @@ namespace OpenCvWpfTracking.Services.Video
         /// [ReadFrame()]과 [Close()]가 동시에
         /// [FFmpeg] 포인터를 접근하지 못하도록 제어한다.
         /// </summary>
-        private readonly object _syncLock = new object();
+        private readonly object _syncLock = new object ();
 
         /// <summary>
         /// 로그 출력용 영상 구분 이름
-        /// 
+        ///
         /// Ex.) [EO] / [IR]
         /// </summary>
         private readonly string _streamName;
@@ -163,16 +162,10 @@ namespace OpenCvWpfTracking.Services.Video
 
         // 2026-09-16: 기본은 작은 지터 버퍼를 허용하는 SMOOTH 프로파일이다.
         // 환경변수 TORUSS_RTSP_PROFILE=LOW_LATENCY로 기존 최소 버퍼 모드를 선택할 수 있다.
-        private readonly bool _useSmoothPlayback = !string.Equals(
-            Environment.GetEnvironmentVariable("TORUSS_RTSP_PROFILE"),
-            "LOW_LATENCY",
-            StringComparison.OrdinalIgnoreCase
-        );
+        private readonly bool _useSmoothPlayback = !string.Equals(Environment.GetEnvironmentVariable("TORUSS_RTSP_PROFILE"), "LOW_LATENCY", StringComparison.OrdinalIgnoreCase);
 
         #endregion
-
         #region [속성]
-
         /// <summary>
         /// [RTSP] 연결 및 [Decoder] 초기화 완료 여부
         /// </summary>
@@ -224,6 +217,7 @@ namespace OpenCvWpfTracking.Services.Video
         private static void UpdateMaximum(ref long destination, long value)
         {
             long current = Interlocked.Read(ref destination);
+
             while (value > current)
             {
                 long observed = Interlocked.CompareExchange(ref destination, value, current);
@@ -236,9 +230,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
-
         #region [생성자]
-
         /// <summary>
         /// [FFmpeg Decoder Service]
         /// </summary>
@@ -257,14 +249,12 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
-
         #region [열기]
-
         /// <summary>
         /// [RTSP] 연결 및 [FFmpeg] [Decoder] 초기화
         ///
         /// 처리 순서:
-        /// 
+        ///
         /// 1. 기존 연결 정리
         /// 2. [RTSP] [TCP] / [Timeout] 옵션 생성
         /// 3. [avformat_open_input()]으로 [RTSP] 연결
@@ -323,7 +313,8 @@ namespace OpenCvWpfTracking.Services.Video
                 // 인증정보가 포함될 수 있어 예외 원문 대신 진단 코드만 사용한다.
                 ConsoleLogHelper.State(
                     "RTSP AUTH COMPAT",
-                    "Compatibility connection failed / original device settings retained / " + ex.GetType().Name + " / HRESULT=0x" + ex.HResult.ToString("X8")
+                    "Compatibility connection failed / original device settings retained / " + ex.GetType().Name +
+                    " / HRESULT=0x" + ex.HResult.ToString("X8")
                 );
             }
 
@@ -370,7 +361,9 @@ namespace OpenCvWpfTracking.Services.Video
             {
                 LastOpenErrorCode = result;
                 LastOpenErrorText = GetOpenErrorText(result);
-                Console.WriteLine(IsAuthenticationFailure ? $"[{_streamName}] [RTSP AUTH] Authentication Failed / RESULT=401 Unauthorized" : $"[{_streamName}] [FFmpeg RTSP] avformat_open_input Failed / RESULT={LastOpenErrorText}");
+                Console.WriteLine(IsAuthenticationFailure
+                    ? $"[{_streamName}] [RTSP AUTH] Authentication Failed / RESULT=401 Unauthorized"
+                    : $"[{_streamName}] [FFmpeg RTSP] avformat_open_input Failed / RESULT={LastOpenErrorText}");
                 Console.WriteLine();
                 return false;
             }
@@ -562,7 +555,7 @@ namespace OpenCvWpfTracking.Services.Video
 
         /// <summary>
         /// 입력 [Stream] 정보 조회
-        /// 
+        ///
         /// [RTSP] 연결 이후 영상 / 음성 [Stream] 정보 확인 단계
         /// </summary>
         private bool LoadStreamInfo()
@@ -624,7 +617,7 @@ namespace OpenCvWpfTracking.Services.Video
             ffmpeg.avcodec_parameters_to_context(_codecContext, codecParameters);
             /// <summary>
             /// [RTSP] 원본 영상 해상도 저장
-            /// 
+            ///
             /// [AI Detector] [Bounding Box] 좌표 기준과
             /// [Canvas Overlay] 좌표 기준을 맞추기 위해 사용한다.
             /// </summary>
@@ -632,7 +625,7 @@ namespace OpenCvWpfTracking.Services.Video
             VideoHeight = _codecContext->height;
             /// <summary>
             /// [RTSP] 원본 영상 해상도 로그
-            /// 
+            ///
             /// [FFmpeg]에서 읽은 실제 영상 해상도를 출력하며,
             /// [AI Detector] [Bounding Box] 좌표 기준과
             /// [Overlay Canvas] 크기 설정 확인에 사용한다.
@@ -664,9 +657,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
-
         #region [프레임 읽기]
-
         /// <summary>
         /// [RTSP]에서 다음 영상 [Frame]을 읽어 [OpenCV] [Mat]으로 반환
         ///
@@ -828,9 +819,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
-
         #region [닫기 및 자원 해제]
-
         /// <summary>
         /// [RTSP] 연결 해제 및 [FFmpeg] 리소스 정리
         ///
@@ -936,7 +925,6 @@ namespace OpenCvWpfTracking.Services.Video
         {
             Close();
         }
-
         #endregion
     }
 }

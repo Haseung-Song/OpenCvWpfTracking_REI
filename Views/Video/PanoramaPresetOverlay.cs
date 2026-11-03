@@ -31,8 +31,9 @@ namespace OpenCvWpfTracking.Views.Video
             {
                 int? number = HitNumber(args.GetPosition(this));
                 var point = _links.FirstOrDefault(link => link.Number == number);
-                ToolTip = point == null ? "번호 클릭: 기존 PRESET 이동" :
-                    "PRESET " + point.Number + " / PAN " + point.Pan.ToString("F2") + "° / TILT " + point.Tilt.ToString("F2") + "°";
+                ToolTip = point == null
+                    ? "번호 클릭: 기존 PRESET 이동"
+                    : "PRESET " + point.Number + " / PAN " + point.Pan.ToString("F2") + "° / TILT " + point.Tilt.ToString("F2") + "°";
             };
             ToolTip = "번호 클릭: 저장된 PRESET PTZF로 이동";
             SizeChanged += (sender, args) => InvalidateVisual();
@@ -59,12 +60,11 @@ namespace OpenCvWpfTracking.Views.Video
                 return Rect.Empty;
 
             double scale = Math.Min(width / pixelsWide, height / pixelsHigh);
-            return new Rect((width - pixelsWide * scale) / 2,
-                (height - pixelsHigh * scale) / 2, pixelsWide * scale, pixelsHigh * scale);
+            return new Rect((width - pixelsWide * scale) / 2, (height - pixelsHigh * scale) / 2, pixelsWide * scale, pixelsHigh * scale);
         }
 
-        private Rect ImageBounds => _source == null ? Rect.Empty :
-            ImageRectangle(ActualWidth, ActualHeight, _source.PixelWidth, _source.PixelHeight);
+        private Rect ImageBounds =>
+            _source == null ? Rect.Empty : ImageRectangle(ActualWidth, ActualHeight, _source.PixelWidth, _source.PixelHeight);
 
         /// <summary>
         /// 정규화 좌표를 검은 여백을 제외한 영상 좌표로 변환한다.
@@ -91,8 +91,9 @@ namespace OpenCvWpfTracking.Views.Video
                 {
                     int ring = (attempt + 7) / 8;
                     double angle = ((attempt - 1) % 8) * Math.PI / 4 - Math.PI / 2;
-                    label = attempt == 0 ? anchor : new Point(anchor.X + ring * 34 * Math.Cos(angle),
-                        anchor.Y + ring * 34 * Math.Sin(angle));
+                    label = attempt == 0
+                        ? anchor
+                        : new Point(anchor.X + ring * 34 * Math.Cos(angle), anchor.Y + ring * 34 * Math.Sin(angle));
                     label.X = Math.Max(bounds.Left + 15, Math.Min(bounds.Right - 15, label.X));
                     label.Y = Math.Max(bounds.Top + 15, Math.Min(bounds.Bottom - 15, label.Y));
 
@@ -147,11 +148,16 @@ namespace OpenCvWpfTracking.Views.Video
                     drawing.DrawEllipse(Brushes.Gold, new Pen(Brushes.Black, 1), anchor, 3, 3);
                 }
 
-                drawing.DrawEllipse(new SolidColorBrush(Color.FromArgb(235, 28, 51, 67)),
-                    new Pen(Brushes.Gold, 2), position, 14, 14);
-                var text = new FormattedText(link.Number.ToString(CultureInfo.InvariantCulture),
-                    CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                    new Typeface("Malgun Gothic"), 13, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                drawing.DrawEllipse(new SolidColorBrush(Color.FromArgb(235, 28, 51, 67)), new Pen(Brushes.Gold, 2), position, 14, 14);
+                var text = new FormattedText(
+                    link.Number.ToString(CultureInfo.InvariantCulture),
+                    CultureInfo.CurrentUICulture,
+                    FlowDirection.LeftToRight,
+                    new Typeface("Malgun Gothic"),
+                    13,
+                    Brushes.White,
+                    VisualTreeHelper.GetDpi(this).PixelsPerDip
+                );
                 drawing.DrawText(text, new Point(position.X - text.Width / 2, position.Y - text.Height / 2));
             }
         }
@@ -167,7 +173,7 @@ namespace OpenCvWpfTracking.Views.Video
                 return null;
 
             var nearest = LabelPositions(bounds).OrderBy(pair => (pair.Value - point).Length).FirstOrDefault();
-            return _links.Count > 0 && (nearest.Value - point).Length <= 15 ? nearest.Key : (int?)null;
+            return _links.Count > 0 && (nearest.Value - point).Length <= 15 ? nearest.Key : (int? )null;
         }
 
         /// <summary>

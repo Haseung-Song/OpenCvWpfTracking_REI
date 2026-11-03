@@ -32,13 +32,7 @@ namespace OpenCvWpfTracking.Services.Control
         /// <summary>
         /// HomePositionStabilityTracker 동작 수행 함수.
         /// </summary>
-        public HomePositionStabilityTracker(
-            double initialPan,
-            double initialTilt,
-            double targetTolerance,
-            double stableTolerance,
-            int requiredStableSamples
-        )
+        public HomePositionStabilityTracker(double initialPan, double initialTilt, double targetTolerance, double stableTolerance, int requiredStableSamples)
         {
             if (targetTolerance < 0)
             {
@@ -68,8 +62,7 @@ namespace OpenCvWpfTracking.Services.Control
         public bool Update(double currentPan, double currentTilt)
         {
             IsNearTarget = Math.Abs(currentPan) <= _targetTolerance && Math.Abs(currentTilt) <= _targetTolerance;
-            IsStableSample = Math.Abs(currentPan - _previousPan) <= _stableTolerance &&
-                Math.Abs(currentTilt - _previousTilt) <= _stableTolerance;
+            IsStableSample = Math.Abs(currentPan - _previousPan) <= _stableTolerance && Math.Abs(currentTilt - _previousTilt) <= _stableTolerance;
 
             if (IsNearTarget && IsStableSample)
             {

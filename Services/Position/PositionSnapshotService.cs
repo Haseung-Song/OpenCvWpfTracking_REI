@@ -46,17 +46,7 @@ namespace OpenCvWpfTracking.Services.Position
             _state.UpdateIrLens(irZoom, irFocus, DateTimeOffset.Now);
         }
 
-        public void UpdateGps(
-            double latitude,
-            double longitude,
-            double altitude,
-            double speed,
-            double course,
-            double hdop,
-            int satelliteCount,
-            int fixStatus,
-            bool valid
-        )
+        public void UpdateGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid)
         {
             _state.UpdateGps(latitude, longitude, altitude, speed, course, hdop, satelliteCount, fixStatus, valid, DateTimeOffset.Now);
         }

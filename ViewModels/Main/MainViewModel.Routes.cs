@@ -12,11 +12,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private ScanRouteStore routeStore;
 
         private ScanRouteStore RouteStore =>
-            routeStore ?? (routeStore = new ScanRouteStore(Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "Config",
-            "ScanRoutes.xml"
-        )));
+            routeStore ?? (routeStore = new ScanRouteStore(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "ScanRoutes.xml")));
 
         private bool routeIr;
 
@@ -262,12 +258,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (single && (SelectedRoutePoint == null || !currentRoute.Points.Contains(SelectedRoutePoint)))
                 throw new InvalidOperationException("현재 장비·채널 경로의 지점을 다시 선택하세요.");
 
-            var queue = single ? new[]
+            var queue = single
+                ? new[]
             {
                 SelectedRoutePoint.Copy()
             }
 
-            : currentRoute.Queue();
+                : currentRoute.Queue();
 
             if (queue.Length == 0)
                 throw new InvalidOperationException("관측 지점을 선택/추가하세요.");

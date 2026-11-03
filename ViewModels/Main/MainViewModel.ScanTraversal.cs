@@ -6,7 +6,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
-        private bool traversalLoaded, panOrder, pingPong;
+        private bool traversalLoaded;
+
+        private bool panOrder;
+
+        private bool pingPong;
 
         private string TraversalPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "ScanTraversal.xml");
 
@@ -25,8 +29,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (File.Exists(TraversalPath))
                 {
                     var root = XDocument.Load(TraversalPath).Root;
-                    panOrder = (bool?)root.Attribute("PanOrder") ?? false;
-                    pingPong = (bool?)root.Attribute("PingPong") ?? false;
+                    panOrder = (bool? )root.Attribute("PanOrder") ?? false;
+                    pingPong = (bool? )root.Attribute("PingPong") ?? false;
                 }
             }
             catch (Exception e)
@@ -77,17 +81,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(TraversalPath));
-                var doc = new XDocument(new XElement(
-                    "Traversal",
-                    new XAttribute(
-                    "PanOrder",
-                    panOrder
-                ),
-                    new XAttribute(
-                    "PingPong",
-                    pingPong
-                )
-                ));
+                var doc = new XDocument(new XElement("Traversal", new XAttribute("PanOrder", panOrder), new XAttribute("PingPong", pingPong)));
                 string temp = TraversalPath + ".tmp";
                 doc.Save(temp);
 

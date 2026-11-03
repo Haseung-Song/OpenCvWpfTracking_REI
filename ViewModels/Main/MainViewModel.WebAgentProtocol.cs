@@ -58,15 +58,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _webAgentTelemetryRejectedLogAt = now;
             ConsoleLogHelper.State(
                 "WEB AGENT TELEMETRY DEFERRED",
-                "CHANNEL=" + channel + " / SOURCE_TIMESTAMP=" + sample + " / Clock reference pending, invalid time, or stale sample; packet is not used for control"
+                "CHANNEL=" + channel +
+                " / SOURCE_TIMESTAMP=" + sample +
+                " / Clock reference pending, invalid time, or stale sample; packet is not used for control"
             );
         }
 
         /// <summary>연결마다 이전 캐시 시각과 기능 협상 결과를 비운다.</summary>
         private void ResetWebAgentTelemetrySession()
         {
-            ResetV292Session();
-            ResetWebAgentV293();
+            ResetWebAgentControlSession();
+            ResetWebAgentEquipmentState();
             _webAgentTelemetryClock.Reset();
             _webAgentTelemetryClockGeneration = -1;
             Interlocked.Exchange(ref _webAgentTelemetryNegotiationStarted, 0);
@@ -75,10 +77,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Interlocked.Exchange(ref _webAgentPanSampleMilliseconds, 0);
             Interlocked.Exchange(ref _webAgentTiltSampleMilliseconds, 0);
             Interlocked.Exchange(ref _webAgentPowerSampleMilliseconds, 0);
+
             for (int index = 0; index < _webAgentLensSampleMilliseconds.Length; index++)
             {
                 Interlocked.Exchange(ref _webAgentLensSampleMilliseconds[index], 0);
             }
+
             _irFocusDirectUnavailableSession = null;
         }
 
@@ -145,6 +149,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void ParseWebAgentV18Packet(LaResponsePacket packet)
         {
             byte[] payload = packet.Payload;
+
             try
             {
                 switch (packet.Function)
@@ -201,7 +206,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ParseWebAgentTelemetrySetting(payload);
                         break;
                     case 0x35:
-                        ParseAutoFocusV292(payload);
+                        ParseAutoFocusResponse(payload);
                         break;
                     case 0x36:
                         ParseEquipmentTemperature(payload);
@@ -283,10 +288,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (tiltNew &&
                 _activeTiltAbsoluteTarget.HasValue &&
-                Math.Abs(GetTiltDifference(
-                _currentTilt,
-                _activeTiltAbsoluteTarget.Value
-            )) <= 0.03)
+                Math.Abs(GetTiltDifference(_currentTilt, _activeTiltAbsoluteTarget.Value)) <= 0.03)
                 _activeTiltAbsoluteTarget = null;
 
             if (panValid && tiltValid)
@@ -299,10 +301,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             NotifyEoCurrentStatusChanged(
-                panValid &&
-                Math.Abs(previousPan - _currentPan) > 0.0001,
-                tiltValid &&
-                Math.Abs(previousTilt - _currentTilt) > 0.0001,
+                panValid && Math.Abs(previousPan - _currentPan) > 0.0001,
+                tiltValid && Math.Abs(previousTilt - _currentTilt) > 0.0001,
                 false,
                 false,
                 false
@@ -338,11 +338,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DateTimeOffset powerTime;
 
             if ((validFlags & 0x01) != 0 &&
-                TryReadTelemetryTime(
-                updatedAt,
-                out powerTime,
-                false
-            ) &&
+                TryReadTelemetryTime(updatedAt, out powerTime, false) &&
                 (long)updatedAt > Interlocked.Read(ref _webAgentPowerSampleMilliseconds))
             {
                 Interlocked.Exchange(ref _webAgentPowerSampleMilliseconds, (long)updatedAt);
@@ -388,19 +384,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 category == 0 &&
                 maximumHz >= 10 &&
                 (flags & 0x01) != 0 &&
-                Interlocked.CompareExchange(
-                ref _webAgentTelemetryNegotiationStarted,
-                1,
-                0
-            ) == 0)
+                Interlocked.CompareExchange(ref _webAgentTelemetryNegotiationStarted, 1, 0) == 0)
             {
                 bool ptSent = _controlCommandService.SetWebAgentTelemetryRate(0, 10);
                 bool eoSent = _controlCommandService.SetWebAgentTelemetryRate(1, 2);
                 bool irSent = _controlCommandService.SetWebAgentTelemetryRate(2, 2);
-                ConsoleLogHelper.Command(
-                    "WEB AGENT TELEMETRY",
-                    $"SEPARATED_MODE_REQUEST / PT_10HZ={ptSent} / EO_2HZ={eoSent} / IR_2HZ={irSent}"
-                );
+                ConsoleLogHelper.Command("WEB AGENT TELEMETRY", $"SEPARATED_MODE_REQUEST / PT_10HZ={ptSent} / EO_2HZ={eoSent} / IR_2HZ={irSent}");
             }
 
             if (mode == 0x01 && category <= 2)
@@ -457,17 +446,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State(
                 "WEB AGENT CAPABILITY",
                 string.Format(
-                "SCHEMA={0} / TARGET=0x{1:X2} / LENS_FLAGS=0x{2:X4} / FEATURES={3}",
-                p[0],
-                p[1],
-                BitConverter.ToUInt16(
-                p,
-                2
-            ),
-                p[12]
-            )
+                    "SCHEMA={0} / TARGET=0x{1:X2} / LENS_FLAGS=0x{2:X4} / FEATURES={3}",
+                    p[0],
+                    p[1],
+                    BitConverter.ToUInt16(p, 2),
+                    p[12]
+                )
             );
-
         }
 
         /// <summary>
@@ -511,11 +496,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DateTimeOffset sampleTime;
             ulong sampleMilliseconds = BitConverter.ToUInt64(p, 8);
 
-            if (!TryReadTelemetryTime(
-                sampleMilliseconds,
-                out sampleTime
-            ) ||
-                DateTimeOffset.UtcNow - sampleTime > TimeSpan.FromSeconds(3))
+            if (!TryReadTelemetryTime(sampleMilliseconds, out sampleTime) || DateTimeOffset.UtcNow - sampleTime > TimeSpan.FromSeconds(3))
             {
                 LogDeferredWebAgentTelemetry(target == 0 ? "EO" : "IR", sampleMilliseconds);
                 return;
@@ -584,13 +565,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "WEB AGENT LENS",
-                string.Format(
-                "TARGET=0x{0:X2} / VALID=0x{1:X2} / ZOOM={2} / FOCUS={3}",
-                target,
-                flags,
-                zoom,
-                focus
-            )
+                string.Format("TARGET=0x{0:X2} / VALID=0x{1:X2} / ZOOM={2} / FOCUS={3}", target, flags, zoom, focus)
             );
         }
 
@@ -638,7 +613,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Interlocked.Exchange(ref _lastPanTiltStallWarningUtcTicks, nowTicks);
             ConsoleLogHelper.Warning(
                 "WEB AGENT PAN/TILT",
-                "Movement command was sent, but Function 0x01 position is unchanged" + " / PAN_RAW=" + panRaw + " / TILT_RAW=" + tiltRaw + " / CHECK=WebAgent PT status publisher"
+                "Movement command was sent, but Function 0x01 position is unchanged" +
+                " / PAN_RAW=" + panRaw +
+                " / TILT_RAW=" + tiltRaw +
+                " / CHECK=WebAgent PT status publisher"
             );
         }
 
@@ -705,7 +683,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Interlocked.Exchange(ref _lastEoLensConflictWarningUtcTicks, nowTicks);
             ConsoleLogHelper.Warning(
                 "WEB AGENT EO LENS",
-                "Conflicting Function 0x28 value ignored; recent Function 0x01 retained" + " / FLAGS=0x" + flags.ToString("X2") + " / 0x28_ZOOM=" + zoom + " / 0x28_FOCUS=" + focus + " / ACTIVE_ZOOM=" + _currentEoZoom + " / ACTIVE_FOCUS=" + _currentEoFocus
+                "Conflicting Function 0x28 value ignored; recent Function 0x01 retained" +
+                " / FLAGS=0x" + flags.ToString("X2") +
+                " / 0x28_ZOOM=" + zoom +
+                " / 0x28_FOCUS=" + focus +
+                " / ACTIVE_ZOOM=" + _currentEoZoom +
+                " / ACTIVE_FOCUS=" + _currentEoFocus
             );
         }
 
@@ -735,17 +718,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "WEB AGENT FEATURE",
-                string.Format(
-                "TARGET=0x{0:X2} / FEATURE=0x{1:X2} / FLAGS=0x{2:X2} / VALUE={3}",
-                target,
-                feature,
-                flags,
-                value
-            )
+                string.Format("TARGET=0x{0:X2} / FEATURE=0x{1:X2} / FLAGS=0x{2:X2} / VALUE={3}", target, feature, flags, value)
             );
-
-            // 카메라별 원시 번호는 색 이름이나 직접 버튼 선택 상태로 해석하지 않는다.
-
+        // 카메라별 원시 번호는 색 이름이나 직접 버튼 선택 상태로 해석하지 않는다.
         }
 
         /// <summary>
@@ -759,16 +734,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State(
                 "WEB AGENT HOMING",
                 string.Format(
-                "TYPE={0} / AXIS={1} / STATE=0x{2:X2} / FLAGS=0x{3:X2} / STATUS=0x{4:X4}",
-                p[1],
-                p[2],
-                p[3],
-                p[4],
-                BitConverter.ToUInt16(
-                p,
-                5
-            )
-            )
+                    "TYPE={0} / AXIS={1} / STATE=0x{2:X2} / FLAGS=0x{3:X2} / STATUS=0x{4:X4}",
+                    p[1],
+                    p[2],
+                    p[3],
+                    p[4],
+                    BitConverter.ToUInt16(p, 5)
+                )
             );
         }
 
@@ -779,14 +751,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (p.Length < 6)
                 return;
+
             HandlePrecisionUnavailable(p);
-            HandleWebAgentV293Unavailable(p);
+            HandleWebAgentEquipmentUnavailable(p);
+
             if (p[0] == 1 && p[1] == 0 && p[2] == 0 && p[3] == 0x2B)
             {
                 _irFocusDirectUnavailableSession = _connectionSessionId;
             }
+
             DispatchSpecialFeaturePacket(p, ApplySpecialFeatureUnavailable);
             HandleGpsUnavailable(p);
+
             if (p[2] == 0x1D && p[3] == 0xE9 && p[4] < 2)
             {
                 byte target = p[4];
@@ -796,9 +772,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ApplyDigitalZoomUnavailable(target);
                 }));
             }
-            ConsoleLogHelper.Warning("WEB AGENT V1.8", string.Format(
-                "Request unavailable / STATUS={0} / REQUEST={1:X2}{2:X2}{3:X2}{4:X2}",
-                p[1], p[2], p[3], p[4], p[5]));
+
+            ConsoleLogHelper.Warning(
+                "WEB AGENT V1.8",
+                string.Format("Request unavailable / STATUS={0} / REQUEST={1:X2}{2:X2}{3:X2}{4:X2}", p[1], p[2], p[3], p[4], p[5])
+            );
         }
     }
 }

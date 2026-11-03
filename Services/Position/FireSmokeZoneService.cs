@@ -129,7 +129,8 @@ namespace OpenCvWpfTracking.Services.Position
 
         public string Detail => Level + " / " + Zone + "\n" + Reason + "\n" + Context;
 
-        public static ZoneAssessment Unknown(string reason) => new ZoneAssessment
+        public static ZoneAssessment Unknown(string reason) =>
+            new ZoneAssessment
         {
             Reason = reason
         };
@@ -157,7 +158,8 @@ namespace OpenCvWpfTracking.Services.Position
 
         public double HorizontalFov { get; set; }
 
-        public double ReferenceEoFov(int zoom) => new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)zoom);
+        public double ReferenceEoFov(int zoom) =>
+            new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)zoom);
     }
 
     /// <summary>정합 순간 실패를 위한 표시 전용 보관소다. 탐지 판정에는 이 결과를 전달하지 않는다.</summary>
@@ -166,7 +168,9 @@ namespace OpenCvWpfTracking.Services.Position
         private sealed class Entry
         {
             public FireSmokeScene Scene;
+
             public ZoneFrameContext Frame;
+
             public DateTimeOffset ConfirmedAt;
         }
 
@@ -174,10 +178,10 @@ namespace OpenCvWpfTracking.Services.Position
 
         public void Clear() => _entries.Clear();
 
-        public List<FireSmokeScene> Update(string camera, ZoneFrameContext frame, IEnumerable<FireSmokeScene> current,
-            IEnumerable<string> allowedIds, DateTimeOffset confirmedAt, bool ready, out int heldCount)
+        public List<FireSmokeScene> Update(string camera, ZoneFrameContext frame, IEnumerable<FireSmokeScene> current, IEnumerable<string> allowedIds, DateTimeOffset confirmedAt, bool ready, out int heldCount)
         {
             heldCount = 0;
+
             if (!ready || frame == null || !FireSmokeZoneService.ValidPose(frame.Position, camera))
             {
                 Clear();
@@ -185,27 +189,37 @@ namespace OpenCvWpfTracking.Services.Position
             }
 
             var allowed = new HashSet<string>(allowedIds);
+
             foreach (var key in _entries.Keys.ToArray())
             {
                 var entry = _entries[key];
                 double age = (frame.At - entry.ConfirmedAt).TotalSeconds;
+
                 if (!allowed.Contains(key) || age < 0 || age > 3 || !SameView(entry.Frame, frame, camera))
                     _entries.Remove(key);
             }
 
             var fresh = new HashSet<string>();
+
             foreach (var scene in current)
             {
                 string key = scene.Id + scene.Revision;
                 double age = (frame.At - confirmedAt).TotalSeconds;
+
                 if (!allowed.Contains(key) || age < 0 || age > 1.5)
                     continue;
 
                 fresh.Add(key);
                 Entry previous;
+
                 // 같은 정합 프레임을 재사용해도 표시 보존 시간을 연장하지 않는다.
                 if (!_entries.TryGetValue(key, out previous) || confirmedAt > previous.ConfirmedAt)
-                    _entries[key] = new Entry { Scene = scene, Frame = frame, ConfirmedAt = confirmedAt };
+                    _entries[key] = new Entry
+                    {
+                        Scene = scene,
+                        Frame = frame,
+                        ConfirmedAt = confirmedAt
+                    };
             }
 
             heldCount = _entries.Keys.Count(key => !fresh.Contains(key));
@@ -214,8 +228,10 @@ namespace OpenCvWpfTracking.Services.Position
 
         private static bool SameView(ZoneFrameContext previous, ZoneFrameContext current, string camera)
         {
-            return previous.Key == current.Key && previous.Epoch == current.Epoch &&
-                previous.ChannelEpoch == current.ChannelEpoch && previous.Width == current.Width &&
+            return previous.Key == current.Key &&
+                previous.Epoch == current.Epoch &&
+                previous.ChannelEpoch == current.ChannelEpoch &&
+                previous.Width == current.Width &&
                 previous.Height == current.Height &&
                 FireSmokeZoneService.IsCameraPoseStable(previous.Position, current.Position, camera);
         }
@@ -238,18 +254,23 @@ namespace OpenCvWpfTracking.Services.Position
             int? actual = camera == "IR" ? current.IrZoom : current.EoZoom;
             return PanDistance(reference.Pan.Value, current.Pan.Value) <= .05 &&
                 Math.Abs(reference.Tilt.Value - current.Tilt.Value) <= .05 &&
-                expected.HasValue && LensWithin(actual, expected.Value, ZoomTolerance);
+                expected.HasValue &&
+                LensWithin(actual, expected.Value, ZoomTolerance);
         }
-
 
         /// <summary>사진·도형·분류는 보존하고 장면 방향과 저장된 프리셋 방향에만 동일한 변환을 적용한다.</summary>
         public static bool RebaseZero(FireSmokeZoneFile data, PanoramaZoneRebase operation)
         {
-            if (operation == null || string.IsNullOrWhiteSpace(operation.OperationId) ||
-                string.IsNullOrWhiteSpace(operation.EquipmentKey) || !Finite(operation.PanDelta) || !Finite(operation.TiltDelta))
+            if (operation == null ||
+                string.IsNullOrWhiteSpace(operation.OperationId) ||
+                string.IsNullOrWhiteSpace(operation.EquipmentKey) ||
+                !Finite(operation.PanDelta) ||
+                !Finite(operation.TiltDelta))
                 throw new InvalidDataException("구역 ZERO 변환 기록 확인 필요");
+
             if (data.AppliedZeroOperations == null)
                 data.AppliedZeroOperations = new List<string>();
+
             if (data.AppliedZeroOperations.Contains(operation.OperationId))
                 return false;
 
@@ -258,20 +279,27 @@ namespace OpenCvWpfTracking.Services.Position
                 // 이전 버전에서 이미 무효화된 근거 불명 구역은 자동으로 유효화하지 않는다.
                 scene.Pan = SignedAngle(scene.Pan + operation.PanDelta);
                 scene.Tilt += operation.TiltDelta;
+
                 if (scene.PresetNumber > 0)
                 {
                     var signature = (scene.PresetSignature ?? "").Split('|');
                     double pan, tilt;
+
                     if (signature.Length < 8 ||
                         !double.TryParse(signature[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) ||
-                        !double.TryParse(signature[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) || !Finite(pan) || !Finite(tilt))
+                        !double.TryParse(signature[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) ||
+                        !Finite(pan) ||
+                        !Finite(tilt))
                         throw new InvalidDataException("구역 프리셋의 ZERO 이전 방향 확인 필요: " + scene.Name);
+
                     signature[1] = SignedAngle(pan + operation.PanDelta).ToString("R", CultureInfo.InvariantCulture);
                     signature[2] = (tilt + operation.TiltDelta).ToString("R", CultureInfo.InvariantCulture);
                     scene.PresetSignature = string.Join("|", signature);
                 }
+
                 scene.Revision = Guid.NewGuid().ToString("N");
             }
+
             data.AppliedZeroOperations.Add(operation.OperationId);
             return true;
         }
@@ -279,14 +307,19 @@ namespace OpenCvWpfTracking.Services.Position
         private static double SignedAngle(double value) => ((value + 180) % 360 + 360) % 360 - 180;
 
         public static bool LensWithin(int? actual, int expected, int tolerance) =>
-            actual.HasValue && actual.Value >= 0 && actual.Value <= 1000 && expected >= 0 && expected <= 1000 &&
+            actual.HasValue &&
+            actual.Value >= 0 &&
+            actual.Value <= 1000 &&
+            expected >= 0 &&
+            expected <= 1000 &&
             Math.Abs((long)actual.Value - expected) <= tolerance;
 
         private static bool LensTextWithin(string saved, string current, int tolerance)
         {
             int before, after;
             return int.TryParse(saved, out before) && int.TryParse(current, out after)
-                ? LensWithin(after, before, tolerance) : saved == current;
+                ? LensWithin(after, before, tolerance)
+                : saved == current;
         }
 
         /// <summary>과거 전체 프리셋 지문도 읽되 해당 카메라의 렌즈와 실제 방향만 비교한다.</summary>
@@ -294,20 +327,32 @@ namespace OpenCvWpfTracking.Services.Position
         {
             var parts = (scene.PresetSignature ?? "").Split('|');
             double pan, tilt;
-            if (parts.Length < 8 || parts[0] != current.Number.ToString(CultureInfo.InvariantCulture) ||
-                double.IsNaN(current.Pan) || double.IsInfinity(current.Pan) ||
-                double.IsNaN(current.Tilt) || double.IsInfinity(current.Tilt) ||
+
+            if (parts.Length < 8 ||
+                parts[0] != current.Number.ToString(CultureInfo.InvariantCulture) ||
+                double.IsNaN(current.Pan) ||
+                double.IsInfinity(current.Pan) ||
+                double.IsNaN(current.Tilt) ||
+                double.IsInfinity(current.Tilt) ||
                 !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) ||
                 !double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) ||
-                double.IsNaN(pan) || double.IsInfinity(pan) || double.IsNaN(tilt) || double.IsInfinity(tilt))
+                double.IsNaN(pan) ||
+                double.IsInfinity(pan) ||
+                double.IsNaN(tilt) ||
+                double.IsInfinity(tilt))
                 return "등록 기준 미확인";
+
             if (PanDistance(pan, current.Pan) > .015000001 || Math.Abs(tilt - current.Tilt) > .015000001)
                 return "PAN/TILT 변경";
+
             bool ir = scene.Camera == "IR";
+
             if (!LensTextWithin(parts[ir ? 5 : 3], ir ? current.IrZoomText : current.EoZoomText, ZoomTolerance))
                 return (ir ? "IR" : "EO") + " ZOOM 변경";
+
             if (!LensTextWithin(parts[ir ? 6 : 4], ir ? current.IrFocusText : current.EoFocusText, FocusTolerance))
                 return (ir ? "IR" : "EO") + " FOCUS 변경";
+
             return null;
         }
 
@@ -326,8 +371,7 @@ namespace OpenCvWpfTracking.Services.Position
                     string.IsNullOrWhiteSpace(scene.Key) ||
                     string.IsNullOrWhiteSpace(scene.EquipmentKey) ||
                     string.IsNullOrWhiteSpace(scene.Name) ||
-                    (scene.Camera != "EO" &&
-                    scene.Camera != "IR") ||
+                    (scene.Camera != "EO" && scene.Camera != "IR") ||
                     !Finite(scene.Pan) ||
                     !Finite(scene.Tilt) ||
                     !Finite(scene.AngleTolerance) ||
@@ -355,11 +399,8 @@ namespace OpenCvWpfTracking.Services.Position
                 {
                     if (z == null ||
                         string.IsNullOrWhiteSpace(z.Name) ||
-                        (!z.Fire &&
-                        !z.Smoke) ||
-                        (z.Kind != "허용" &&
-                        z.Kind != "주의" &&
-                        z.Kind != "위험") ||
+                        (!z.Fire && !z.Smoke) ||
+                        (z.Kind != "허용" && z.Kind != "주의" && z.Kind != "위험") ||
                         !Finite(z.X) ||
                         !Finite(z.Y) ||
                         !Finite(z.Width) ||
@@ -385,10 +426,7 @@ namespace OpenCvWpfTracking.Services.Position
             if (new FileInfo(path).Length > 80000000)
                 throw new InvalidDataException("구역 설정 파일이 너무 큽니다.");
 
-            using (var reader = XmlReader.Create(
-                path,
-                new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null }
-            ))
+            using (var reader = XmlReader.Create(path, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null }))
             {
                 var data = (FireSmokeZoneFile)new XmlSerializer(typeof(FireSmokeZoneFile)).Deserialize(reader);
                 Validate(data);
@@ -438,8 +476,10 @@ namespace OpenCvWpfTracking.Services.Position
             p.PtzStatus == PositionDataStatus.Valid &&
             p.Pan.HasValue &&
             p.Tilt.HasValue &&
-            (camera == "IR" ? p.IrLensStatus == PositionDataStatus.Valid &&
-            p.IrZoom.HasValue : p.EoLensStatus == PositionDataStatus.Valid &&
+            (camera == "IR"
+            ? p.IrLensStatus == PositionDataStatus.Valid &&
+            p.IrZoom.HasValue
+            : p.EoLensStatus == PositionDataStatus.Valid &&
             p.EoZoom.HasValue);
 
         public static double PanDistance(double a, double b)
@@ -479,11 +519,7 @@ namespace OpenCvWpfTracking.Services.Position
                 zoom
             );
 
-            if (PanDistance(
-                s.Pan,
-                f.Position.Pan.Value
-            ) > s.AngleTolerance ||
-                Math.Abs(s.Tilt - f.Position.Tilt.Value) > s.AngleTolerance)
+            if (PanDistance(s.Pan, f.Position.Pan.Value) > s.AngleTolerance || Math.Abs(s.Tilt - f.Position.Tilt.Value) > s.AngleTolerance)
                 return "PAN/TILT 불일치 (허용 " + s.AngleTolerance.ToString("F2") + "°)\n" + values;
 
             if (!LensWithin(zoom, s.Zoom, ZoomTolerance))
@@ -500,29 +536,15 @@ namespace OpenCvWpfTracking.Services.Position
             !s.Invalidated &&
             s.FixedInstallationConfirmed &&
             s.Key == f.Key &&
-            ValidPose(
-            f.Position,
-            s.Camera
-        ) &&
-            PanDistance(
-            s.Pan,
-            f.Position.Pan.Value
-        ) <= s.AngleTolerance &&
+            ValidPose(f.Position, s.Camera) &&
+            PanDistance(s.Pan, f.Position.Pan.Value) <= s.AngleTolerance &&
             Math.Abs(s.Tilt - f.Position.Tilt.Value) <= s.AngleTolerance &&
             LensWithin(s.Camera == "IR" ? f.Position.IrZoom : f.Position.EoZoom, s.Zoom, ZoomTolerance) &&
             f.Width > 0 &&
             f.Height > 0 &&
             Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) < 0.005;
 
-        public static ZoneAssessment Assess(
-            FireSmokeZoneFile data,
-            ZoneFrameContext f,
-            string type,
-            double left,
-            double top,
-            double right,
-            double bottom
-        )
+        public static ZoneAssessment Assess(FireSmokeZoneFile data, ZoneFrameContext f, string type, double left, double top, double right, double bottom)
         {
             bool smoke = (type ?? "").IndexOf("SMOKE", StringComparison.OrdinalIgnoreCase) >= 0;
             bool fire = (type ?? "").IndexOf("FIRE", StringComparison.OrdinalIgnoreCase) >= 0;
@@ -551,14 +573,7 @@ namespace OpenCvWpfTracking.Services.Position
                 return ZoneAssessment.Unknown("등록 시점·Zoom 불일치, 재등록 필요 또는 구역 미등록");
 
             double x = left / f.Width, y = top / f.Height, r = right / f.Width, b = bottom / f.Height;
-            var hits = scenes.SelectMany(s => s.Zones.Where(z => (smoke ? z.Smoke : z.Fire) &&
-                ZoneViewProjection.Intersects(
-                z,
-                x,
-                y,
-                r,
-                b
-            )).Select(z => new { Scene = s, Zone = z })).ToList();
+            var hits = scenes.SelectMany(s => s.Zones.Where(z => (smoke ? z.Smoke : z.Fire) && ZoneViewProjection.Intersects(z, x, y, r, b)).Select(z => new { Scene = s, Zone = z })).ToList();
 
             if (hits.Count == 0)
                 return ZoneAssessment.Unknown("지정 구역 밖 / 비허용으로 자동 단정하지 않음");
@@ -569,21 +584,25 @@ namespace OpenCvWpfTracking.Services.Position
                 y >= zone.Y + 0.005 &&
                 r <= zone.X + zone.Width - 0.005 &&
                 b <= zone.Y + zone.Height - 0.005 &&
-                ZoneViewProjection.Contains(
-                zone,
-                x,
-                y,
-                r,
-                b
-            );
+                ZoneViewProjection.Contains(zone, x, y, r, b);
             string level = zone.Kind == "위험" ? "이상" : zone.Kind == "주의" || !contained || smoke ? "주의" : "위치 적합";
             return new ZoneAssessment
             {
                 Level = level,
                 Zone = hit.Scene.Name + " / " + zone.Name,
                 Revision = hit.Scene.Revision,
-                Reason = zone.Kind == "위험" ? "비허용/위험 구역과 BBox 겹침" : zone.Kind == "주의" ? "주의 구역과 BBox 겹침" : !contained ? "허용 구역 경계에 걸침" : smoke ? "허용 구역 안 연기 / BBox만으로 실제 배출원 확정 불가" : "FIRE BBox가 허용 구역 내부 / 안전 판정 아님",
-                Context = f.At.ToString("O") + " / " + f.Position.PositionSummary + " / ZOOM " + hit.Scene.Zoom + " / BBOX " + left + "," + top + "," + right + "," + bottom
+                Reason = zone.Kind == "위험"
+                ? "비허용/위험 구역과 BBox 겹침"
+                : zone.Kind == "주의"
+                    ? "주의 구역과 BBox 겹침"
+                    : !contained ? "허용 구역 경계에 걸침" : smoke ? "허용 구역 안 연기 / BBox만으로 실제 배출원 확정 불가" : "FIRE BBox가 허용 구역 내부 / 안전 판정 아님",
+                Context = f.At.ToString("O") +
+                " / " + f.Position.PositionSummary +
+                " / ZOOM " + hit.Scene.Zoom +
+                " / BBOX " + left +
+                "," + top +
+                "," + right +
+                "," + bottom
             };
         }
 
@@ -597,10 +616,9 @@ namespace OpenCvWpfTracking.Services.Position
                     scene.FixedInstallationConfirmed &&
                     scene.Key == frame.Key &&
                     frame.RegisteredScenes != null &&
-                    frame.RegisteredScenes.TryGetValue(
-                    scene.Id + scene.Revision,
-                    out aligned
-                ) ? aligned : null;
+                    frame.RegisteredScenes.TryGetValue(scene.Id + scene.Revision, out aligned)
+                    ? aligned
+                    : null;
             }
 
             // 원래 위치에 가까워도 투영을 적용해 허용 각도 경계의 불연속을 방지한다.

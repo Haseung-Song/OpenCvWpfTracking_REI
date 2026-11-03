@@ -9,17 +9,23 @@ namespace OpenCvWpfTracking.Services.Video
         {
             if (string.IsNullOrEmpty(input))
                 return input;
+
             int scheme = input.IndexOf("://", StringComparison.Ordinal);
-            if (scheme < 0 || !(input.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase) ||
+
+            if (scheme < 0 ||
+                !(input.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase) ||
                 input.StartsWith("rtsps://", StringComparison.OrdinalIgnoreCase)))
                 return input;
+
             int start = scheme + 3;
             // 원문 비밀번호의 #, ?, /, @를 일반 URI 파서보다 먼저 분리한다.
             int pathStart = input.IndexOf('/', start);
             int authorityEnd = pathStart < 0 ? input.Length : pathStart;
             int at = input.LastIndexOf('@', authorityEnd - 1, authorityEnd - start);
+
             if (at < start)
                 return input;
+
             string userInfo = input.Substring(start, at - start);
             int colon = userInfo.IndexOf(':');
             string user = colon < 0 ? userInfo : userInfo.Substring(0, colon);
@@ -29,8 +35,7 @@ namespace OpenCvWpfTracking.Services.Video
                 string decoded = Uri.UnescapeDataString(value);
                 return encode ? Uri.EscapeDataString(decoded).Replace("!", "%21") : decoded;
             };
-            return input.Substring(0, start) + component(user) +
-                (password == null ? "" : ":" + component(password)) + input.Substring(at);
+            return input.Substring(0, start) + component(user) + (password == null ? "" : ":" + component(password)) + input.Substring(at);
         }
 
         public static string Display(string input) => Transform(input, false);

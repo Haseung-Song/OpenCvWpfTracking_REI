@@ -23,13 +23,12 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// [N+2]    [ETX]      : 0x03
     ///
     /// [Payload] 내부 파라미터 구분자:
-    /// 
+    ///
     /// 현재 [US] [Unit Separator] [0x1F] 기준으로 구분한다.
     /// </summary>
     public class AiDetectorPacketParser
     {
         #region [상수]
-
         /// <summary>
         /// [Packet] 시작 문자 [STX]
         /// </summary>
@@ -71,9 +70,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         private const string DetectCommand = "55";
 
         #endregion
-
         #region [패킷 추출]
-
         /// <summary>
         /// [TCP] 수신 [Buffer]에서 완성된 [AI] [Packet]들을 분리한다.
         ///
@@ -89,6 +86,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public List<byte[]> ExtractPackets(List<byte> receiveBuffer)
         {
             List<byte[]> packets = new List<byte[]>();
+
             while (true)
             {
                 // 1. [STX] 위치 찾기
@@ -152,9 +150,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [검출 패킷 해석]
-
         /// <summary>
         /// [CMD 55] 탐지데이터 [Packet]을 [AiDetectionResult]로 변환한다.
         ///
@@ -192,12 +188,10 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [응답 데이터 해석]
-
         /// <summary>
         /// [CMD 52] [RTSP] 주소 목록 [Payload] 파싱
-        /// 
+        ///
         /// [Payload] 예:
         /// rtsp://... [US] rtsp://...
         /// </summary>
@@ -222,7 +216,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
         /// <summary>
         /// [CMD 53] [ONNX] 목록 [Payload] 파싱
-        /// 
+        ///
         /// [Payload] 예:
         /// best.onnx:person,ship,car,drone [US] best_uav.onnx:uav
         /// </summary>
@@ -264,7 +258,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
         /// <summary>
         /// [CMD 54] [RTSP] / [ONNX] [Mapping] [Payload] 파싱
-        /// 
+        ///
         /// [Payload] 예:
         /// 0:1^0.10^0.45[US]1:0^0.10^0.45,1^0.10^0.45
         /// </summary>
@@ -362,24 +356,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             string[] parts = payload.Split(PayloadSeparator);
 
             if (parts.Length != 3 ||
-                !int.TryParse(
-                parts[0],
-                NumberStyles.None,
-                CultureInfo.InvariantCulture,
-                out rtspIndex
-            ) ||
-                !int.TryParse(
-                parts[1],
-                NumberStyles.None,
-                CultureInfo.InvariantCulture,
-                out width
-            ) ||
-                !int.TryParse(
-                parts[2],
-                NumberStyles.None,
-                CultureInfo.InvariantCulture,
-                out height
-            ))
+                !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out rtspIndex) ||
+                !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out width) ||
+                !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out height))
             {
                 return false;
             }
@@ -393,16 +372,14 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [Common 패킷 해석]
-
         /// <summary>
         /// [AI] [Packet] 공통 구조를 외부에서 파싱한다.
-        /// 
+        ///
         /// [CMD 55] 탐지데이터 외에도
         /// [CMD 51] / [CMD 52] / [CMD 53] / [CMD 54] / [CMD 55] / [CMD 56] / [CMD 99]
         /// 응답 [Packet]을 구분하기 위해 사용한다.
-        /// 
+        ///
         /// 내부적으로 [TryParsePacket()]을 호출하여
         /// [STX] / [CMD] / [SIZE] / [Payload] / [Checksum] / [ETX] 검증을 수행한다.
         /// </summary>
@@ -489,9 +466,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [체크섬 계산]
-
         /// <summary>
         /// [Checksum] 계산
         ///
@@ -518,9 +493,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [검출 데이터 해석]
-
         /// <summary>
         /// [CMD 55] 탐지데이터 [Payload] 파싱
         ///
@@ -546,7 +519,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             /// <summary>
             /// [Payload] 내부 파라미터 분리
-            /// 
+            ///
             /// [AI Detector Agent] [Payload]는
             /// [US] [Unit Separator] [0x1F] 기준으로 구분한다.
             /// </summary>
@@ -653,7 +626,6 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             result = detectionResult;
             return true;
         }
-
         #endregion
     }
 }

@@ -19,7 +19,9 @@ namespace OpenCvWpfTracking.Services.Video
 
         private readonly TcpListener _listener;
 
-        private TcpClient _client, _remote;
+        private TcpClient _client;
+
+        private TcpClient _remote;
 
         private readonly CancellationTokenSource _stop = new CancellationTokenSource();
 
@@ -118,6 +120,7 @@ namespace OpenCvWpfTracking.Services.Video
             // 헤더 버퍼는 연결별로 재사용하고 동시에 실행되는 중계끼리 공유하지 않는다.
             // 매번 4바이트 전체를 갱신하고 쓰기가 끝난 뒤 다음 데이터를 읽는다.
             byte[] one = new byte[1], block = new byte[65536], header = new byte[4];
+
             while (!_stop.IsCancellationRequested)
             {
                 if (await input.ReadAsync(one, 0, 1, _stop.Token).ConfigureAwait(false) == 0)
@@ -136,6 +139,7 @@ namespace OpenCvWpfTracking.Services.Video
                 {
                     one[0]
                 };
+
                 while (true)
                 {
                     if (bytes.Count >= 65536)
@@ -185,14 +189,8 @@ namespace OpenCvWpfTracking.Services.Video
 
                 var algo = Regex.Match(l, @"algorithm\s*=\s*""?([^"",\s]+)", RegexOptions.IgnoreCase);
                 return !algo.Success ||
-                    algo.Groups[1].Value.Equals(
-                    "MD5",
-                    StringComparison.OrdinalIgnoreCase
-                ) ||
-                    algo.Groups[1].Value.Equals(
-                    "MD5-sess",
-                    StringComparison.OrdinalIgnoreCase
-                );
+                    algo.Groups[1].Value.Equals("MD5", StringComparison.OrdinalIgnoreCase) ||
+                    algo.Groups[1].Value.Equals("MD5-sess", StringComparison.OrdinalIgnoreCase);
             };
 
             if (!auth.Any(supported) || !auth.Any(l => !supported(l)))
@@ -200,11 +198,7 @@ namespace OpenCvWpfTracking.Services.Video
 
             return string.Join(
                 "\r\n",
-                lines.Where(l => !l.StartsWith(
-                "WWW-Authenticate:",
-                StringComparison.OrdinalIgnoreCase
-            ) ||
-                supported(l))
+                lines.Where(l => !l.StartsWith("WWW-Authenticate:", StringComparison.OrdinalIgnoreCase) || supported(l))
             );
         }
 

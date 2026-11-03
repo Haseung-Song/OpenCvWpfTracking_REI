@@ -22,7 +22,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _isPanoramaCompleted;
 
-        private readonly object _panoramaSourceFrameSync = new object();
+        private readonly object _panoramaSourceFrameSync = new object ();
 
         private BitmapSource _latestRawEoPanoramaFrame;
 
@@ -243,10 +243,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (targets.Exists(target => target < -90.0 || target > 90.0))
             {
-                throw new InvalidOperationException("선택한 파노라마 Tilt 범위가 장비 허용범위(-90°~90°)를 초과합니다. " + "시작 Tilt를 중앙 쪽으로 이동하거나 더 작은 촬영 범위를 선택하십시오. " + "START=" + startTilt.ToString("F2") + "°, " + "TARGET=" + string.Join(
-                    ", ",
-                    targets.ConvertAll(target => target.ToString("F2") + "°")
-                ));
+                throw new InvalidOperationException("선택한 파노라마 Tilt 범위가 장비 허용범위(-90°~90°)를 초과합니다. " +
+                    "시작 Tilt를 중앙 쪽으로 이동하거나 더 작은 촬영 범위를 선택하십시오. " +
+                    "START=" + startTilt.ToString("F2") +
+                    "°, " +
+                    "TARGET=" + string.Join(", ", targets.ConvertAll(target => target.ToString("F2") +
+                    "°")));
             }
 
             return targets.AsReadOnly();
@@ -299,10 +301,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "RANGE=" + selectedTiltRangeDegrees,
                 "ROW_COUNT=" + tiltTargets.Count,
                 "TOTAL_FRAME=" + totalFrameCount,
-                "TILT_TARGETS=[" + string.Join(
-                ", ",
-                new List<double>(tiltTargets).ConvertAll(target => target.ToString("F2"))
-            ) + "]"
+                "TILT_TARGETS=[" + string.Join(", ", new List<double>(tiltTargets).ConvertAll(target => target.ToString("F2"))) + "]"
             );
             /*
              * PANORAMA 전용 PT 속도는 수동 Slider와 분리한다.
@@ -317,10 +316,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             List<IList<BitmapSource>> capturedRows = new List<IList<BitmapSource>>(tiltTargets.Count);
             ConsoleLogHelper.Info(
                 "EO PANORAMA",
-                "360-degree capture started / " + "OPTION=" + (selectedOptionIndex + 1) + " / TILT_RANGE=" + selectedTiltRangeDegrees + "deg" + " / ROWS=" + tiltTargets.Count + " / COUNT_PER_ROW=" + PanoramaCaptureFrameCount + " / TOTAL_COUNT=" + totalFrameCount + " / STEP=10deg / TILT_TARGETS=" + string.Join(
-                ",",
-                new List<double>(tiltTargets).ConvertAll(target => target.ToString("F2"))
-            ) + " / MANUAL_SLIDER_SPEED=" + PanTiltSpeedLevel + " / CAPTURE_SPEED_FIXED=" + capturePositionSpeed + "deg/s" + " / STABLE=" + frameStabilizationMs + "ms / " + "START_PAN=" + originalPan.ToString("F2") + " / START_TILT=" + originalTilt.ToString("F2") + " / MODE=" + (IsRooftopStatusSelected ? "ROOFTOP" : "ENVIRONMENT")
+                "360-degree capture started / " +
+                "OPTION=" + (selectedOptionIndex + 1) +
+                " / TILT_RANGE=" + selectedTiltRangeDegrees +
+                "deg" +
+                " / ROWS=" + tiltTargets.Count +
+                " / COUNT_PER_ROW=" + PanoramaCaptureFrameCount +
+                " / TOTAL_COUNT=" + totalFrameCount +
+                " / STEP=10deg / TILT_TARGETS=" + string.Join(",", new List<double>(tiltTargets).ConvertAll(target => target.ToString("F2"))) +
+                " / MANUAL_SLIDER_SPEED=" + PanTiltSpeedLevel +
+                " / CAPTURE_SPEED_FIXED=" + capturePositionSpeed +
+                "deg/s" +
+                " / STABLE=" + frameStabilizationMs +
+                "ms / " +
+                "START_PAN=" + originalPan.ToString("F2") +
+                " / START_TILT=" + originalTilt.ToString("F2") +
+                " / MODE=" + (IsRooftopStatusSelected ? "ROOFTOP" : "ENVIRONMENT")
             );
             IsPanoramaCaptureRunning = true;
 
@@ -335,16 +346,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     double rowStartPan = NormalizePanoramaPan(originalPan + (reversePanDirection ? (PanoramaCaptureFrameCount - 1) * PanoramaCaptureStepDegrees : 0.0));
                     ConsoleLogHelper.Command(
                         "EO PANORAMA / CAPTURE",
-                        "Row positioning started / ROW=" + (rowIndex + 1) + " / TARGET_TILT=" + targetTilt.ToString("F2") + " / START_PAN=" + rowStartPan.ToString("F2") + " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD")
+                        "Row positioning started / ROW=" + (rowIndex + 1) +
+                        " / TARGET_TILT=" + targetTilt.ToString("F2") +
+                        " / START_PAN=" + rowStartPan.ToString("F2") +
+                        " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD")
                     );
                     progress?.Report(string.Format(
-                        "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} 준비 / TILT {4:F0}°",
-                        selectedOptionIndex + 1,
-                        selectedTiltRangeDegrees,
-                        rowIndex + 1,
-                        tiltTargets.Count,
-                        targetTilt
-                    ));
+                            "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} 준비 / TILT {4:F0}°",
+                            selectedOptionIndex + 1,
+                            selectedTiltRangeDegrees,
+                            rowIndex + 1,
+                            tiltTargets.Count,
+                            targetTilt
+                        ));
 
                     if (!await MoveTiltForPanoramaAsync(targetTilt, capturePositionSpeed, cancellationToken))
                     {
@@ -353,7 +367,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     ConsoleLogHelper.State(
                         "EO PANORAMA / CAPTURE",
-                        "Tilt arrived / ROW=" + (rowIndex + 1) + " / TARGET=" + targetTilt.ToString("F2") + " / ACTUAL=" + _currentTilt.ToString("F2")
+                        "Tilt arrived / ROW=" + (rowIndex + 1) +
+                        " / TARGET=" + targetTilt.ToString("F2") +
+                        " / ACTUAL=" + _currentTilt.ToString("F2")
                     );
 
                     if (rowIndex > 0 && !await MovePanForPanoramaAsync(rowStartPan, capturePositionSpeed, cancellationToken))
@@ -362,7 +378,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
 
                     List<BitmapSource> capturedFrames = new List<BitmapSource>(PanoramaCaptureFrameCount);
-                    var coordinateRow = new OpenCvWpfTracking.Services.Video.PanoramaCoordinateRow { TargetTilt = targetTilt };
+                    var coordinateRow = new OpenCvWpfTracking.Services.Video.PanoramaCoordinateRow
+                    {
+                        TargetTilt = targetTilt
+                    };
                     double tiltSum = 0;
 
                     for (int index = 0; index < PanoramaCaptureFrameCount; index++)
@@ -371,21 +390,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         int logicalPanIndex = reversePanDirection ? PanoramaCaptureFrameCount - 1 - index : index;
                         double targetPan = NormalizePanoramaPan(originalPan + logicalPanIndex * PanoramaCaptureStepDegrees);
                         progress?.Report(string.Format(
-                            "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} / FRAME {4}/{5} 이동 / PAN {6:F0}° / TILT {7:F0}°",
-                            selectedOptionIndex + 1,
-                            selectedTiltRangeDegrees,
-                            rowIndex + 1,
-                            tiltTargets.Count,
-                            index + 1,
-                            PanoramaCaptureFrameCount,
-                            targetPan,
-                            targetTilt
-                        ));
-                        bool moved = index == 0 ? true : await MovePanForPanoramaAsync(
-                            targetPan,
-                            capturePositionSpeed,
-                            cancellationToken
-                        );
+                                "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} / FRAME {4}/{5} 이동 / PAN {6:F0}° / TILT {7:F0}°",
+                                selectedOptionIndex + 1,
+                                selectedTiltRangeDegrees,
+                                rowIndex + 1,
+                                tiltTargets.Count,
+                                index + 1,
+                                PanoramaCaptureFrameCount,
+                                targetPan,
+                                targetTilt
+                            ));
+                        bool moved = index == 0 ? true : await MovePanForPanoramaAsync(targetPan, capturePositionSpeed, cancellationToken);
 
                         if (!moved)
                         {
@@ -394,7 +409,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         ConsoleLogHelper.State(
                             "EO PANORAMA / MOVE",
-                            "Pan arrived / ROW=" + (rowIndex + 1) + " / FRAME=" + (index + 1) + "/" + PanoramaCaptureFrameCount + " / CANONICAL_FRAME=" + (logicalPanIndex + 1) + " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD") + " / TARGET=" + targetPan.ToString("F2") + " / ACTUAL=" + _currentPan.ToString("F2")
+                            "Pan arrived / ROW=" + (rowIndex + 1) +
+                            " / FRAME=" + (index + 1) +
+                            "/" + PanoramaCaptureFrameCount +
+                            " / CANONICAL_FRAME=" + (logicalPanIndex + 1) +
+                            " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD") +
+                            " / TARGET=" + targetPan.ToString("F2") +
+                            " / ACTUAL=" + _currentPan.ToString("F2")
                         );
                         await Task.Delay(frameStabilizationMs, cancellationToken);
                         // 2026-08-31: 표시 영상에는 탐지 Overlay가 포함될 수 있으므로
@@ -418,17 +439,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         tiltSum += _currentTilt;
                         ConsoleLogHelper.Info(
                             "EO PANORAMA / FRAME",
-                            "Frame captured / ROW=" + (rowIndex + 1) + " / FRAME=" + (index + 1) + "/" + PanoramaCaptureFrameCount + " / PAN=" + _currentPan.ToString("F2") + " / TILT=" + _currentTilt.ToString("F2") + " / SPEED=" + capturePositionSpeed + " / STABLE_MS=" + frameStabilizationMs + " / SOURCE=RAW_NO_OVERLAY" + " / SIZE=" + frozenFrame.PixelWidth + "x" + frozenFrame.PixelHeight
+                            "Frame captured / ROW=" + (rowIndex + 1) +
+                            " / FRAME=" + (index + 1) +
+                            "/" + PanoramaCaptureFrameCount +
+                            " / PAN=" + _currentPan.ToString("F2") +
+                            " / TILT=" + _currentTilt.ToString("F2") +
+                            " / SPEED=" + capturePositionSpeed +
+                            " / STABLE_MS=" + frameStabilizationMs +
+                            " / SOURCE=RAW_NO_OVERLAY" +
+                            " / SIZE=" + frozenFrame.PixelWidth +
+                            "x" + frozenFrame.PixelHeight
                         );
                         progress?.Report(string.Format(
-                            "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} / FRAME {4}/{5}",
-                            selectedOptionIndex + 1,
-                            selectedTiltRangeDegrees,
-                            rowIndex + 1,
-                            tiltTargets.Count,
-                            rowIndex * PanoramaCaptureFrameCount + index + 1,
-                            totalFrameCount
-                        ));
+                                "OPTION {0} / TILT RANGE {1}° / ROW {2}/{3} / FRAME {4}/{5}",
+                                selectedOptionIndex + 1,
+                                selectedTiltRangeDegrees,
+                                rowIndex + 1,
+                                tiltTargets.Count,
+                                rowIndex * PanoramaCaptureFrameCount + index + 1,
+                                totalFrameCount
+                            ));
                     }
 
                     // 역방향 촬영 Row도 합성 입력은 정방향 Pan 순서로 통일한다.
@@ -437,13 +467,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         capturedFrames.Reverse();
                         coordinateRow.FramePans.Reverse();
                     }
+
                     coordinateRow.ActualTilt = tiltSum / capturedFrames.Count;
                     coordinates.Rows.Add(coordinateRow);
-
                     capturedRows.Add(capturedFrames);
                     ConsoleLogHelper.State(
                         "EO PANORAMA / CAPTURE",
-                        "Row capture completed / ROW=" + (rowIndex + 1) + " / FRAMES=" + capturedFrames.Count + " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD") + " / STORED_ORDER=CANONICAL_FORWARD"
+                        "Row capture completed / ROW=" + (rowIndex + 1) +
+                        " / FRAMES=" + capturedFrames.Count +
+                        " / DIRECTION=" + (reversePanDirection ? "REVERSE" : "FORWARD") +
+                        " / STORED_ORDER=CANONICAL_FORWARD"
                     );
                 }
 
@@ -473,11 +506,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     bool panRestored = await MovePanForPanoramaAsync(originalPan, capturePositionSpeed, CancellationToken.None);
                     bool tiltRestored = await MoveTiltForPanoramaAsync(originalTilt, capturePositionSpeed, CancellationToken.None);
-                    string restoreResult = panRestored &&
-                        tiltRestored ? "Start position restored" : "Start position restore incomplete";
+                    string restoreResult = panRestored && tiltRestored ? "Start position restored" : "Start position restore incomplete";
                     ConsoleLogHelper.State(
                         "EO PANORAMA / RESTORE",
-                        restoreResult + " / EXPECTED_PAN=" + originalPan.ToString("F2") + " / ACTUAL_PAN=" + _currentPan.ToString("F2") + " / EXPECTED_TILT=" + originalTilt.ToString("F2") + " / ACTUAL_TILT=" + _currentTilt.ToString("F2") + " / PAN_RESTORED=" + panRestored + " / TILT_RESTORED=" + tiltRestored
+                        restoreResult +
+                        " / EXPECTED_PAN=" + originalPan.ToString("F2") +
+                        " / ACTUAL_PAN=" + _currentPan.ToString("F2") +
+                        " / EXPECTED_TILT=" + originalTilt.ToString("F2") +
+                        " / ACTUAL_TILT=" + _currentTilt.ToString("F2") +
+                        " / PAN_RESTORED=" + panRestored +
+                        " / TILT_RESTORED=" + tiltRestored
                     );
 
                     if (!panRestored || !tiltRestored)
@@ -554,14 +592,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// ClampPanoramaTilt 동작 수행 함수.
-        /// </summary>
-        private static double ClampPanoramaTilt(double tilt)
-        {
-            return Math.Max(-90.0, Math.Min(90.0, tilt));
-        }
-
-        /// <summary>
         /// 파노라마 전용 고정 PT 속도에 따라 도착 판정 후 추가 안정화 시간을 선택한다.
         /// Speed 15에서는 상태 Packet 4회 연속(오차 0.05° 이하) 안정 판정 후
         /// 1초를 더 기다려 잔진동이 영상에 남는 것을 줄인다.
@@ -587,12 +617,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-08-18: 파노라마 촬영 전용 Pan 이동 및 상태 Packet 기반 도착 판정.
         /// 기존 수동/프리셋 입력값을 변경하지 않고 명령만 독립 송신한다.
         /// </summary>
-        private async Task<bool> MovePanForPanoramaAsync(
-            double targetPan,
-            int positionSpeed,
-            CancellationToken cancellationToken,
-            bool allowRetry = true
-        )
+        private async Task<bool> MovePanForPanoramaAsync(double targetPan, int positionSpeed, CancellationToken cancellationToken, bool allowRetry = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             BeginPanoramaCameraMotion("PAN", targetPan);
@@ -607,17 +632,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool commandResult = modeResult && _controlCommandService.PanGoPosition(targetPan);
             ConsoleLogHelper.Command(
                 "EO PANORAMA / MOVE",
-                "Pan absolute move sent / TARGET=" + targetPan.ToString("F2") + " / SPEED=" + positionSpeed + " / START_POSITION=" + startPosition.ToString("F2") + " / START_STATUS_VERSION=" + startStatusVersion + " / COMMAND_SENT=" + commandResult + " / CONTROL_CONNECTED=" + _laTcpService.IsConnected
+                "Pan absolute move sent / TARGET=" + targetPan.ToString("F2") +
+                " / SPEED=" + positionSpeed +
+                " / START_POSITION=" + startPosition.ToString("F2") +
+                " / START_STATUS_VERSION=" + startStatusVersion +
+                " / COMMAND_SENT=" + commandResult +
+                " / CONTROL_CONNECTED=" + _laTcpService.IsConnected
             );
 
             if (!commandResult)
             {
                 if (allowRetry)
                 {
-                    ConsoleLogHelper.Warning(
-                        "EO PANORAMA / MOVE",
-                        "Pan command send failed; retrying once / TARGET=" + targetPan.ToString("F2")
-                    );
+                    ConsoleLogHelper.Warning("EO PANORAMA / MOVE", "Pan command send failed; retrying once / TARGET=" + targetPan.ToString("F2"));
                     await Task.Delay(250, cancellationToken);
                     return await MovePanForPanoramaAsync(targetPan, positionSpeed, cancellationToken, false);
                 }
@@ -643,6 +670,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool noMotion = false;
             Stopwatch stopwatch = Stopwatch.StartNew();
             int timeoutMs = Math.Max(8000, Math.Min(45000, (int)(distance / positionSpeed * 1000.0) + 3500));
+
             while (stopwatch.ElapsedMilliseconds < timeoutMs)
             {
                 await Task.Delay(100, cancellationToken);
@@ -669,7 +697,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     noMotion = true;
                     ConsoleLogHelper.Warning(
                         "EO PANORAMA / MOVE",
-                        "RESULT=COMMAND_SENT_BUT_NO_MOTION / TARGET=" + targetPan.ToString("F2") + " / START_POSITION=" + startPosition.ToString("F2") + " / CURRENT_POSITION=" + _currentPan.ToString("F2") + " / STATUS_VERSION=" + currentVersion + " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds
+                        "RESULT=COMMAND_SENT_BUT_NO_MOTION / TARGET=" + targetPan.ToString("F2") +
+                        " / START_POSITION=" + startPosition.ToString("F2") +
+                        " / CURRENT_POSITION=" + _currentPan.ToString("F2") +
+                        " / STATUS_VERSION=" + currentVersion +
+                        " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds
                     );
                     break;
                 }
@@ -682,7 +714,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     EndPanoramaCameraMotion("PAN", targetPan);
                     ConsoleLogHelper.State(
                         "EO PANORAMA / MOVE",
-                        "Pan target stable / TARGET=" + targetPan.ToString("F2") + " / ACTUAL=" + _currentPan.ToString("F2") + " / MOVEMENT_STARTED=" + movementStarted + " / TARGET_REACHED=True" + " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds
+                        "Pan target stable / TARGET=" + targetPan.ToString("F2") +
+                        " / ACTUAL=" + _currentPan.ToString("F2") +
+                        " / MOVEMENT_STARTED=" + movementStarted +
+                        " / TARGET_REACHED=True" +
+                        " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds
                     );
                     return true;
                 }
@@ -690,7 +726,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.Warning(
                 "EO PANORAMA / MOVE",
-                (noMotion ? "Pan no-motion" : "Pan target timeout") + " / TARGET=" + targetPan.ToString("F2") + " / ACTUAL=" + _currentPan.ToString("F2") + " / MOVEMENT_STARTED=" + movementStarted + " / TARGET_REACHED=False" + " / TIMEOUT_MS=" + timeoutMs
+                (noMotion ? "Pan no-motion" : "Pan target timeout") +
+                " / TARGET=" + targetPan.ToString("F2") +
+                " / ACTUAL=" + _currentPan.ToString("F2") +
+                " / MOVEMENT_STARTED=" + movementStarted +
+                " / TARGET_REACHED=False" +
+                " / TIMEOUT_MS=" + timeoutMs
             );
 
             if (allowRetry)
@@ -698,7 +739,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 bool stopResult = _controlCommandService.StopPanPositionMove();
                 ConsoleLogHelper.Warning(
                     "EO PANORAMA / MOVE",
-                    "Pan recovery; retrying once / TARGET=" + targetPan.ToString("F2") + " / STOP_RESULT=" + stopResult + " / CONTROL_CONNECTED=" + _laTcpService.IsConnected + " / RETRY_COUNT=1"
+                    "Pan recovery; retrying once / TARGET=" + targetPan.ToString("F2") +
+                    " / STOP_RESULT=" + stopResult +
+                    " / CONTROL_CONNECTED=" + _laTcpService.IsConnected +
+                    " / RETRY_COUNT=1"
                 );
                 await Task.Delay(250, cancellationToken);
                 return await MovePanForPanoramaAsync(targetPan, positionSpeed, cancellationToken, false);
@@ -711,12 +755,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-08-18: 휴대폰 파노라마에 가까운 세로 화각 확보를 위한
         /// 2행 촬영 전용 Tilt 절대 이동 및 상태 Packet 기반 도착 판정.
         /// </summary>
-        private async Task<bool> MoveTiltForPanoramaAsync(
-            double targetTilt,
-            int positionSpeed,
-            CancellationToken cancellationToken,
-            bool allowRetry = true
-        )
+        private async Task<bool> MoveTiltForPanoramaAsync(double targetTilt, int positionSpeed, CancellationToken cancellationToken, bool allowRetry = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             BeginPanoramaCameraMotion("TILT", targetTilt);
@@ -727,17 +766,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool commandResult = speedResult && _controlCommandService.TiltGoPosition(targetTilt);
             ConsoleLogHelper.Command(
                 "EO PANORAMA / MOVE",
-                "Tilt absolute move sent / TARGET=" + targetTilt.ToString("F2") + " / SPEED=" + positionSpeed + " / SEND_RESULT=" + commandResult
+                "Tilt absolute move sent / TARGET=" + targetTilt.ToString("F2") +
+                " / SPEED=" + positionSpeed +
+                " / SEND_RESULT=" + commandResult
             );
 
             if (!commandResult)
             {
                 if (allowRetry)
                 {
-                    ConsoleLogHelper.Warning(
-                        "EO PANORAMA / MOVE",
-                        "Tilt command send failed; retrying once / TARGET=" + targetTilt.ToString("F2")
-                    );
+                    ConsoleLogHelper.Warning("EO PANORAMA / MOVE", "Tilt command send failed; retrying once / TARGET=" + targetTilt.ToString("F2"));
                     await Task.Delay(250, cancellationToken);
                     return await MoveTiltForPanoramaAsync(targetTilt, positionSpeed, cancellationToken, false);
                 }
@@ -752,7 +790,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 EndPanoramaCameraMotion("TILT", targetTilt);
                 ConsoleLogHelper.State(
                     "EO PANORAMA / MOVE",
-                    "Tilt target already within tolerance / TARGET=" + targetTilt.ToString("F2") + " / ACTUAL=" + _currentTilt.ToString("F2")
+                    "Tilt target already within tolerance / TARGET=" + targetTilt.ToString("F2") +
+                    " / ACTUAL=" + _currentTilt.ToString("F2")
                 );
                 return true;
             }
@@ -760,6 +799,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int stableCount = 0;
             Stopwatch stopwatch = Stopwatch.StartNew();
             int timeoutMs = Math.Max(4000, Math.Min(30000, (int)(distance / positionSpeed * 1000.0) + 3500));
+
             while (stopwatch.ElapsedMilliseconds < timeoutMs)
             {
                 await Task.Delay(100, cancellationToken);
@@ -779,7 +819,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     EndPanoramaCameraMotion("TILT", targetTilt);
                     ConsoleLogHelper.State(
                         "EO PANORAMA / MOVE",
-                        "Tilt target stable / TARGET=" + targetTilt.ToString("F2") + " / ACTUAL=" + _currentTilt.ToString("F2") + " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds
+                        "Tilt target stable / TARGET=" + targetTilt.ToString("F2") +
+                        " / ACTUAL=" + _currentTilt.ToString("F2") +
+                        " / ELAPSED_MS=" + stopwatch.ElapsedMilliseconds
                     );
                     return true;
                 }
@@ -787,15 +829,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.Warning(
                 "EO PANORAMA / MOVE",
-                "Tilt target timeout / TARGET=" + targetTilt.ToString("F2") + " / ACTUAL=" + _currentTilt.ToString("F2") + " / TIMEOUT_MS=" + timeoutMs
+                "Tilt target timeout / TARGET=" + targetTilt.ToString("F2") +
+                " / ACTUAL=" + _currentTilt.ToString("F2") +
+                " / TIMEOUT_MS=" + timeoutMs
             );
 
             if (allowRetry)
             {
-                ConsoleLogHelper.Warning(
-                    "EO PANORAMA / MOVE",
-                    "Tilt target timeout; retrying once / TARGET=" + targetTilt.ToString("F2")
-                );
+                ConsoleLogHelper.Warning("EO PANORAMA / MOVE", "Tilt target timeout; retrying once / TARGET=" + targetTilt.ToString("F2"));
                 await Task.Delay(250, cancellationToken);
                 return await MoveTiltForPanoramaAsync(targetTilt, positionSpeed, cancellationToken, false);
             }
@@ -810,22 +851,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             Volatile.Write(ref _panoramaCameraMotionActive, 1);
             Interlocked.Exchange(ref _panoramaDetectionResumeUtcTicks, long.MaxValue);
-            ConsoleLogHelper.State(
-                "PANORAMA DETECTION GATE",
-                "Detection suspended / AXIS=" + axis + " / TARGET=" + target.ToString("F2")
-            );
+            ConsoleLogHelper.State("PANORAMA DETECTION GATE", "Detection suspended / AXIS=" + axis + " / TARGET=" + target.ToString("F2"));
         }
 
         private void EndPanoramaCameraMotion(string axis, double target)
         {
-            Interlocked.Exchange(
-                ref _panoramaDetectionResumeUtcTicks,
-                DateTime.UtcNow.AddMilliseconds(PanoramaDetectionSettleMs).Ticks
-            );
+            Interlocked.Exchange(ref _panoramaDetectionResumeUtcTicks, DateTime.UtcNow.AddMilliseconds(PanoramaDetectionSettleMs).Ticks);
             Volatile.Write(ref _panoramaCameraMotionActive, 0);
             ConsoleLogHelper.State(
                 "PANORAMA DETECTION GATE",
-                "Stable-frame analysis scheduled / AXIS=" + axis + " / TARGET=" + target.ToString("F2") + " / SETTLE_MS=" + PanoramaDetectionSettleMs
+                "Stable-frame analysis scheduled / AXIS=" + axis +
+                " / TARGET=" + target.ToString("F2") +
+                " / SETTLE_MS=" + PanoramaDetectionSettleMs
             );
         }
 

@@ -48,12 +48,10 @@ namespace FireCandidateValidator
         // 2026-08-14: 1=전체 단일 BBox, 2=화염별 분리 BBox.
         private int _fireBoxGroupingMode = 2;
 
-        private readonly List<StableCandidateTrack> _stableCandidateTracks =
-            new List<StableCandidateTrack>();
+        private readonly List<StableCandidateTrack> _stableCandidateTracks = new List<StableCandidateTrack>();
 
         // 2026-08-31: TEST FIRE/SMOKE도 Viewer와 동일한 기준으로 최초 확정 V.SCORE를 계산한다.
-        private readonly Dictionary<string, List<TestVisionScoreTrack>> _testVisionScoreTracks =
-            new Dictionary<string, List<TestVisionScoreTrack>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<TestVisionScoreTrack>> _testVisionScoreTracks = new Dictionary<string, List<TestVisionScoreTrack>>(StringComparer.OrdinalIgnoreCase);
 
         // 2026-08-27: FIRE와 SMOKE 상태 전환을 서로 독립적으로 메인 Viewer에 전달한다.
         private bool _lastPublishedFireState;
@@ -79,19 +77,9 @@ namespace FireCandidateValidator
         public MainWindow()
         {
             InitializeComponent();
-
-            _analyzer =
-                new FireCandidateAnalyzer();
-            _smokeAnalyzer =
-                new SmokeCandidateAnalyzer();
-
-            _videoTimer =
-                new DispatcherTimer(
-                    TimeSpan.FromMilliseconds(33),
-                    DispatcherPriority.Background,
-                    VideoTimer_Tick,
-                    Dispatcher);
-
+            _analyzer = new FireCandidateAnalyzer();
+            _smokeAnalyzer = new SmokeCandidateAnalyzer();
+            _videoTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Background, VideoTimer_Tick, Dispatcher);
             _videoTimer.Stop();
             UpdateSettingText();
         }
@@ -99,16 +87,13 @@ namespace FireCandidateValidator
         /// <summary>
         /// OpenImage_Click 이벤트 처리 함수.
         /// </summary>
-        private void OpenImage_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void OpenImage_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog dialog =
-                new OpenFileDialog
-                {
-                    Title = "EO/IR 시험 이미지 선택",
-                    Filter = "Image files|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff|All files|*.*"
-                };
+            OpenFileDialog dialog = new OpenFileDialog
+            {
+                Title = "EO/IR 시험 이미지 선택",
+                Filter = "Image files|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff|All files|*.*"
+            };
 
             if (dialog.ShowDialog() != true)
             {
@@ -118,7 +103,6 @@ namespace FireCandidateValidator
             try
             {
                 StopVideo();
-
                 /*
                  * OpenCV ImRead는 Windows의 한글 파일명 / 폴더 경로에서
                  * 영상을 읽지 못하는 경우가 있다.
@@ -126,30 +110,14 @@ namespace FireCandidateValidator
                  * 파일 접근은 Unicode 경로를 지원하는 .NET으로 수행하고,
                  * 임시 영문 경로에서 OpenCV가 JPG / PNG를 디코딩하도록 한다.
                  */
-                string extension =
-                    Path.GetExtension(
-                        dialog.FileName);
-
-                string temporaryImagePath =
-                    Path.Combine(
-                        Path.GetTempPath(),
-                        "FireCandidateValidator_" +
-                        Guid.NewGuid().ToString("N") +
-                        extension);
-
+                string extension = Path.GetExtension(dialog.FileName);
+                string temporaryImagePath = Path.Combine(Path.GetTempPath(), "FireCandidateValidator_" + Guid.NewGuid().ToString("N") + extension);
                 Mat image;
 
                 try
                 {
-                    File.Copy(
-                        dialog.FileName,
-                        temporaryImagePath,
-                        true);
-
-                    image =
-                        Cv2.ImRead(
-                            temporaryImagePath,
-                            ImreadModes.Color);
+                    File.Copy(dialog.FileName, temporaryImagePath, true);
+                    image = Cv2.ImRead(temporaryImagePath, ImreadModes.Color);
                 }
                 finally
                 {
@@ -157,7 +125,6 @@ namespace FireCandidateValidator
                     {
                         File.Delete(temporaryImagePath);
                     }
-
                 }
 
                 if (image == null || image.Empty())
@@ -179,22 +146,18 @@ namespace FireCandidateValidator
                 StatusText.Text = "이미지 열기 실패: " + ex.Message;
                 StatusText.Foreground = Brushes.OrangeRed;
             }
-
         }
 
         /// <summary>
         /// OpenVideo_Click 이벤트 처리 함수.
         /// </summary>
-        private void OpenVideo_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void OpenVideo_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog dialog =
-                new OpenFileDialog
-                {
-                    Title = "IR 시험 동영상 선택",
-                    Filter = "Video files|*.mp4;*.avi;*.mkv;*.mov;*.wmv|All files|*.*"
-                };
+            OpenFileDialog dialog = new OpenFileDialog
+            {
+                Title = "IR 시험 동영상 선택",
+                Filter = "Video files|*.mp4;*.avi;*.mkv;*.mov;*.wmv|All files|*.*"
+            };
 
             if (dialog.ShowDialog() != true)
             {
@@ -215,7 +178,6 @@ namespace FireCandidateValidator
             _isVideoMode = true;
             _loadedVideo = true;
             _analyzer.Reset();
-
             double fps = _videoCapture.Fps;
             double interval = fps > 1.0 ? 1000.0 / fps : 33.0;
             _videoTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(15.0, interval));
@@ -225,26 +187,16 @@ namespace FireCandidateValidator
         /// <summary>
         /// CreateTestPattern_Click 이벤트 처리 함수.
         /// </summary>
-        private void CreateTestPattern_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void CreateTestPattern_Click(object sender, RoutedEventArgs e)
         {
             StopVideo();
-
-            Mat testPattern =
-                new Mat(
-                    new CvSize(1280, 720),
-                    MatType.CV_8UC3,
-                    new Scalar(35, 25, 20));
-
+            Mat testPattern = new Mat(new CvSize(1280, 720), MatType.CV_8UC3, new Scalar(35, 25, 20));
             Cv2.Rectangle(testPattern, new CvRect(80, 80, 1120, 560), new Scalar(75, 65, 55), -1);
             Cv2.Line(testPattern, new CvPoint(100, 520), new CvPoint(1180, 520), new Scalar(120, 110, 100), 12);
-
             // 고온 팔레트 영상에서 화염으로 표현될 수 있는 국부 적색/주황 시험 영역
             Cv2.Ellipse(testPattern, new CvPoint(720, 390), new CvSize(75, 140), 0, 0, 360, new Scalar(0, 80, 255), -1);
             Cv2.Ellipse(testPattern, new CvPoint(670, 430), new CvSize(45, 90), 0, 0, 360, new Scalar(0, 180, 255), -1);
             Cv2.Circle(testPattern, new CvPoint(750, 300), 35, new Scalar(40, 220, 255), -1);
-
             ReplaceCurrentSource(testPattern);
             _isVideoMode = false;
             _loadedVideo = false;
@@ -256,77 +208,50 @@ namespace FireCandidateValidator
         /// 선택한 10/15/20/30 px 크기의 국부 화염 패턴을 생성하여
         /// Small Fire 최소 검출 크기를 동일 조건에서 반복 시험한다.
         /// </summary>
-        private void CreateSmallFireTest_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void CreateSmallFireTest_Click(object sender, RoutedEventArgs e)
         {
-            ComboBoxItem selectedItem =
-                SmallFireSizeCombo.SelectedItem as ComboBoxItem;
-
+            ComboBoxItem selectedItem = SmallFireSizeCombo.SelectedItem as ComboBoxItem;
             int pixelSize = 10;
 
             if (selectedItem != null)
             {
-                int.TryParse(
-                    selectedItem.Tag?.ToString(),
-                    out pixelSize);
+                int.TryParse(selectedItem.Tag?.ToString(), out pixelSize);
             }
 
-            pixelSize =
-                Math.Max(10, Math.Min(30, pixelSize));
-
+            pixelSize = Math.Max(10, Math.Min(30, pixelSize));
             StopVideo();
-
-            Mat testPattern =
-                new Mat(
-                    new CvSize(1280, 720),
-                    MatType.CV_8UC3,
-                    new Scalar(48, 48, 48));
-
-            Cv2.Rectangle(
-                testPattern,
-                new CvRect(80, 80, 1120, 560),
-                new Scalar(72, 72, 72),
-                -1);
-
-            CvPoint center =
-                new CvPoint(640, 360);
-
+            Mat testPattern = new Mat(new CvSize(1280, 720), MatType.CV_8UC3, new Scalar(48, 48, 48));
+            Cv2.Rectangle(testPattern, new CvRect(80, 80, 1120, 560), new Scalar(72, 72, 72), -1);
+            CvPoint center = new CvPoint(640, 360);
             Cv2.Ellipse(
                 testPattern,
                 center,
-                new CvSize(
-                    Math.Max(3, pixelSize / 2),
-                    Math.Max(4, pixelSize / 2)),
+                new CvSize(Math.Max(3, pixelSize / 2), Math.Max(4, pixelSize / 2)),
                 0,
                 0,
                 360,
                 new Scalar(0, 90, 255),
-                -1);
-
+                -1
+            );
             Cv2.Circle(
                 testPattern,
                 new CvPoint(center.X, center.Y - pixelSize / 4),
                 Math.Max(2, pixelSize / 4),
                 new Scalar(30, 220, 255),
-                -1);
-
+                -1
+            );
             ReplaceCurrentSource(testPattern);
             _isVideoMode = false;
             _loadedVideo = false;
             _analyzer.Reset();
             ProcessCurrentFrame(true);
-
-            StatusText.Text +=
-                " / SYNTHETIC TARGET=" + pixelSize + " px";
+            StatusText.Text += " / SYNTHETIC TARGET=" + pixelSize + " px";
         }
 
         /// <summary>
         /// Stop_Click 이벤트 처리 함수.
         /// </summary>
-        private void Stop_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void Stop_Click(object sender, RoutedEventArgs e)
         {
             StopVideo();
             StatusText.Text = "동영상 검증을 정지했습니다.";
@@ -353,9 +278,7 @@ namespace FireCandidateValidator
         /// <summary>
         /// SaveResult_Click 이벤트 처리 함수.
         /// </summary>
-        private void SaveResult_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void SaveResult_Click(object sender, RoutedEventArgs e)
         {
             if (_currentRendered == null || _currentRendered.Empty())
             {
@@ -363,13 +286,12 @@ namespace FireCandidateValidator
                 return;
             }
 
-            SaveFileDialog dialog =
-                new SaveFileDialog
-                {
-                    Title = "검출 결과 저장",
-                    Filter = "PNG image|*.png|JPEG image|*.jpg",
-                    FileName = "FireCandidate_Result_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png"
-                };
+            SaveFileDialog dialog = new SaveFileDialog
+            {
+                Title = "검출 결과 저장",
+                Filter = "PNG image|*.png|JPEG image|*.jpg",
+                FileName = "FireCandidate_Result_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png"
+            };
 
             if (dialog.ShowDialog() != true)
             {
@@ -411,11 +333,7 @@ namespace FireCandidateValidator
             }
 
             double fps = _videoCapture.Fps > 1 ? _videoCapture.Fps : 30;
-            _videoWriter = new VideoWriter(
-                dialog.FileName,
-                FourCC.MJPG,
-                fps,
-                new CvSize(_videoCapture.FrameWidth, _videoCapture.FrameHeight));
+            _videoWriter = new VideoWriter(dialog.FileName, FourCC.MJPG, fps, new CvSize(_videoCapture.FrameWidth, _videoCapture.FrameHeight));
 
             if (!_videoWriter.IsOpened())
             {
@@ -431,9 +349,7 @@ namespace FireCandidateValidator
         /// <summary>
         /// Setting_ValueChanged 설정 함수.
         /// </summary>
-        private void Setting_ValueChanged(
-            object sender,
-            RoutedPropertyChangedEventArgs<double> e)
+        private void Setting_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (!IsLoaded)
             {
@@ -447,15 +363,12 @@ namespace FireCandidateValidator
                 _analyzer.Reset();
                 ProcessCurrentFrame(true);
             }
-
         }
 
         /// <summary>
         /// VideoTimer_Tick 동작 수행 함수.
         /// </summary>
-        private void VideoTimer_Tick(
-            object sender,
-            EventArgs e)
+        private void VideoTimer_Tick(object sender, EventArgs e)
         {
             if (_videoCapture == null)
             {
@@ -486,45 +399,28 @@ namespace FireCandidateValidator
                 return;
             }
 
-            int confirmationFrames =
-                singleFrame
-                    ? 1
-                    : Math.Max(1, (int)Math.Round(ConfirmationSlider.Value));
-
-            bool analyzeFire =
-                DetectionModeCombo == null ||
-                DetectionModeCombo.SelectedIndex != 2;
-            bool analyzeSmoke =
-                DetectionModeCombo != null &&
-                DetectionModeCombo.SelectedIndex != 1;
-            bool isInfrared =
-                SourceHintCombo != null &&
-                SourceHintCombo.SelectedIndex == 2;
+            int confirmationFrames = singleFrame ? 1 : Math.Max(1, (int)Math.Round(ConfirmationSlider.Value));
+            bool analyzeFire = DetectionModeCombo == null || DetectionModeCombo.SelectedIndex != 2;
+            bool analyzeSmoke = DetectionModeCombo != null && DetectionModeCombo.SelectedIndex != 1;
+            bool isInfrared = SourceHintCombo != null && SourceHintCombo.SelectedIndex == 2;
 
             try
             {
-                using (SmokeDiagnosticCapture smokeDiagnostic =
-                       CreateSmokeDiagnosticCapture(analyzeSmoke))
-                using (FireCandidateAnalysis fireAnalysis =
-                       analyzeFire
-                           ? _analyzer.Analyze(
-                               _currentSource,
-                               ThresholdSlider.Value,
-                               AreaSlider.Value,
-                               confirmationFrames,
-                               _fireBoxGroupingMode)
-                           : FireCandidateAnalysis.Empty)
-                using (SmokeCandidateAnalysis smokeAnalysis =
-                       analyzeSmoke
-                           ? _smokeAnalyzer.Analyze(
-                               _currentSource,
-                               isInfrared,
-                               SmokeAreaSlider.Value,
-                               SmokeChangeSlider.Value,
-                               confirmationFrames,
-                               false,
-                               smokeDiagnostic)
-                           : SmokeCandidateAnalysis.Empty())
+                using (SmokeDiagnosticCapture smokeDiagnostic = CreateSmokeDiagnosticCapture(analyzeSmoke))
+                using (FireCandidateAnalysis fireAnalysis = analyzeFire
+                    ? _analyzer.Analyze(_currentSource, ThresholdSlider.Value, AreaSlider.Value, confirmationFrames, _fireBoxGroupingMode)
+                    : FireCandidateAnalysis.Empty)
+                using (SmokeCandidateAnalysis smokeAnalysis = analyzeSmoke
+                    ? _smokeAnalyzer.Analyze(
+                    _currentSource,
+                    isInfrared,
+                    SmokeAreaSlider.Value,
+                    SmokeChangeSlider.Value,
+                    confirmationFrames,
+                    false,
+                    smokeDiagnostic
+                )
+                    : SmokeCandidateAnalysis.Empty())
                 {
                     if (smokeDiagnostic != null)
                     {
@@ -543,62 +439,29 @@ namespace FireCandidateValidator
                         Console.Error.WriteLine("[FIRE DIAGNOSTIC ERROR] " + diagnosticException);
                     }
 
-                    IList<CvRect> fireCandidates =
-                        UpdateStableCandidateTracks(
-                            fireAnalysis.Candidates,
-                            fireAnalysis.IsConfirmed);
-                    IList<CvRect> smokeCandidates =
-                        smokeAnalysis.IsConfirmed
-                            ? ApplySmokeGroupingMode(smokeAnalysis.Candidates)
-                            : new List<CvRect>();
+                    IList<CvRect> fireCandidates = UpdateStableCandidateTracks(fireAnalysis.Candidates, fireAnalysis.IsConfirmed);
+                    IList<CvRect> smokeCandidates = smokeAnalysis.IsConfirmed ? ApplySmokeGroupingMode(smokeAnalysis.Candidates) : new List<CvRect>();
 
                     // 2026-08-27: AUTO/EO 입력의 저채도 연기·구름을 FIRE로 중복 판정하지 않는다.
                     // IR을 명시한 경우에는 기존 고온 후보 판정을 그대로 유지한다.
-                    if (!isInfrared &&
-                        smokeCandidates.Count > 0 &&
-                        !HasVisibleFlameColorEvidence(_currentSource))
+                    if (!isInfrared && smokeCandidates.Count > 0 && !HasVisibleFlameColorEvidence(_currentSource))
                     {
                         fireCandidates = new List<CvRect>();
                     }
 
                     // 2026-08-27: 동일 위치에서 FIRE와 IR 연기 후보가 겹치면
                     // 고온 화염 판정을 우선하여 중복 SMOKE 표기와 이벤트를 억제한다.
-                    if (isInfrared &&
-                        fireCandidates.Count > 0 &&
-                        smokeCandidates.Count > 0)
+                    if (isInfrared && fireCandidates.Count > 0 && smokeCandidates.Count > 0)
                     {
-                        smokeCandidates =
-                            RemoveFireOverlappingSmokeCandidates(
-                                fireCandidates,
-                                smokeCandidates);
+                        smokeCandidates = RemoveFireOverlappingSmokeCandidates(fireCandidates, smokeCandidates);
                     }
 
-                    IList<double> fireVisionScores =
-                        UpdateTestVisionScores(
-                            "FIRE",
-                            fireCandidates,
-                            _currentSource.Width,
-                            _currentSource.Height,
-                            isInfrared);
-                    IList<double> smokeVisionScores =
-                        UpdateTestVisionScores(
-                            "SMOKE",
-                            smokeCandidates,
-                            _currentSource.Width,
-                            _currentSource.Height,
-                            isInfrared);
-
+                    IList<double> fireVisionScores = UpdateTestVisionScores("FIRE", fireCandidates, _currentSource.Width, _currentSource.Height, isInfrared);
+                    IList<double> smokeVisionScores = UpdateTestVisionScores("SMOKE", smokeCandidates, _currentSource.Width, _currentSource.Height, isInfrared);
                     using (Mat displaySource = ApplySelectedPalette(_currentSource))
                     {
                         Mat rendered = displaySource.Clone();
-
-                        double displayScale =
-                            Math.Max(
-                                1.0,
-                                Math.Max(
-                                    rendered.Width / 1280.0,
-                                    rendered.Height / 720.0));
-
+                        double displayScale = Math.Max(1.0, Math.Max(rendered.Width / 1280.0, rendered.Height / 720.0));
                         List<CvRect> occupiedLabelRects = new List<CvRect>();
                         DrawValidatorCandidates(
                             rendered,
@@ -607,26 +470,20 @@ namespace FireCandidateValidator
                             "FIRE",
                             new Scalar(255, 0, 255),
                             displayScale,
-                            occupiedLabelRects);
+                            occupiedLabelRects
+                        );
                         DrawValidatorCandidates(
                             rendered,
                             smokeCandidates,
                             smokeVisionScores,
                             isInfrared ? "IR SMOKE CANDIDATE" : "SMOKE",
-                            isInfrared
-                                ? new Scalar(0, 215, 255)
-                                : new Scalar(255, 255, 0),
+                            isInfrared ? new Scalar(0, 215, 255) : new Scalar(255, 255, 0),
                             displayScale,
-                            occupiedLabelRects);
+                            occupiedLabelRects
+                        );
                         // 2026-09-21: 본 프로그램과 동일하게 테스트 영상 상단 중앙에
                         // FIRE/SMOKE 실시간 경고 배너를 표시한다.
-                        DrawAlarmBanner(
-                            rendered,
-                            fireCandidates.Count > 0,
-                            smokeCandidates.Count > 0,
-                            isInfrared,
-                            displayScale);
-
+                        DrawAlarmBanner(rendered, fireCandidates.Count > 0, smokeCandidates.Count > 0, isInfrared, displayScale);
                         ReplaceRendered(rendered);
                     }
 
@@ -636,77 +493,49 @@ namespace FireCandidateValidator
                     }
 
                     ResultImage.Source = ToBitmapSource(_currentRendered);
-                    bool showSmokeMask =
-                        MaskModeCombo != null &&
-                        (MaskModeCombo.SelectedIndex == 2 ||
-                         (MaskModeCombo.SelectedIndex == 0 &&
-                          smokeCandidates.Count > 0));
-                    MaskImage.Source = ToBitmapSource(
-                        showSmokeMask
-                            ? smokeAnalysis.Mask
-                            : fireAnalysis.Mask);
-
-                    StatusText.Text =
-                        "FIRE " + fireCandidates.Count +
+                    bool showSmokeMask = MaskModeCombo != null &&
+                        (MaskModeCombo.SelectedIndex == 2 || (MaskModeCombo.SelectedIndex == 0 &&
+                        smokeCandidates.Count > 0));
+                    MaskImage.Source = ToBitmapSource(showSmokeMask ? smokeAnalysis.Mask : fireAnalysis.Mask);
+                    StatusText.Text = "FIRE " + fireCandidates.Count +
                         " / SMOKE " + smokeCandidates.Count +
                         " / FIRE FRAME " + fireAnalysis.ContinuousFrames +
                         " / SMOKE FRAME " + smokeAnalysis.ContinuousFrames +
                         " / SOURCE " + (isInfrared ? "IR SUPPORT" : "EO/AUTO");
-                    StatusText.Foreground =
-                        fireCandidates.Count > 0
-                            ? Brushes.OrangeRed
-                            : smokeCandidates.Count > 0
-                                ? Brushes.Cyan
-                                : Brushes.LightGreen;
-
-                    PublishLiveEvent(
-                        "FIRE",
-                        fireCandidates.Count > 0,
-                        fireCandidates,
-                        fireVisionScores);
-                    PublishLiveEvent(
-                        "SMOKE",
-                        smokeCandidates.Count > 0,
-                        smokeCandidates,
-                        smokeVisionScores);
+                    StatusText.Foreground = fireCandidates.Count > 0
+                        ? Brushes.OrangeRed
+                        : smokeCandidates.Count > 0 ? Brushes.Cyan : Brushes.LightGreen;
+                    PublishLiveEvent("FIRE", fireCandidates.Count > 0, fireCandidates, fireVisionScores);
+                    PublishLiveEvent("SMOKE", smokeCandidates.Count > 0, smokeCandidates, smokeVisionScores);
                 }
-
             }
             catch (Exception exception)
             {
-                Console.Error.WriteLine(
-                    "[FIRE/SMOKE TEST ERROR] Frame processing failed / " +
-                    exception);
-                StatusText.Text =
-                    "FIRE / SMOKE 분석 오류 : " + exception.Message;
+                Console.Error.WriteLine("[FIRE/SMOKE TEST ERROR] Frame processing failed / " + exception);
+                StatusText.Text = "FIRE / SMOKE 분석 오류 : " + exception.Message;
                 StatusText.Foreground = Brushes.OrangeRed;
             }
-
         }
 
         /// <summary>
         /// 2026-09-21: 검출 박스와 별도로 영상 상단 중앙에 FIRE/SMOKE 경고를 표시한다.
         /// 저장 이미지와 저장 영상에도 동일한 배너가 포함된다.
         /// </summary>
-        private static void DrawAlarmBanner(
-            Mat rendered,
-            bool fireDetected,
-            bool smokeDetected,
-            bool isInfrared,
-            double displayScale)
+        private static void DrawAlarmBanner(Mat rendered, bool fireDetected, bool smokeDetected, bool isInfrared, double displayScale)
         {
-            if (rendered == null || rendered.Empty() ||
-                (!fireDetected && !smokeDetected))
+            if (rendered == null || rendered.Empty() || (!fireDetected && !smokeDetected))
             {
                 return;
             }
 
             string channel = isInfrared ? "IR" : "EO";
             List<string> messages = new List<string>();
+
             if (fireDetected)
             {
                 messages.Add("FIRE DETECTED / " + channel);
             }
+
             if (smokeDetected)
             {
                 messages.Add("SMOKE DETECTED / " + channel);
@@ -722,36 +551,28 @@ namespace FireCandidateValidator
             foreach (string message in messages)
             {
                 int baseline;
-                CvSize textSize = Cv2.GetTextSize(
-                    message,
-                    HersheyFonts.HersheySimplex,
-                    fontScale,
-                    thickness,
-                    out baseline);
+                CvSize textSize = Cv2.GetTextSize(message, HersheyFonts.HersheySimplex, fontScale, thickness, out baseline);
                 int width = Math.Min(rendered.Width, textSize.Width + paddingX * 2);
-                int height = Math.Min(
-                    rendered.Height - y,
-                    textSize.Height + baseline + paddingY * 2);
+                int height = Math.Min(rendered.Height - y, textSize.Height + baseline + paddingY * 2);
+
                 if (width <= 0 || height <= 0)
                 {
                     return;
                 }
 
                 int x = Math.Max(0, (rendered.Width - width) / 2);
-                Scalar background = message.StartsWith("FIRE", StringComparison.Ordinal)
-                    ? new Scalar(0, 0, 210)
-                    : new Scalar(0, 150, 220);
+                Scalar background = message.StartsWith("FIRE", StringComparison.Ordinal) ? new Scalar(0, 0, 210) : new Scalar(0, 150, 220);
                 Cv2.Rectangle(rendered, new CvRect(x, y, width, height), background, -1);
                 Cv2.PutText(
                     rendered,
                     message,
-                    new CvPoint(x + Math.Max(4, (width - textSize.Width) / 2),
-                                y + paddingY + textSize.Height),
+                    new CvPoint(x + Math.Max(4, (width - textSize.Width) / 2), y + paddingY + textSize.Height),
                     HersheyFonts.HersheySimplex,
                     fontScale,
                     Scalar.White,
                     thickness,
-                    LineTypes.AntiAlias);
+                    LineTypes.AntiAlias
+                );
                 y += height + gap;
             }
         }
@@ -771,7 +592,6 @@ namespace FireCandidateValidator
             int top = candidates.Min(item => item.Top);
             int right = candidates.Max(item => item.Right);
             int bottom = candidates.Max(item => item.Bottom);
-
             return new List<CvRect>
             {
                 new CvRect(left, top, right - left, bottom - top)
@@ -782,46 +602,28 @@ namespace FireCandidateValidator
         /// 2026-08-27: IR 영상에서 FIRE 후보와 중심 또는 면적이 겹치는 연기 후보를 제거한다.
         /// 화염의 밝은 핵과 주변 변화가 IR 연기로 중복 집계되는 현상을 방지한다.
         /// </summary>
-        private static IList<CvRect> RemoveFireOverlappingSmokeCandidates(
-            IList<CvRect> fireCandidates,
-            IList<CvRect> smokeCandidates)
+        private static IList<CvRect> RemoveFireOverlappingSmokeCandidates(IList<CvRect> fireCandidates, IList<CvRect> smokeCandidates)
         {
-            List<CvRect> filteredCandidates =
-                new List<CvRect>();
+            List<CvRect> filteredCandidates = new List<CvRect>();
 
             foreach (CvRect smokeCandidate in smokeCandidates)
             {
-                bool overlapsFire =
-                    fireCandidates.Any(fireCandidate =>
-                    {
-                        CvRect intersection =
-                            fireCandidate & smokeCandidate;
-
-                        double intersectionArea =
-                            Math.Max(0, intersection.Width) *
-                            Math.Max(0, intersection.Height);
-
-                        double smallerArea =
-                            Math.Max(
-                                1.0,
-                                Math.Min(
-                                    fireCandidate.Width * fireCandidate.Height,
-                                    smokeCandidate.Width * smokeCandidate.Height));
-
-                        CvPoint smokeCenter =
-                            new CvPoint(
-                                smokeCandidate.X + smokeCandidate.Width / 2,
-                                smokeCandidate.Y + smokeCandidate.Height / 2);
-
-                        return intersectionArea / smallerArea >= 0.25 ||
-                               fireCandidate.Contains(smokeCenter);
-                    });
+                bool overlapsFire = fireCandidates.Any(fireCandidate =>
+                {
+                    CvRect intersection = fireCandidate & smokeCandidate;
+                    double intersectionArea = Math.Max(0, intersection.Width) * Math.Max(0, intersection.Height);
+                    double smallerArea = Math.Max(
+                            1.0,
+                            Math.Min(fireCandidate.Width * fireCandidate.Height, smokeCandidate.Width * smokeCandidate.Height)
+                        );
+                    CvPoint smokeCenter = new CvPoint(smokeCandidate.X + smokeCandidate.Width / 2, smokeCandidate.Y + smokeCandidate.Height / 2);
+                    return intersectionArea / smallerArea >= 0.25 || fireCandidate.Contains(smokeCenter);
+                });
 
                 if (!overlapsFire)
                 {
                     filteredCandidates.Add(smokeCandidate);
                 }
-
             }
 
             return filteredCandidates;
@@ -830,77 +632,46 @@ namespace FireCandidateValidator
         /// <summary>
         /// 2026-08-27: FIRE와 SMOKE 후보를 서로 다른 색과 순번으로 표시한다.
         /// </summary>
-        private static void DrawValidatorCandidates(
-            Mat rendered,
-            IList<CvRect> candidates,
-            IList<double> visionScores,
-            string label,
-            Scalar color,
-            double displayScale,
-            IList<CvRect> occupiedLabelRects)
+        private static void DrawValidatorCandidates(Mat rendered, IList<CvRect> candidates, IList<double> visionScores, string label, Scalar color, double displayScale, IList<CvRect> occupiedLabelRects)
         {
-            int lineThickness =
-                Math.Max(3, (int)Math.Round(2.0 * displayScale));
+            int lineThickness = Math.Max(3, (int)Math.Round(2.0 * displayScale));
 
             for (int index = 0; index < candidates.Count; index++)
             {
-                CvRect displayRect =
-                    CreateVisibleDetectionRect(
-                        candidates[index],
-                        rendered.Width,
-                        rendered.Height,
-                        displayScale);
-                Cv2.Rectangle(
-                    rendered,
-                    displayRect,
-                    color,
-                    lineThickness);
+                CvRect displayRect = CreateVisibleDetectionRect(candidates[index], rendered.Width, rendered.Height, displayScale);
+                Cv2.Rectangle(rendered, displayRect, color, lineThickness);
                 string displayName = string.Equals(label, "FIRE", StringComparison.OrdinalIgnoreCase)
                     ? "Fire"
-                    : string.Equals(label, "SMOKE", StringComparison.OrdinalIgnoreCase)
-                        ? "Smoke"
-                        : "IR Smoke Candidate";
-                string displayLabel =
-                    "VP #" + (index + 1) + " | " + displayName + " " +
-                    (index < visionScores.Count ? visionScores[index] : 0.0)
-                        .ToString("F1", CultureInfo.InvariantCulture) + "%";
+                    : string.Equals(label, "SMOKE", StringComparison.OrdinalIgnoreCase) ? "Smoke" : "IR Smoke Candidate";
+                string displayLabel = "VP #" + (index + 1) +
+                    " | " + displayName +
+                    " " + (index < visionScores.Count ? visionScores[index] : 0.0).ToString("F1", CultureInfo.InvariantCulture) +
+                    "%";
                 int baseline;
                 // 2026-09-02 V17: Viewer AI Overlay와 같은 시각 크기로 통일한다.
                 double fontScale = Math.Max(0.72, 0.72 * displayScale);
                 int fontThickness = Math.Max(2, (int)Math.Round(displayScale));
-                CvSize labelSize =
-                    Cv2.GetTextSize(
-                        displayLabel,
-                        HersheyFonts.HersheySimplex,
-                        fontScale,
-                        fontThickness,
-                        out baseline);
-                int labelX =
-                    Math.Max(0, Math.Min(displayRect.X, rendered.Width - labelSize.Width - 6));
-                int labelY = Math.Max(
-                    labelSize.Height + 6,
-                    Math.Min(displayRect.Y - 7, rendered.Height - baseline - 2));
+                CvSize labelSize = Cv2.GetTextSize(displayLabel, HersheyFonts.HersheySimplex, fontScale, fontThickness, out baseline);
+                int labelX = Math.Max(0, Math.Min(displayRect.X, rendered.Width - labelSize.Width - 6));
+                int labelY = Math.Max(labelSize.Height + 6, Math.Min(displayRect.Y - 7, rendered.Height - baseline - 2));
                 int labelTop = Math.Max(0, labelY - labelSize.Height - 5);
                 int labelHeight = labelSize.Height + baseline + 7;
                 CvRect labelRect = new CvRect(
                     labelX,
                     labelTop,
                     Math.Min(labelSize.Width + 6, rendered.Width - labelX),
-                    Math.Min(labelHeight, rendered.Height - labelTop));
-                while (occupiedLabelRects.Any(existing =>
-                           (existing & labelRect) != CvRect.Empty) &&
-                       labelRect.Y > labelHeight + 3)
+                    Math.Min(labelHeight, rendered.Height - labelTop)
+                );
+
+                while (occupiedLabelRects.Any(existing => (existing & labelRect) != CvRect.Empty) && labelRect.Y > labelHeight + 3)
                 {
                     labelRect.Y -= labelHeight + 3;
                 }
+
                 occupiedLabelRects.Add(labelRect);
                 labelTop = labelRect.Y;
                 labelY = labelTop + labelSize.Height + 5;
-                Cv2.Rectangle(
-                    rendered,
-                    labelRect,
-                    new Scalar(24, 24, 24),
-                    -1);
+                Cv2.Rectangle(rendered, labelRect, new Scalar(24, 24, 24), -1);
                 Cv2.PutText(
                     rendered,
                     displayLabel,
@@ -908,52 +679,9 @@ namespace FireCandidateValidator
                     HersheyFonts.HersheySimplex,
                     fontScale,
                     color,
-                    fontThickness);
+                    fontThickness
+                );
             }
-
-        }
-
-        /// <summary>
-        /// [2026-08-24] 모든 FIRE DETECTION 문구를 BBox 위쪽에 배치하고,
-        /// 여러 화염의 문구가 겹치면 더 높은 행으로 이동한다.
-        /// </summary>
-        private static CvPoint FindAvailableLabelOrigin(
-            CvRect detectionRect,
-            CvSize labelSize,
-            int baseline,
-            IList<CvRect> occupiedLabels,
-            int frameWidth,
-            int frameHeight,
-            double displayScale)
-        {
-            int gap = Math.Max(4, (int)Math.Round(5 * displayScale));
-            int labelHeight = labelSize.Height + baseline + 2;
-            int clampedX = Math.Max(0, Math.Min(detectionRect.X, frameWidth - labelSize.Width - 1));
-            int preferredTop = detectionRect.Y - labelHeight - gap;
-
-            for (int attempt = 0; attempt < 12; attempt++)
-            {
-                int rowOffset = attempt * (labelHeight + gap);
-                int candidateTop = preferredTop - rowOffset;
-                candidateTop = Math.Max(0, Math.Min(candidateTop, frameHeight - labelHeight - 1));
-
-                CvRect candidateLabel = new CvRect(
-                    clampedX,
-                    candidateTop,
-                    labelSize.Width,
-                    labelHeight);
-
-                if (!occupiedLabels.Any(existing => RectanglesOverlap(existing, candidateLabel)))
-                {
-                    occupiedLabels.Add(candidateLabel);
-                    return new CvPoint(clampedX, candidateTop + labelSize.Height);
-                }
-
-            }
-
-            int fallbackTop = Math.Max(0, Math.Min(preferredTop, frameHeight - labelHeight - 1));
-            occupiedLabels.Add(new CvRect(clampedX, fallbackTop, labelSize.Width, labelHeight));
-            return new CvPoint(clampedX, fallbackTop + labelSize.Height);
         }
 
         /// <summary>
@@ -961,19 +689,14 @@ namespace FireCandidateValidator
         /// </summary>
         private static bool RectanglesOverlap(CvRect left, CvRect right)
         {
-            return left.X < right.Right &&
-                   left.Right > right.X &&
-                   left.Y < right.Bottom &&
-                   left.Bottom > right.Y;
+            return left.X < right.Right && left.Right > right.X && left.Y < right.Bottom && left.Bottom > right.Y;
         }
 
         /// <summary>
         /// 프레임 간 후보를 같은 화염으로 추적하여 BBox 위치를 완만하게 보정하고,
         /// 일시적인 미검출은 8프레임까지 유지해 깜빡임을 줄인다.
         /// </summary>
-        private IList<CvRect> UpdateStableCandidateTracks(
-            IList<CvRect> candidates,
-            bool isConfirmed)
+        private IList<CvRect> UpdateStableCandidateTracks(IList<CvRect> candidates, bool isConfirmed)
         {
             bool[] matched = new bool[_stableCandidateTracks.Count];
 
@@ -989,15 +712,13 @@ namespace FireCandidateValidator
                         continue;
                     }
 
-                    double score = CalculateMatchScore(
-                        _stableCandidateTracks[index].Rectangle,
-                        candidate);
+                    double score = CalculateMatchScore(_stableCandidateTracks[index].Rectangle, candidate);
+
                     if (score > bestScore)
                     {
                         bestScore = score;
                         bestIndex = index;
                     }
-
                 }
 
                 if (bestIndex >= 0 && bestScore >= 0.20)
@@ -1011,17 +732,10 @@ namespace FireCandidateValidator
                 }
                 else
                 {
-                    _stableCandidateTracks.Add(
-                        new StableCandidateTrack
-                        {
-                            Rectangle = candidate,
-                            IsVisible = isConfirmed && !_isVideoMode,
-                            SeenFrames = 1
-                        });
+                    _stableCandidateTracks.Add(new StableCandidateTrack { Rectangle = candidate, IsVisible = isConfirmed && !_isVideoMode, SeenFrames = 1 });
                     Array.Resize(ref matched, _stableCandidateTracks.Count);
                     matched[matched.Length - 1] = true;
                 }
-
             }
 
             for (int index = _stableCandidateTracks.Count - 1; index >= 0; index--)
@@ -1035,13 +749,9 @@ namespace FireCandidateValidator
                 {
                     _stableCandidateTracks.RemoveAt(index);
                 }
-
             }
 
-            return _stableCandidateTracks
-                .Where(track => track.IsVisible)
-                .Select(track => track.Rectangle)
-                .ToList();
+            return _stableCandidateTracks.Where(track => track.IsVisible).Select(track => track.Rectangle).ToList();
         }
 
         /// <summary>
@@ -1049,19 +759,13 @@ namespace FireCandidateValidator
         /// </summary>
         private static double CalculateMatchScore(CvRect first, CvRect second)
         {
-            int intersectionWidth =
-                Math.Max(0, Math.Min(first.Right, second.Right) - Math.Max(first.Left, second.Left));
-            int intersectionHeight =
-                Math.Max(0, Math.Min(first.Bottom, second.Bottom) - Math.Max(first.Top, second.Top));
+            int intersectionWidth = Math.Max(0, Math.Min(first.Right, second.Right) - Math.Max(first.Left, second.Left));
+            int intersectionHeight = Math.Max(0, Math.Min(first.Bottom, second.Bottom) - Math.Max(first.Top, second.Top));
             double intersection = intersectionWidth * intersectionHeight;
             double union = Math.Max(1.0, first.Width * first.Height + second.Width * second.Height - intersection);
             double iou = intersection / union;
-            double centerDistance =
-                Math.Sqrt(
-                    Math.Pow(first.X + first.Width / 2.0 - second.X - second.Width / 2.0, 2) +
-                    Math.Pow(first.Y + first.Height / 2.0 - second.Y - second.Height / 2.0, 2));
-            double allowedDistance =
-                Math.Max(12.0, Math.Max(first.Width, first.Height) * 0.8);
+            double centerDistance = Math.Sqrt(Math.Pow(first.X + first.Width / 2.0 - second.X - second.Width / 2.0, 2) + Math.Pow(first.Y + first.Height / 2.0 - second.Y - second.Height / 2.0, 2));
+            double allowedDistance = Math.Max(12.0, Math.Max(first.Width, first.Height) * 0.8);
             double proximity = Math.Max(0.0, 1.0 - centerDistance / allowedDistance);
             return Math.Max(iou, proximity * 0.8);
         }
@@ -1069,32 +773,25 @@ namespace FireCandidateValidator
         /// <summary>
         /// 현재 측정값 일부만 반영하여 화염 BBox의 급격한 위치·크기 변화를 억제한다.
         /// </summary>
-        private static CvRect SmoothRectangle(
-            CvRect previous,
-            CvRect current,
-            double currentWeight)
+        private static CvRect SmoothRectangle(CvRect previous, CvRect current, double currentWeight)
         {
             double previousWeight = 1.0 - currentWeight;
             return new CvRect(
                 (int)Math.Round(previous.X * previousWeight + current.X * currentWeight),
                 (int)Math.Round(previous.Y * previousWeight + current.Y * currentWeight),
                 Math.Max(1, (int)Math.Round(previous.Width * previousWeight + current.Width * currentWeight)),
-                Math.Max(1, (int)Math.Round(previous.Height * previousWeight + current.Height * currentWeight)));
+                Math.Max(1, (int)Math.Round(previous.Height * previousWeight + current.Height * currentWeight))
+            );
         }
 
         /// <summary>
         /// 테스트 프로그램의 탐지 시작·해제를 메인 Viewer가 읽는 공유 이벤트 파일에 기록한다.
         /// </summary>
-        private void PublishLiveEvent(
-            string detectionType,
-            bool isDetected,
-            IList<CvRect> candidates,
-            IList<double> visionScores = null)
+        private void PublishLiveEvent(string detectionType, bool isDetected, IList<CvRect> candidates, IList<double> visionScores = null)
         {
-            bool lastState =
-                string.Equals(detectionType, "SMOKE", StringComparison.OrdinalIgnoreCase)
-                    ? _lastPublishedSmokeState
-                    : _lastPublishedFireState;
+            bool lastState = string.Equals(detectionType, "SMOKE", StringComparison.OrdinalIgnoreCase)
+                ? _lastPublishedSmokeState
+                : _lastPublishedFireState;
 
             if (!_loadedVideo || lastState == isDetected)
             {
@@ -1110,28 +807,21 @@ namespace FireCandidateValidator
                 _lastPublishedFireState = isDetected;
             }
 
-            string directory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "OpenCvWpfTracking",
-                "FireEvents");
+            string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "OpenCvWpfTracking", "FireEvents");
             Directory.CreateDirectory(directory);
             string path = Path.Combine(directory, "TestProgramLiveEvents.txt");
-            using (FileStream stream =
-                   new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
+            using (FileStream stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
             using (StreamWriter writer = new StreamWriter(stream))
             {
                 DateTime eventTime = DateTime.Now;
+
                 if (isDetected)
                 {
                     for (int index = 0; index < candidates.Count; index++)
                     {
                         CvRect candidate = candidates[index];
-                        double visionScore =
-                            visionScores != null && index < visionScores.Count
-                                ? visionScores[index]
-                                : 0.0;
-                        writer.WriteLine(
-                            string.Join(
+                        double visionScore = visionScores != null && index < visionScores.Count ? visionScores[index] : 0.0;
+                        writer.WriteLine(string.Join(
                                 "|",
                                 eventTime.ToString("O"),
                                 "DETECTED",
@@ -1141,40 +831,22 @@ namespace FireCandidateValidator
                                 (candidate.Width * candidate.Height).ToString(),
                                 visionScore.ToString("F1", CultureInfo.InvariantCulture),
                                 detectionType,
-                                "TEST PROGRAM"));
+                                "TEST PROGRAM"
+                            ));
                     }
-
                 }
                 else
                 {
-                    writer.WriteLine(
-                        string.Join(
-                            "|",
-                            eventTime.ToString("O"),
-                            "CLEARED",
-                            "0",
-                            "0",
-                            "0",
-                            "0",
-                            "0.0",
-                            detectionType,
-                            "TEST PROGRAM"));
+                    writer.WriteLine(string.Join("|", eventTime.ToString("O"), "CLEARED", "0", "0", "0", "0", "0.0", detectionType, "TEST PROGRAM"));
                 }
-
             }
-
         }
 
         /// <summary>
         /// 2026-08-31: Viewer의 FIRE/SMOKE 시공간 증거식을 TEST 후보에도 적용한다.
         /// 점수는 확률이 아니라 면적·지속·상향 이동·확산·형상 변화의 합성 지표다.
         /// </summary>
-        private IList<double> UpdateTestVisionScores(
-            string detectionType,
-            IList<CvRect> candidates,
-            int frameWidth,
-            int frameHeight,
-            bool isInfrared)
+        private IList<double> UpdateTestVisionScores(string detectionType, IList<CvRect> candidates, int frameWidth, int frameHeight, bool isInfrared)
         {
             if (!_testVisionScoreTracks.TryGetValue(detectionType, out List<TestVisionScoreTrack> tracks))
             {
@@ -1183,16 +855,19 @@ namespace FireCandidateValidator
             }
 
             DateTime nowUtc = DateTime.UtcNow;
+
             foreach (TestVisionScoreTrack track in tracks)
             {
                 track.Matched = false;
             }
 
             List<double> scores = new List<double>();
+
             foreach (CvRect candidate in candidates)
             {
                 TestVisionScoreTrack matched = null;
                 double bestMatch = 0.0;
+
                 foreach (TestVisionScoreTrack track in tracks)
                 {
                     if (track.Matched)
@@ -1201,12 +876,12 @@ namespace FireCandidateValidator
                     }
 
                     double match = CalculateMatchScore(track.Rectangle, candidate);
+
                     if (match > bestMatch)
                     {
                         bestMatch = match;
                         matched = track;
                     }
-
                 }
 
                 if (matched == null || bestMatch < 0.25)
@@ -1220,30 +895,24 @@ namespace FireCandidateValidator
                     tracks.Add(matched);
                 }
 
-                double elapsedSeconds = Math.Max(
-                    0.0,
-                    (nowUtc - matched.FirstSeenUtc).TotalSeconds);
+                double elapsedSeconds = Math.Max(0.0, (nowUtc - matched.FirstSeenUtc).TotalSeconds);
+
                 if (!matched.IsScoreFinalized)
                 {
                     // 2026-09-02 V17: TEST FIRE/SMOKE 모두 Viewer와 동일한
                     // BBox Track별 1.5초 시공간 증거식을 사용한다.
-                    matched.Score = CalculateTestVisionScore(
-                        matched,
-                        candidate,
-                        frameWidth,
-                        frameHeight,
-                        isInfrared,
-                        elapsedSeconds);
+                    matched.Score = CalculateTestVisionScore(matched, candidate, frameWidth, frameHeight, isInfrared, elapsedSeconds);
+
                     if (elapsedSeconds >= 1.5)
                     {
                         matched.IsScoreFinalized = true;
-                        Console.WriteLine(
-                            "[TEST V.SCORE] " + detectionType +
+                        Console.WriteLine("[TEST V.SCORE] " + detectionType +
                             " finalized / SCORE=" + matched.Score.ToString("F1") +
-                            " / BBOX=" + candidate.Width + "x" + candidate.Height);
+                            " / BBOX=" + candidate.Width +
+                            "x" + candidate.Height);
                     }
-
                 }
+
                 matched.Rectangle = candidate;
                 matched.Matched = true;
                 scores.Add(matched.Score);
@@ -1253,23 +922,13 @@ namespace FireCandidateValidator
             return scores;
         }
 
-        private static double CalculateTestVisionScore(
-            TestVisionScoreTrack track,
-            CvRect candidate,
-            int frameWidth,
-            int frameHeight,
-            bool isInfrared,
-            double elapsedSeconds)
+        private static double CalculateTestVisionScore(TestVisionScoreTrack track, CvRect candidate, int frameWidth, int frameHeight, bool isInfrared, double elapsedSeconds)
         {
             double frameArea = Math.Max(1.0, frameWidth * (double)frameHeight);
             double areaRatio = candidate.Width * candidate.Height / frameArea;
-            double verticality = candidate.Height /
-                (double)Math.Max(1, candidate.Width + candidate.Height);
-            double aspectBalance = Math.Min(candidate.Width, candidate.Height) /
-                (double)Math.Max(1, Math.Max(candidate.Width, candidate.Height));
-            double initialArea = Math.Max(
-                1.0,
-                track.InitialRectangle.Width * (double)track.InitialRectangle.Height);
+            double verticality = candidate.Height / (double)Math.Max(1, candidate.Width + candidate.Height);
+            double aspectBalance = Math.Min(candidate.Width, candidate.Height) / (double)Math.Max(1, Math.Max(candidate.Width, candidate.Height));
+            double initialArea = Math.Max(1.0, track.InitialRectangle.Width * (double)track.InitialRectangle.Height);
             double currentArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
             double expansionRatio = currentArea / initialArea - 1.0;
             double initialCenterX = track.InitialRectangle.X + track.InitialRectangle.Width / 2.0;
@@ -1278,37 +937,18 @@ namespace FireCandidateValidator
             double currentCenterY = candidate.Y + candidate.Height / 2.0;
             double deltaX = currentCenterX - initialCenterX;
             double deltaY = currentCenterY - initialCenterY;
-            double frameDiagonal = Math.Max(
-                1.0,
-                Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
+            double frameDiagonal = Math.Max(1.0, Math.Sqrt(frameWidth * (double)frameWidth + frameHeight * (double)frameHeight));
             double motionRatio = Math.Sqrt(deltaX * deltaX + deltaY * deltaY) / frameDiagonal;
-            double upwardRatio = Math.Max(0.0, initialCenterY - currentCenterY) /
-                Math.Max(1.0, frameHeight);
-            double initialAspect = track.InitialRectangle.Width /
-                (double)Math.Max(1, track.InitialRectangle.Height);
-            double currentAspect = candidate.Width /
-                (double)Math.Max(1, candidate.Height);
-            double shapeChange = Math.Abs(currentAspect - initialAspect) /
-                Math.Max(0.25, initialAspect);
-
-            double score = 50.0 +
-                Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) +
-                Math.Min(4.0, verticality * 7.0) +
-                Math.Min(3.0, aspectBalance * 3.0) +
-                Math.Min(20.0, elapsedSeconds / 1.5 * 20.0) +
-                Math.Min(8.0, upwardRatio * 160.0) +
-                Math.Min(10.0, Math.Max(0.0, expansionRatio) * 12.0) +
-                Math.Min(5.0, motionRatio * 100.0) +
-                Math.Min(5.0, shapeChange * 8.0);
-
-            // 2026-09-08 V23: Viewer와 동일한 초기 지속성 감점.
+            double upwardRatio = Math.Max(0.0, initialCenterY - currentCenterY) / Math.Max(1.0, frameHeight);
+            double initialAspect = track.InitialRectangle.Width / (double)Math.Max(1, track.InitialRectangle.Height);
+            double currentAspect = candidate.Width / (double)Math.Max(1, candidate.Height);
+            double shapeChange = Math.Abs(currentAspect - initialAspect) / Math.Max(0.25, initialAspect);
+            double score = 50.0 + Math.Min(12.0, Math.Sqrt(Math.Max(0.0, areaRatio)) * 46.0) + Math.Min(4.0, verticality * 7.0) + Math.Min(3.0, aspectBalance * 3.0) + Math.Min(20.0, elapsedSeconds / 1.5 * 20.0) + Math.Min(8.0, upwardRatio * 160.0) + Math.Min(10.0, Math.Max(0.0, expansionRatio) * 12.0) + Math.Min(5.0, motionRatio * 100.0) + Math.Min(5.0, shapeChange * 8.0);
+            // 2026-09-08 Viewer와 동일한 초기 지속성 감점.
             double persistenceRatio = Math.Min(1.0, elapsedSeconds / 1.5);
             score -= (1.0 - persistenceRatio) * 30.0;
 
-            if (elapsedSeconds >= 0.5 &&
-                motionRatio < 0.006 &&
-                Math.Abs(expansionRatio) < 0.10 &&
-                shapeChange < 0.10)
+            if (elapsedSeconds >= 0.5 && motionRatio < 0.006 && Math.Abs(expansionRatio) < 0.10 && shapeChange < 0.10)
             {
                 score -= 15.0;
             }
@@ -1341,40 +981,27 @@ namespace FireCandidateValidator
                 }
 
                 Cv2.CvtColor(bgr, hsv, ColorConversionCodes.BGR2HSV);
-                Cv2.InRange(
-                    hsv,
-                    new Scalar(0, 70, 150),
-                    new Scalar(45, 255, 255),
-                    flameMask);
-
+                Cv2.InRange(hsv, new Scalar(0, 70, 150), new Scalar(45, 255, 255), flameMask);
                 double frameArea = Math.Max(1.0, source.Width * source.Height);
                 return Cv2.CountNonZero(flameMask) / frameArea >= 0.00002;
             }
-
         }
 
         /// <summary>
         /// 작은 후보의 실제 크기는 유지하면서 축소 화면에서도 확인할 수 있는
         /// 최소 표시 영역을 계산한다.
         /// </summary>
-        private static CvRect CreateVisibleDetectionRect(
-            CvRect source,
-            int frameWidth,
-            int frameHeight,
-            double displayScale)
+        private static CvRect CreateVisibleDetectionRect(CvRect source, int frameWidth, int frameHeight, double displayScale)
         {
-            int minimumSide =
-                Math.Max(28, (int)Math.Round(24 * displayScale));
+            int minimumSide = Math.Max(28, (int)Math.Round(24 * displayScale));
             int targetWidth = Math.Max(source.Width, minimumSide);
             int targetHeight = Math.Max(source.Height, minimumSide);
             int centerX = source.X + source.Width / 2;
             int centerY = source.Y + source.Height / 2;
             int x = Math.Max(0, centerX - targetWidth / 2);
             int y = Math.Max(0, centerY - targetHeight / 2);
-
             targetWidth = Math.Min(targetWidth, frameWidth - x);
             targetHeight = Math.Min(targetHeight, frameHeight - y);
-
             return new CvRect(x, y, targetWidth, targetHeight);
         }
 
@@ -1400,10 +1027,8 @@ namespace FireCandidateValidator
         private void SetFireBoxGroupingMode(int mode)
         {
             _fireBoxGroupingMode = mode == 1 ? 1 : 2;
-            FireBoxMode1Button.Background = new SolidColorBrush(
-                _fireBoxGroupingMode == 1 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
-            FireBoxMode2Button.Background = new SolidColorBrush(
-                _fireBoxGroupingMode == 2 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            FireBoxMode1Button.Background = new SolidColorBrush(_fireBoxGroupingMode == 1 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            FireBoxMode2Button.Background = new SolidColorBrush(_fireBoxGroupingMode == 2 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
             ProcessCurrentFrame(_isVideoMode ? false : true);
         }
 
@@ -1424,9 +1049,11 @@ namespace FireCandidateValidator
             HighlightRandomPaletteButton();
         }
 
-        private void PreviousPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex - 1 + DisplayPaletteCount) % DisplayPaletteCount);
+        private void PreviousPalette_Click(object sender, RoutedEventArgs e) =>
+            SetDisplayPalette((_displayPaletteIndex - 1 + DisplayPaletteCount) % DisplayPaletteCount);
 
-        private void NextPalette_Click(object sender, RoutedEventArgs e) => SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
+        private void NextPalette_Click(object sender, RoutedEventArgs e) =>
+            SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
 
         /// <summary>
         /// SetDisplayPalette 설정 함수.
@@ -1435,12 +1062,12 @@ namespace FireCandidateValidator
         {
             _displayPaletteIndex = paletteIndex;
             UpdatePaletteButtonVisuals();
+
             if (IsLoaded && !_isVideoMode && _currentSource != null)
             {
                 _analyzer.Reset();
                 ProcessCurrentFrame(true);
             }
-
         }
 
         /// <summary>
@@ -1456,6 +1083,7 @@ namespace FireCandidateValidator
             }
 
             Mat gray = new Mat();
+
             if (source.Channels() == 1)
             {
                 source.CopyTo(gray);
@@ -1496,7 +1124,6 @@ namespace FireCandidateValidator
                 ColormapTypes.Winter,
                 ColormapTypes.Rainbow
             };
-
             Mat colored = new Mat();
             Cv2.ApplyColorMap(gray, colored, maps[Math.Min(maps.Length - 1, index - 2)]);
             gray.Dispose();
@@ -1538,7 +1165,6 @@ namespace FireCandidateValidator
             {
                 HighlightRandomPaletteButton();
             }
-
         }
 
         /// <summary>
@@ -1546,7 +1172,11 @@ namespace FireCandidateValidator
         /// </summary>
         private void HighlightRandomPaletteButton()
         {
-            LinearGradientBrush rainbow = new LinearGradientBrush { StartPoint = new System.Windows.Point(0, 0), EndPoint = new System.Windows.Point(1, 0) };
+            LinearGradientBrush rainbow = new LinearGradientBrush
+            {
+                StartPoint = new System.Windows.Point(0, 0),
+                EndPoint = new System.Windows.Point(1, 0)
+            };
             rainbow.GradientStops.Add(new GradientStop(Colors.Red, 0));
             rainbow.GradientStops.Add(new GradientStop(Colors.Yellow, 0.35));
             rainbow.GradientStops.Add(new GradientStop(Colors.LimeGreen, 0.60));
@@ -1561,11 +1191,7 @@ namespace FireCandidateValidator
         /// </summary>
         private void UpdateSettingText()
         {
-            if (ThresholdText == null ||
-                AreaText == null ||
-                ConfirmationText == null ||
-                SmokeChangeText == null ||
-                SmokeAreaText == null)
+            if (ThresholdText == null || AreaText == null || ConfirmationText == null || SmokeChangeText == null || SmokeAreaText == null)
             {
                 return;
             }
@@ -1583,9 +1209,7 @@ namespace FireCandidateValidator
         /// </summary>
         private SmokeDiagnosticCapture CreateSmokeDiagnosticCapture(bool analyzeSmoke)
         {
-            if (!analyzeSmoke ||
-                SmokeDiagnosticCheckBox == null ||
-                SmokeDiagnosticCheckBox.IsChecked != true)
+            if (!analyzeSmoke || SmokeDiagnosticCheckBox == null || SmokeDiagnosticCheckBox.IsChecked != true)
             {
                 return null;
             }
@@ -1602,18 +1226,12 @@ namespace FireCandidateValidator
                 return;
             }
 
-            string root = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "SmokeDiagnostics");
-            _smokeDiagnosticDirectory = Path.Combine(
-                root,
-                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
+            string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SmokeDiagnostics");
+            _smokeDiagnosticDirectory = Path.Combine(root, DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
             Directory.CreateDirectory(_smokeDiagnosticDirectory);
-
             string csvPath = Path.Combine(_smokeDiagnosticDirectory, "smoke_candidates.csv");
             _smokeDiagnosticWriter = new StreamWriter(csvPath, false, new System.Text.UTF8Encoding(true));
-            _smokeDiagnosticWriter.WriteLine(
-                "FRAME,INPUT,STAGE,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA,FILL,ASPECT,EDGE_DENSITY," +
+            _smokeDiagnosticWriter.WriteLine("FRAME,INPUT,STAGE,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA,FILL,ASPECT,EDGE_DENSITY," +
                 "SEEN,MISSING,DYNAMIC,UPWARD,EXPANSION,DEFORMATION,STATIONARY,RESULT,REJECT_REASON");
 
             if (SmokeDiagnosticPathText != null)
@@ -1624,9 +1242,7 @@ namespace FireCandidateValidator
             Console.WriteLine("[SMOKE DIAGNOSTIC] START / " + _smokeDiagnosticDirectory);
         }
 
-        private void WriteSmokeDiagnosticFrame(
-            SmokeDiagnosticCapture diagnostic,
-            bool isInfrared)
+        private void WriteSmokeDiagnosticFrame(SmokeDiagnosticCapture diagnostic, bool isInfrared)
         {
             if (_smokeDiagnosticWriter == null || diagnostic == null)
             {
@@ -1634,57 +1250,35 @@ namespace FireCandidateValidator
             }
 
             int candidateIndex = 0;
+
             foreach (SmokeDiagnosticRecord record in diagnostic.Records)
             {
                 candidateIndex++;
                 CvRect rectangle = record.Rectangle;
-                _smokeDiagnosticWriter.WriteLine(string.Join(",", new[]
-                {
-                    _smokeDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
-                    isInfrared ? "IR" : "EO",
-                    record.Stage,
-                    candidateIndex.ToString(CultureInfo.InvariantCulture),
-                    rectangle.X.ToString(CultureInfo.InvariantCulture),
-                    rectangle.Y.ToString(CultureInfo.InvariantCulture),
-                    rectangle.Width.ToString(CultureInfo.InvariantCulture),
-                    rectangle.Height.ToString(CultureInfo.InvariantCulture),
-                    record.Area.ToString("0.###", CultureInfo.InvariantCulture),
-                    record.FillRatio.ToString("0.####", CultureInfo.InvariantCulture),
-                    record.AspectRatio.ToString("0.####", CultureInfo.InvariantCulture),
-                    record.EdgeDensity.ToString("0.####", CultureInfo.InvariantCulture),
-                    record.SeenFrames.ToString(CultureInfo.InvariantCulture),
-                    record.MissingFrames.ToString(CultureInfo.InvariantCulture),
-                    record.DynamicSamples.ToString(CultureInfo.InvariantCulture),
-                    record.UpwardSamples.ToString(CultureInfo.InvariantCulture),
-                    record.ExpansionSamples.ToString(CultureInfo.InvariantCulture),
-                    record.DeformationSamples.ToString(CultureInfo.InvariantCulture),
-                    record.StationaryFrames.ToString(CultureInfo.InvariantCulture),
-                    record.Result,
-                    record.Reason
-                }));
+                _smokeDiagnosticWriter.WriteLine(string.Join(
+                        ",",
+                        new[] { _smokeDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), isInfrared ? "IR" : "EO", record.Stage, candidateIndex.ToString(CultureInfo.InvariantCulture), rectangle.X.ToString(CultureInfo.InvariantCulture), rectangle.Y.ToString(CultureInfo.InvariantCulture), rectangle.Width.ToString(CultureInfo.InvariantCulture), rectangle.Height.ToString(CultureInfo.InvariantCulture), record.Area.ToString("0.###", CultureInfo.InvariantCulture), record.FillRatio.ToString("0.####", CultureInfo.InvariantCulture), record.AspectRatio.ToString("0.####", CultureInfo.InvariantCulture), record.EdgeDensity.ToString("0.####", CultureInfo.InvariantCulture), record.SeenFrames.ToString(CultureInfo.InvariantCulture), record.MissingFrames.ToString(CultureInfo.InvariantCulture), record.DynamicSamples.ToString(CultureInfo.InvariantCulture), record.UpwardSamples.ToString(CultureInfo.InvariantCulture), record.ExpansionSamples.ToString(CultureInfo.InvariantCulture), record.DeformationSamples.ToString(CultureInfo.InvariantCulture), record.StationaryFrames.ToString(CultureInfo.InvariantCulture), record.Result, record.Reason }
+                    ));
             }
 
             if (_smokeDiagnosticFrameIndex == 1 || _smokeDiagnosticFrameIndex % 15 == 0)
             {
                 string frameDirectory = Path.Combine(
                     _smokeDiagnosticDirectory,
-                    "frame_" + _smokeDiagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
+                    "frame_" + _smokeDiagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture)
+                );
                 Directory.CreateDirectory(frameDirectory);
 
                 foreach (KeyValuePair<string, Mat> stage in diagnostic.StageMasks)
                 {
-                    Cv2.ImWrite(
-                        Path.Combine(frameDirectory, stage.Key + ".png"),
-                        stage.Value);
+                    Cv2.ImWrite(Path.Combine(frameDirectory, stage.Key + ".png"), stage.Value);
                 }
-
             }
 
             if (_smokeDiagnosticFrameIndex % 30 == 0)
             {
                 _smokeDiagnosticWriter.Flush();
             }
-
         }
 
         private void SmokeDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -1709,7 +1303,6 @@ namespace FireCandidateValidator
                     StatusText.Foreground = Brushes.OrangeRed;
                     Console.Error.WriteLine("[SMOKE DIAGNOSTIC ERROR] " + exception);
                 }
-
             }
             else
             {
@@ -1717,7 +1310,6 @@ namespace FireCandidateValidator
                 StatusText.Text = "SMOKE DIAGNOSTIC OFF";
                 StatusText.Foreground = Brushes.LightGreen;
             }
-
         }
 
         private void StopSmokeDiagnostic()
@@ -1726,8 +1318,10 @@ namespace FireCandidateValidator
             {
                 _smokeDiagnosticWriter.Flush();
                 _smokeDiagnosticWriter.Dispose();
+
                 if (_smokeDiagnosticDirectory != null)
                     OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_smokeDiagnosticDirectory, "smoke_candidates.csv"));
+
                 _smokeDiagnosticWriter = null;
             }
 
@@ -1747,27 +1341,17 @@ namespace FireCandidateValidator
             }
 
             string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FireDiagnostics");
-            _fireDiagnosticDirectory = Path.Combine(
-                root,
-                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
+            _fireDiagnosticDirectory = Path.Combine(root, DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
             Directory.CreateDirectory(_fireDiagnosticDirectory);
-            _fireDiagnosticWriter = new StreamWriter(
-                Path.Combine(_fireDiagnosticDirectory, "fire_candidates.csv"),
-                false,
-                new System.Text.UTF8Encoding(true));
-            _fireDiagnosticWriter.WriteLine(
-                "FRAME,INPUT,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA_RATIO,CONFIRMED,CONTINUOUS_FRAMES");
+            _fireDiagnosticWriter = new StreamWriter(Path.Combine(_fireDiagnosticDirectory, "fire_candidates.csv"), false, new System.Text.UTF8Encoding(true));
+            _fireDiagnosticWriter.WriteLine("FRAME,INPUT,CANDIDATE,X,Y,WIDTH,HEIGHT,AREA_RATIO,CONFIRMED,CONTINUOUS_FRAMES");
             FireDiagnosticPathText.Text = _fireDiagnosticDirectory;
             Console.WriteLine("[FIRE DIAGNOSTIC] START / " + _fireDiagnosticDirectory);
         }
 
-        private void WriteFireDiagnosticFrame(
-            FireCandidateAnalysis analysis,
-            bool isInfrared,
-            bool analyzeFire)
+        private void WriteFireDiagnosticFrame(FireCandidateAnalysis analysis, bool isInfrared, bool analyzeFire)
         {
-            if (!analyzeFire || analysis == null || FireDiagnosticCheckBox == null ||
-                FireDiagnosticCheckBox.IsChecked != true)
+            if (!analyzeFire || analysis == null || FireDiagnosticCheckBox == null || FireDiagnosticCheckBox.IsChecked != true)
             {
                 return;
             }
@@ -1775,15 +1359,13 @@ namespace FireCandidateValidator
             EnsureFireDiagnosticSession();
             _fireDiagnosticFrameIndex++;
             double frameArea = Math.Max(1.0, _currentSource.Width * (double)_currentSource.Height);
+
             if (analysis.Candidates.Count == 0)
             {
-                _fireDiagnosticWriter.WriteLine(string.Join(",", new[]
-                {
-                    _fireDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
-                    isInfrared ? "IR" : "EO", "0", "0", "0", "0", "0", "0",
-                    analysis.IsConfirmed ? "TRUE" : "FALSE",
-                    analysis.ContinuousFrames.ToString(CultureInfo.InvariantCulture)
-                }));
+                _fireDiagnosticWriter.WriteLine(string.Join(
+                        ",",
+                        new[] { _fireDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), isInfrared ? "IR" : "EO", "0", "0", "0", "0", "0", "0", analysis.IsConfirmed ? "TRUE" : "FALSE", analysis.ContinuousFrames.ToString(CultureInfo.InvariantCulture) }
+                    ));
             }
             else
             {
@@ -1791,28 +1373,19 @@ namespace FireCandidateValidator
                 {
                     CvRect rectangle = analysis.Candidates[index];
                     double areaRatio = rectangle.Width * (double)rectangle.Height / frameArea;
-                    _fireDiagnosticWriter.WriteLine(string.Join(",", new[]
-                    {
-                        _fireDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture),
-                        isInfrared ? "IR" : "EO",
-                        (index + 1).ToString(CultureInfo.InvariantCulture),
-                        rectangle.X.ToString(CultureInfo.InvariantCulture),
-                        rectangle.Y.ToString(CultureInfo.InvariantCulture),
-                        rectangle.Width.ToString(CultureInfo.InvariantCulture),
-                        rectangle.Height.ToString(CultureInfo.InvariantCulture),
-                        areaRatio.ToString("0.######", CultureInfo.InvariantCulture),
-                        analysis.IsConfirmed ? "TRUE" : "FALSE",
-                        analysis.ContinuousFrames.ToString(CultureInfo.InvariantCulture)
-                    }));
+                    _fireDiagnosticWriter.WriteLine(string.Join(
+                            ",",
+                            new[] { _fireDiagnosticFrameIndex.ToString(CultureInfo.InvariantCulture), isInfrared ? "IR" : "EO", (index + 1).ToString(CultureInfo.InvariantCulture), rectangle.X.ToString(CultureInfo.InvariantCulture), rectangle.Y.ToString(CultureInfo.InvariantCulture), rectangle.Width.ToString(CultureInfo.InvariantCulture), rectangle.Height.ToString(CultureInfo.InvariantCulture), areaRatio.ToString("0.######", CultureInfo.InvariantCulture), analysis.IsConfirmed ? "TRUE" : "FALSE", analysis.ContinuousFrames.ToString(CultureInfo.InvariantCulture) }
+                        ));
                 }
-
             }
 
             if (_fireDiagnosticFrameIndex == 1 || _fireDiagnosticFrameIndex % 15 == 0)
             {
                 string frameDirectory = Path.Combine(
                     _fireDiagnosticDirectory,
-                    "frame_" + _fireDiagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture));
+                    "frame_" + _fireDiagnosticFrameIndex.ToString("D6", CultureInfo.InvariantCulture)
+                );
                 Directory.CreateDirectory(frameDirectory);
                 Cv2.ImWrite(Path.Combine(frameDirectory, "RAW.png"), _currentSource);
                 Cv2.ImWrite(Path.Combine(frameDirectory, "CANDIDATE_MASK.png"), analysis.Mask);
@@ -1822,16 +1395,15 @@ namespace FireCandidateValidator
                     {
                         Cv2.Rectangle(finalMask, rectangle, Scalar.White, -1);
                     }
+
                     Cv2.ImWrite(Path.Combine(frameDirectory, "FINAL.png"), finalMask);
                 }
-
             }
 
             if (_fireDiagnosticFrameIndex % 30 == 0)
             {
                 _fireDiagnosticWriter.Flush();
             }
-
         }
 
         private void FireDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -1855,7 +1427,6 @@ namespace FireCandidateValidator
                     StatusText.Text = "FIRE DIAGNOSTIC OFF";
                     StatusText.Foreground = Brushes.LightGreen;
                 }
-
             }
             catch (Exception exception)
             {
@@ -1864,7 +1435,6 @@ namespace FireCandidateValidator
                 StatusText.Foreground = Brushes.OrangeRed;
                 Console.Error.WriteLine("[FIRE DIAGNOSTIC ERROR] " + exception);
             }
-
         }
 
         private void StopFireDiagnostic()
@@ -1873,8 +1443,10 @@ namespace FireCandidateValidator
             {
                 _fireDiagnosticWriter.Flush();
                 _fireDiagnosticWriter.Dispose();
+
                 if (_fireDiagnosticDirectory != null)
                     OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Schedule(Path.Combine(_fireDiagnosticDirectory, "fire_candidates.csv"));
+
                 _fireDiagnosticWriter = null;
             }
 
@@ -1882,15 +1454,14 @@ namespace FireCandidateValidator
             {
                 FireDiagnosticPathText.Text = _fireDiagnosticDirectory ?? "OFF";
             }
+
             _fireDiagnosticFrameIndex = 0;
         }
 
         /// <summary>
         /// 2026-08-27: FIRE/SMOKE 시험 모드와 입력 채널 힌트 변경을 즉시 반영한다.
         /// </summary>
-        private void Setting_SelectionChanged(
-            object sender,
-            SelectionChangedEventArgs e)
+        private void Setting_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!IsInitialized)
             {
@@ -1904,7 +1475,6 @@ namespace FireCandidateValidator
             {
                 ProcessCurrentFrame(true);
             }
-
         }
 
         /// <summary>
@@ -1959,7 +1529,6 @@ namespace FireCandidateValidator
                 _videoCapture.Dispose();
                 _videoCapture = null;
             }
-
         }
 
         private sealed class StableCandidateTrack
@@ -2004,7 +1573,6 @@ namespace FireCandidateValidator
             {
                 SaveVideoButton.Content = "영상 저장 시작";
             }
-
         }
 
         /// <summary>
@@ -2036,30 +1604,16 @@ namespace FireCandidateValidator
                 int bufferSize = stride * bgra.Height;
                 byte[] pixels = new byte[bufferSize];
                 Marshal.Copy(bgra.Data, pixels, 0, bufferSize);
-
-                BitmapSource bitmap =
-                    BitmapSource.Create(
-                        bgra.Width,
-                        bgra.Height,
-                        96,
-                        96,
-                        PixelFormats.Bgra32,
-                        null,
-                        pixels,
-                        stride);
-
+                BitmapSource bitmap = BitmapSource.Create(bgra.Width, bgra.Height, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
                 bitmap.Freeze();
                 return bitmap;
             }
-
         }
 
         /// <summary>
         /// Window_Closing 이벤트 처리 함수.
         /// </summary>
-        private void Window_Closing(
-            object sender,
-            CancelEventArgs e)
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
             StopVideo();
             StopVideoWriter();
@@ -2075,9 +1629,6 @@ namespace FireCandidateValidator
             {
                 _currentRendered.Dispose();
             }
-
         }
-
     }
-
 }

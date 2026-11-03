@@ -65,7 +65,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private FireSmokeZoneFile _zoneFile = new FireSmokeZoneFile();
 
-        private readonly object _zoneHistoryLock = new object();
+        private readonly object _zoneHistoryLock = new object ();
 
         private readonly List<ZoneFrameContext> _zoneHistory = new List<ZoneFrameContext>();
 
@@ -83,7 +83,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _zoneZeroPending;
 
-        public bool IsZoneReferencePending => _zoneZeroPending || PanoramaReference.Pending || PanoramaReference.ZoneRebase != null;
+        public bool IsZoneReferencePending =>
+            _zoneZeroPending || PanoramaReference.Pending || PanoramaReference.ZoneRebase != null;
 
         public event Action<PanoramaZoneRebase> ZoneReferenceChanged;
 
@@ -93,7 +94,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private DateTimeOffset _zoneCtecZoomAt;
 
-        private int _zoneCtecZoomEpoch, _zoneLensQueryBusy;
+        private int _zoneCtecZoomEpoch;
+
+        private int _zoneLensQueryBusy;
 
         private string _zoneCtecZoomKey;
 
@@ -101,13 +104,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private int _zoneImageBusy;
 
-        private readonly object _zoneImageLock = new object();
+        private readonly object _zoneImageLock = new object ();
 
         private readonly Dictionary<string, ZoneFrameContext> _zoneImageFrames = new Dictionary<string, ZoneFrameContext>();
 
         private DateTimeOffset _zoneImageErrorAt;
 
-        private int _eoZoneImageCount = -1, _irZoneImageCount = -1;
+        private int _eoZoneImageCount = -1;
+
+        private int _irZoneImageCount = -1;
 
         private async void RefreshZoneImageRegistration()
         {
@@ -127,14 +132,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     var frame = CaptureZoneFrame(camera);
                     var source = camera == "IR" ? IRCameraImage : EOCameraImage;
                     // 가까운 저장 장면부터 처리하고 장면이 많아도 작업량을 제한한다.
-                    var scenes = _zoneFile.Scenes.Where(s => s.Camera == camera &&
-                        s.Key == frame.Key &&
-                        !s.Invalidated &&
-                        s.FixedInstallationConfirmed &&
-                        ZonePresetCurrent(s)).OrderBy(s => FireSmokeZoneService.PanDistance(
-                        s.Pan,
-                        frame.Position?.Pan ?? s.Pan
-                    ) + Math.Abs(s.Tilt - (frame.Position?.Tilt ?? s.Tilt))).Take(8).ToArray();
+                    var scenes = _zoneFile.Scenes.Where(s => s.Camera == camera && s.Key == frame.Key && !s.Invalidated && s.FixedInstallationConfirmed && ZonePresetCurrent(s)).OrderBy(s => FireSmokeZoneService.PanDistance(s.Pan, frame.Position?.Pan ?? s.Pan) + Math.Abs(s.Tilt - (frame.Position?.Tilt ?? s.Tilt))).Take(8).ToArray();
 
                     if (source == null || scenes.Length == 0 || ZoneFrameReadiness(frame, true) != null)
                         continue;
@@ -174,10 +172,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         else
                             _eoZoneImageCount = registered.Count;
 
-                        ConsoleLogHelper.State(
-                            "ZONE IMAGE MATCH",
-                            camera + " / MATCHED=" + registered.Count + " / CHECKED=" + scenes.Length
-                        );
+                        ConsoleLogHelper.State("ZONE IMAGE MATCH", camera + " / MATCHED=" + registered.Count + " / CHECKED=" + scenes.Length);
                     }
 
                     if (!ShowZoneOverlay)
@@ -217,7 +212,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _zoneCtecZoomAt != default(DateTimeOffset) &&
                 age >= 0 &&
                 age <= 3;
-            int? zoom = fresh ? (int?)GetCurrentPresetStandardZoom() : null;
+            int? zoom = fresh ? (int? )GetCurrentPresetStandardZoom() : null;
             return new PositionSnapshot(
                 p.CapturedAt,
                 p.Source,
@@ -273,7 +268,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private static string ZonePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "FireSmokeZones.xml");
+        private static string ZonePath =>
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "FireSmokeZones.xml");
 
         public string ZoneStatusText => "구역 상태\n" + _zoneStatus;
 
@@ -283,7 +279,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text ?? ""))).Replace("-", "");
         }
 
-        public string ZoneEquipmentKey => ZoneHash(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName(SelectedControlAgentProfile.DisplayName) + "|" + ControlAgentIp + "|" + ControlAgentPortText);
+        public string ZoneEquipmentKey =>
+            ZoneHash(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName(SelectedControlAgentProfile.DisplayName) +
+            "|" + ControlAgentIp +
+            "|" + ControlAgentPortText);
 
         private string ZoneKey(string camera) =>
             ZoneHash(ZoneEquipmentKey + "|" + camera + "|" + (camera == "IR" ? IrSourceAddress : EoSourceAddress));
@@ -302,14 +301,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (IsSelectedControlAgentLaAgent)
             {
-                return (LaPresetPoints ?? new ObservableCollection<PresetPointOption>())
-                    .Select(p => new ZonePresetOption { Kind = "LA", Point = p }).ToList();
+                return (LaPresetPoints ?? new ObservableCollection<PresetPointOption>()).Select(p => new ZonePresetOption { Kind = "LA", Point = p }).ToList();
             }
 
             if (IsSelectedControlAgentWebAgent)
             {
-                return (PresetPoints ?? new ObservableCollection<PresetPointOption>())
-                    .Select(p => new ZonePresetOption { Kind = "WEB", Point = p }).ToList();
+                return (PresetPoints ?? new ObservableCollection<PresetPointOption>()).Select(p => new ZonePresetOption { Kind = "WEB", Point = p }).ToList();
             }
 
             return new List<ZonePresetOption>();
@@ -340,17 +337,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public static string ZonePresetSignature(PresetPointOption p) =>
-            p == null ? "" : string.Join(
+            p == null
+            ? ""
+            : string.Join(
             "|",
             p.Number,
-            p.Pan.ToString(
-            "R",
-            System.Globalization.CultureInfo.InvariantCulture
-        ),
-            p.Tilt.ToString(
-            "R",
-            System.Globalization.CultureInfo.InvariantCulture
-        ),
+            p.Pan.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+            p.Tilt.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
             p.EoZoomText,
             p.EoFocusText,
             p.IrZoomText,
@@ -365,8 +358,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (scene == null)
                 return "장면 없음";
+
             if (scene.PresetNumber == 0)
                 return null;
+
             var current = GetZonePresets().FirstOrDefault(p => p.Kind == scene.PresetKind && p.Point.Number == scene.PresetNumber);
             return current == null ? "연결 프리셋 없음" : FireSmokeZoneService.PresetMismatch(scene, current.Point);
         }
@@ -402,20 +397,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             var frame = CaptureZoneFrame(camera);
             int zoom;
 
-            if (!FireSmokeZoneService.ValidPose(
-                frame.Position,
-                camera
-            ) ||
-                !TryGetZonePresetZoomPosition(camera, p.Point, out zoom))
+            if (!FireSmokeZoneService.ValidPose(frame.Position, camera) || !TryGetZonePresetZoomPosition(camera, p.Point, out zoom))
                 return "프리셋 위치·ZOOM 미확인";
 
             // 구역 스냅샷은 원시 수신 좌표이다. LA 프리셋의 반전된 줌을 같은 기준으로 비교한다.
             int? currentZoom = camera == "IR" ? frame.Position.IrZoom : frame.Position.EoZoom;
 
-            if (FireSmokeZoneService.PanDistance(
-                frame.Position.Pan.Value,
-                p.Point.Pan
-            ) <= .3 &&
+            if (FireSmokeZoneService.PanDistance(frame.Position.Pan.Value, p.Point.Pan) <= .3 &&
                 Math.Abs(frame.Position.Tilt.Value - p.Point.Tilt) <= .3 &&
                 FireSmokeZoneService.LensWithin(currentZoom, zoom, FireSmokeZoneService.ZoomTolerance))
                 return null;
@@ -443,10 +431,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int zoom;
 
             if (!TryGetZonePresetZoomPosition(scene.Camera, p.Point, out zoom) ||
-                FireSmokeZoneService.PanDistance(
-                scene.Pan,
-                p.Point.Pan
-            ) > scene.AngleTolerance ||
+                FireSmokeZoneService.PanDistance(scene.Pan, p.Point.Pan) > scene.AngleTolerance ||
                 Math.Abs(scene.Tilt - p.Point.Tilt) > scene.AngleTolerance ||
                 !FireSmokeZoneService.LensWithin(scene.Zoom, zoom, FireSmokeZoneService.ZoomTolerance))
                 throw new InvalidOperationException("선택 프리셋에 도착하지 않았습니다. 이동 후 캡처하세요.");
@@ -494,18 +479,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 RefreshZoneOverlay(ir, "IR");
 
                 // 이동·연결 해제 후 활성 이벤트를 현재 유효한 것처럼 표시하지 않는다.
-                foreach (var record in AiDetectionEvents.Concat(FireEvents).Where(r => r.Status == "ACTIVE" &&
-                    r.FirstZoneAssessment != null))
+                foreach (var record in AiDetectionEvents.Concat(FireEvents).Where(r => r.Status == "ACTIVE" && r.FirstZoneAssessment != null))
                 {
                     var frame = record.Camera == "IR" ? ir : eo;
                     string invalid = ZoneFrameInvalidReason(frame);
 
                     if (invalid != null ||
-                        !_zoneFile.Scenes.Any(v => ZonePresetCurrent(v) &&
-                        FireSmokeZoneService.ForFrame(
-                        v,
-                        frame
-                    ) != null))
+                        !_zoneFile.Scenes.Any(v => ZonePresetCurrent(v) && FireSmokeZoneService.ForFrame(v, frame) != null))
                         record.UpdateZoneAssessment(ZoneAssessment.Unknown(invalid ?? "등록 시점 불일치 / 다음 검출 프레임 확인 필요"));
                 }
             };
@@ -521,44 +501,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (ZoneFrameReadiness(f, false) != null)
                 return "미확인";
 
-            var views = _zoneFile.Scenes.Where(ZonePresetCurrent).Select(s => FireSmokeZoneService.ForFrame(
-                s,
-                f
-            )).Where(s => s != null).ToList();
+            var views = _zoneFile.Scenes.Where(ZonePresetCurrent).Select(s => FireSmokeZoneService.ForFrame(s, f)).Where(s => s != null).ToList();
             return views.Any(s => s.Zones.Count > 0) ? "영상 대조 일치" : views.Count > 0 ? "구역 화면 밖" : "구역 위치 미확인";
         }
 
         private void RefreshZoneOverlay(ZoneFrameContext frame, string camera)
         {
-            bool ready = ShowZoneOverlay &&
-                ZoneFrameReadiness(
-                frame,
-                false
-            ) == null && IsOperationCommandEnabled && !IsPresetScanControlLocked;
+            bool ready = ShowZoneOverlay && ZoneFrameReadiness(frame, false) == null && IsOperationCommandEnabled && !IsPresetScanControlLocked;
             var eligible = _zoneFile.Scenes.Where(scene => scene.Camera == camera &&
-                scene.Key == frame.Key && !scene.Invalidated && scene.FixedInstallationConfirmed &&
+                scene.Key == frame.Key &&
+                !scene.Invalidated &&
+                scene.FixedInstallationConfirmed &&
                 ZonePresetCurrent(scene)).ToList();
-            var scenes = ready ? eligible.Select(s => FireSmokeZoneService.ForFrame(
-                s,
-                frame
-            )).Where(s => s != null).ToList() : new List<FireSmokeScene>();
-
+            var scenes = ready
+                ? eligible.Select(s => FireSmokeZoneService.ForFrame(s, frame)).Where(s => s != null).ToList()
+                : new List<FireSmokeScene>();
             DateTimeOffset confirmedAt = default(DateTimeOffset);
             lock (_zoneImageLock)
             {
                 ZoneFrameContext matched;
-                if (frame.RegisteredScenes != null && _zoneImageFrames.TryGetValue(camera, out matched) &&
+
+                if (frame.RegisteredScenes != null &&
+                    _zoneImageFrames.TryGetValue(camera, out matched) &&
                     ReferenceEquals(frame.RegisteredScenes, matched.RegisteredScenes))
                     confirmedAt = matched.At;
             }
 
             int held;
             var cache = camera == "IR" ? _irZoneDisplayCache : _eoZoneDisplayCache;
-            scenes = cache.Update(camera, frame, scenes, eligible.Select(scene => scene.Id + scene.Revision),
-                confirmedAt, ready, out held);
-            string state = !ready ? "표시 해제 / 연결·상태·작업 조건 확인" :
-                held > 0 ? "정합 재확인 / 마지막 유효 구역 임시 표시 / 탐지 판정 별도" :
-                scenes.Count > 0 ? "최신 정합 구역 표시" : "영상 대조 미확인 / 표시 구역 없음";
+            scenes = cache.Update(camera, frame, scenes, eligible.Select(scene => scene.Id + scene.Revision), confirmedAt, ready, out held);
+            string state = !ready
+                ? "표시 해제 / 연결·상태·작업 조건 확인"
+                : held > 0 ? "정합 재확인 / 마지막 유효 구역 임시 표시 / 탐지 판정 별도" : scenes.Count > 0 ? "최신 정합 구역 표시" : "영상 대조 미확인 / 표시 구역 없음";
+
             if (state != (camera == "IR" ? _irZoneDisplayState : _eoZoneDisplayState))
             {
                 if (camera == "IR")
@@ -569,16 +544,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _eoZoneDisplayState = state;
                 }
+
                 ConsoleLogHelper.State("ZONE OVERLAY", camera + " / " + state + " / COUNT=" + scenes.Count);
             }
 
             // 수신 각도의 미세 변화만으로 컬렉션 전체를 지우지 않는다.
-            string signature = frame.Width + ":" + frame.Height + ":" + string.Join(
+            string signature = frame.Width +
+                ":" + frame.Height +
+                ":" + string.Join(
                 "|",
                 scenes.Select(s => s.Id + s.Revision + string.Join(
-                ";",
-                s.Zones.Select(z => z.X.ToString("R") + "," + z.Y.ToString("R") + "," + z.Width.ToString("R") + "," + z.Height.ToString("R"))
-            ))
+                        ";",
+                        s.Zones.Select(z => z.X.ToString("R") +
+                "," + z.Y.ToString("R") +
+                "," + z.Width.ToString("R") +
+                "," + z.Height.ToString("R"))
+                    ))
             );
 
             if (signature == (camera == "IR" ? _irZoneSignature : _eoZoneSignature))
@@ -594,19 +575,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             foreach (var scene in scenes)
                 foreach (var zone in scene.Zones)
-                    boxes.Add(new ZoneOverlayBox
-                    {
-                        Left = zone.X * frame.Width,
-                        Top = zone.Y * frame.Height,
-                        Width = zone.Width * frame.Width,
-                        Height = zone.Height * frame.Height,
-                        Polygon = zone.ProjectedPolygon?.Select(p => new System.Windows.Point(
-                        p.X * frame.Width,
-                        p.Y * frame.Height
-                    )).ToList(),
-                        Name = "ZONE " + zone.ToString(),
-                        Color = zone.DisplayColor
-                    });
+                    boxes.Add(new ZoneOverlayBox { Left = zone.X * frame.Width, Top = zone.Y * frame.Height, Width = zone.Width * frame.Width, Height = zone.Height * frame.Height, Polygon = zone.ProjectedPolygon?.Select(p => new System.Windows.Point(p.X * frame.Width, p.Y * frame.Height)).ToList(), Name = "ZONE " + zone.ToString(), Color = zone.DisplayColor });
 
             // 기존 항목은 한 번에 빈 목록으로 만들지 않고 필요한 항목만 교체한다.
             for (int i = 0; i < boxes.Count; i++)
@@ -620,6 +589,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     target.Add(boxes[i]);
                 }
             }
+
             while (target.Count > boxes.Count)
                 target.RemoveAt(target.Count - 1);
         }
@@ -629,14 +599,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             var position = CaptureZonePosition();
             string model = SelectedControlAgentProfile?.DisplayName ?? "";
             bool supported = camera == "EO" &&
-                (model.IndexOf(
-                "MR300",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0 ||
-                model.IndexOf(
-                "MR500",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0) &&
+                (model.IndexOf("MR300", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                model.IndexOf("MR500", StringComparison.OrdinalIgnoreCase) >= 0) &&
                 position.EoZoom.HasValue &&
                 position.EoZoom.Value >= 0 &&
                 position.EoZoom.Value <= 1000;
@@ -646,9 +610,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 At = DateTimeOffset.Now,
                 Key = ZoneKey(camera),
                 Epoch = System.Threading.Volatile.Read(ref _zoneEpoch),
-                ChannelEpoch = camera == "IR" ? System.Threading.Volatile.Read(ref _irZoneChannelEpoch) : System.Threading.Volatile.Read(ref _eoZoneChannelEpoch),
+                ChannelEpoch = camera == "IR"
+                ? System.Threading.Volatile.Read(ref _irZoneChannelEpoch)
+                : System.Threading.Volatile.Read(ref _eoZoneChannelEpoch),
                 Position = position,
-                HorizontalFov = supported ? new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)position.EoZoom.Value) : 0,
+                HorizontalFov = supported
+                ? new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)position.EoZoom.Value)
+                : 0,
                 Width = camera == "IR" ? IrVideoWidth : EoVideoWidth,
                 Height = camera == "IR" ? IrVideoHeight : EoVideoHeight
             };
@@ -656,28 +624,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ZoneFrameContext aligned;
 
-                if (_zoneImageFrames.TryGetValue(
-                    camera,
-                    out aligned
-                ) &&
+                if (_zoneImageFrames.TryGetValue(camera, out aligned) &&
                     aligned.Key == context.Key &&
                     aligned.Epoch == context.Epoch &&
                     aligned.ChannelEpoch == context.ChannelEpoch &&
                     (context.At - aligned.At).TotalSeconds <= 1.5 &&
-                    FireSmokeZoneService.ValidPose(
-                    position,
-                    camera
-                ) &&
-                    FireSmokeZoneService.ValidPose(
-                    aligned.Position,
-                    camera
-                ) &&
-                    FireSmokeZoneService.PanDistance(
-                    position.Pan.Value,
-                    aligned.Position.Pan.Value
-                ) < .03 &&
+                    FireSmokeZoneService.ValidPose(position, camera) &&
+                    FireSmokeZoneService.ValidPose(aligned.Position, camera) &&
+                    FireSmokeZoneService.PanDistance(position.Pan.Value, aligned.Position.Pan.Value) < .03 &&
                     Math.Abs(position.Tilt.Value - aligned.Position.Tilt.Value) < .03 &&
-                    (camera == "IR" ? FireSmokeZoneService.LensWithin(position.IrZoom, aligned.Position.IrZoom.Value, FireSmokeZoneService.ZoomTolerance) : FireSmokeZoneService.LensWithin(position.EoZoom, aligned.Position.EoZoom.Value, FireSmokeZoneService.ZoomTolerance)))
+                    (camera == "IR"
+                    ? FireSmokeZoneService.LensWithin(position.IrZoom, aligned.Position.IrZoom.Value, FireSmokeZoneService.ZoomTolerance)
+                    : FireSmokeZoneService.LensWithin(position.EoZoom, aligned.Position.EoZoom.Value, FireSmokeZoneService.ZoomTolerance)))
                     context.RegisteredScenes = aligned.RegisteredScenes;
             }
 
@@ -855,22 +813,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (_zoneLoadError != null)
                 throw new IOException("구역 원본 확인 필요 / ZERO 변환 저장 보류: " + _zoneLoadError);
+
             var data = FireSmokeZoneService.Clone(_zoneFile);
+
             if (FireSmokeZoneService.RebaseZero(data, operation))
             {
                 FireSmokeZoneService.Save(ZonePath, data);
                 _zoneFile = data;
             }
+
             ResetZoneReferenceFrames();
             ZoneReferenceChanged?.Invoke(operation);
-            ConsoleLogHelper.State("ZONE ZERO REFERENCE", "구역 보존·기준 갱신 / PAN_DELTA=" +
-                operation.PanDelta.ToString("F3") + " / TILT_DELTA=" + operation.TiltDelta.ToString("F3") +
-                " / SCENES=" + data.Scenes.Count(scene => scene.EquipmentKey == operation.EquipmentKey));
+            ConsoleLogHelper.State(
+                "ZONE ZERO REFERENCE",
+                "구역 보존·기준 갱신 / PAN_DELTA=" + operation.PanDelta.ToString("F3") +
+                " / TILT_DELTA=" + operation.TiltDelta.ToString("F3") +
+                " / SCENES=" + data.Scenes.Count(scene => scene.EquipmentKey == operation.EquipmentKey)
+            );
         }
 
         private void FinishZoneReferenceChange(bool notifyEditor = true)
         {
             _zoneZeroPending = false;
+
             if (notifyEditor)
                 ZoneReferenceChanged?.Invoke(null);
         }
@@ -883,18 +848,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 System.Threading.Interlocked.Increment(ref _eoZoneChannelEpoch);
         }
 
-        private ZoneAssessment AssessZone(
-            string camera,
-            string type,
-            double left,
-            double top,
-            double right,
-            double bottom,
-            ZoneFrameContext f
-        )
+        private ZoneAssessment AssessZone(string camera, string type, double left, double top, double right, double bottom, ZoneFrameContext f)
         {
             string reason = ZoneFrameInvalidReason(f);
-            return reason != null ? ZoneAssessment.Unknown(reason) : FireSmokeZoneService.Assess(
+            return reason != null
+                ? ZoneAssessment.Unknown(reason)
+                : FireSmokeZoneService.Assess(
                 new FireSmokeZoneFile { Scenes = _zoneFile.Scenes.Where(ZonePresetCurrent).ToList() },
                 f,
                 type,
@@ -905,20 +864,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             );
         }
 
-        private ZoneAssessment AssessAiZone(
-            OpenCvWpfTracking.Models.AI.AiDetectionResult result,
-            OpenCvWpfTracking.Models.AI.AiDetectionBox box,
-            string type
-        )
+        private ZoneAssessment AssessAiZone(OpenCvWpfTracking.Models.AI.AiDetectionResult result, OpenCvWpfTracking.Models.AI.AiDetectionBox box, string type)
         {
-            if ((type ?? "").IndexOf(
-                "FIRE",
-                StringComparison.OrdinalIgnoreCase
-            ) < 0 &&
-                (type ?? "").IndexOf(
-                "SMOKE",
-                StringComparison.OrdinalIgnoreCase
-            ) < 0)
+            if ((type ?? "").IndexOf("FIRE", StringComparison.OrdinalIgnoreCase) < 0 &&
+                (type ?? "").IndexOf("SMOKE", StringComparison.OrdinalIgnoreCase) < 0)
                 return null;
 
             string camera = result.RtspIndex == 0 ? "EO" : "IR";
@@ -942,9 +891,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ZoneFrameContext f;
             lock (_zoneHistoryLock)
-                f = _zoneHistory.Where(h => h.Key == ZoneKey(camera) &&
-                    h.At <= at &&
-                    (at - h.At).TotalSeconds <= 0.6).OrderByDescending(h => h.At).FirstOrDefault();
+                f = _zoneHistory.Where(h => h.Key == ZoneKey(camera) && h.At <= at && (at - h.At).TotalSeconds <= 0.6).OrderByDescending(h => h.At).FirstOrDefault();
             return AssessZone(camera, type, box.Left, box.Top, box.Right, box.Bottom, f);
         }
     }

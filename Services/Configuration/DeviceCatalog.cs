@@ -12,15 +12,39 @@ namespace OpenCvWpfTracking.Services.Configuration
 {
     public sealed class DeviceEntry
     {
-        public string Id, Name, AgentIp, AgentPort, EoUrl, EoUser, EoPassword, IrUrl, IrUser, IrPassword;
+        public string Id;
 
-        public string ControlIp, ControlUser, ControlPassword;
+        public string Name;
+
+        public string AgentIp;
+
+        public string AgentPort;
+
+        public string EoUrl;
+
+        public string EoUser;
+
+        public string EoPassword;
+
+        public string IrUrl;
+
+        public string IrUser;
+
+        public string IrPassword;
+
+        public string ControlIp;
+
+        public string ControlUser;
+
+        public string ControlPassword;
 
         public ControlAgentType AgentType;
 
         public CameraControlType EoControlType;
 
-        public bool UseHttps, PositionSensors;
+        public bool UseHttps;
+
+        public bool PositionSensors;
 
         public int Order;
 
@@ -62,9 +86,12 @@ namespace OpenCvWpfTracking.Services.Configuration
         /// <summary>설치 장소 표시는 UI에 유지하되 기존 장비 저장 키에서는 장소 접미사만 제외한다.</summary>
         public static string StorageDisplayName(string displayName)
         {
-            return System.Text.RegularExpressions.Regex.Replace(displayName ?? "",
-                @"(ER-WATCHER\s+[1-4])\s*\([^)]*\)", "$1",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return System.Text.RegularExpressions.Regex.Replace(
+                displayName ?? "",
+                @"(ER-WATCHER\s+[1-4])\s*\([^)]*\)",
+                "$1",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            );
         }
 
         /// <summary>장비 번호와 EO/IR 구분을 유지하여 과거 이름을 현재 선택 항목에 대응한다.</summary>
@@ -81,12 +108,12 @@ namespace OpenCvWpfTracking.Services.Configuration
             if (string.Equals(id, "MR300_ERWATCHER", StringComparison.OrdinalIgnoreCase))
                 return "ER_WATCHER_1";
 
-            return System.Text.RegularExpressions.Regex.Replace(id ?? "", @"^ER_?WATCHER_([1-4])$", "ER_WATCHER_$1",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return System.Text.RegularExpressions.Regex.Replace(id ?? "", @"^ER_?WATCHER_([1-4])$", "ER_WATCHER_$1", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
 
         /// <summary>이전 장비 ID로 조회해도 통일한 현재 ID의 설정을 사용한다.</summary>
-        public static DeviceEntry Get(string id) => Entries.FirstOrDefault(e => CanonicalDeviceId(e.Id) == CanonicalDeviceId(id)) ?? new DeviceEntry
+        public static DeviceEntry Get(string id) =>
+            Entries.FirstOrDefault(e => CanonicalDeviceId(e.Id) == CanonicalDeviceId(id)) ?? new DeviceEntry
         {
             Name = "",
             EoUrl = "",
@@ -145,39 +172,16 @@ namespace OpenCvWpfTracking.Services.Configuration
                     string.IsNullOrWhiteSpace(row[1]) ||
                     row[1].Any(char.IsControl) ||
                     row[1].Contains("://") ||
-                    !Enum.TryParse(
-                    row[2],
-                    true,
-                    out agent
-                ) ||
-                    !Enum.IsDefined(
-                    typeof(ControlAgentType),
-                    agent
-                ) ||
+                    !Enum.TryParse(row[2], true, out agent) ||
+                    !Enum.IsDefined(typeof(ControlAgentType), agent) ||
                     string.IsNullOrWhiteSpace(row[3]) ||
-                    !int.TryParse(
-                    row[4],
-                    out port
-                ) ||
+                    !int.TryParse(row[4], out port) ||
                     port < 1 ||
                     port > 65535 ||
-                    !Enum.TryParse(
-                    row[11],
-                    true,
-                    out control
-                ) ||
-                    !Enum.IsDefined(
-                    typeof(CameraControlType),
-                    control
-                ) ||
-                    !bool.TryParse(
-                    row[15],
-                    out https
-                ) ||
-                    !bool.TryParse(
-                    row[16],
-                    out sensors
-                ))
+                    !Enum.TryParse(row[11], true, out control) ||
+                    !Enum.IsDefined(typeof(CameraControlType), control) ||
+                    !bool.TryParse(row[15], out https) ||
+                    !bool.TryParse(row[16], out sensors))
                     throw new FormatException("Invalid device CSV values.");
 
                 foreach (var index in new[]
@@ -190,11 +194,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                 {
                     Uri uri;
 
-                    if (!Uri.TryCreate(
-                        row[index],
-                        UriKind.Absolute,
-                        out uri
-                    ) ||
+                    if (!Uri.TryCreate(row[index], UriKind.Absolute, out uri) ||
                         uri.Scheme != "rtsp" ||
                         string.IsNullOrWhiteSpace(uri.Host) ||
                         !string.IsNullOrEmpty(uri.Fragment))

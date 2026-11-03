@@ -3,19 +3,25 @@
 namespace OpenCvWpfTracking.Services.Communication
 {
     /// <summary>정밀 이동과 자동 초점의 프레임 생성·검증만 담당한다. 장비에는 직접 송신하지 않는다.</summary>
-    public static class WebAgentV292Protocol
+    public static class WebAgentMotionFocusProtocol
     {
         /// <summary>
         /// 정밀 속도를 검증한 뒤 0.001도/초 단위의 정수로 변환한다.
         /// </summary>
         public static uint EncodeSpeed(double speed, double maximum)
         {
-            if (double.IsNaN(speed) || double.IsInfinity(speed) ||
-                double.IsNaN(maximum) || double.IsInfinity(maximum) ||
-                maximum <= 0 || maximum > 90 || speed < 0.001 || speed > maximum)
+            if (double.IsNaN(speed) ||
+                double.IsInfinity(speed) ||
+                double.IsNaN(maximum) ||
+                double.IsInfinity(maximum) ||
+                maximum <= 0 ||
+                maximum > 90 ||
+                speed < 0.001 ||
+                speed > maximum)
                 throw new ArgumentOutOfRangeException(nameof(speed), "속도는 장비 상한 이내의 0.001도/초 이상이어야 합니다.");
 
             double raw = Math.Round(speed * 1000, MidpointRounding.AwayFromZero);
+
             if (raw < 1 || raw > Math.Floor(maximum * 1000))
                 throw new ArgumentOutOfRangeException(nameof(speed));
 
@@ -54,6 +60,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
             bool pan = (direction & 6) != 0;
             bool tilt = (direction & 24) != 0;
+
             if ((!pan && panSpeed != 0) || (!tilt && tiltSpeed != 0))
                 throw new ArgumentOutOfRangeException(nameof(direction), "정지 축에는 속도를 지정할 수 없습니다.");
 
@@ -73,11 +80,19 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         public static byte[] AutoFocus(byte address, byte command, byte target, byte value)
         {
-            if (target > 1 || (command != 0xC7 && command != 0xC9 && command != 0xCB) ||
-                (command == 0xC7 ? value > 1 : value != 0))
+            if (target > 1 || (command != 0xC7 && command != 0xC9 && command != 0xCB) || (command == 0xC7 ? value > 1 : value != 0))
                 throw new ArgumentOutOfRangeException(nameof(command));
 
-            var packet = new byte[] { 0xFF, address, 0, command, target, value, 0 };
+            var packet = new byte[]
+            {
+                0xFF,
+                address,
+                0,
+                command,
+                target,
+                value,
+                0
+            };
             Seal(packet);
             return packet;
         }
@@ -88,9 +103,18 @@ namespace OpenCvWpfTracking.Services.Communication
         public static bool TryReadAutoFocus(byte[] payload, out AutoFocusSnapshot snapshot)
         {
             snapshot = null;
-            if (payload == null || payload.Length != 8 || payload[0] != 1 || payload[1] > 1 ||
-                payload[2] > 3 || payload[3] > 4 || payload[3] == 3 || (payload[4] & 0xC0) != 0 ||
-                payload[5] > 2 || payload[6] > 3 || payload[7] > 5)
+
+            if (payload == null ||
+                payload.Length != 8 ||
+                payload[0] != 1 ||
+                payload[1] > 1 ||
+                payload[2] > 3 ||
+                payload[3] > 4 ||
+                payload[3] == 3 ||
+                (payload[4] & 0xC0) != 0 ||
+                payload[5] > 2 ||
+                payload[6] > 3 ||
+                payload[7] > 5)
                 return false;
 
             snapshot = new AutoFocusSnapshot(payload);
@@ -115,8 +139,10 @@ namespace OpenCvWpfTracking.Services.Communication
         private static void Seal(byte[] packet)
         {
             int sum = 0;
+
             for (int i = 1; i < packet.Length - 1; i++)
                 sum += packet[i];
+
             packet[packet.Length - 1] = (byte)sum;
         }
     }

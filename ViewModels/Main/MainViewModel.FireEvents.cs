@@ -59,21 +59,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private double _pixelArea;
 
-        internal FireEventRecord(
-            int eventId,
-            DateTime detectedTime,
-            DateTime? clearedTime,
-            string camera,
-            string detectionType,
-            string confidence,
-            int objectCount,
-            int pixelWidth,
-            int pixelHeight,
-            double pixelArea,
-            string detectionSource,
-            string status,
-            PositionSnapshot firstPositionSnapshot = null
-        )
+        internal FireEventRecord(int eventId, DateTime detectedTime, DateTime? clearedTime, string camera, string detectionType, string confidence, int objectCount, int pixelWidth, int pixelHeight, double pixelArea, string detectionSource, string status, PositionSnapshot firstPositionSnapshot = null)
         {
             EventId = eventId;
             DetectedTime = detectedTime;
@@ -86,11 +72,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _pixelHeight = pixelHeight;
             _pixelArea = pixelArea;
             // 2026-08-21: 협소한 이벤트 UI와 CSV에서 테스트 입력 경로를 간결하게 통일한다.
-            DetectionSource = string.Equals(
-                detectionSource,
-                "TEST PROGRAM",
-                StringComparison.OrdinalIgnoreCase
-            ) ? "TEST" : detectionSource;
+            DetectionSource = string.Equals(detectionSource, "TEST PROGRAM", StringComparison.OrdinalIgnoreCase) ? "TEST" : detectionSource;
             _status = status;
             FirstPositionSnapshot = firstPositionSnapshot;
         }
@@ -164,7 +146,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ZoneAssessment CurrentZoneAssessment { get; private set; }
 
         public string ZoneDetailText =>
-            "위치 구역 판정 (안전 판정 아님)\n최초: " + (FirstZoneAssessment?.Detail ?? "미확인 / 기존 기록 또는 TEST 입력") + "\n\n현재: " + (CurrentZoneAssessment?.Detail ?? "미확인") + "\n설정 버전: " + (CurrentZoneAssessment?.Revision ?? "--");
+            "위치 구역 판정 (안전 판정 아님)\n최초: " + (FirstZoneAssessment?.Detail ?? "미확인 / 기존 기록 또는 TEST 입력") +
+            "\n\n현재: " + (CurrentZoneAssessment?.Detail ?? "미확인") +
+            "\n설정 버전: " + (CurrentZoneAssessment?.Revision ?? "--");
 
         internal void UpdateZoneAssessment(ZoneAssessment assessment)
         {
@@ -312,11 +296,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         internal void UpdateDetectionType(string detectionType)
         {
             if (string.IsNullOrWhiteSpace(detectionType) ||
-                string.Equals(
-                _detectionType,
-                detectionType,
-                StringComparison.OrdinalIgnoreCase
-            ))
+                string.Equals(_detectionType, detectionType, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -437,17 +417,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public string FireAlertHeaderText => ActiveFireCount > 0 ? "화재 / 연기 알림 (" + ActiveFireCount + ")" : "화재 / 연기 알림";
 
         public string FireAlertStatusText =>
-            ActiveFireCount > 0 ? "FIRE / SMOKE DETECTED" : !IsThermalFireDetectionEnabled &&
-            !IsSmokeDetectionEnabled ? "FIRE / SMOKE OFF" : "MONITORING";
+            ActiveFireCount > 0
+            ? "FIRE / SMOKE DETECTED"
+            : !IsThermalFireDetectionEnabled && !IsSmokeDetectionEnabled ? "FIRE / SMOKE OFF" : "MONITORING";
 
         public Brush FireAlertHeaderBrush =>
             ActiveFireCount > 0 // 2026-08-27: FIRE와 흰색 SMOKE를 함께 나타내는 밝은 코럴 색상이다.
- ? LegacyVideoIntegration.EventBrush(FireDetectionEvents.Any(e => e.Status == "ACTIVE" &&
-     e.DetectionType == "FIRE") ? "FIRE" : "SMOKE") : new SolidColorBrush(Color.FromRgb(
-     208,
-     215,
-     222
- ));
+
+            ? LegacyVideoIntegration.EventBrush(FireDetectionEvents.Any(e => e.Status == "ACTIVE" && e.DetectionType == "FIRE") ? "FIRE" : "SMOKE")
+            : new SolidColorBrush(Color.FromRgb(208, 215, 222));
 
         /// <summary>
         /// 화재·연기 이벤트 저장·불러오기 명령을 초기화한다.
@@ -465,11 +443,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 이벤트 목록만 갱신되고 영상 BBox가 누락되던 경로를 복구하며,
         /// AI Agent BBox 컬렉션은 변경하지 않는다.
         /// </summary>
-        private void UpdateFireSmokeDetectionOverlay(
-            string camera,
-            ThermalFireDetectionResult thermalResult,
-            SmokeDetectionResult smokeResult
-        )
+        private void UpdateFireSmokeDetectionOverlay(string camera, ThermalFireDetectionResult thermalResult, SmokeDetectionResult smokeResult)
         {
             if (!IsThermalFireDetectionEnabled)
                 thermalResult = default(ThermalFireDetectionResult);
@@ -477,33 +451,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (!IsSmokeDetectionEnabled)
                 smokeResult = default(SmokeDetectionResult);
 
-            ObservableCollection<VisionDetectionBox> target = string.Equals(
-                camera,
-                "IR",
-                StringComparison.OrdinalIgnoreCase
-            ) ? IrFireSmokeDetectionBoxes : EoFireSmokeDetectionBoxes;
-            int frameWidth = string.Equals(
-                camera,
-                "IR",
-                StringComparison.OrdinalIgnoreCase
-            ) ? Math.Max(
-                1,
-                IrVideoWidth
-            ) : Math.Max(
-                1,
-                EoVideoWidth
-            );
-            int frameHeight = string.Equals(
-                camera,
-                "IR",
-                StringComparison.OrdinalIgnoreCase
-            ) ? Math.Max(
-                1,
-                IrVideoHeight
-            ) : Math.Max(
-                1,
-                EoVideoHeight
-            );
+            ObservableCollection<VisionDetectionBox> target = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
+                ? IrFireSmokeDetectionBoxes
+                : EoFireSmokeDetectionBoxes;
+            int frameWidth = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
+                ? Math.Max(1, IrVideoWidth)
+                : Math.Max(1, EoVideoWidth);
+            int frameHeight = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase)
+                ? Math.Max(1, IrVideoHeight)
+                : Math.Max(1, EoVideoHeight);
             bool isInfrared = string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase);
             bool hasLocalFire = thermalResult.CandidateRects != null && thermalResult.CandidateRects.Count > 0;
             bool hasLocalSmoke = smokeResult.CandidateRects != null && smokeResult.CandidateRects.Count > 0;
@@ -533,14 +489,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             );
             // 2026-09-17: AI Agent와 로컬 분석이 동일 객체를 검출한 경우
             // 화면에는 AI BBox를 우선 표시하여 라벨/박스 중복을 방지한다.
-            SuppressLocalBoxesOverlappingAi(
-                target,
-                string.Equals(
-                camera,
-                "IR",
-                StringComparison.OrdinalIgnoreCase
-            ) ? IrDetectionBoxes : EoDetectionBoxes
-            );
+            SuppressLocalBoxesOverlappingAi(target, string.Equals(camera, "IR", StringComparison.OrdinalIgnoreCase) ? IrDetectionBoxes : EoDetectionBoxes);
             OnPropertyChanged(isInfrared ? nameof(IsIrFireWarningVisible) : nameof(IsEoFireWarningVisible));
             OnPropertyChanged(isInfrared ? nameof(IsIrSmokeWarningVisible) : nameof(IsEoSmokeWarningVisible));
         }
@@ -553,10 +502,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string kind = fire ? "FIRE" : "SMOKE";
             DateTime now = DateTime.Now;
 
-            foreach (var track in _activeVisionBBoxEvents.Where(x => x.DetectionType.IndexOf(
-                kind,
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0).ToList())
+            foreach (var track in _activeVisionBBoxEvents.Where(x => x.DetectionType.IndexOf(kind, StringComparison.OrdinalIgnoreCase) >= 0).ToList())
             {
                 track.Event.MarkCleared(now);
 
@@ -566,10 +512,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _activeVisionBBoxEvents.Remove(track);
             }
 
-            foreach (var record in _activeTestFireEvents.Where(x => x.DetectionType.IndexOf(
-                kind,
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0).ToList())
+            foreach (var record in _activeTestFireEvents.Where(x => x.DetectionType.IndexOf(kind, StringComparison.OrdinalIgnoreCase) >= 0).ToList())
             {
                 record.MarkCleared(now);
 
@@ -600,10 +543,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SetLocalFireSmokeDetectionState(1, fire ? false : _hasIrLocalFireDetection, fire ? _hasIrLocalSmokeDetection : false);
             RefreshActiveFireCount();
             NotifyFireEventSummaryChanged();
-            ConsoleLogHelper.State(
-                "VISION BBOX EVENT",
-                "ACTION=CLEAR / TYPE=" + kind + " / REASON=DETECTOR_DISABLED / HISTORY_RETAINED"
-            );
+            ConsoleLogHelper.State("VISION BBOX EVENT", "ACTION=CLEAR / TYPE=" + kind + " / REASON=DETECTOR_DISABLED / HISTORY_RETAINED");
         }
 
         private static void SuppressLocalBoxesOverlappingAi(ObservableCollection<VisionDetectionBox> localBoxes, ObservableCollection<AiDetectionBox> aiBoxes)
@@ -630,15 +570,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        private static void AddVisionOverlayBoxes(
-            ObservableCollection<VisionDetectionBox> target,
-            IList<CvRect> rectangles,
-            IList<double> scores,
-            string detectionType,
-            int frameWidth,
-            int frameHeight,
-            ref int displayOrder
-        )
+        private static void AddVisionOverlayBoxes(ObservableCollection<VisionDetectionBox> target, IList<CvRect> rectangles, IList<double> scores, string detectionType, int frameWidth, int frameHeight, ref int displayOrder)
         {
             if (rectangles == null)
             {
@@ -658,76 +590,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 int bottom = Math.Max(top + 1, Math.Min(frameHeight - insetY, rectangle.Bottom));
                 int currentOrder = displayOrder++;
                 double confidence = scores != null && index < scores.Count ? scores[index] : 0.0;
-                string displayText = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0} #{1} | {2:F1}%",
-                    detectionType,
-                    currentOrder,
-                    confidence
-                );
+                string displayText = string.Format(CultureInfo.InvariantCulture, "{0} #{1} | {2:F1}%", detectionType, currentOrder, confidence);
                 int labelWidth = Math.Max(40, Math.Min((int)Math.Ceiling(displayText.Length * 9.5 + 12.0), frameWidth - 4));
                 const int labelHeight = 24;
                 int labelLeft = Math.Max(2, Math.Min(frameWidth - labelWidth - 2, left));
-                int labelTop = top - labelHeight >= 2 ? top - labelHeight : Math.Max(
-                    2,
-                    Math.Min(
-                    frameHeight - labelHeight - 2,
-                    top + 2
-                )
-                );
+                int labelTop = top - labelHeight >= 2 ? top - labelHeight : Math.Max(2, Math.Min(frameHeight - labelHeight - 2, top + 2));
                 int overlayLeft = Math.Min(left, labelLeft);
                 int overlayTop = Math.Min(top, labelTop);
                 int overlayRight = Math.Max(right, labelLeft + labelWidth);
                 int overlayBottom = Math.Max(bottom, labelTop + labelHeight);
-                target.Add(new VisionDetectionBox
-                {
-                    DisplayOrder = currentOrder,
-                    DetectionType = detectionType,
-                    ConfidencePercent = confidence,
-                    Left = left,
-                    Top = top,
-                    Right = right,
-                    Bottom = bottom, // 라벨 예상 폭보다 우측 여유가 작으면 BBox 우측에 맞춰 왼쪽으로 펼친다.
-                    PlaceLabelOnRight = right > frameWidth - 190,
-                    LabelWidth = labelWidth,
-                    OverlayLeft = overlayLeft,
-                    OverlayTop = overlayTop,
-                    OverlayWidth = Math.Max(
-     1,
-     overlayRight - overlayLeft
- ),
-                    OverlayHeight = Math.Max(
-     1,
-     overlayBottom - overlayTop
- ),
-                    BoxOffsetX = left - overlayLeft,
-                    BoxOffsetY = top - overlayTop,
-                    LabelOffsetX = labelLeft - overlayLeft,
-                    LabelOffsetY = labelTop - overlayTop
-                });
+                target.Add(new VisionDetectionBox { DisplayOrder = currentOrder, DetectionType = detectionType, ConfidencePercent = confidence, Left = left, Top = top, Right = right, Bottom = bottom, // 라벨 예상 폭보다 우측 여유가 작으면 BBox 우측에 맞춰 왼쪽으로 펼친다.
+ PlaceLabelOnRight = right > frameWidth - 190, LabelWidth = labelWidth, OverlayLeft = overlayLeft, OverlayTop = overlayTop, OverlayWidth = Math.Max(1, overlayRight - overlayLeft), OverlayHeight = Math.Max(1, overlayBottom - overlayTop), BoxOffsetX = left - overlayLeft, BoxOffsetY = top - overlayTop, LabelOffsetX = labelLeft - overlayLeft, LabelOffsetY = labelTop - overlayTop });
             }
         }
 
         // 2026-08-31: FIRE/SMOKE는 채널 상태 한 행이 아니라 화면에 표시된 BBox별로 기록한다.
         // 위치가 이어지는 동일 BBox는 기존 행을 유지하고 새 위치의 후보만 새 행을 만든다.
-        private void UpdateVisionBBoxEvents(
-            string camera,
-            string detectionType,
-            IList<CvRect> candidates,
-            IList<double> candidateScores,
-            string detectionSource,
-            ZoneFrameContext zoneFrame = null
-        )
+        private void UpdateVisionBBoxEvents(string camera, string detectionType, IList<CvRect> candidates, IList<double> candidateScores, string detectionSource, ZoneFrameContext zoneFrame = null)
         {
             DateTime now = DateTime.Now;
-            bool enabled = detectionType.IndexOf(
-                "SMOKE",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0 ? IsSmokeDetectionEnabled : IsThermalFireDetectionEnabled;
+            bool enabled = detectionType.IndexOf("SMOKE", StringComparison.OrdinalIgnoreCase) >= 0
+                ? IsSmokeDetectionEnabled
+                : IsThermalFireDetectionEnabled;
             IList<CvRect> safeCandidates = enabled ? candidates ?? new List<CvRect>() : new List<CvRect>();
 
-            foreach (VisionBBoxEventTrack track in _activeVisionBBoxEvents.Where(item => item.Camera == camera &&
-                item.DetectionType == detectionType))
+            foreach (VisionBBoxEventTrack track in _activeVisionBBoxEvents.Where(item => item.Camera == camera && item.DetectionType == detectionType))
             {
                 track.Matched = false;
             }
@@ -735,8 +622,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-09-09: 후보 순서에 따라 Track을 잘못 빼앗지 않도록 모든 조합을
             // 점수순으로 먼저 매칭한다. 검출기가 Track ID를 제공하지 않아 내부 ID를 사용한다.
             List<Tuple<double, VisionBBoxEventTrack, int>> matches = new List<Tuple<double, VisionBBoxEventTrack, int>>();
-            List<VisionBBoxEventTrack> channelTracks = _activeVisionBBoxEvents.Where(item => item.Camera == camera &&
-                item.DetectionType == detectionType).ToList();
+            List<VisionBBoxEventTrack> channelTracks = _activeVisionBBoxEvents.Where(item => item.Camera == camera && item.DetectionType == detectionType).ToList();
 
             for (int candidateIndex = 0; candidateIndex < safeCandidates.Count; candidateIndex++)
             {
@@ -766,15 +652,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 match.Item2.LastSeen = now;
                 match.Item2.Matched = true;
                 match.Item2.Event.UpdateVisionSnapshot(score, candidate.Width, candidate.Height);
-                match.Item2.Event.UpdateZoneAssessment(AssessZone(
-                    camera,
-                    detectionType,
-                    candidate.Left,
-                    candidate.Top,
-                    candidate.Right,
-                    candidate.Bottom,
-                    zoneFrame
-                ));
+                match.Item2.Event.UpdateZoneAssessment(AssessZone(camera, detectionType, candidate.Left, candidate.Top, candidate.Right, candidate.Bottom, zoneFrame));
                 matchedCandidateIndexes.Add(match.Item3);
             }
 
@@ -786,18 +664,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 CvRect candidate = safeCandidates[candidateIndex];
-                double visionScore = candidateScores != null &&
-                    candidateIndex < candidateScores.Count ? candidateScores[candidateIndex] : 0.0;
+                double visionScore = candidateScores != null && candidateIndex < candidateScores.Count ? candidateScores[candidateIndex] : 0.0;
                 FireEventRecord record = new FireEventRecord(
                     _nextFireEventId++,
                     now,
                     null,
                     camera,
                     detectionType,
-                    visionScore.ToString(
-                    "F1",
-                    CultureInfo.InvariantCulture
-                ) + "%",
+                    visionScore.ToString("F1", CultureInfo.InvariantCulture) + "%",
                     1,
                     candidate.Width,
                     candidate.Height,
@@ -806,15 +680,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     "ACTIVE",
                     CapturePositionSnapshot("VISION_" + detectionType + "_EVENT")
                 );
-                record.UpdateZoneAssessment(AssessZone(
-                    camera,
-                    detectionType,
-                    candidate.Left,
-                    candidate.Top,
-                    candidate.Right,
-                    candidate.Bottom,
-                    zoneFrame
-                ));
+                record.UpdateZoneAssessment(AssessZone(camera, detectionType, candidate.Left, candidate.Top, candidate.Right, candidate.Bottom, zoneFrame));
 
                 if (_isFireCsvHistoryLoaded)
                 {
@@ -828,34 +694,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 AppendFireEventAudit(record, "DETECTED");
                 ConsoleLogHelper.Warning(
                     "VISION BBOX EVENT",
-                    "ACTION=CREATE / EVENT_ID=" + record.EventId + " / TRACK_ID=" + (_nextVisionTrackId - 1) + " / CAMERA=" + camera + " / TYPE=" + detectionType + " / SCORE=" + record.Confidence + " / BBOX=" + record.PixelSizeCompactText
+                    "ACTION=CREATE / EVENT_ID=" + record.EventId +
+                    " / TRACK_ID=" + (_nextVisionTrackId - 1) +
+                    " / CAMERA=" + camera +
+                    " / TYPE=" + detectionType +
+                    " / SCORE=" + record.Confidence +
+                    " / BBOX=" + record.PixelSizeCompactText
                 );
             }
 
-            foreach (VisionBBoxEventTrack expired in _activeVisionBBoxEvents.Where(item => item.Camera == camera &&
-                item.DetectionType == detectionType &&
-                !item.Matched).ToList())
+            foreach (VisionBBoxEventTrack expired in _activeVisionBBoxEvents.Where(item => item.Camera == camera && item.DetectionType == detectionType && !item.Matched).ToList())
             {
                 expired.Event.MarkCleared(now);
                 AppendFireEventAudit(expired.Event, "CLEARED");
                 _activeVisionBBoxEvents.Remove(expired);
                 ConsoleLogHelper.State(
                     "VISION BBOX EVENT",
-                    "ACTION=CLEAR / EVENT_ID=" + expired.Event.EventId + " / TRACK_ID=" + expired.TrackId + " / CAMERA=" + camera + " / TYPE=" + detectionType + " / REASON=TRACK_EXPIRED"
+                    "ACTION=CLEAR / EVENT_ID=" + expired.Event.EventId +
+                    " / TRACK_ID=" + expired.TrackId +
+                    " / CAMERA=" + camera +
+                    " / TYPE=" + detectionType +
+                    " / REASON=TRACK_EXPIRED"
                 );
             }
 
             RefreshActiveFireCount();
             NotifyFireEventSummaryChanged();
 #if DEBUG
-            int channelTrackCount = _activeVisionBBoxEvents.Count(item =>
-                item.Camera == camera && item.DetectionType == detectionType);
+            int channelTrackCount = _activeVisionBBoxEvents.Count(item => item.Camera == camera && item.DetectionType == detectionType);
+
             if (channelTrackCount != safeCandidates.Count)
             {
-                ConsoleLogHelper.Warning("EVENT SYNC WARNING",
+                ConsoleLogHelper.Warning(
+                    "EVENT SYNC WARNING",
                     "VISION_BBOX_ACTIVE=" + safeCandidates.Count +
                     " / VISION_EVENT_ACTIVE=" + channelTrackCount +
-                    " / CAMERA=" + camera + " / TYPE=" + detectionType);
+                    " / CAMERA=" + camera +
+                    " / TYPE=" + detectionType
+                );
             }
 #endif
         }
@@ -869,19 +745,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double deltaX = (left.X + left.Width / 2.0) - (right.X + right.Width / 2.0);
             double deltaY = (left.Y + left.Height / 2.0) - (right.Y + right.Height / 2.0);
             double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
-            double allowedDistance = Math.Max(
-                24.0,
-                Math.Max(
-                Math.Max(
-                left.Width,
-                left.Height
-            ),
-                Math.Max(
-                right.Width,
-                right.Height
-            )
-            ) * 1.10
-            );
+            double allowedDistance = Math.Max(24.0, Math.Max(Math.Max(left.Width, left.Height), Math.Max(right.Width, right.Height)) * 1.10);
             return overlap >= 0.20 || distance > allowedDistance ? overlap : 0.20 + (1.0 - distance / allowedDistance) * 0.35;
         }
 
@@ -957,16 +821,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ValidateEventCsvKind(loaded, false);
                 FireEvents.Clear();
 
-                foreach (FireEventRecord fireEvent in loaded.Where(item => string.Equals(
-                    item.DetectionType,
-                    "FIRE",
-                    StringComparison.OrdinalIgnoreCase
-                ) ||
-                    string.Equals(
-                    item.DetectionType,
-                    "SMOKE",
-                    StringComparison.OrdinalIgnoreCase
-                )).OrderByDescending(item => item.EventId).Take(MaximumEventHistoryCount))
+                foreach (FireEventRecord fireEvent in loaded.Where(item => string.Equals(item.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(item.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase)).OrderByDescending(item => item.EventId).Take(MaximumEventHistoryCount))
                 {
                     fireEvent.MarkImportedFromCsv();
                     FireEvents.Add(fireEvent);
@@ -977,12 +833,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _activeTestFireEvents.Clear();
                 _activeVisionBBoxEvents.Clear();
                 ActiveFireCount = 0;
-                _lastFireDetectedTime = FireEvents.Count == 0 ? (DateTime?)null : FireEvents.Max(item => item.DetectedTime);
+                _lastFireDetectedTime = FireEvents.Count == 0 ? (DateTime? )null : FireEvents.Max(item => item.DetectedTime);
                 NotifyFireEventSummaryChanged();
-                ConsoleLogHelper.State(
-                    "FIRE / SMOKE EVENT",
-                    "Event CSV loaded / PATH=" + dialog.FileName + " / COUNT=" + FireEvents.Count
-                );
+                ConsoleLogHelper.State("FIRE / SMOKE EVENT", "Event CSV loaded / PATH=" + dialog.FileName + " / COUNT=" + FireEvents.Count);
                 // 2026-08-27: 저장과 동일하게 불러오기 결과와 건수를 즉시 안내한다.
                 MessageBox.Show(
                     "화재 / 연기 이벤트 CSV 불러오기가 완료되었습니다.\n" + "불러온 이벤트: " + FireEvents.Count + "건",
@@ -1030,11 +883,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             try
             {
-                string directory = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "OpenCvWpfTracking",
-                    "FireEvents"
-                );
+                string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "OpenCvWpfTracking", "FireEvents");
                 Directory.CreateDirectory(directory);
                 string path = Path.Combine(directory, "FireEvent_" + DateTime.Now.ToString("yyyyMMdd") + ".csv");
                 // XLSX 읽기와 CSV 헤더·스키마 확인 및 추가 기록이 충돌하지 않게 한다.
@@ -1048,6 +897,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         using (var reader = new StreamReader(path, Encoding.UTF8))
                             if (reader.ReadLine() != auditHeader)
+                                // 이전에 저장한 감사 CSV와 같은 파일을 이어 쓰기 위한 호환 파일명이다. 프로그램 버전 표시는 아니다.
                                 path = Path.Combine(directory, "FireEvent_" + DateTime.Now.ToString("yyyyMMdd") + "_V29_5.csv");
                     }
 
@@ -1151,20 +1001,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 double.TryParse(fields[9], NumberStyles.Float, CultureInfo.InvariantCulture, out double pixelArea);
                 PositionSnapshot.TryParseExportFields(fields, 12, out PositionSnapshot firstPositionSnapshot);
                 result.Add(new FireEventRecord(
-                    eventId,
-                    detectedTime,
-                    clearedTime,
-                    fields[3],
-                    fields[4],
-                    fields[5],
-                    objectCount,
-                    pixelWidth,
-                    pixelHeight,
-                    pixelArea,
-                    fields[10],
-                    fields[11],
-                    firstPositionSnapshot
-                ));
+                        eventId,
+                        detectedTime,
+                        clearedTime,
+                        fields[3],
+                        fields[4],
+                        fields[5],
+                        objectCount,
+                        pixelWidth,
+                        pixelHeight,
+                        pixelArea,
+                        fields[10],
+                        fields[11],
+                        firstPositionSnapshot
+                    ));
 
                 if (fields.Count >= 47)
                 {
@@ -1199,27 +1049,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (records.Count == 0)
                 throw new FormatException("이벤트 데이터가 없습니다.");
 
-            bool valid = records.All(item => (string.Equals(
-                item.DetectionType,
-                "AI",
-                StringComparison.OrdinalIgnoreCase
-            ) ||
-                string.Equals(
-                item.DetectionSource,
-                "AI AGENT",
-                StringComparison.OrdinalIgnoreCase
-            )) == ai &&
+            bool valid = records.All(item => (string.Equals(item.DetectionType, "AI", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.DetectionSource, "AI AGENT", StringComparison.OrdinalIgnoreCase)) == ai &&
                 (ai ||
-                string.Equals(
-                item.DetectionType,
-                "FIRE",
-                StringComparison.OrdinalIgnoreCase
-            ) ||
-                string.Equals(
-                item.DetectionType,
-                "SMOKE",
-                StringComparison.OrdinalIgnoreCase
-            )));
+                string.Equals(item.DetectionType, "FIRE", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.DetectionType, "SMOKE", StringComparison.OrdinalIgnoreCase)));
 
             if (!valid)
                 throw new FormatException(ai ? "AI 이벤트 CSV만 선택하세요." : "FIRE/SMOKE CSV만 선택하세요.");
@@ -1239,19 +1073,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 "yyyy-MM-dd HH:mm:ss.fff",
                 "yyyy-MM-dd HH:mm:ss"
             };
-            return DateTime.TryParseExact(
-                value,
-                supportedFormats,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeLocal,
-                out parsed
-            ) ||
-                DateTime.TryParse(
-                value,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeLocal,
-                out parsed
-            );
+            return DateTime.TryParseExact(value, supportedFormats, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out parsed) ||
+                DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out parsed);
         }
 
         /// <summary>
@@ -1275,14 +1098,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             string normalized = (value ?? string.Empty).Trim();
 
             if (normalized.Length >= 3 &&
-                normalized.StartsWith(
-                "=\"",
-                StringComparison.Ordinal
-            ) &&
-                normalized.EndsWith(
-                "\"",
-                StringComparison.Ordinal
-            ))
+                normalized.StartsWith("=\"", StringComparison.Ordinal) &&
+                normalized.EndsWith("\"", StringComparison.Ordinal))
             {
                 normalized = normalized.Substring(2, normalized.Length - 3).Replace("\"\"", "\"");
             }

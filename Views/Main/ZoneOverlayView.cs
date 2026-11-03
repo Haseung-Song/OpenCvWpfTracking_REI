@@ -17,50 +17,28 @@ namespace OpenCvWpfTracking
             "Items",
             typeof(IEnumerable),
             typeof(ZoneOverlayView),
-            new FrameworkPropertyMetadata(
-            null,
-            FrameworkPropertyMetadataOptions.AffectsRender,
-            Changed
-        )
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, Changed)
         );
 
         public static readonly DependencyProperty SourceWidthProperty = DependencyProperty.Register(
             "SourceWidth",
             typeof(double),
             typeof(ZoneOverlayView),
-            new FrameworkPropertyMetadata(
-            0.0,
-            FrameworkPropertyMetadataOptions.AffectsRender
-        )
+            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender)
         );
 
         public static readonly DependencyProperty SourceHeightProperty = DependencyProperty.Register(
             "SourceHeight",
             typeof(double),
             typeof(ZoneOverlayView),
-            new FrameworkPropertyMetadata(
-            0.0,
-            FrameworkPropertyMetadataOptions.AffectsRender
-        )
+            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender)
         );
 
-        public IEnumerable Items
-        {
-            get => (IEnumerable)GetValue(ItemsProperty);
-            set => SetValue(ItemsProperty, value);
-        }
+        public IEnumerable Items { get => (IEnumerable)GetValue(ItemsProperty); set => SetValue(ItemsProperty, value); }
 
-        public double SourceWidth
-        {
-            get => (double)GetValue(SourceWidthProperty);
-            set => SetValue(SourceWidthProperty, value);
-        }
+        public double SourceWidth { get => (double)GetValue(SourceWidthProperty); set => SetValue(SourceWidthProperty, value); }
 
-        public double SourceHeight
-        {
-            get => (double)GetValue(SourceHeightProperty);
-            set => SetValue(SourceHeightProperty, value);
-        }
+        public double SourceHeight { get => (double)GetValue(SourceHeightProperty); set => SetValue(SourceHeightProperty, value); }
 
         private static void Changed(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
@@ -82,10 +60,7 @@ namespace OpenCvWpfTracking
             if (Items == null || SourceWidth <= 0 || SourceHeight <= 0 || ActualWidth < 1 || ActualHeight < 1)
                 return;
 
-            double scale = Math.Min(
-                ActualWidth / SourceWidth,
-                ActualHeight / SourceHeight
-            ), ox = (ActualWidth - SourceWidth * scale) / 2, oy = (ActualHeight - SourceHeight * scale) / 2;
+            double scale = Math.Min(ActualWidth / SourceWidth, ActualHeight / SourceHeight), ox = (ActualWidth - SourceWidth * scale) / 2, oy = (ActualHeight - SourceHeight * scale) / 2;
             dc.PushClip(new RectangleGeometry(new Rect(ox, oy, SourceWidth * scale, SourceHeight * scale)));
 
             foreach (var item in Items)
@@ -151,13 +126,7 @@ namespace OpenCvWpfTracking
                     CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
                     new Typeface("Malgun Gothic"),
-                    Math.Max(
-                    10,
-                    Math.Min(
-                    12,
-                    viewport.Width / 45
-                )
-                ),
+                    Math.Max(10, Math.Min(12, viewport.Width / 45)),
                     color,
                     VisualTreeHelper.GetDpi(this).PixelsPerDip
                 );

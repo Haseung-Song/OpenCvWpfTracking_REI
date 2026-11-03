@@ -59,10 +59,7 @@ namespace OpenCvWpfTracking.Converters
             else if (frame.Channels() == 4)
                 pixelFormat = PixelFormats.Bgra32;
 
-            if (bitmap == null ||
-                bitmap.PixelWidth != frame.Width ||
-                bitmap.PixelHeight != frame.Height ||
-                bitmap.Format != pixelFormat)
+            if (bitmap == null || bitmap.PixelWidth != frame.Width || bitmap.PixelHeight != frame.Height || bitmap.Format != pixelFormat)
             {
                 bitmap = new WriteableBitmap(frame.Width, frame.Height, 96, 96, pixelFormat, null);
             }

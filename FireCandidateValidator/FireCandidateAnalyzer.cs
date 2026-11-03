@@ -28,55 +28,38 @@ namespace FireCandidateValidator
 
         private Mat _previousCandidateMask = new Mat();
 
-        // 2026-09-22 V25: Viewer와 동일하게 장시간 고정되는 IR 열원만
+        // 2026-09-22 Viewer와 동일하게 장시간 고정되는 IR 열원만
         // 후보 생성 이후 Track 단계에서 보조 억제한다.
         private readonly List<TestFireTrack> _fireTracks = new List<TestFireTrack>();
 
         /// <summary>
         /// Analyze 동작 수행 함수.
         /// </summary>
-        internal FireCandidateAnalysis Analyze(
-            Mat source,
-            double thresholdRatio,
-            double minimumAreaRatio,
-            int confirmationFrameCount,
-            int fireBoxGroupingMode)
+        internal FireCandidateAnalysis Analyze(Mat source, double thresholdRatio, double minimumAreaRatio, int confirmationFrameCount, int fireBoxGroupingMode)
         {
             try
             {
-                return AnalyzeCore(
-                    source,
-                    thresholdRatio,
-                    minimumAreaRatio,
-                    confirmationFrameCount,
-                    fireBoxGroupingMode);
+                return AnalyzeCore(source, thresholdRatio, minimumAreaRatio, confirmationFrameCount, fireBoxGroupingMode);
             }
             catch (Exception ex)
             {
                 DateTime now = DateTime.Now;
+
                 if ((now - _lastAnalyzeErrorLogTime).TotalSeconds >= 5)
                 {
                     _lastAnalyzeErrorLogTime = now;
-                    Console.Error.WriteLine(
-                        "[FIRE CANDIDATE ERROR] Analyze failed / " +
-                        ex.Message);
+                    Console.Error.WriteLine("[FIRE CANDIDATE ERROR] Analyze failed / " + ex.Message);
                 }
 
                 Reset();
                 return FireCandidateAnalysis.Empty;
             }
-
         }
 
         /// <summary>
         /// 2026-08-25 REI/MOE 공통 검증용 화재 후보 판정 본체.
         /// </summary>
-        private FireCandidateAnalysis AnalyzeCore(
-            Mat source,
-            double thresholdRatio,
-            double minimumAreaRatio,
-            int confirmationFrameCount,
-            int fireBoxGroupingMode)
+        private FireCandidateAnalysis AnalyzeCore(Mat source, double thresholdRatio, double minimumAreaRatio, int confirmationFrameCount, int fireBoxGroupingMode)
         {
             if (source == null || source.Empty())
             {
@@ -90,19 +73,16 @@ namespace FireCandidateValidator
             // 2026-08-21: 10~30 px는 Bounding Box 한 변 기준(약 100~900 px)이다.
             // 24 px contour부터 Small Fire lane에서 확인하고 그보다 큰 후보는
             // 기존 사용자가 정한 화면비 기반 최소 면적을 적용한다.
-            double configuredMinimumArea =
-                Math.Max(16.0, frameArea * safeAreaRatio);
+            double configuredMinimumArea = Math.Max(16.0, frameArea * safeAreaRatio);
             double minimumArea = 24.0;
             // 2026-08-14: 큰 화염도 하나의 검출 영역으로 유지한다.
             // 정지 영상 대부분을 차지하는 큰 화재도 검출 대상으로 허용한다.
             double maximumArea = frameArea * 0.95;
-
             Mat mask = CreateCandidateMask(source, threshold);
             Mat cleanedMask = new Mat();
             Mat currentGray = new Mat();
             Mat motionMask = new Mat();
             Mat candidateChangeMask = new Mat();
-
             using (Mat openKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(3, 3)))
             // 2026-08-14: 분리된 불꽃을 연결해 전체 화염 BBox를 만든다.
             using (Mat closeKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(9, 9)))
@@ -127,14 +107,9 @@ namespace FireCandidateValidator
             }
 
             Cv2.GaussianBlur(currentGray, currentGray, new Size(5, 5), 0);
-
             bool requiresTemporalMotion = confirmationFrameCount > 1;
-            bool hasMotionReference =
-                _previousGray != null && !_previousGray.Empty() &&
-                _previousGray.Size() == currentGray.Size();
-            bool hasCandidateReference =
-                _previousCandidateMask != null && !_previousCandidateMask.Empty() &&
-                _previousCandidateMask.Size() == cleanedMask.Size();
+            bool hasMotionReference = _previousGray != null && !_previousGray.Empty() && _previousGray.Size() == currentGray.Size();
+            bool hasCandidateReference = _previousCandidateMask != null && !_previousCandidateMask.Empty() && _previousCandidateMask.Size() == cleanedMask.Size();
             double globalMotionRatio = 0.0;
 
             if (hasMotionReference)
@@ -149,13 +124,7 @@ namespace FireCandidateValidator
                 Cv2.Absdiff(cleanedMask, _previousCandidateMask, candidateChangeMask);
             }
 
-            Cv2.FindContours(
-                cleanedMask,
-                out Point[][] contours,
-                out _,
-                RetrievalModes.External,
-                ContourApproximationModes.ApproxSimple);
-
+            Cv2.FindContours(cleanedMask, out Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
             List<Rect> rawCandidates = new List<Rect>();
             double largestAreaRatio = 0.0;
 
@@ -177,13 +146,8 @@ namespace FireCandidateValidator
                 double hullArea = Math.Max(1.0, Cv2.ContourArea(convexHull));
                 double solidity = area / hullArea;
                 double perimeter = Math.Max(1.0, Cv2.ArcLength(contour, true));
-                double irregularity =
-                    perimeter * perimeter /
-                    Math.Max(1.0, 4.0 * Math.PI * area);
-                bool isSmallFireCandidate =
-                    rect.Width <= 36 &&
-                    rect.Height <= 36 &&
-                    rectangleArea <= 1296;
+                double irregularity = perimeter * perimeter / Math.Max(1.0, 4.0 * Math.PI * area);
+                bool isSmallFireCandidate = rect.Width <= 36 && rect.Height <= 36 && rectangleArea <= 1296;
 
                 // 2026-09-15: BLACK 팔레트 진단 영상에서 좌우/하단 경계에 붙은
                 // 건물 벽과 고온 패널이 큰 화재 후보로 반복 검출되는 현상을 억제한다.
@@ -192,17 +156,17 @@ namespace FireCandidateValidator
                 {
                     continue;
                 }
+
                 // 2026-08-24: 마스크에 충분히 크게 형성된 세로형·불규칙 화염은
                 // 압축 영상에서 프레임 차가 작아도 실제 화염 후보로 보존한다.
                 // 작은 점광원은 이 경로를 통과하지 않으므로 기존 시간축 검사를 유지한다.
-                bool isStrongLargeFireCandidate =
-                    IsStrongLargeFlameRect(rect, cleanedMask) &&
-                    (irregularity >= 1.20 || solidity <= 0.92);
-                if (!isSmallFireCandidate &&
-                    area < configuredMinimumArea)
+                bool isStrongLargeFireCandidate = IsStrongLargeFlameRect(rect, cleanedMask) && (irregularity >= 1.20 || solidity <= 0.92);
+
+                if (!isSmallFireCandidate && area < configuredMinimumArea)
                 {
                     continue;
                 }
+
                 double motionRatio = 0.0;
                 double hotMotionRatio = 0.0;
                 double shapeChangeRatio = 0.0;
@@ -216,50 +180,42 @@ namespace FireCandidateValidator
                     {
                         motionRatio = Cv2.CountNonZero(motionRoi) / rectangleArea;
                         Cv2.BitwiseAnd(motionRoi, candidateRoi, hotMotion);
-                        hotMotionRatio =
-                            Cv2.CountNonZero(hotMotion) /
-                            Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
-                        shapeChangeRatio =
-                            Cv2.CountNonZero(changeRoi) /
-                            Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
+                        hotMotionRatio = Cv2.CountNonZero(hotMotion) / Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
+                        shapeChangeRatio = Cv2.CountNonZero(changeRoi) / Math.Max(1.0, Cv2.CountNonZero(candidateRoi));
                     }
-
                 }
 
                 // 2026-09-07: 큰 IR 화재 후보도 정적인 고온 구조물과 구분할 수 있도록
                 // 완전 우회시키지 않고 완화된 시간축 변화 근거를 요구한다.
-                bool strongLargeTemporalEvidence =
-                    !requiresTemporalMotion ||
+                bool strongLargeTemporalEvidence = !requiresTemporalMotion ||
                     (hasMotionReference &&
-                     hasCandidateReference &&
-                     globalMotionRatio <= 0.25 &&
-                     (motionRatio >= 0.004 ||
-                      hotMotionRatio >= 0.008 ||
-                      shapeChangeRatio >= 0.012));
+                    hasCandidateReference &&
+                    globalMotionRatio <= 0.25 &&
+                    (motionRatio >= 0.004 ||
+                    hotMotionRatio >= 0.008 ||
+                    shapeChangeRatio >= 0.012));
 
                 // 넓은 건물 외벽, 수평 띠 및 작은 점 노이즈를 후보에서 제외한다.
                 // 이전의 면적 60% 제한 때문에 실제 대형 화재가 제외되던 문제를 피한다.
                 if (fillRatio < 0.005 ||
                     (rectangleAreaRatio > 0.75 && fillRatio > 0.30) ||
-                    (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 &&
-                     fillRatio > 0.18 && solidity > 0.72) ||
-                    (!isSmallFireCandidate &&
-                     solidity > 0.90 && fillRatio > 0.50 && irregularity < 1.25) ||
+                    (rectangleAreaRatio > 0.08 && aspectRatio > 2.2 && fillRatio > 0.18 && solidity > 0.72) ||
+                    (!isSmallFireCandidate && solidity > 0.90 && fillRatio > 0.50 && irregularity < 1.25) ||
                     // 2026-08-24: 작은 정적 전등도 시간축 검사를 반드시 통과시킨다.
-                    // 작은 실제 화염은 낮은 움직임 또는 외곽 변화 중 하나가 있으면 유지한다.
-                    (requiresTemporalMotion &&
-                     !isStrongLargeFireCandidate &&
-                     (!hasMotionReference ||
-                      !hasCandidateReference ||
-                      globalMotionRatio > 0.25 ||
-                      motionRatio < (isSmallFireCandidate ? 0.004 : 0.010) ||
-                      (hotMotionRatio < (isSmallFireCandidate ? 0.006 : 0.018) &&
-                       shapeChangeRatio < (isSmallFireCandidate ? 0.008 : 0.020)) ||
-                      (rectangleAreaRatio > 0.12 && shapeChangeRatio < 0.060))) ||
-                    (requiresTemporalMotion &&
-                     isStrongLargeFireCandidate &&
-                     !strongLargeTemporalEvidence) ||
-                    aspectRatio < 0.05 || aspectRatio > 20.0)
+                // 작은 실제 화염은 낮은 움직임 또는 외곽 변화 중 하나가 있으면 유지한다.
+                (requiresTemporalMotion &&
+                    !isStrongLargeFireCandidate &&
+                    (!hasMotionReference ||
+                    !hasCandidateReference ||
+                    globalMotionRatio > 0.25 ||
+                    motionRatio < (isSmallFireCandidate ? 0.004 : 0.010) ||
+                    (hotMotionRatio < (isSmallFireCandidate ? 0.006 : 0.018) &&
+                    shapeChangeRatio < (isSmallFireCandidate ? 0.008 : 0.020)) ||
+                    (rectangleAreaRatio > 0.12 &&
+                    shapeChangeRatio < 0.060))) ||
+                    (requiresTemporalMotion && isStrongLargeFireCandidate && !strongLargeTemporalEvidence) ||
+                    aspectRatio < 0.05 ||
+                    aspectRatio > 20.0)
                 {
                     continue;
                 }
@@ -268,33 +224,32 @@ namespace FireCandidateValidator
                 largestAreaRatio = Math.Max(largestAreaRatio, area / frameArea);
             }
 
-            IList<Rect> verticalFlameCandidates =
-                ExtractVerticalFlameCandidates(source, threshold);
+            IList<Rect> verticalFlameCandidates = ExtractVerticalFlameCandidates(source, threshold);
+
             if (requiresTemporalMotion)
             {
                 // 2026-08-24: 충분히 큰 세로형 화염은 낮은 프레임 차에서도 유지하고,
                 // 작은 후보만 시간축 검사를 거쳐 고정 전등 오탐을 억제한다.
-                verticalFlameCandidates = verticalFlameCandidates
-                    .Where(rect =>
-                        !IsLargeFrameEdgeArtifact(rect, source.Width, source.Height) &&
-                        (IsStrongLargeFlameRect(rect, cleanedMask)
-                            ? HasStrongLargeTemporalFlameEvidence(
-                                rect,
-                                motionMask,
-                                cleanedMask,
-                                candidateChangeMask,
-                                hasMotionReference,
-                                hasCandidateReference,
-                                globalMotionRatio)
-                            : HasTemporalFlameEvidence(
-                            rect,
-                            motionMask,
-                            cleanedMask,
-                            candidateChangeMask,
-                            hasMotionReference,
-                            hasCandidateReference,
-                            globalMotionRatio)))
-                    .ToList();
+                verticalFlameCandidates = verticalFlameCandidates.Where(rect => !IsLargeFrameEdgeArtifact(rect, source.Width, source.Height) &&
+                    (IsStrongLargeFlameRect(rect, cleanedMask)
+                    ? HasStrongLargeTemporalFlameEvidence(
+                        rect,
+                        motionMask,
+                        cleanedMask,
+                        candidateChangeMask,
+                        hasMotionReference,
+                        hasCandidateReference,
+                        globalMotionRatio
+                    )
+                    : HasTemporalFlameEvidence(
+                        rect,
+                        motionMask,
+                        cleanedMask,
+                        candidateChangeMask,
+                        hasMotionReference,
+                        hasCandidateReference,
+                        globalMotionRatio
+                    ))).ToList();
             }
 
             if (verticalFlameCandidates.Count > 0)
@@ -302,19 +257,11 @@ namespace FireCandidateValidator
                 rawCandidates = new List<Rect>(verticalFlameCandidates);
             }
 
-            List<Rect> candidates = MergeCandidates(
-                SuppressNestedAndReflectionCandidates(rawCandidates),
-                source.Width,
-                source.Height,
-                fireBoxGroupingMode);
+            List<Rect> candidates = MergeCandidates(SuppressNestedAndReflectionCandidates(rawCandidates), source.Width, source.Height, fireBoxGroupingMode);
 
             if (requiresTemporalMotion)
             {
-                candidates = FilterStaticHotspotTracks(
-                    candidates,
-                    source.Width,
-                    source.Height,
-                    Math.Max(1, confirmationFrameCount));
+                candidates = FilterStaticHotspotTracks(candidates, source.Width, source.Height, Math.Max(1, confirmationFrameCount));
                 candidates = new List<Rect>(_staticStructures.Filter(source, candidates, _staticStructures.Clock()));
             }
 
@@ -327,22 +274,13 @@ namespace FireCandidateValidator
                 _continuousCandidateFrames = 0;
             }
 
-            bool isConfirmed =
-                candidates.Count > 0 &&
-                _continuousCandidateFrames >= Math.Max(1, confirmationFrameCount);
-
+            bool isConfirmed = candidates.Count > 0 && _continuousCandidateFrames >= Math.Max(1, confirmationFrameCount);
             currentGray.CopyTo(_previousGray);
             cleanedMask.CopyTo(_previousCandidateMask);
             currentGray.Dispose();
             motionMask.Dispose();
             candidateChangeMask.Dispose();
-
-            return new FireCandidateAnalysis(
-                cleanedMask,
-                candidates,
-                isConfirmed,
-                _continuousCandidateFrames,
-                largestAreaRatio);
+            return new FireCandidateAnalysis(cleanedMask, candidates, isConfirmed, _continuousCandidateFrames, largestAreaRatio);
         }
 
         /// <summary>
@@ -351,8 +289,7 @@ namespace FireCandidateValidator
         /// </summary>
         private static bool IsStrongLargeFlameRect(Rect rect, Mat candidateMask)
         {
-            if (candidateMask == null || candidateMask.Empty() ||
-                rect.Width <= 0 || rect.Height <= 0)
+            if (candidateMask == null || candidateMask.Empty() || rect.Width <= 0 || rect.Height <= 0)
             {
                 return false;
             }
@@ -360,37 +297,24 @@ namespace FireCandidateValidator
             double frameArea = Math.Max(1.0, candidateMask.Width * candidateMask.Height);
             double rectangleArea = Math.Max(1.0, rect.Width * rect.Height);
             double aspectRatio = rect.Width / (double)Math.Max(1, rect.Height);
-
             using (Mat candidateRoi = new Mat(candidateMask, rect))
             {
                 double fillRatio = Cv2.CountNonZero(candidateRoi) / rectangleArea;
-
                 return rectangleArea / frameArea >= 0.0015 &&
-                       rect.Height >= Math.Max(32, candidateMask.Height * 0.04) &&
-                       aspectRatio >= 0.08 && aspectRatio <= 1.60 &&
-                       fillRatio >= 0.025;
+                    rect.Height >= Math.Max(32, candidateMask.Height * 0.04) &&
+                    aspectRatio >= 0.08 &&
+                    aspectRatio <= 1.60 &&
+                    fillRatio >= 0.025;
             }
-
         }
 
         /// <summary>
         /// [2026-08-24] 동영상의 세로 화염 후보가 프레임 간 움직임 또는 외곽 변화를
         /// 포함하는지 검사한다. 정적인 전등 점광원은 제외하되 작은 화염은 보존한다.
         /// </summary>
-        private static bool HasTemporalFlameEvidence(
-            Rect rect,
-            Mat motionMask,
-            Mat candidateMask,
-            Mat candidateChangeMask,
-            bool hasMotionReference,
-            bool hasCandidateReference,
-            double globalMotionRatio)
+        private static bool HasTemporalFlameEvidence(Rect rect, Mat motionMask, Mat candidateMask, Mat candidateChangeMask, bool hasMotionReference, bool hasCandidateReference, double globalMotionRatio)
         {
-            if (!hasMotionReference ||
-                !hasCandidateReference ||
-                globalMotionRatio > 0.25 ||
-                rect.Width <= 0 ||
-                rect.Height <= 0)
+            if (!hasMotionReference || !hasCandidateReference || globalMotionRatio > 0.25 || rect.Width <= 0 || rect.Height <= 0)
             {
                 return false;
             }
@@ -406,29 +330,15 @@ namespace FireCandidateValidator
                 Cv2.BitwiseAnd(motionRoi, candidateRoi, hotMotion);
                 double hotMotionRatio = Cv2.CountNonZero(hotMotion) / candidatePixels;
                 double shapeChangeRatio = Cv2.CountNonZero(changeRoi) / candidatePixels;
-
-                bool isSmallTarget =
-                    rect.Width <= 36 &&
-                    rect.Height <= 36;
-
+                bool isSmallTarget = rect.Width <= 36 && rect.Height <= 36;
                 return motionRatio >= (isSmallTarget ? 0.004 : 0.010) &&
-                       (hotMotionRatio >= (isSmallTarget ? 0.006 : 0.018) ||
-                        shapeChangeRatio >= (isSmallTarget ? 0.008 : 0.025));
+                    (hotMotionRatio >= (isSmallTarget ? 0.006 : 0.018) || shapeChangeRatio >= (isSmallTarget ? 0.008 : 0.025));
             }
-
         }
 
-        private static bool HasStrongLargeTemporalFlameEvidence(
-            Rect rect,
-            Mat motionMask,
-            Mat candidateMask,
-            Mat candidateChangeMask,
-            bool hasMotionReference,
-            bool hasCandidateReference,
-            double globalMotionRatio)
+        private static bool HasStrongLargeTemporalFlameEvidence(Rect rect, Mat motionMask, Mat candidateMask, Mat candidateChangeMask, bool hasMotionReference, bool hasCandidateReference, double globalMotionRatio)
         {
-            if (!hasMotionReference || !hasCandidateReference ||
-                globalMotionRatio > 0.25 || rect.Width <= 0 || rect.Height <= 0)
+            if (!hasMotionReference || !hasCandidateReference || globalMotionRatio > 0.25 || rect.Width <= 0 || rect.Height <= 0)
             {
                 return false;
             }
@@ -444,51 +354,31 @@ namespace FireCandidateValidator
                 Cv2.BitwiseAnd(motionRoi, candidateRoi, hotMotion);
                 double hotMotionRatio = Cv2.CountNonZero(hotMotion) / candidatePixels;
                 double shapeChangeRatio = Cv2.CountNonZero(changeRoi) / candidatePixels;
-
-                return motionRatio >= 0.006 &&
-                       (hotMotionRatio >= 0.018 ||
-                        shapeChangeRatio >= 0.025);
+                return motionRatio >= 0.006 && (hotMotionRatio >= 0.018 || shapeChangeRatio >= 0.025);
             }
-
         }
 
         /// <summary>
         /// 프레임 경계에 붙은 중·대형 정적 열 구조물을 판별한다.
         /// 작은 원거리 시험 화재는 면적과 크기 조건으로 보존한다.
         /// </summary>
-        private static bool IsLargeFrameEdgeArtifact(
-            Rect rect,
-            int frameWidth,
-            int frameHeight)
+        private static bool IsLargeFrameEdgeArtifact(Rect rect, int frameWidth, int frameHeight)
         {
-            if (rect.Width <= 0 || rect.Height <= 0 ||
-                frameWidth <= 0 || frameHeight <= 0)
+            if (rect.Width <= 0 || rect.Height <= 0 || frameWidth <= 0 || frameHeight <= 0)
             {
                 return false;
             }
 
-            bool touchesFrameEdge =
-                rect.Left <= 2 ||
-                rect.Top <= 2 ||
-                rect.Right >= frameWidth - 2 ||
-                rect.Bottom >= frameHeight - 2;
-
-            double areaRatio =
-                rect.Width * rect.Height /
-                Math.Max(1.0, frameWidth * frameHeight);
-
-            return touchesFrameEdge &&
-                   areaRatio >= 0.0015 &&
-                   (rect.Width > 36 || rect.Height > 36);
+            bool touchesFrameEdge = rect.Left <= 2 || rect.Top <= 2 || rect.Right >= frameWidth - 2 || rect.Bottom >= frameHeight - 2;
+            double areaRatio = rect.Width * rect.Height / Math.Max(1.0, frameWidth * frameHeight);
+            return touchesFrameEdge && areaRatio >= 0.0015 && (rect.Width > 36 || rect.Height > 36);
         }
 
         /// <summary>
         /// 촛불 영상에서 원형 보케·촛농·받침 반사보다 세로로 긴 화염 본체를
         /// 우선 검출한다. 색상 팔레트와 흑백 WHITE/BLACK HOT을 모두 지원한다.
         /// </summary>
-        private static IList<Rect> ExtractVerticalFlameCandidates(
-            Mat source,
-            int threshold)
+        private static IList<Rect> ExtractVerticalFlameCandidates(Mat source, int threshold)
         {
             using (Mat bgr = EnsureBgr(source))
             using (Mat hsv = new Mat())
@@ -504,16 +394,8 @@ namespace FireCandidateValidator
 
                 if (Cv2.Mean(hsv).Val1 >= 20)
                 {
-                    Cv2.InRange(
-                        hsv,
-                        new Scalar(0, 0, Math.Max(200, threshold)),
-                        new Scalar(179, 125, 255),
-                        whiteCore);
-                    Cv2.InRange(
-                        hsv,
-                        new Scalar(15, 45, Math.Max(180, threshold - 20)),
-                        new Scalar(45, 255, 255),
-                        yellowCore);
+                    Cv2.InRange(hsv, new Scalar(0, 0, Math.Max(200, threshold)), new Scalar(179, 125, 255), whiteCore);
+                    Cv2.InRange(hsv, new Scalar(15, 45, Math.Max(180, threshold - 20)), new Scalar(45, 255, 255), yellowCore);
                     Cv2.BitwiseOr(whiteCore, yellowCore, coreMask);
                 }
                 else
@@ -522,6 +404,7 @@ namespace FireCandidateValidator
                     Cv2.Threshold(gray, darkCore, 255 - threshold, 255, ThresholdTypes.BinaryInv);
                     int brightCount = Cv2.CountNonZero(brightCore);
                     int darkCount = Cv2.CountNonZero(darkCore);
+
                     if (brightCount > 0 && (darkCount == 0 || brightCount <= darkCount))
                     {
                         brightCore.CopyTo(coreMask);
@@ -530,66 +413,45 @@ namespace FireCandidateValidator
                     {
                         darkCore.CopyTo(coreMask);
                     }
-
                 }
 
-                using (Mat openKernel =
-                       Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(3, 3)))
-                using (Mat closeKernel =
-                       Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(5, 9)))
+                using (Mat openKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(3, 3)))
+                using (Mat closeKernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(5, 9)))
                 {
                     Cv2.MorphologyEx(coreMask, coreMask, MorphTypes.Open, openKernel);
                     Cv2.MorphologyEx(coreMask, coreMask, MorphTypes.Close, closeKernel);
                 }
 
-                Cv2.FindContours(
-                    coreMask,
-                    out Point[][] contours,
-                    out _,
-                    RetrievalModes.External,
-                    ContourApproximationModes.ApproxSimple);
-
+                Cv2.FindContours(coreMask, out Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
                 List<Rect> flames = new List<Rect>();
                 double frameArea = Math.Max(1.0, source.Width * source.Height);
+
                 foreach (Point[] contour in contours)
                 {
                     double area = Cv2.ContourArea(contour);
                     Rect rect = Cv2.BoundingRect(contour);
                     double fillRatio = area / Math.Max(1.0, rect.Width * rect.Height);
-                    bool isSmallFlame =
-                        rect.Width <= 36 &&
-                        rect.Height <= 36 &&
-                        rect.Width * rect.Height >= 64;
-                    bool isVerticalFlame =
-                        rect.Height >= 10 &&
+                    bool isSmallFlame = rect.Width <= 36 && rect.Height <= 36 && rect.Width * rect.Height >= 64;
+                    bool isVerticalFlame = rect.Height >= 10 &&
                         rect.Height >= rect.Width * 1.25 &&
                         fillRatio >= 0.08 &&
                         rect.Width * rect.Height <= frameArea * 0.30;
 
                     if (area >= 20 && (isSmallFlame || isVerticalFlame))
                     {
-                        flames.Add(
-                            Expand(
-                                rect,
-                                3,
-                                4,
-                                source.Width,
-                                source.Height));
+                        flames.Add(Expand(rect, 3, 4, source.Width, source.Height));
                     }
-
                 }
 
                 return flames;
             }
-
         }
 
         /// <summary>
         /// 큰 화염 내부의 작은 조각과 화염 바로 아래의 짧은 반사광 후보를 제거한다.
         /// 실제로 떨어져 있는 독립 화염은 보존한다.
         /// </summary>
-        private static IList<Rect> SuppressNestedAndReflectionCandidates(
-            IList<Rect> source)
+        private static IList<Rect> SuppressNestedAndReflectionCandidates(IList<Rect> source)
         {
             List<Rect> filtered = new List<Rect>();
 
@@ -606,24 +468,15 @@ namespace FireCandidateValidator
                     }
 
                     Rect anchor = source[anchorIndex];
-                    int intersectionWidth =
-                        Math.Max(0, Math.Min(candidate.Right, anchor.Right) - Math.Max(candidate.Left, anchor.Left));
-                    int intersectionHeight =
-                        Math.Max(0, Math.Min(candidate.Bottom, anchor.Bottom) - Math.Max(candidate.Top, anchor.Top));
+                    int intersectionWidth = Math.Max(0, Math.Min(candidate.Right, anchor.Right) - Math.Max(candidate.Left, anchor.Left));
+                    int intersectionHeight = Math.Max(0, Math.Min(candidate.Bottom, anchor.Bottom) - Math.Max(candidate.Top, anchor.Top));
                     double candidateArea = Math.Max(1.0, candidate.Width * candidate.Height);
                     double coveredRatio = intersectionWidth * intersectionHeight / candidateArea;
-
-                    bool nestedFragment =
-                        anchor.Width * anchor.Height > candidateArea * 1.35 &&
-                        coveredRatio >= 0.60;
-                    bool shortReflectionBelowFlame =
-                        anchor.Height >= anchor.Width * 1.25 &&
+                    bool nestedFragment = anchor.Width * anchor.Height > candidateArea * 1.35 && coveredRatio >= 0.60;
+                    bool shortReflectionBelowFlame = anchor.Height >= anchor.Width * 1.25 &&
                         anchor.Height >= candidate.Height * 1.8 &&
                         candidate.Height <= anchor.Height * 0.45 &&
-                        Math.Abs(
-                            candidate.X + candidate.Width / 2.0 -
-                            anchor.X - anchor.Width / 2.0) <=
-                        Math.Max(anchor.Width, candidate.Width) * 0.75 &&
+                        Math.Abs(candidate.X + candidate.Width / 2.0 - anchor.X - anchor.Width / 2.0) <= Math.Max(anchor.Width, candidate.Width) * 0.75 &&
                         candidate.Top >= anchor.Top + anchor.Height * 0.55 &&
                         candidate.Top <= anchor.Bottom + Math.Max(30, anchor.Height / 2);
 
@@ -632,14 +485,12 @@ namespace FireCandidateValidator
                         suppressed = true;
                         break;
                     }
-
                 }
 
                 if (!suppressed)
                 {
                     filtered.Add(candidate);
                 }
-
             }
 
             return filtered;
@@ -663,11 +514,7 @@ namespace FireCandidateValidator
         /// 기존 FIRE 마스크/형상 판정은 변경하지 않고, 녹화 영상의 창틀·블라인드·
         /// 화분·용기처럼 초기 BBox 정착 후 고정되는 후보만 시간축 후단에서 제외한다.
         /// </summary>
-        private List<Rect> FilterStaticHotspotTracks(
-            IList<Rect> candidates,
-            int frameWidth,
-            int frameHeight,
-            int confirmationFrameCount)
+        private List<Rect> FilterStaticHotspotTracks(IList<Rect> candidates, int frameWidth, int frameHeight, int confirmationFrameCount)
         {
             foreach (TestFireTrack track in _fireTracks)
             {
@@ -691,14 +538,10 @@ namespace FireCandidateValidator
                     double iou = CalculateIntersectionOverUnion(track.Rectangle, candidate);
                     double trackX = track.Rectangle.X + track.Rectangle.Width / 2.0;
                     double trackY = track.Rectangle.Y + track.Rectangle.Height / 2.0;
-                    double distance = Math.Sqrt(
-                        Math.Pow(candidateX - trackX, 2) + Math.Pow(candidateY - trackY, 2));
-                    double allowed = Math.Max(
-                        18.0,
-                        Math.Max(track.Rectangle.Width, track.Rectangle.Height) * 0.65);
-                    double score = iou >= 0.08
-                        ? iou
-                        : distance <= allowed ? 0.08 + (1.0 - distance / allowed) * 0.20 : 0.0;
+                    double distance = Math.Sqrt(Math.Pow(candidateX - trackX, 2) + Math.Pow(candidateY - trackY, 2));
+                    double allowed = Math.Max(18.0, Math.Max(track.Rectangle.Width, track.Rectangle.Height) * 0.65);
+                    double score = iou >= 0.08 ? iou : distance <= allowed ? 0.08 + (1.0 - distance / allowed) * 0.20 : 0.0;
+
                     if (score > bestScore)
                     {
                         bestScore = score;
@@ -715,17 +558,12 @@ namespace FireCandidateValidator
                 Rect previous = best.Rectangle;
                 double previousX = previous.X + previous.Width / 2.0;
                 double previousY = previous.Y + previous.Height / 2.0;
-                double movement = Math.Sqrt(
-                    Math.Pow(candidateX - previousX, 2) + Math.Pow(candidateY - previousY, 2));
+                double movement = Math.Sqrt(Math.Pow(candidateX - previousX, 2) + Math.Pow(candidateY - previousY, 2));
                 double previousArea = Math.Max(1.0, previous.Width * (double)previous.Height);
                 double currentArea = Math.Max(1.0, candidate.Width * (double)candidate.Height);
                 double areaChange = Math.Abs(currentArea - previousArea) / previousArea;
-                double diagonal = Math.Max(
-                    1.0,
-                    Math.Sqrt(previous.Width * (double)previous.Width +
-                              previous.Height * (double)previous.Height));
-                bool dynamic =
-                    movement >= Math.Max(2.5, diagonal * 0.035) ||
+                double diagonal = Math.Max(1.0, Math.Sqrt(previous.Width * (double)previous.Width + previous.Height * (double)previous.Height));
+                bool dynamic = movement >= Math.Max(2.5, diagonal * 0.035) ||
                     areaChange >= 0.12 ||
                     CalculateIntersectionOverUnion(previous, candidate) < 0.78;
 
@@ -745,17 +583,16 @@ namespace FireCandidateValidator
                 best.SeenFrames++;
                 best.MissingFrames = 0;
                 best.Matched = true;
-
-                bool edge = candidate.X <= 2 || candidate.Y <= 2 ||
-                    candidate.Right >= frameWidth - 2 || candidate.Bottom >= frameHeight - 2;
+                bool edge = candidate.X <= 2 || candidate.Y <= 2 || candidate.Right >= frameWidth - 2 || candidate.Bottom >= frameHeight - 2;
                 int observations = Math.Max(1, best.SeenFrames - 1);
                 double dynamicRatio = best.DynamicFrames / (double)observations;
                 int observationLimit = edge ? 45 : 150;
                 int stableLimit = edge ? 30 : 90;
                 double maximumDynamicRatio = edge ? 0.10 : 0.06;
+
                 if (!best.Suppressed &&
-                    ((best.SeenFrames >= observationLimit && dynamicRatio <= maximumDynamicRatio) ||
-                     best.StableFrames >= stableLimit))
+                    ((best.SeenFrames >= observationLimit &&
+                    dynamicRatio <= maximumDynamicRatio) || best.StableFrames >= stableLimit))
                 {
                     best.Suppressed = true;
                 }
@@ -770,10 +607,12 @@ namespace FireCandidateValidator
             for (int index = _fireTracks.Count - 1; index >= 0; index--)
             {
                 TestFireTrack track = _fireTracks[index];
+
                 if (!track.Matched)
                 {
                     track.MissingFrames++;
                 }
+
                 if (track.MissingFrames > Math.Max(24, confirmationFrameCount * 2))
                 {
                     _fireTracks.RemoveAt(index);
@@ -781,6 +620,7 @@ namespace FireCandidateValidator
             }
 
             List<Rect> visible = new List<Rect>();
+
             foreach (TestFireTrack track in _fireTracks)
             {
                 if (track.Matched && !track.Suppressed)
@@ -788,16 +628,15 @@ namespace FireCandidateValidator
                     visible.Add(track.Rectangle);
                 }
             }
+
             return visible;
         }
 
         private static double CalculateIntersectionOverUnion(Rect left, Rect right)
         {
             Rect intersection = left & right;
-            double intersectionArea = Math.Max(0, intersection.Width) *
-                (double)Math.Max(0, intersection.Height);
-            double unionArea = left.Width * (double)left.Height +
-                right.Width * (double)right.Height - intersectionArea;
+            double intersectionArea = Math.Max(0, intersection.Width) * (double)Math.Max(0, intersection.Height);
+            double unionArea = left.Width * (double)left.Height + right.Width * (double)right.Height - intersectionArea;
             return unionArea <= 0.0 ? 0.0 : intersectionArea / unionArea;
         }
 
@@ -830,11 +669,7 @@ namespace FireCandidateValidator
         /// <summary>
         /// MergeCandidates 동작 수행 함수.
         /// </summary>
-        private static List<Rect> MergeCandidates(
-            IList<Rect> source,
-            int frameWidth,
-            int frameHeight,
-            int fireBoxGroupingMode)
+        private static List<Rect> MergeCandidates(IList<Rect> source, int frameWidth, int frameHeight, int fireBoxGroupingMode)
         {
             if (source == null || source.Count == 0)
             {
@@ -845,6 +680,7 @@ namespace FireCandidateValidator
             if (fireBoxGroupingMode == 1)
             {
                 Rect unified = source[0];
+
                 for (int index = 1; index < source.Count; index++)
                 {
                     unified = Union(unified, source[index]);
@@ -858,27 +694,20 @@ namespace FireCandidateValidator
 
             // 2026-08-21: 큰 화염 조각은 대표 BBox에 흡수하고 떨어진 촛불은 분리 유지한다.
             List<Rect> grouped = new List<Rect>(source);
-            grouped.Sort((left, right) =>
-                (right.Width * right.Height).CompareTo(left.Width * left.Height));
+            grouped.Sort((left, right) => (right.Width * right.Height).CompareTo(left.Width * left.Height));
             int horizontalGap = Math.Max(6, frameWidth / 120);
             int verticalGap = Math.Max(8, frameHeight / 100);
             bool mergedAny;
-
             do
             {
                 mergedAny = false;
+
                 for (int first = 0; first < grouped.Count && !mergedAny; first++)
                 {
-                    int fragmentHorizontalGap =
-                        Math.Max(horizontalGap, (int)Math.Round(grouped[first].Width * 0.45));
-                    int fragmentVerticalGap =
-                        Math.Max(verticalGap, (int)Math.Round(grouped[first].Height * 0.75));
-                    Rect expanded = Expand(
-                        grouped[first],
-                        fragmentHorizontalGap,
-                        fragmentVerticalGap,
-                        frameWidth,
-                        frameHeight);
+                    int fragmentHorizontalGap = Math.Max(horizontalGap, (int)Math.Round(grouped[first].Width * 0.45));
+                    int fragmentVerticalGap = Math.Max(verticalGap, (int)Math.Round(grouped[first].Height * 0.75));
+                    Rect expanded = Expand(grouped[first], fragmentHorizontalGap, fragmentVerticalGap, frameWidth, frameHeight);
+
                     for (int second = first + 1; second < grouped.Count; second++)
                     {
                         if (!Intersects(expanded, grouped[second]))
@@ -891,9 +720,7 @@ namespace FireCandidateValidator
                         mergedAny = true;
                         break;
                     }
-
                 }
-
             }
             while (mergedAny);
 
@@ -902,16 +729,15 @@ namespace FireCandidateValidator
                 grouped[index] = Expand(grouped[index], 4, 4, frameWidth, frameHeight);
             }
 
-            grouped.Sort((left, right) =>
-                (right.Width * right.Height).CompareTo(left.Width * left.Height));
+            grouped.Sort((left, right) => (right.Width * right.Height).CompareTo(left.Width * left.Height));
+
             if (grouped.Count > 8)
             {
                 grouped.RemoveRange(8, grouped.Count - 8);
             }
 
             return grouped;
-
-            /* Legacy proximity merge retained below for reference only.
+        /* Legacy proximity merge retained below for reference only.
             List<Rect> merged = new List<Rect>(source);
             // 2026-08-14: 같은 화염의 인접 후보를 병합한다.
             int xPadding = Math.Max(16, frameWidth / 28);
@@ -980,8 +806,10 @@ namespace FireCandidateValidator
         /// Intersects 동작 수행 함수.
         /// </summary>
         private static bool Intersects(Rect first, Rect second) =>
-            first.X < second.X + second.Width && first.X + first.Width > second.X &&
-            first.Y < second.Y + second.Height && first.Y + first.Height > second.Y;
+            first.X < second.X + second.Width &&
+            first.X + first.Width > second.X &&
+            first.Y < second.Y + second.Height &&
+            first.Y + first.Height > second.Y;
 
         /// <summary>
         /// Union 동작 수행 함수.
@@ -1019,18 +847,15 @@ namespace FireCandidateValidator
                 Cv2.Subtract(grayscale, blurred, localContrast);
                 Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
                 Cv2.Threshold(grayscale, intensityMask, threshold, 255, ThresholdTypes.Binary);
-
                 // 팔레트 색상과 무관하게 원본 IR의 상대 밝기와 국부 대비만 분석한다.
                 // 장비에 연결하지 않은 오프라인 검증도 지원해야 한다.
                 // 다른 팔레트용 절대 임계값보다 낮더라도 주변보다 밝은 표적은 유지한다.
                 // 팔레트마다 밝기 기준이 다르므로 하나의 절대 임계값만으로 제외하지 않는다.
                 Cv2.BitwiseOr(intensityMask, contrastMask, colorMask);
-
                 // 검정 고온 팔레트의 표적은 주변 배경보다 어두운 영역으로 판단한다.
                 Cv2.Subtract(blurred, grayscale, localContrast);
                 Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
                 Cv2.BitwiseOr(colorMask, contrastMask, colorMask);
-
                 // 무지개 등 컬러 열상에서는 빨강·주황 계열 표적을 확인한다.
                 Cv2.CvtColor(bgr, hsv, ColorConversionCodes.BGR2HSV);
                 Cv2.InRange(hsv, new Scalar(0, 90, 120), new Scalar(12, 255, 255), redLow);
@@ -1038,6 +863,7 @@ namespace FireCandidateValidator
                 Cv2.InRange(hsv, new Scalar(13, 90, 150), new Scalar(35, 255, 255), orange);
                 Cv2.BitwiseOr(redLow, redHigh, intensityMask);
                 Cv2.BitwiseOr(intensityMask, orange, intensityMask);
+
                 // 2026-08-14: 색상 화염이 충분하면 배경 전체를 포함하는
                 // 밝기/대비 마스크 대신 온색 영역만 사용한다.
                 if (Cv2.CountNonZero(intensityMask) >= Math.Max(32, source.Width * source.Height / 5000))
@@ -1057,17 +883,13 @@ namespace FireCandidateValidator
                     Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
                     Cv2.Threshold(grayscale, brightMask, threshold, 255, ThresholdTypes.Binary);
                     Cv2.BitwiseOr(brightMask, contrastMask, redLow);
-
                     Cv2.Subtract(blurred, grayscale, localContrast);
                     Cv2.Threshold(localContrast, contrastMask, 10, 255, ThresholdTypes.Binary);
                     Cv2.Threshold(grayscale, darkMask, 255 - threshold, 255, ThresholdTypes.BinaryInv);
                     Cv2.BitwiseOr(darkMask, contrastMask, redHigh);
-
                     int brightPixelCount = Cv2.CountNonZero(brightMask);
                     int darkPixelCount = Cv2.CountNonZero(darkMask);
-                    bool useBrightPolarity =
-                        brightPixelCount > 0 &&
-                        (darkPixelCount == 0 || brightPixelCount <= darkPixelCount);
+                    bool useBrightPolarity = brightPixelCount > 0 && (darkPixelCount == 0 || brightPixelCount <= darkPixelCount);
 
                     if (useBrightPolarity)
                     {
@@ -1077,25 +899,20 @@ namespace FireCandidateValidator
                     {
                         redHigh.CopyTo(colorMask);
                     }
-
                 }
+
                 // 이전 검증 결과 영상을 다시 열었을 때 이미 그려진 순수 적색
                 // BBox/문구를 화염으로 재검출하지 않도록 주석 색상만 제외한다.
                 using (Mat annotationMask = new Mat())
                 using (Mat inverseAnnotationMask = new Mat())
                 {
-                    Cv2.InRange(
-                        bgr,
-                        new Scalar(0, 0, 215),
-                        new Scalar(45, 45, 255),
-                        annotationMask);
+                    Cv2.InRange(bgr, new Scalar(0, 0, 215), new Scalar(45, 45, 255), annotationMask);
                     Cv2.BitwiseNot(annotationMask, inverseAnnotationMask);
                     Cv2.BitwiseAnd(colorMask, inverseAnnotationMask, colorMask);
                 }
 
                 return colorMask.Clone();
             }
-
         }
 
         /// <summary>
@@ -1120,7 +937,6 @@ namespace FireCandidateValidator
 
             return result;
         }
-
     }
 
     internal sealed class FireCandidateAnalysis : IDisposable
@@ -1129,25 +945,14 @@ namespace FireCandidateValidator
         {
             get
             {
-                return new FireCandidateAnalysis(
-                    new Mat(),
-                    new List<Rect>(),
-                    false,
-                    0,
-                    0.0);
+                return new FireCandidateAnalysis(new Mat(), new List<Rect>(), false, 0, 0.0);
             }
-
         }
 
         /// <summary>
         /// FireCandidateAnalysis 동작 수행 함수.
         /// </summary>
-        internal FireCandidateAnalysis(
-            Mat mask,
-            IList<Rect> candidates,
-            bool isConfirmed,
-            int continuousFrames,
-            double largestAreaRatio)
+        internal FireCandidateAnalysis(Mat mask, IList<Rect> candidates, bool isConfirmed, int continuousFrames, double largestAreaRatio)
         {
             Mask = mask;
             Candidates = candidates;
@@ -1176,9 +981,6 @@ namespace FireCandidateValidator
                 Mask.Dispose();
                 Mask = null;
             }
-
         }
-
     }
-
 }

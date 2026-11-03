@@ -10,11 +10,17 @@ namespace OpenCvWpfTracking.Services.Video
     {
         private sealed class Sample
         {
-            internal Rect Anchor, Last;
+            internal Rect Anchor;
 
-            internal double[] AnchorPattern, LastPattern;
+            internal Rect Last;
 
-            internal DateTime Since, LastAt;
+            internal double[] AnchorPattern;
+
+            internal double[] LastPattern;
+
+            internal DateTime Since;
+
+            internal DateTime LastAt;
 
             internal int Observations;
 
@@ -98,22 +104,10 @@ namespace OpenCvWpfTracking.Services.Video
                     }
                     else
                     {
-                        bool rigid = SameGeometry(
-                            match.Anchor,
-                            rect
-                        ) &&
-                            SameGeometry(
-                            match.Last,
-                            rect
-                        ) &&
-                            SamePattern(
-                            match.LastPattern,
-                            pattern
-                        ) &&
-                            SamePattern(
-                            match.AnchorPattern,
-                            pattern
-                        );
+                        bool rigid = SameGeometry(match.Anchor, rect) &&
+                            SameGeometry(match.Last, rect) &&
+                            SamePattern(match.LastPattern, pattern) &&
+                            SamePattern(match.AnchorPattern, pattern);
 
                         if (!rigid)
                             Start(match, rect, pattern, now);
@@ -195,13 +189,7 @@ namespace OpenCvWpfTracking.Services.Video
                     );
                     Point[][] contours;
                     HierarchyIndex[] hierarchy;
-                    Cv2.FindContours(
-                        mask,
-                        out contours,
-                        out hierarchy,
-                        RetrievalModes.External,
-                        ContourApproximationModes.ApproxSimple
-                    );
+                    Cv2.FindContours(mask, out contours, out hierarchy, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
 
                     foreach (var contour in contours)
                     {
@@ -252,15 +240,9 @@ namespace OpenCvWpfTracking.Services.Video
             double area = Math.Max(1, a.Width * (double)a.Height);
             double dx = (a.X + a.Width * .5) - (b.X + b.Width * .5);
             double dy = (a.Y + a.Height * .5) - (b.Y + b.Height * .5);
-            return IoU(
-                a,
-                b
-            ) >= .94 &&
+            return IoU(a, b) >= .94 &&
                 Math.Abs(b.Width * (double)b.Height - area) / area <= .04 &&
-                Math.Sqrt(dx * dx + dy * dy) <= Math.Max(
-                1.5,
-                Math.Sqrt(area) * .006
-            );
+                Math.Sqrt(dx * dx + dy * dy) <= Math.Max(1.5, Math.Sqrt(area) * .006);
         }
 
         private static double[] Pattern(Mat gray, Rect rect)

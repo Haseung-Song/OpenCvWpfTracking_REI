@@ -53,13 +53,7 @@ namespace OpenCvWpfTracking.Services.Position
                 if (da.Empty() || db.Empty())
                     return null;
 
-                var pairs = matcher.KnnMatch(
-                    da,
-                    db,
-                    2
-                ).Where(p => p.Length == 2 &&
-                    p[0].Distance < .70 * p[1].Distance &&
-                    p[0].Distance < 60).Select(p => p[0]).GroupBy(p => p.TrainIdx).Select(g => g.OrderBy(p => p.Distance).First()).ToArray();
+                var pairs = matcher.KnnMatch(da, db, 2).Where(p => p.Length == 2 && p[0].Distance < .70 * p[1].Distance && p[0].Distance < 60).Select(p => p[0]).GroupBy(p => p.TrainIdx).Select(g => g.OrderBy(p => p.Distance).First()).ToArray();
 
                 if (pairs.Length < 18)
                     return null;
@@ -104,13 +98,7 @@ namespace OpenCvWpfTracking.Services.Position
                             new Point2f((float)((z.X + z.Width) * a.Width), (float)((z.Y + z.Height) * a.Height)),
                             new Point2f((float)(z.X * a.Width), (float)((z.Y + z.Height) * a.Height))
                         };
-                        var points = Cv2.PerspectiveTransform(
-                            corners,
-                            h
-                        ).Select(p => new System.Windows.Point(
-                            p.X / b.Width,
-                            p.Y / b.Height
-                        )).ToList();
+                        var points = Cv2.PerspectiveTransform(corners, h).Select(p => new System.Windows.Point(p.X / b.Width, p.Y / b.Height)).ToList();
 
                         if (points.Any(p => double.IsNaN(p.X) || double.IsInfinity(p.X) || double.IsNaN(p.Y) || double.IsInfinity(p.Y)))
                             return null;
@@ -165,16 +153,7 @@ namespace OpenCvWpfTracking.Services.Position
             Cv2.Resize(
                 image,
                 result,
-                new Size(
-                Math.Max(
-                1,
-                (int)Math.Round(image.Width * scale)
-            ),
-                Math.Max(
-                1,
-                (int)Math.Round(image.Height * scale)
-            )
-            ),
+                new Size(Math.Max(1, (int)Math.Round(image.Width * scale)), Math.Max(1, (int)Math.Round(image.Height * scale))),
                 0,
                 0,
                 InterpolationFlags.Area

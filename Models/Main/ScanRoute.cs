@@ -51,7 +51,8 @@ namespace OpenCvWpfTracking.Models.Main
             EoFocus,
             IrZoom,
             IrFocus
-        }.All(v => v >= 0 && v <= 1000);
+        }.All(v => v >= 0 &&
+            v <= 1000);
 
         public PresetPointOption AsPreset() =>
             new PresetPointOption(
@@ -89,7 +90,8 @@ namespace OpenCvWpfTracking.Models.Main
                 Points[i].Order = i + 1;
         }
 
-        public bool Valid => Points.Count <= 1000 && Speed >= 1 && Speed <= 60 && Delay >= 1 && Delay <= 60 && Points.All(p => p.Valid);
+        public bool Valid =>
+            Points.Count <= 1000 && Speed >= 1 && Speed <= 60 && Delay >= 1 && Delay <= 60 && Points.All(p => p.Valid);
 
         public ScanRoutePoint[] Queue()
         {
@@ -109,10 +111,13 @@ namespace OpenCvWpfTracking.Models.Main
 
                 return clone;
             }).ToArray();
-            return PingPong && result.Length > 2 ? result.Concat(result.Reverse().Skip(1).Take(result.Length - 2)).ToArray() : result;
+            return PingPong && result.Length > 2
+                ? result.Concat(result.Reverse().Skip(1).Take(result.Length - 2)).ToArray()
+                : result;
         }
 
-        public bool Near(ScanRoutePoint point) => Points.Any(p =>
+        public bool Near(ScanRoutePoint point) =>
+            Points.Any(p =>
         {
             double dx = Math.Abs(p.Pan - point.Pan) % 360;
             return Math.Min(dx, 360 - dx) < .01 && Math.Abs(p.Tilt - point.Tilt) < .01;
@@ -132,10 +137,8 @@ namespace OpenCvWpfTracking.Models.Main
             file = path;
         }
 
-        private static ScanRoute[] Empty() => Enumerable.Range(
-            0,
-            5
-        ).Select(i => new ScanRoute { Name = "경로 " + (char)('A' + i) }).ToArray();
+        private static ScanRoute[] Empty() =>
+            Enumerable.Range(0, 5).Select(i => new ScanRoute { Name = "경로 " + (char)('A' + i) }).ToArray();
 
         public ScanRoute[] Get(string device, bool ir)
         {
@@ -187,11 +190,7 @@ namespace OpenCvWpfTracking.Models.Main
                 // 손상된 원본은 보존하고 이후 화면 저장이 기본값으로 덮어쓰지 못하게 한다.
                 routes = Empty();
                 loadFailure = error;
-                Common.ConsoleLogHelper.Error(
-                    "LOCAL ROUTE",
-                    "Stored routes invalid; editing persistence blocked, original retained",
-                    error
-                );
+                Common.ConsoleLogHelper.Error("LOCAL ROUTE", "Stored routes invalid; editing persistence blocked, original retained", error);
             }
 
             banks.Add(key, routes);
@@ -209,95 +208,37 @@ namespace OpenCvWpfTracking.Models.Main
                 throw new InvalidOperationException("경로 설정 범위를 확인하세요.");
 
             string key = device + "|" + (ir ? "IR" : "EO");
-            var doc = File.Exists(file) ? XDocument.Load(file) : new XDocument(new XElement(
-                "ScanRoutes",
-                new XAttribute(
-                "Version",
-                1
-            )
-            ));
+            var doc = File.Exists(file)
+                ? XDocument.Load(file)
+                : new XDocument(new XElement("ScanRoutes", new XAttribute("Version", 1)));
             doc.Root.Elements("Bank").Where(e => (string)e.Attribute("Key") == key).Remove();
             doc.Root.Add(new XElement(
-                "Bank",
-                new XAttribute(
-                "Key",
-                key
-            ),
-                routes.Select((r, i) => new XElement(
-                "Route",
-                new XAttribute(
-                "Index",
-                i
-            ),
-                new XAttribute(
-                "Name",
-                r.Name ?? ("경로 " + (i + 1))
-            ),
-                new XAttribute(
-                "Speed",
-                r.Speed
-            ),
-                new XAttribute(
-                "Delay",
-                r.Delay
-            ),
-                new XAttribute(
-                "Individual",
-                r.IndividualSettings
-            ),
-                new XAttribute(
-                "PanOrder",
-                r.PanOrder
-            ),
-                new XAttribute(
-                "PingPong",
-                r.PingPong
-            ),
-                r.Points.Select(p => new XElement(
-                "Point",
-                new XAttribute(
-                "Order",
-                p.Order
-            ),
-                new XAttribute(
-                "Name",
-                p.Name ?? ""
-            ),
-                new XAttribute(
-                "Pan",
-                p.Pan
-            ),
-                new XAttribute(
-                "Tilt",
-                p.Tilt
-            ),
-                new XAttribute(
-                "EZ",
-                p.EoZoom
-            ),
-                new XAttribute(
-                "EF",
-                p.EoFocus
-            ),
-                new XAttribute(
-                "IZ",
-                p.IrZoom
-            ),
-                new XAttribute(
-                "IF",
-                p.IrFocus
-            ),
-                new XAttribute(
-                "Speed",
-                p.Speed
-            ),
-                new XAttribute(
-                "Delay",
-                p.Delay
-            )
-            ))
-            ))
-            ));
+                    "Bank",
+                    new XAttribute("Key", key),
+                    routes.Select((r, i) => new XElement(
+                            "Route",
+                            new XAttribute("Index", i),
+                            new XAttribute("Name", r.Name ?? ("경로 " + (i + 1))),
+                            new XAttribute("Speed", r.Speed),
+                            new XAttribute("Delay", r.Delay),
+                            new XAttribute("Individual", r.IndividualSettings),
+                            new XAttribute("PanOrder", r.PanOrder),
+                            new XAttribute("PingPong", r.PingPong),
+                            r.Points.Select(p => new XElement(
+                                    "Point",
+                                    new XAttribute("Order", p.Order),
+                                    new XAttribute("Name", p.Name ?? ""),
+                                    new XAttribute("Pan", p.Pan),
+                                    new XAttribute("Tilt", p.Tilt),
+                                    new XAttribute("EZ", p.EoZoom),
+                                    new XAttribute("EF", p.EoFocus),
+                                    new XAttribute("IZ", p.IrZoom),
+                                    new XAttribute("IF", p.IrFocus),
+                                    new XAttribute("Speed", p.Speed),
+                                    new XAttribute("Delay", p.Delay)
+                                ))
+                        ))
+                ));
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             string tmp = file + ".tmp";
             doc.Save(tmp);

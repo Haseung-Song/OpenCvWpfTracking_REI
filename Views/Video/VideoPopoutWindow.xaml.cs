@@ -30,7 +30,6 @@ namespace OpenCvWpfTracking
     public partial class VideoPopoutWindow : Window
     {
         #region [필드]
-
         private readonly MainViewModel _viewModel;
 
         private readonly double _eoViewportAspectRatio;
@@ -86,20 +85,11 @@ namespace OpenCvWpfTracking
         private Key? _activeLensKey;
 
         #endregion
-
         #region [생성자]
-
         /// <summary>
         /// VideoPopoutWindow 동작 수행 함수.
         /// </summary>
-        public VideoPopoutWindow(
-            MainViewModel viewModel,
-            VideoPopoutCameraType cameraType,
-            double eoViewportAspectRatio,
-            double irViewportAspectRatio,
-            Visual eoRenderedVideo,
-            Visual irRenderedVideo
-        )
+        public VideoPopoutWindow(MainViewModel viewModel, VideoPopoutCameraType cameraType, double eoViewportAspectRatio, double irViewportAspectRatio, Visual eoRenderedVideo, Visual irRenderedVideo)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _cameraType = cameraType;
@@ -111,10 +101,7 @@ namespace OpenCvWpfTracking
             DataContext = _viewModel;
             ConfigureCameraBinding();
             LegacyVideoIntegration.Attach(CalibratedCrosshair, CameraImage, _viewModel, () => _cameraType == VideoPopoutCameraType.Ir);
-            Func<double> aspect = () => VideoShortcutGuide.SourceAspect(
-                CameraImage,
-                _cameraType == VideoPopoutCameraType.Ir ? 1.25 : 16.0 / 9
-            );
+            Func<double> aspect = () => VideoShortcutGuide.SourceAspect(CameraImage, _cameraType == VideoPopoutCameraType.Ir ? 1.25 : 16.0 / 9);
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content, EoAlarmPanel, CameraImage, aspect);
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content, IrAlarmPanel, CameraImage, aspect);
             VideoShortcutGuide.AttachVideoLabelPositions((Grid)Content, CameraImage, ZoomRatioHost, CameraStatusText, aspect);
@@ -156,9 +143,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [창 이벤트]
-
         /// <summary>
         /// 2026-09-29: 메인 EO/IR 영상의 현재 크기와 화면 위치를 분리 창의
         /// 최초 Normal 크기로 사용한다. 별도 Decoder는 생성하지 않는다.
@@ -241,8 +226,8 @@ namespace OpenCvWpfTracking
             }
             catch (InvalidOperationException)
             {
-                // MainWindow에서 분리 창으로 입력 소유권이 전환되는 짧은 구간에
-                // 버튼 상태가 먼저 해제되면 Normal 창만 유지한다.
+            // MainWindow에서 분리 창으로 입력 소유권이 전환되는 짧은 구간에
+            // 버튼 상태가 먼저 해제되면 Normal 창만 유지한다.
             }
         }
 
@@ -277,16 +262,13 @@ namespace OpenCvWpfTracking
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (InlineOpticalCalibration.IsActive(CameraImage) ||
-                InlineOpticalCalibration.IsSettingsHit(
-                CameraImage,
-                e.OriginalSource as DependencyObject
-            ))
+                InlineOpticalCalibration.IsSettingsHit(CameraImage, e.OriginalSource as DependencyObject))
             {
                 _centerClickPending = false;
                 return;
             }
 
-            // V31_6: 배율 표시 버튼은 영상 PTZF 대상 선택·중심 이동 입력으로 취급하지 않는다.
+            // 2026-11-03 정비: 배율 표시 버튼은 영상 PTZF 대상 선택·중심 이동 입력으로 취급하지 않는다.
             if (ZoomRatioToggleButton.IsMouseOver)
             {
                 _centerClickPending = false;
@@ -429,7 +411,8 @@ namespace OpenCvWpfTracking
             WindowState = WindowState.Normal;
             ResizeMode = ResizeMode.CanResize;
             Topmost = false;
-            Dispatcher.BeginInvoke(new Action(() =>
+            Dispatcher.BeginInvoke(
+                new Action(() =>
             {
                 if (_initialWindowBounds.IsEmpty)
                 {
@@ -449,7 +432,9 @@ namespace OpenCvWpfTracking
                 {
                     _isApplyingViewportAspectRatio = false;
                 }
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }),
+                System.Windows.Threading.DispatcherPriority.Loaded
+            );
         }
 
         /// <summary>
@@ -534,9 +519,9 @@ namespace OpenCvWpfTracking
 
         private static double NormalizeAspectRatio(double aspectRatio, double fallbackAspectRatio)
         {
-            return double.IsNaN(aspectRatio) ||
-                double.IsInfinity(aspectRatio) ||
-                aspectRatio <= 0.0 ? fallbackAspectRatio : aspectRatio;
+            return double.IsNaN(aspectRatio) || double.IsInfinity(aspectRatio) || aspectRatio <= 0.0
+                ? fallbackAspectRatio
+                : aspectRatio;
         }
 
         private void CameraInfoToggleButton_Click(object sender, RoutedEventArgs e)
@@ -577,13 +562,7 @@ namespace OpenCvWpfTracking
 
             if (!IsTextInputFocused() &&
                 !_viewModel.IsControlInputLocked &&
-                _viewModel.HandleControlKey(
-                "popout",
-                e.Key,
-                true,
-                _cameraType == VideoPopoutCameraType.Ir,
-                e.IsRepeat
-            ))
+                _viewModel.HandleControlKey("popout", e.Key, true, _cameraType == VideoPopoutCameraType.Ir, e.IsRepeat))
             {
                 e.Handled = true;
                 return;
@@ -744,9 +723,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [카메라 연결]
-
         /// <summary>
         /// 분리 창에서 표시하고 제어할 카메라를 전환한다.
         ///
@@ -860,17 +837,8 @@ namespace OpenCvWpfTracking
             }
 
             ConfigureRenderedVideoBrush(renderedVideo, imagePropertyName);
-            ConfigureDetectionOverlayBinding(
-                detectionBoxesPropertyName,
-                fireSmokeBoxesPropertyName,
-                videoWidthPropertyName,
-                videoHeightPropertyName
-            );
-            BindingOperations.SetBinding(
-                CameraStatusText,
-                TextBlock.TextProperty,
-                new Binding(statusPropertyName) { Mode = BindingMode.OneWay }
-            );
+            ConfigureDetectionOverlayBinding(detectionBoxesPropertyName, fireSmokeBoxesPropertyName, videoWidthPropertyName, videoHeightPropertyName);
+            BindingOperations.SetBinding(CameraStatusText, TextBlock.TextProperty, new Binding(statusPropertyName) { Mode = BindingMode.OneWay });
             CameraStatusText.Foreground = LegacyVideoIntegration.ChannelBrush(_cameraType == VideoPopoutCameraType.Ir);
             // 2026-09-17: 저해상도 IR/BW 팔레트에서 상태 문구가 영상에 묻히지 않도록
             // IR은 작게 표시하고 두 채널 모두 검정 외곽 그림자로 명암 대비를 확보한다.
@@ -924,7 +892,8 @@ namespace OpenCvWpfTracking
                 CameraImage.Fill = imageBrush;
                 ConsoleLogHelper.State(
                     "VIDEO POPOUT / RENDER SYNC",
-                    "Original frame binding applied / CAMERA=" + GetCameraName() + " / ASPECT=" + _currentViewportAspectRatio.ToString("F4")
+                    "Original frame binding applied / CAMERA=" + GetCameraName() +
+                    " / ASPECT=" + _currentViewportAspectRatio.ToString("F4")
                 );
             }
             catch (Exception exception)
@@ -938,12 +907,7 @@ namespace OpenCvWpfTracking
         /// 2026-08-25: 분리 창의 AI BBox를 현재 EO/IR 카메라 컬렉션과
         /// 원본 영상 해상도에 바인딩하여 메인창과 동일한 좌표로 표시한다.
         /// </summary>
-        private void ConfigureDetectionOverlayBinding(
-            string detectionBoxesPropertyName,
-            string fireSmokeBoxesPropertyName,
-            string videoWidthPropertyName,
-            string videoHeightPropertyName
-        )
+        private void ConfigureDetectionOverlayBinding(string detectionBoxesPropertyName, string fireSmokeBoxesPropertyName, string videoWidthPropertyName, string videoHeightPropertyName)
         {
             ZoomRatioText.SetBinding(
                 System.Windows.Controls.TextBlock.TextProperty,
@@ -969,16 +933,13 @@ namespace OpenCvWpfTracking
             }
 
             string zonePropertyName = _cameraType == VideoPopoutCameraType.Ir ? "IrZoneOverlay" : "EoZoneOverlay";
-            PopoutZoneOverlay.SetBinding(ZoneOverlayView.ItemsProperty,
-                new Binding(zonePropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
-            ConsoleLogHelper.State("VIDEO POPOUT / ZONE OVERLAY",
-                "메인 구역 공유 / CAMERA=" + GetCameraName() + " / SOURCE=" + zonePropertyName);
-
-            PopoutAiOverlay.SetBinding(ZoneOverlayView.ItemsProperty, new Binding(detectionBoxesPropertyName) { Source = _viewModel });
-            PopoutVisionOverlay.SetBinding(
+            PopoutZoneOverlay.SetBinding(
                 ZoneOverlayView.ItemsProperty,
-                new Binding(fireSmokeBoxesPropertyName) { Source = _viewModel }
+                new Binding(zonePropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
             );
+            ConsoleLogHelper.State("VIDEO POPOUT / ZONE OVERLAY", "메인 구역 공유 / CAMERA=" + GetCameraName() + " / SOURCE=" + zonePropertyName);
+            PopoutAiOverlay.SetBinding(ZoneOverlayView.ItemsProperty, new Binding(detectionBoxesPropertyName) { Source = _viewModel });
+            PopoutVisionOverlay.SetBinding(ZoneOverlayView.ItemsProperty, new Binding(fireSmokeBoxesPropertyName) { Source = _viewModel });
 
             try
             {
@@ -1024,18 +985,12 @@ namespace OpenCvWpfTracking
             {
                 PopoutDetectionItems.ItemsSource = null;
                 PopoutFireSmokeDetectionItems.ItemsSource = null;
-                ConsoleLogHelper.Error(
-                    "VIDEO POPOUT / AI OVERLAY",
-                    "Detection overlay binding failed / CAMERA=" + GetCameraName(),
-                    exception
-                );
+                ConsoleLogHelper.Error("VIDEO POPOUT / AI OVERLAY", "Detection overlay binding failed / CAMERA=" + GetCameraName(), exception);
             }
         }
 
         #endregion
-
         #region [단축키 제어]
-
         /// <summary>
         /// 분리 영상 창의 EO / IR 전환 단축키 여부 확인
         /// </summary>
@@ -1052,7 +1007,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         private static bool IsPanTiltShortcutKey(Key key)
         {
-            return key == Key.Left || key == Key.Right || key == Key.Up || key == Key.Down;
+            return OpenCvWpfTracking.Common.ControlShortcutKeys.IsPanTiltKey(key);
         }
 
         /// <summary>
@@ -1060,7 +1015,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         private static bool IsLensShortcutKey(Key key)
         {
-            return key == Key.W || key == Key.S || key == Key.A || key == Key.D;
+            return OpenCvWpfTracking.Common.ControlShortcutKeys.IsLensKey(key);
         }
 
         /// <summary>
@@ -1147,7 +1102,6 @@ namespace OpenCvWpfTracking
                 _viewModel.StopIrFocusMove();
             }
         }
-
         #endregion
     }
 }

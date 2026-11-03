@@ -24,16 +24,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public ControlAgentType AgentType { get; }
 
-        public ControlAgentProfileOption(
-            string displayName,
-            string ipAddress,
-            string port,
-            string eoPresetName,
-            string irPresetName,
-            bool isDirectInput = false,
-            ControlAgentType agentType = ControlAgentType.WebAgent,
-            bool positionSensors = false
-        )
+        public ControlAgentProfileOption(string displayName, string ipAddress, string port, string eoPresetName, string irPresetName, bool isDirectInput = false, ControlAgentType agentType = ControlAgentType.WebAgent, bool positionSensors = false)
         {
             DisplayName = displayName;
             IpAddress = ipAddress;
@@ -81,8 +72,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private string SessionIrAddress => _requestedIrAddress ?? IrSourceAddress;
 
         private bool IsSelectedConnectionTarget =>
-            (_requestedControlProfile == null ||
-                _requestedControlProfile == SelectedControlAgentProfile) &&
+            (_requestedControlProfile == null || _requestedControlProfile == SelectedControlAgentProfile) &&
             SessionControlIp == ControlAgentIp &&
             SessionControlPort == ControlAgentPortText &&
             SessionEoAddress == EoSourceAddress &&
@@ -98,15 +88,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _laTcpService?.IsConnected == true ||
             ControlAgentConnectionStatusText == "Connected" ||
             ControlAgentConnectionStatusText == "Connecting" ||
-            (_controlAgentReconnectCts != null &&
-                !_controlAgentReconnectCts.IsCancellationRequested) ||
-            (_cts != null &&
-                !_cts.IsCancellationRequested);
+            (_controlAgentReconnectCts != null && !_controlAgentReconnectCts.IsCancellationRequested) ||
+            (_cts != null && !_cts.IsCancellationRequested);
 
         private bool IsDeviceSettingsLocked =>
             !_isLoadingRtspCommunicationSettings &&
-            (HasActiveDeviceSession ||
-                System.Threading.Volatile.Read(ref _deviceConnectRequested) != 0);
+            (HasActiveDeviceSession || System.Threading.Volatile.Read(ref _deviceConnectRequested) != 0);
 
         /// <summary>활성 세션을 변경하지 않고 중복 연결 안내만 갱신한다.</summary>
         private void ShowAlreadyConnected()
@@ -120,22 +107,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>장비 CSV 목록과 직접 입력 항목을 화면에 제공한다.</summary>
-        public ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; } =
-            new ObservableCollection<ControlAgentProfileOption>(
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries
-                    .Select(e => new ControlAgentProfileOption(
-                        e.Label + " EO/IR",
-                        e.AgentIp,
-                        e.AgentPort,
-                        e.EoLabel,
-                        e.IrLabel,
-                        agentType: e.AgentType,
-                        positionSensors: e.PositionSensors))
-                    .Concat(new[]
-                    {
-                        new ControlAgentProfileOption(
-                            "직접 입력", null, null, null, null, isDirectInput: true)
-                    }));
+        public ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; } = new ObservableCollection<ControlAgentProfileOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new ControlAgentProfileOption(
+                    e.Label + " EO/IR",
+                    e.AgentIp,
+                    e.AgentPort,
+                    e.EoLabel,
+                    e.IrLabel,
+                    agentType: e.AgentType,
+                    positionSensors: e.PositionSensors
+                )).Concat(new[] { new ControlAgentProfileOption("직접 입력", null, null, null, null, isDirectInput: true) }));
 
         public ControlAgentProfileOption SelectedControlAgentProfile
         {
@@ -164,6 +144,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(IsSystemDateTimeTabVisible));
                 OnPropertyChanged(nameof(PanTiltZeroRouteText));
                 _applyingPresetProfile = true;
+
                 try
                 {
                     ApplyControlAgentProfile(value);
@@ -192,7 +173,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 2026-09-21: 저장된 CONNECT 프로필을 복원할 때도 화면의 활성 Agent와
                 // 패킷 좌표계를 동시에 맞춘다. 기존에는 IP/Port와 unsigned 좌표만 복원되어
                 // Web Agent 프로필에서도 CURRENT STATUS가 LA AGENT로 남을 수 있었다.
-                SelectedEquipmentStatusMode = _selectedControlAgentProfile.AgentType == ControlAgentType.LaAgent ? EquipmentStatusMode.Rooftop : EquipmentStatusMode.Environment;
+                SelectedEquipmentStatusMode = _selectedControlAgentProfile.AgentType == ControlAgentType.LaAgent
+                    ? EquipmentStatusMode.Rooftop
+                    : EquipmentStatusMode.Environment;
                 ApplyControlAgentPanCoordinateMode(_selectedControlAgentProfile);
                 ApplyProfilePanTiltSpeedDefault(_selectedControlAgentProfile);
 
@@ -202,16 +185,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ControlAgentPortText = _selectedControlAgentProfile.Port;
                 }
 
-                RtspSourceOption profileEoSource = !_selectedControlAgentProfile.IsDirectInput ? EoRtspSourceOptions.FirstOrDefault(item => string.Equals(
-                    item.DisplayName,
-                    _selectedControlAgentProfile.EoPresetName,
-                    StringComparison.OrdinalIgnoreCase
-                )) : null;
-                RtspSourceOption profileIrSource = !_selectedControlAgentProfile.IsDirectInput ? IrRtspSourceOptions.FirstOrDefault(item => string.Equals(
-                    item.DisplayName,
-                    _selectedControlAgentProfile.IrPresetName,
-                    StringComparison.OrdinalIgnoreCase
-                )) : null;
+                RtspSourceOption profileEoSource = !_selectedControlAgentProfile.IsDirectInput
+                    ? EoRtspSourceOptions.FirstOrDefault(item => string.Equals(item.DisplayName, _selectedControlAgentProfile.EoPresetName, StringComparison.OrdinalIgnoreCase))
+                    : null;
+                RtspSourceOption profileIrSource = !_selectedControlAgentProfile.IsDirectInput
+                    ? IrRtspSourceOptions.FirstOrDefault(item => string.Equals(item.DisplayName, _selectedControlAgentProfile.IrPresetName, StringComparison.OrdinalIgnoreCase))
+                    : null;
                 string eoAddress = settings.SavedEoRtspUrl?.Trim();
                 string irAddress = settings.SavedIrRtspUrl?.Trim();
 
@@ -239,7 +218,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // Viewer 선택과 독립적으로 복원한다.
                 string aiEoAddress = settings.SavedAiEoRtspUrl?.Trim();
                 string aiIrAddress = settings.SavedAiIrRtspUrl?.Trim();
-
                 // 이름으로 선택한 AI 입력은 현재 CSV 주소를 따른다. 직접 입력 주소는 보존한다.
                 aiEoAddress = RestoreNamedRtspAddress(EoRtspSourceOptions, settings.SavedAiEoRtspPreset, aiEoAddress);
                 aiIrAddress = RestoreNamedRtspAddress(IrRtspSourceOptions, settings.SavedAiIrRtspPreset, aiIrAddress);
@@ -366,9 +344,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-09-18: CONNECT 프로필이 LA/WEB 활성 모드의 유일한 결정점이다.
             SelectedEquipmentStatusMode = profile.AgentType == ControlAgentType.LaAgent ? EquipmentStatusMode.Rooftop : EquipmentStatusMode.Environment;
             ApplyControlAgentPanCoordinateMode(profile);
-            ResetV292Session();
-            OnPropertyChanged(nameof(IsAf292PanelVisible));
-            OnPropertyChanged(nameof(V292Enabled));
+            ResetWebAgentControlSession();
+            OnPropertyChanged(nameof(IsAutoFocusPanelVisible));
+            OnPropertyChanged(nameof(IsWebAgentFocusControlEnabled));
             ApplyProfilePanTiltSpeedDefault(profile);
 
             foreach (var name in new[]
@@ -397,16 +375,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ControlAgentIp = profile.IpAddress;
             ControlAgentPortText = profile.Port;
-            RtspSourceOption eo = EoRtspSourceOptions.First(item => string.Equals(
-                item.DisplayName,
-                profile.EoPresetName,
-                StringComparison.OrdinalIgnoreCase
-            ));
-            RtspSourceOption ir = IrRtspSourceOptions.First(item => string.Equals(
-                item.DisplayName,
-                profile.IrPresetName,
-                StringComparison.OrdinalIgnoreCase
-            ));
+            RtspSourceOption eo = EoRtspSourceOptions.First(item => string.Equals(item.DisplayName, profile.EoPresetName, StringComparison.OrdinalIgnoreCase));
+            RtspSourceOption ir = IrRtspSourceOptions.First(item => string.Equals(item.DisplayName, profile.IrPresetName, StringComparison.OrdinalIgnoreCase));
             bool wasLoading = _isLoadingRtspCommunicationSettings;
             _isLoadingRtspCommunicationSettings = true;
 
@@ -447,11 +417,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SelectedControlAgentProfile.PositionSensors ||
             (IsControlAgentDirectInput &&
             OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Any(e => e.PositionSensors &&
-            string.Equals(
-            e.AgentIp,
-            ControlAgentIp?.Trim(),
-            StringComparison.OrdinalIgnoreCase
-        )));
+            string.Equals(e.AgentIp, ControlAgentIp?.Trim(), StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
         /// 2026-10-01: 시스템 시간 조회/설정은 WebAgent 프로필에서만 표시한다.
@@ -515,7 +481,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.State(
                     "CONTROL COORDINATE MODE",
-                    "PROFILE=" + (profile?.DisplayName ?? "UNKNOWN") + " / MODE=" + (_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED") + " / SOURCE=CONTROL_AGENT_PROFILE"
+                    "PROFILE=" + (profile?.DisplayName ?? "UNKNOWN") +
+                    " / MODE=" + (_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED") +
+                    " / SOURCE=CONTROL_AGENT_PROFILE"
                 );
             }
         }
@@ -523,43 +491,43 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 저장된 이름과 주소로 영상 소스를 찾아 복원하며 직접 입력 항목도 처리한다.
         /// </summary>
-        private static string RestoreNamedRtspAddress(
-            System.Collections.Generic.IEnumerable<RtspSourceOption> options,
-            string savedDisplayName,
-            string address)
+        private static string RestoreNamedRtspAddress(System.Collections.Generic.IEnumerable<RtspSourceOption> options, string savedDisplayName, string address)
         {
-            var named = options.FirstOrDefault(option => !option.IsDirectInput && string.Equals(
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName),
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
-                StringComparison.OrdinalIgnoreCase));
-
+            var named = options.FirstOrDefault(option => !option.IsDirectInput &&
+                string.Equals(
+                    OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName),
+                    OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
+                    StringComparison.OrdinalIgnoreCase
+                ));
             return named?.Address ?? address;
         }
 
         /// <summary>이전 표시 이름과 현재 주소를 비교하여 RTSP 선택 항목을 복원한다.</summary>
-        private static RtspSourceOption ResolveRtspSource(
-            System.Collections.Generic.IEnumerable<RtspSourceOption> options,
-            string savedDisplayName,
-            string address
-        )
+        private static RtspSourceOption ResolveRtspSource(System.Collections.Generic.IEnumerable<RtspSourceOption> options, string savedDisplayName, string address)
         {
             RtspSourceOption byName = options.FirstOrDefault(option => string.Equals(
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName),
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
-                StringComparison.OrdinalIgnoreCase
-            ));
+                    OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName),
+                    OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
+                    StringComparison.OrdinalIgnoreCase
+                ));
 
-            if (byName != null && (byName.IsDirectInput || string.Equals(OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(byName.Address), OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(address), StringComparison.OrdinalIgnoreCase)))
+            if (byName != null &&
+                (byName.IsDirectInput ||
+                string.Equals(
+                OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(byName.Address),
+                OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(address),
+                StringComparison.OrdinalIgnoreCase
+            )))
             {
                 return byName;
             }
 
             return options.FirstOrDefault(option => !option.IsDirectInput &&
                 string.Equals(
-                OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
-                OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(address),
-                StringComparison.OrdinalIgnoreCase
-            )) ?? options.First(option => option.IsDirectInput);
+                    OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address),
+                    OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(address),
+                    StringComparison.OrdinalIgnoreCase
+                )) ?? options.First(option => option.IsDirectInput);
         }
 
         /// <summary>
@@ -567,11 +535,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private ControlAgentProfileOption ResolveControlAgentProfile(string savedDisplayName)
         {
-            ControlAgentProfileOption exact = ControlAgentProfiles.FirstOrDefault(item => string.Equals(
-                item.DisplayName,
-                savedDisplayName,
-                StringComparison.OrdinalIgnoreCase
-            ));
+            ControlAgentProfileOption exact = ControlAgentProfiles.FirstOrDefault(item => string.Equals(item.DisplayName, savedDisplayName, StringComparison.OrdinalIgnoreCase));
 
             if (exact != null)
             {
@@ -579,51 +543,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             // ER-WATCHER 2의 과거 이름을 다른 WATCHER의 첫 항목으로 잘못 복원하지 않는다.
-            var renamed = ControlAgentProfiles.FirstOrDefault(item => !item.IsDirectInput && string.Equals(
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(item.DisplayName),
-                OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
-                StringComparison.OrdinalIgnoreCase));
+            var renamed = ControlAgentProfiles.FirstOrDefault(item => !item.IsDirectInput &&
+                string.Equals(
+                    OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(item.DisplayName),
+                    OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName),
+                    StringComparison.OrdinalIgnoreCase
+                ));
+
             if (renamed != null)
                 return renamed;
 
             if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
-                (savedDisplayName.IndexOf(
-                "MR500",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0 ||
-                savedDisplayName.IndexOf(
-                "환경부",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0))
+                (savedDisplayName.IndexOf("MR500", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                savedDisplayName.IndexOf("환경부", StringComparison.OrdinalIgnoreCase) >= 0))
             {
-                return ControlAgentProfiles.FirstOrDefault(p => p.DisplayName.IndexOf(
-                    "MR500",
-                    StringComparison.OrdinalIgnoreCase
-                ) >= 0) ?? ControlAgentProfiles.First();
+                return ControlAgentProfiles.FirstOrDefault(p => p.DisplayName.IndexOf("MR500", StringComparison.OrdinalIgnoreCase) >= 0) ?? ControlAgentProfiles.First();
+            }
+
+            if (!string.IsNullOrWhiteSpace(savedDisplayName) && savedDisplayName.IndexOf("LR1000", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return ControlAgentProfiles.FirstOrDefault(p => p.DisplayName.IndexOf("LR1000", StringComparison.OrdinalIgnoreCase) >= 0) ?? ControlAgentProfiles.First();
             }
 
             if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
-                savedDisplayName.IndexOf(
-                "LR1000",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0)
+                savedDisplayName.IndexOf("ER-WATCHER", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return ControlAgentProfiles.FirstOrDefault(p => p.DisplayName.IndexOf(
-                    "LR1000",
-                    StringComparison.OrdinalIgnoreCase
-                ) >= 0) ?? ControlAgentProfiles.First();
-            }
-
-            if (!string.IsNullOrWhiteSpace(savedDisplayName) &&
-                savedDisplayName.IndexOf(
-                "ER-WATCHER",
-                StringComparison.OrdinalIgnoreCase
-            ) >= 0)
-            {
-                return ControlAgentProfiles.FirstOrDefault(p => p.DisplayName.IndexOf(
-                    "ER-WATCHER",
-                    StringComparison.OrdinalIgnoreCase
-                ) >= 0) ?? ControlAgentProfiles.First();
+                return ControlAgentProfiles.FirstOrDefault(p => p.DisplayName.IndexOf("ER-WATCHER", StringComparison.OrdinalIgnoreCase) >= 0) ?? ControlAgentProfiles.First();
             }
 
             if (string.Equals(savedDisplayName, "직접 입력", StringComparison.OrdinalIgnoreCase))
@@ -639,12 +584,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 2026-10-01: 폐기된 임시 주소와 구 환경부 프리셋을 현재 장비 주소로 변환한다.
         /// 사용자가 직접 입력한 다른 정상 RTSP 주소는 변경하지 않는다.
         /// </summary>
-        private static void MigrateLegacyRtspSettings(
-            string savedEoPreset,
-            string savedIrPreset,
-            ref string eoAddress,
-            ref string irAddress
-        )
+        private static void MigrateLegacyRtspSettings(string savedEoPreset, string savedIrPreset, ref string eoAddress, ref string irAddress)
         {
             if (string.Equals(eoAddress, "rtsp://192.168.1.25:554/AVStream1_1", StringComparison.OrdinalIgnoreCase))
             {

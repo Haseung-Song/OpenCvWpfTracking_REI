@@ -41,17 +41,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isIrRtspAddressValid;
 
         #region [LA 통신]
-
         #region [LA 연결]
-
         /// <summary>
         /// Control Agent TCP 연결 상태 UI 갱신
         /// </summary>
-        private void SetControlAgentConnectionStatus(
-            string statusText,
-            string statusColor,
-            CancellationToken token = default(CancellationToken)
-        )
+        private void SetControlAgentConnectionStatus(string statusText, string statusColor, CancellationToken token = default(CancellationToken))
         {
             if (token.IsCancellationRequested)
                 return;
@@ -273,11 +267,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (_isEoRtspAddressValid &&
                 _isIrRtspAddressValid &&
-                string.Equals(
-                eoRtspAddress,
-                irRtspAddress,
-                StringComparison.OrdinalIgnoreCase
-            ))
+                string.Equals(eoRtspAddress, irRtspAddress, StringComparison.OrdinalIgnoreCase))
             {
                 _isEoRtspAddressValid = false;
                 _isIrRtspAddressValid = false;
@@ -308,16 +298,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            bool supportedScheme = string.Equals(
-                uri.Scheme,
-                "rtsp",
-                StringComparison.OrdinalIgnoreCase
-            ) ||
-                string.Equals(
-                uri.Scheme,
-                "rtsps",
-                StringComparison.OrdinalIgnoreCase
-            );
+            bool supportedScheme = string.Equals(uri.Scheme, "rtsp", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(uri.Scheme, "rtsps", StringComparison.OrdinalIgnoreCase);
             // RTSP는 표준 포트 554를 생략할 수 있다. .NET Uri는 RTSP의
             // 기본 포트를 내장하지 않아 생략 시 Port=-1을 반환하므로 허용한다.
             bool validPort = uri.Port == -1 || (uri.Port > 0 && uri.Port <= 65535);
@@ -462,7 +444,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 catch (OperationCanceledException)
                 {
-                    // 명시적 연결 해제 또는 새 세션이 현재 화면 상태의 소유권을 가진다.
+                // 명시적 연결 해제 또는 새 세션이 현재 화면 상태의 소유권을 가진다.
                 }
                 catch (Exception ex)
                 {
@@ -481,9 +463,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [LA 수신]
-
         /// <summary>
         /// [CONTROL AGENT] [TCP] 수신 데이터 처리 함수
         ///
@@ -507,9 +487,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [LA 패킷 처리]
-
         /// <summary>
         /// [CONTROL AGENT] 응답 [Packet] 처리 함수
         ///
@@ -531,13 +509,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool canPrintLog = CanPrintLaLog();
             bool canPrintExtendedStatusLog = CanPrintLaExtendedStatusLog();
-
             switch (packet.Function)
             {
                 case 0x02:
                     ParseWebAgentTiltLimitPacket(packet.RawData);
                     break;
-
                 case 0x01:
                     /// <summary>
                     /// [Pan] / [Tilt] / [Zoom] / [Focus] 상태 정보
@@ -552,17 +528,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     Console.WriteLine("[LA PACKET] [Pan] / [Tilt] / [Zoom] / [Focus] Status");
                     Console.WriteLine();
                     ParseLaStatusPacket(packet.RawData, true);
-
                     ConsoleLogHelper.PrintLine();
                     break;
-
                 case 0x31:
                     // 2026-10-06: 기존 0x01 PTZF와 동일한 위치값에
                     // MCB/SCB 원본 상태 바이트를 추가한 고정 13Byte 응답.
                     ParseLaStatusPacket(packet.RawData, canPrintLog, false);
                     ApplyDevicePowerStatus(packet.RawData[10], packet.RawData[11]);
                     break;
-
                 case 0x07:
                     /// <summary>
                     /// [Function] [0x07]
@@ -587,24 +560,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// D6 03 → 982
                     /// E8 03 → 1000
                     /// </summary>
-                    ParseLaIrCameraStatusPacket(
-                        packet,
-                        canPrintExtendedStatusLog);
-
+                    ParseLaIrCameraStatusPacket(packet, canPrintExtendedStatusLog);
                     break;
-
                 case 0xA1:
-
                     /// <summary>
                     /// 상태값은 모든 Packet마다 파싱하고,
                     /// Console 로그만 설정된 주기로 제한한다.
                     /// </summary>
-                    ParseLaExtendedStatusPacket(
-                        packet.RawData,
-                        canPrintExtendedStatusLog);
-
+                    ParseLaExtendedStatusPacket(packet.RawData, canPrintExtendedStatusLog);
                     break;
-
                 case 0xA3:
                     /// <summary>
                     /// [Function] [0xA3]
@@ -616,20 +580,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// Console 출력 생략
                     /// </summary>
                     break;
-
                 case 0x04:
                     /// <summary>
                     /// [LRF] 거리측정 응답 Packet
                     /// </summary>
-
                     ConsoleLogHelper.PrintLine();
                     Console.WriteLine("[LA PACKET] [LRF] Distance Packet");
                     Console.WriteLine();
                     ParseLrfDistancePacket(packet.RawData);
-
                     ConsoleLogHelper.PrintLine();
                     break;
-
                 case 0x23:
                 case 0x24:
                 case 0x25:
@@ -651,7 +611,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 case 0x36:
                     ParseWebAgentV18Packet(packet);
                     break;
-
                 default:
                     /// <summary>
                     /// 정의되지 않은 [Function] 번호
@@ -659,21 +618,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     /// [LRF] / [GPS] / 기타 확장 [Packet] 확인용으로
                     /// 로그 제한 없이 출력한다.
                     /// </summary>
-
                     ConsoleLogHelper.PrintLine();
                     Console.WriteLine($"[LA PACKET] Unknown Function: 0x{packet.Function:X2}");
                     Console.WriteLine();
-
                     foreach (byte b in packet.RawData)
                     {
                         Console.Write($"{b:X2} ");
                     }
-                    Console.WriteLine();
 
+                    Console.WriteLine();
                     ConsoleLogHelper.PrintLine();
                     break;
             }
-
         }
 
         /// <summary>
@@ -684,19 +640,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (_controlCommandService == null ||
                 !_controlCommandService.UseUnsignedWebAgentTiltCoordinates ||
-                Interlocked.Exchange(
-                ref _webAgentTiltLimitQueryRequested,
-                1
-            ) != 0)
+                Interlocked.Exchange(ref _webAgentTiltLimitQueryRequested, 1) != 0)
             {
                 return;
             }
 
             bool sent = _controlCommandService.RequestWebAgentTiltLimits();
-            ConsoleLogHelper.Command(
-                "WEB AGENT TILT LIMIT",
-                "Query requested / " + "PACKET=FF 01 00 B5 02 00 B8 / " + "RESULT=" + sent
-            );
+            ConsoleLogHelper.Command("WEB AGENT TILT LIMIT", "Query requested / " + "PACKET=FF 01 00 B5 02 00 B8 / " + "RESULT=" + sent);
 
             if (!sent)
             {
@@ -735,10 +685,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 negativeLimit > 0.0 ||
                 positiveRaw + negativeRaw == 0)
             {
-                ConsoleLogHelper.Warning(
-                    "WEB AGENT TILT LIMIT",
-                    "Invalid limit values / " + $"POS_RAW={positiveRaw} / NEG_RAW={negativeRaw}"
-                );
+                ConsoleLogHelper.Warning("WEB AGENT TILT LIMIT", "Invalid limit values / " + $"POS_RAW={positiveRaw} / NEG_RAW={negativeRaw}");
                 return;
             }
 
@@ -808,9 +755,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [LA 로그 보조 함수]
-
         /// <summary>
         /// [CONTROL AGENT] 상태 로그 출력 여부 확인
         ///
@@ -852,9 +797,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-
         #region [LA 패킷 해석]
-
         /// <summary>
         /// [CONTROL AGENT] [Status Packet] 파싱
         ///
@@ -904,11 +847,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double previousTilt = _currentTilt;
             short previousZoom = _currentEoZoom;
             byte previousPower = _currentPowerStatus;
-            double panDegree = _controlCommandService.UseUnsignedWebAgentPanCoordinates ? ConvertWebAgentPanToGuiAngle(panUnsignedRaw / 100.0) : panSignedRaw / 100.0;
-            double tiltDegree = _controlCommandService.UseUnsignedWebAgentTiltCoordinates ? NormalizeUnsignedWebAgentTilt(
-                tiltUnsignedRaw / 100.0,
-                _currentTilt
-            ) : tiltSignedRaw / 100.0;
+            double panDegree = _controlCommandService.UseUnsignedWebAgentPanCoordinates
+                ? ConvertWebAgentPanToGuiAngle(panUnsignedRaw / 100.0)
+                : panSignedRaw / 100.0;
+            double tiltDegree = _controlCommandService.UseUnsignedWebAgentTiltCoordinates
+                ? NormalizeUnsignedWebAgentTilt(tiltUnsignedRaw / 100.0, _currentTilt)
+                : tiltSignedRaw / 100.0;
 
             /// <summary>
             /// -180도와 +180도는 동일한 물리 위치다.
@@ -969,7 +913,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 long afterCommandMs = _lastEoFocusCommandElapsedMs > 0 ? receiveElapsedMs - _lastEoFocusCommandElapsedMs : -1;
                 int difference = focusRaw - previousFocus;
                 Console.WriteLine();
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS RECEIVE #{receiveSequence}] " + $"RAW={packet[8]:X2} {packet[9]:X2} / " + $"PREV={previousFocus} / " + $"CURRENT={focusRaw} / " + $"DELTA={difference:+#;-#;0} / " + $"LAST_CMD={_lastEoFocusCommandName} / " + $"AFTER_CMD=" + $"{(afterCommandMs >= 0 ? afterCommandMs + "ms" : "N/A")}");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " +
+                    $"[FOCUS RECEIVE #{receiveSequence}] " +
+                    $"RAW={packet[8]:X2} {packet[9]:X2} / " +
+                    $"PREV={previousFocus} / " +
+                    $"CURRENT={focusRaw} / " +
+                    $"DELTA={difference:+#;-#;0} / " +
+                    $"LAST_CMD={_lastEoFocusCommandName} / " +
+                    $"AFTER_CMD=" +
+                    $"{(afterCommandMs >= 0 ? afterCommandMs + "ms" : "N/A")}");
                 ConsoleLogHelper.PrintLine();
             }
 
@@ -995,7 +947,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.State(
                 "WEB AGENT PAN/TILT POSITION",
-                $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " + $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " + $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " + $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " + $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " + $"MODE={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}"
+                $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " +
+                $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " +
+                $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " +
+                $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " +
+                $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " +
+                $"MODE={(_controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}"
             );
         }
 
@@ -1055,13 +1012,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return signedTilt;
         }
 
-        private void NotifyEoCurrentStatusChanged(
-            bool panChanged = true,
-            bool tiltChanged = true,
-            bool zoomChanged = true,
-            bool focusChanged = true,
-            bool powerChanged = true
-        )
+        private void NotifyEoCurrentStatusChanged(bool panChanged = true, bool tiltChanged = true, bool zoomChanged = true, bool focusChanged = true, bool powerChanged = true)
         {
             // 예상 목표값이 아니라 실제 수신한 값을 근거로 사용한다.
             if (panChanged)
@@ -1152,11 +1103,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     if (dispatcher.HasShutdownStarted)
                         return;
 
-                    _ = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                    _ = dispatcher.BeginInvoke(
+                            DispatcherPriority.Background,
+                            new Action(() =>
                     {
                         Interlocked.Exchange(ref _eoStatusNotificationPending, 0);
                         Notify();
-                    }));
+                    })
+                        );
                     queued = true;
                 }
                 finally
@@ -1185,7 +1139,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             void Notify()
             {
                 // 동일한 주기 상태는 IR·상태 바인딩 전체를 다시 그리지 않는다.
-                string signature = CurrentIrZoomText + "|" + CurrentIrFocusText + "|" + RooftopIrZoomStatusText + "|" + EnvironmentIrZoomStatusText + "|" + RooftopIrFocusStatusText + "|" + EnvironmentIrFocusStatusText + "|" + PanTiltSpeedDisplayText;
+                string signature = CurrentIrZoomText +
+                    "|" + CurrentIrFocusText +
+                    "|" + RooftopIrZoomStatusText +
+                    "|" + EnvironmentIrZoomStatusText +
+                    "|" + RooftopIrFocusStatusText +
+                    "|" + EnvironmentIrFocusStatusText +
+                    "|" + PanTiltSpeedDisplayText;
 
                 if (_lastIrUiStatusSignature == signature)
                     return;
@@ -1217,11 +1177,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     if (dispatcher.HasShutdownStarted)
                         return;
 
-                    _ = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                    _ = dispatcher.BeginInvoke(
+                            DispatcherPriority.Background,
+                            new Action(() =>
                     {
                         Interlocked.Exchange(ref _irStatusNotificationPending, 0);
                         Notify();
-                    }));
+                    })
+                        );
                     queued = true;
                 }
                 finally
@@ -1239,7 +1202,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void ApplyEnvironmentIrCommandedPosition(int? zoomPosition, int? focusPosition, string reason)
         {
-            // V31_5: 실제 상태가 이미 수신되는 장비의 현재값을 명령값으로 덮어쓰지 않는다.
+            // 2026-11-03 정비: 실제 상태가 이미 수신되는 장비의 현재값을 명령값으로 덮어쓰지 않는다.
             if (Interlocked.Read(ref _irLensStatusVersion) > 0)
                 return;
 
@@ -1339,7 +1302,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (previousIrZoom != _currentIrZoom || previousIrFocus != _currentIrFocus)
             {
                 Console.WriteLine();
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + "[IR STATUS CHANGED] " + $"ZOOM_RAW={previousIrZoom}→{_currentIrZoom} / " + $"ZOOM_STD={GetCurrentIrZoomStandardPosition()} / " + $"FOCUS_RAW={previousIrFocus}→{_currentIrFocus} / " + $"FOCUS_STD={GetCurrentIrFocusStandardPosition()}");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " +
+                    "[IR STATUS CHANGED] " +
+                    $"ZOOM_RAW={previousIrZoom}→{_currentIrZoom} / " +
+                    $"ZOOM_STD={GetCurrentIrZoomStandardPosition()} / " +
+                    $"FOCUS_RAW={previousIrFocus}→{_currentIrFocus} / " +
+                    $"FOCUS_STD={GetCurrentIrFocusStandardPosition()}");
                 ConsoleLogHelper.PrintLine();
             }
 
@@ -1407,9 +1375,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             LrfDistanceText = $"DISTANCE : {distance:F1} m";
             Console.WriteLine($"[LRF] Distance : {distance:F1} m");
         }
-
         #endregion
-
         #endregion
     }
 }

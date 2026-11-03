@@ -23,7 +23,11 @@ namespace OpenCvWpfTracking
 
         private int _calibrationGeneration;
 
-        private readonly string _equipment, _eoSource, _irSource;
+        private readonly string _equipment;
+
+        private readonly string _eoSource;
+
+        private readonly string _irSource;
 
         private readonly ComboBox _camera = new ComboBox
         {
@@ -43,7 +47,9 @@ namespace OpenCvWpfTracking
 
         private ZoneFrameContext _pendingFrame;
 
-        private string _pendingCamera, _pendingSignature;
+        private string _pendingCamera;
+
+        private string _pendingSignature;
 
         private DateTime _pendingUntil;
 
@@ -125,10 +131,7 @@ namespace OpenCvWpfTracking
             FontWeight = FontWeights.Bold
         };
 
-        private readonly TextBlock[] _values = Enumerable.Range(
-            0,
-            6
-        ).Select(i => new TextBlock { Foreground = Brush("#A9E2F3"), TextTrimming = TextTrimming.CharacterEllipsis }).ToArray();
+        private readonly TextBlock[] _values = Enumerable.Range(0, 6).Select(i => new TextBlock { Foreground = Brush("#A9E2F3"), TextTrimming = TextTrimming.CharacterEllipsis }).ToArray();
 
         private readonly DispatcherTimer _timer;
 
@@ -136,8 +139,9 @@ namespace OpenCvWpfTracking
 
         private DateTime _lastCaptureStateLogAt = DateTime.MinValue;
 
+        private Button _eoTab;
 
-        private Button _eoTab, _irTab;
+        private Button _irTab;
 
         private Viewbox _view;
 
@@ -231,22 +235,8 @@ namespace OpenCvWpfTracking
             {
                 Converter = new ZoneThumbnailHeightConverter()
             };
-            previewHeight.Bindings.Add(new Binding("ActualHeight")
-            {
-                RelativeSource = new RelativeSource(
-                RelativeSourceMode.FindAncestor,
-                typeof(ListBox),
-                1
-            )
-            });
-            previewHeight.Bindings.Add(new Binding("Items.Count")
-            {
-                RelativeSource = new RelativeSource(
-                RelativeSourceMode.FindAncestor,
-                typeof(ListBox),
-                1
-            )
-            });
+            previewHeight.Bindings.Add(new Binding("ActualHeight") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(ListBox), 1) });
+            previewHeight.Bindings.Add(new Binding("Items.Count") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(ListBox), 1) });
             previewHeight.Bindings.Add(new Binding("ActualHeight") { ElementName = "ZoneItemLabel" });
             thumbnail.SetBinding(FrameworkElement.HeightProperty, previewHeight);
             thumbnail.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 6, 0, 4));
@@ -280,7 +270,9 @@ namespace OpenCvWpfTracking
             _irTab = MakeButton("IR", () => _camera.SelectedIndex = 1);
             actions.Children.Add(_eoTab);
             actions.Children.Add(_irTab);
-            actions.Children.Add(MakeButton("그리기", () =>
+            actions.Children.Add(MakeButton(
+                    "그리기",
+                    () =>
             {
                 if (_pendingPreset != null)
                     throw new InvalidOperationException("자동 캡처 완료 후 그리세요.");
@@ -291,8 +283,10 @@ namespace OpenCvWpfTracking
                 CancelDrawing();
                 _drawing = true;
                 Notice("영상 위에서 드래그하세요.");
-            }));
+            }
+                ));
             actions.Children.Add(MakeButton("다시 그리기", BeginRedraw));
+
             foreach (Button button in actions.Children)
             {
                 button.MinWidth = 88;
@@ -379,7 +373,9 @@ namespace OpenCvWpfTracking
             {
                 Margin = new Thickness(0, 2, 0, 0)
             };
-            tools.Children.Add(MakeButton("장면 삭제", () =>
+            tools.Children.Add(MakeButton(
+                    "장면 삭제",
+                    () =>
             {
                 if (_scene != null)
                 {
@@ -387,25 +383,15 @@ namespace OpenCvWpfTracking
                     _scene = null;
                     RefreshScenes();
                 }
-            }));
+            }
+                ));
             tools.Children.Add(MakeButton("장면 상세", Advanced));
             status.Children.Add(tools);
             var zonePanel = new Grid();
             zonePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             zonePanel.RowDefinitions.Add(new RowDefinition());
             zonePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            zonePanel.Children.Add(new TextBlock
-            {
-                Text = "ZONE EDIT",
-                FontWeight = FontWeights.Bold,
-                Foreground = Brush("#FFD166"),
-                Margin = new Thickness(
-                0,
-                0,
-                0,
-                6
-            )
-            });
+            zonePanel.Children.Add(new TextBlock { Text = "ZONE EDIT", FontWeight = FontWeights.Bold, Foreground = Brush("#FFD166"), Margin = new Thickness(0, 0, 0, 6) });
             var zoneList = new Grid();
             zoneList.Children.Add(_zones);
             zoneList.Children.Add(_zoneEmpty);
@@ -497,6 +483,7 @@ namespace OpenCvWpfTracking
             {
                 if (e.Key != Key.Escape || (_pendingPreset == null && !_drawing && !_start.HasValue))
                     return;
+
                 _pendingPreset = null;
                 CancelDrawing();
                 Notice("그리기·자동 캡처 대기 취소");
@@ -529,21 +516,30 @@ namespace OpenCvWpfTracking
             text.SetBinding(TextBlock.TextProperty, new Binding("."));
             var style = new Style(typeof(TextBlock));
             style.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+
             foreach (string choice in selector.Items)
             {
-                var trigger = new DataTrigger { Binding = new Binding("."), Value = choice };
+                var trigger = new DataTrigger
+                {
+                    Binding = new Binding("."),
+                    Value = choice
+                };
                 trigger.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brush(palette(choice))));
                 style.Triggers.Add(trigger);
             }
+
             text.SetValue(FrameworkElement.StyleProperty, style);
             border.AppendChild(text);
-            selector.ItemTemplate = new DataTemplate { VisualTree = border };
-
+            selector.ItemTemplate = new DataTemplate
+            {
+                VisualTree = border
+            };
         }
 
         private static SolidColorBrush Brush(string hex) => (SolidColorBrush)new BrushConverter().ConvertFromString(hex);
 
-        private static Border Card(UIElement child, Thickness margin) => new Border
+        private static Border Card(UIElement child, Thickness margin) =>
+            new Border
         {
             Child = child,
             Background = Brush("#343E47"),
@@ -554,25 +550,8 @@ namespace OpenCvWpfTracking
             Margin = margin
         };
 
-        private static void Heading(
-            Panel p,
-            string text,
-            string color,
-            double size = 12
-        ) =>
-            p.Children.Add(new TextBlock
-            {
-                Text = text,
-                Foreground = Brush(color),
-                FontWeight = FontWeights.Bold,
-                FontSize = size,
-                Margin = new Thickness(
-            0,
-            0,
-            0,
-            5
-        )
-            });
+        private static void Heading(Panel p, string text, string color, double size = 12) =>
+            p.Children.Add(new TextBlock { Text = text, Foreground = Brush(color), FontWeight = FontWeights.Bold, FontSize = size, Margin = new Thickness(0, 0, 0, 5) });
 
         private static void AddCell(Grid g, UIElement e, int row, int col)
         {
@@ -619,17 +598,22 @@ namespace OpenCvWpfTracking
         {
             if (_zoneEditorClosed || Dispatcher.HasShutdownStarted)
                 return;
+
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => HandleZoneReferenceChanged(operation)));
                 return;
             }
+
             if (_equipment != _vm.ZoneEquipmentKey || (operation != null && operation.EquipmentKey != _equipment))
                 return;
+
             _pendingPreset = null;
             CancelDrawing();
+
             if (operation != null)
                 FireSmokeZoneService.RebaseZero(_data, operation);
+
             _calibrationGeneration = _vm.ZoneCalibrationGeneration;
             Draw();
             Notice(operation == null ? "ZERO 기준 확인 완료 / 구역 보존" : "ZERO 좌표 보정 완료 / 구역·선택 유지");
@@ -639,13 +623,10 @@ namespace OpenCvWpfTracking
         {
             get
             {
-                if (_equipment != _vm.ZoneEquipmentKey ||
-                    _eoSource != _vm.EoSourceAddress ||
-                    _irSource != _vm.IrSourceAddress)
+                if (_equipment != _vm.ZoneEquipmentKey || _eoSource != _vm.EoSourceAddress || _irSource != _vm.IrSourceAddress)
                     _identityChanged = true;
 
-                return !_identityChanged && !_vm.IsZoneReferencePending &&
-                    _calibrationGeneration == _vm.ZoneCalibrationGeneration;
+                return !_identityChanged && !_vm.IsZoneReferencePending && _calibrationGeneration == _vm.ZoneCalibrationGeneration;
             }
         }
 
@@ -662,9 +643,7 @@ namespace OpenCvWpfTracking
             if (_presets.ItemsSource == null || before != after)
             {
                 _presets.ItemsSource = list;
-                _presets.SelectedItem = list.FirstOrDefault(p => old != null &&
-                    p.Kind == old.Kind &&
-                    p.Point.Number == old.Point.Number);
+                _presets.SelectedItem = list.FirstOrDefault(p => old != null && p.Kind == old.Kind && p.Point.Number == old.Point.Number);
             }
         }
 
@@ -695,12 +674,14 @@ namespace OpenCvWpfTracking
             string cancel = !IdentityValid ||
                 _pendingCamera != (string)_camera.SelectedItem ||
                 frame.Epoch != _pendingFrame.Epoch ||
-                frame.ChannelEpoch != _pendingFrame.ChannelEpoch ? "연결·장비·채널 변경" : DateTime.UtcNow >= _pendingUntil ? "도착 확인 시간 초과 / " + _pendingWaitReason : !_vm.GetZonePresets().Any(p => p.Kind == _pendingPreset.Kind &&
-                ReferenceEquals(
-                p.Point,
-                _pendingPreset.Point
-            )) ||
-                _pendingSignature != MainViewModel.ZonePresetSignature(_pendingPreset.Point) ? "프리셋 변경" : null;
+                frame.ChannelEpoch != _pendingFrame.ChannelEpoch
+                ? "연결·장비·채널 변경"
+                : DateTime.UtcNow >= _pendingUntil
+                    ? "도착 확인 시간 초과 / " + _pendingWaitReason
+                    : !_vm.GetZonePresets().Any(p => p.Kind == _pendingPreset.Kind && ReferenceEquals(p.Point, _pendingPreset.Point)) ||
+                _pendingSignature != MainViewModel.ZonePresetSignature(_pendingPreset.Point)
+                        ? "프리셋 변경"
+                        : null;
 
             if (cancel != null)
             {
@@ -736,45 +717,54 @@ namespace OpenCvWpfTracking
 
             TryAutoCapture();
             _health.Text = _vm.PositionStatusText;
-            string reason = _vm.IsZoneReferencePending ? "ZERO 좌표 기준 확인 대기 / 구역 보존" :
-                !IdentityValid ? "장비·소스 변경 / 창을 다시 여세요" : _vm.ZoneCaptureState((string)_camera.SelectedItem);
+            string reason = _vm.IsZoneReferencePending
+                ? "ZERO 좌표 기준 확인 대기 / 구역 보존"
+                : !IdentityValid ? "장비·소스 변경 / 창을 다시 여세요" : _vm.ZoneCaptureState((string)_camera.SelectedItem);
             string mismatch = _scene == null ? null : FireSmokeZoneService.MatchFailure(_scene, _vm.CaptureZoneFrame(_scene.Camera));
-            string state = reason != null ? "미확인 / " + reason : _scene == null ? "캡처 가능" : !_vm.ZonePresetCurrent(_scene) ||
-                _scene.Invalidated ? "재등록 필요" : mismatch == null ? "적용 가능 / 시점 일치" : mismatch;
+            string state = reason != null
+                ? "미확인 / " + reason
+                : _scene == null
+                    ? "캡처 가능"
+                    : !_vm.ZonePresetCurrent(_scene) || _scene.Invalidated ? "재등록 필요" : mismatch == null ? "적용 가능 / 시점 일치" : mismatch;
 
             if (_pendingPreset != null)
                 state = "자동 캡처 대기\n" + _pendingWaitReason;
 
             // 같은 상태는 반복 기록하지 않고 전환이 잦아도 2초에 한 번만 현재 수치를 남긴다.
             string stateKey = (string)_camera.SelectedItem + "|" + state;
+
             if (stateKey != _lastLoggedCaptureState && (DateTime.UtcNow - _lastCaptureStateLogAt).TotalSeconds >= 2)
             {
                 var position = _vm.CaptureZoneFrame((string)_camera.SelectedItem).Position;
-                OpenCvWpfTracking.Common.ConsoleLogHelper.State("ZONE READINESS",
-                    "채널=" + _camera.SelectedItem + " / 상태=" + state.Replace("\n", " · ") +
-                    " / 팬=" + position.Pan + " / 틸트=" + position.Tilt +
-                    " / EO줌=" + position.EoZoom + " / IR줌(원시)=" + position.IrZoom +
-                    " / 안정화=약2초·줌허용±5·PT허용0.05도");
+                OpenCvWpfTracking.Common.ConsoleLogHelper.State(
+                    "ZONE READINESS",
+                    "채널=" + _camera.SelectedItem +
+                    " / 상태=" + state.Replace("\n", " · ") +
+                    " / 팬=" + position.Pan +
+                    " / 틸트=" + position.Tilt +
+                    " / EO줌=" + position.EoZoom +
+                    " / IR줌(원시)=" + position.IrZoom +
+                    " / 안정화=약2초·줌허용±5·PT허용0.05도"
+                );
                 _lastLoggedCaptureState = stateKey;
                 _lastCaptureStateLogAt = DateTime.UtcNow;
             }
 
             _state.Text = state;
             _state.ToolTip = state + "\n지원 EO의 PTZ/ZOOM 시점 연동은 화각 모델 기반이며 장비 이동/ZERO 후에는 재등록해야 합니다.";
-            _state.Foreground = Brush(state.StartsWith("적용 가능") ||
-                state == "캡처 가능" ? "#9FE870" : state == "재등록 필요" ||
-                !IdentityValid ? "#FF8A80" : "#FFD166");
+            _state.Foreground = Brush(state.StartsWith("적용 가능") || state == "캡처 가능"
+                ? "#9FE870"
+                : state == "재등록 필요" || !IdentityValid ? "#FF8A80" : "#FFD166");
             _values[0].Text = (string)_camera.SelectedItem;
-            _values[1].Text = _scene == null ||
-                _scene.PresetNumber == 0 ? "DIRECT" : _scene.PresetKind + " P" + _scene.PresetNumber.ToString("00");
+            _values[1].Text = _scene == null || _scene.PresetNumber == 0
+                ? "DIRECT"
+                : _scene.PresetKind + " P" + _scene.PresetNumber.ToString("00");
             _values[2].Text = _scene == null ? "—" : _scene.Pan.ToString("F2") + "° / " + _scene.Tilt.ToString("F2") + "°";
             _values[3].Text = _scene == null ? "—" : _scene.Zoom + " / 1000";
             DateTimeOffset date;
-            _values[4].Text = _scene != null &&
-                DateTimeOffset.TryParse(
-                _scene.RegisteredAt,
-                out date
-            ) ? date.ToString("yyyy-MM-dd HH:mm:ss") : "—";
+            _values[4].Text = _scene != null && DateTimeOffset.TryParse(_scene.RegisteredAt, out date)
+                ? date.ToString("yyyy-MM-dd HH:mm:ss")
+                : "—";
             _values[5].Text = _vm.SelectedControlAgentProfile.DisplayName;
 
             foreach (var v in _values)
@@ -789,16 +779,19 @@ namespace OpenCvWpfTracking
             _eoTab.Background = Brush(camera == "EO" ? "#286B8A" : "#34596D");
             _irTab.Background = Brush(camera == "IR" ? "#286B8A" : "#34596D");
             _refreshingScenes = true;
+
             try
             {
                 _scenes.ItemsSource = _data.Scenes.Where(s => s.EquipmentKey == _equipment && s.Camera == camera && _vm.IsZoneSceneForCurrentAgent(s)).ToList();
                 _scenes.SelectedItem = wanted != null && _scenes.Items.Contains(wanted)
-                    ? wanted : _scenes.Items.Cast<FireSmokeScene>().FirstOrDefault();
+                    ? wanted
+                    : _scenes.Items.Cast<FireSmokeScene>().FirstOrDefault();
             }
             finally
             {
                 _refreshingScenes = false;
             }
+
             SelectScene();
 
             if (_scenes.SelectedItem == null)
@@ -819,8 +812,10 @@ namespace OpenCvWpfTracking
 
             var scene = _scenes.SelectedItem as FireSmokeScene;
             CancelDrawing();
+
             if (!ReferenceEquals(_scene, scene))
                 _selectedZone = null;
+
             _scene = scene;
 
             if (_scene == null)
@@ -833,10 +828,7 @@ namespace OpenCvWpfTracking
         }
 
         private static string DefaultSceneName(string camera, int number) =>
-            "[" + camera + "] 탐지 구역 " + Math.Max(
-            1,
-            number
-        ).ToString(CultureInfo.InvariantCulture);
+            "[" + camera + "] 탐지 구역 " + Math.Max(1, number).ToString(CultureInfo.InvariantCulture);
 
         private void CaptureScene(MainViewModel.ZonePresetOption preset)
         {
@@ -846,9 +838,10 @@ namespace OpenCvWpfTracking
             CommitScene();
             var s = _vm.CaptureZoneScene((string)_camera.SelectedItem, out BitmapSource image);
             _vm.LinkZonePreset(s, preset);
-            OpenCvWpfTracking.Common.ConsoleLogHelper.State("ZONE CAPTURE",
-                "재캡처 연결 확정 / CAMERA=" + s.Camera + " / PRESET=" + s.PresetKind +
-                " P" + s.PresetNumber.ToString("00"));
+            OpenCvWpfTracking.Common.ConsoleLogHelper.State(
+                "ZONE CAPTURE",
+                "재캡처 연결 확정 / CAMERA=" + s.Camera + " / PRESET=" + s.PresetKind + " P" + s.PresetNumber.ToString("00")
+            );
             int number = preset?.Point.Number ?? 1;
 
             if (preset == null)
@@ -911,8 +904,8 @@ namespace OpenCvWpfTracking
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             panel.Children.Add(MakeButton(
-                "적용",
-                () =>
+                    "적용",
+                    () =>
             {
                 if (!IdentityValid || !_data.Scenes.Contains(editedScene))
                     throw new InvalidOperationException("장면 변경 / 다시 여세요.");
@@ -920,12 +913,7 @@ namespace OpenCvWpfTracking
                 double n;
 
                 if (string.IsNullOrWhiteSpace(name.Text) ||
-                    !double.TryParse(
-                    input.Text,
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    out n
-                ) ||
+                    !double.TryParse(input.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out n) ||
                     n < .05 ||
                     n > 2)
                     throw new InvalidOperationException("이름과 0.05~2° 범위를 확인하세요.");
@@ -935,7 +923,7 @@ namespace OpenCvWpfTracking
                 RefreshScenes();
                 w.Close();
             }
-            ));
+                ));
             w.Show();
         }
 
@@ -1004,6 +992,7 @@ namespace OpenCvWpfTracking
             // 목록 갱신 중의 임시 선택 해제는 사용자 선택 변경으로 처리하지 않는다.
             var selected = _selectedZone ?? _zones.SelectedItem as FireSmokeZone;
             _refreshingZones = true;
+
             try
             {
                 _zones.ItemsSource = null;
@@ -1014,6 +1003,7 @@ namespace OpenCvWpfTracking
             {
                 _refreshingZones = false;
             }
+
             SelectZone();
             UpdateStrokes();
         }
@@ -1035,21 +1025,13 @@ namespace OpenCvWpfTracking
                 t.Measure(new Size(_canvas.Width, double.PositiveInfinity));
                 var placement = ZoneOverlayView.LabelBounds(
                     new Rect(
-                    Canvas.GetLeft(box) * _displayScale,
-                    Canvas.GetTop(box) * _displayScale,
-                    box.Width * _displayScale,
-                    box.Height * _displayScale
-                ),
-                    new Size(
-                    t.DesiredSize.Width * _displayScale,
-                    t.DesiredSize.Height * _displayScale
-                ),
-                    new Rect(
-                    0,
-                    0,
-                    _canvas.Width * _displayScale,
-                    _canvas.Height * _displayScale
-                )
+                        Canvas.GetLeft(box) * _displayScale,
+                        Canvas.GetTop(box) * _displayScale,
+                        box.Width * _displayScale,
+                        box.Height * _displayScale
+                    ),
+                    new Size(t.DesiredSize.Width * _displayScale, t.DesiredSize.Height * _displayScale),
+                    new Rect(0, 0, _canvas.Width * _displayScale, _canvas.Height * _displayScale)
                 );
                 Canvas.SetLeft(t, placement.X / _displayScale);
                 Canvas.SetTop(t, placement.Y / _displayScale);
@@ -1059,13 +1041,7 @@ namespace OpenCvWpfTracking
         private static BitmapSource CreateThumbnail(BitmapSource source, FireSmokeZone zone)
         {
             int left = Math.Max(0, (int)(zone.X * source.PixelWidth) - 16), top = Math.Max(0, (int)(zone.Y * source.PixelHeight) - 16);
-            int right = Math.Min(
-                source.PixelWidth,
-                (int)Math.Ceiling((zone.X + zone.Width) * source.PixelWidth) + 16
-            ), bottom = Math.Min(
-                source.PixelHeight,
-                (int)Math.Ceiling((zone.Y + zone.Height) * source.PixelHeight) + 16
-            );
+            int right = Math.Min(source.PixelWidth, (int)Math.Ceiling((zone.X + zone.Width) * source.PixelWidth) + 16), bottom = Math.Min(source.PixelHeight, (int)Math.Ceiling((zone.Y + zone.Height) * source.PixelHeight) + 16);
 
             if (right <= left || bottom <= top)
                 return null;
@@ -1088,14 +1064,8 @@ namespace OpenCvWpfTracking
             }
 
             var image = new RenderTargetBitmap(
-                Math.Max(
-                1,
-                (int)Math.Ceiling(crop.PixelWidth * scale)
-            ),
-                Math.Max(
-                1,
-                (int)Math.Ceiling(crop.PixelHeight * scale)
-            ),
+                Math.Max(1, (int)Math.Ceiling(crop.PixelWidth * scale)),
+                Math.Max(1, (int)Math.Ceiling(crop.PixelHeight * scale)),
                 96,
                 96,
                 PixelFormats.Pbgra32
@@ -1111,9 +1081,12 @@ namespace OpenCvWpfTracking
                 return;
 
             var z = _zones.SelectedItem as FireSmokeZone;
+
             if (!ReferenceEquals(_selectedZone, z))
                 CancelDrawing();
+
             _selectedZone = z;
+
             if (z == null)
                 return;
 
@@ -1156,9 +1129,12 @@ namespace OpenCvWpfTracking
         {
             if (_pendingPreset != null)
                 throw new InvalidOperationException("자동 캡처 완료 후 다시 그리세요.");
+
             var zone = _zones.SelectedItem as FireSmokeZone;
+
             if (_scene == null || zone == null || !_scene.Zones.Contains(zone))
                 throw new InvalidOperationException("다시 그릴 구역을 선택하세요.");
+
             CancelDrawing();
             _selectedZone = zone;
             _redrawZone = zone;
@@ -1171,18 +1147,23 @@ namespace OpenCvWpfTracking
         {
             double width = rectangle.Width / _canvas.Width;
             double height = rectangle.Height / _canvas.Height;
+
             if (_scene == null || double.IsNaN(width) || double.IsNaN(height) || width < .005 || height < .005)
                 throw new InvalidOperationException("구역이 너무 작습니다.");
+
             var zone = _redrawZone;
             bool redraw = zone != null;
+
             if (redraw && !_scene.Zones.Contains(zone))
                 throw new InvalidOperationException("다시 그릴 구역이 변경되었습니다.");
+
             if (!redraw)
             {
                 zone = new FireSmokeZone();
                 SetZone(zone);
                 _scene.Zones.Add(zone);
             }
+
             zone.X = rectangle.X / _canvas.Width;
             zone.Y = rectangle.Y / _canvas.Height;
             zone.Width = width;
@@ -1190,31 +1171,20 @@ namespace OpenCvWpfTracking
             _selectedZone = zone;
             _scene.Revision = Guid.NewGuid().ToString("N");
             Notice(redraw ? "다시 그리기 완료 / 저장 필요" : "구역 추가 완료 / 저장 필요");
-            OpenCvWpfTracking.Common.ConsoleLogHelper.State("ZONE EDIT",
-                (redraw ? "선택 구역 사각형 교체" : "구역 추가") + " / CAMERA=" + _scene.Camera + " / COUNT=" + _scene.Zones.Count);
+            OpenCvWpfTracking.Common.ConsoleLogHelper.State(
+                "ZONE EDIT",
+                (redraw ? "선택 구역 사각형 교체" : "구역 추가") + " / CAMERA=" + _scene.Camera + " / COUNT=" + _scene.Zones.Count
+            );
         }
 
-        private Point Clamp(Point p) => new Point(
-            Math.Max(
-            0,
-            Math.Min(
-            _canvas.Width,
-            p.X
-        )
-        ),
-            Math.Max(
-            0,
-            Math.Min(
-            _canvas.Height,
-            p.Y
-        )
-        )
-        );
+        private Point Clamp(Point p) =>
+            new Point(Math.Max(0, Math.Min(_canvas.Width, p.X)), Math.Max(0, Math.Min(_canvas.Height, p.Y)));
 
         private void UpdateZoneKindColor()
         {
             var color = Brush(FireSmokeZone.ColorForKind((string)_kind.SelectedItem));
             _kind.Foreground = color;
+
             if (_draft != null)
                 _draft.Stroke = color;
         }
@@ -1306,17 +1276,30 @@ namespace OpenCvWpfTracking
         /// <summary>선택 장면 외의 오래된 연결도 이름과 원인을 알려 불필요한 재캡처 반복을 막는다.</summary>
         private void EnsurePresetReferencesCurrent()
         {
-            var stale = _data.Scenes.Where(scene => scene.EquipmentKey == _equipment && _vm.IsZoneSceneForCurrentAgent(scene) && !scene.Invalidated &&
+            var stale = _data.Scenes.Where(scene => scene.EquipmentKey == _equipment &&
+                _vm.IsZoneSceneForCurrentAgent(scene) &&
+                !scene.Invalidated &&
                 !_vm.ZonePresetCurrent(scene)).ToList();
+
             if (stale.Count == 0)
                 return;
+
             foreach (var scene in stale)
-                OpenCvWpfTracking.Common.ConsoleLogHelper.Warning("ZONE PRESET VALIDATION",
-                    "SCENE=" + scene.Name + " / CAMERA=" + scene.Camera + " / PRESET=" + scene.PresetKind +
-                    " P" + scene.PresetNumber.ToString("00") + " / REASON=" + _vm.ZonePresetMismatchReason(scene));
+                OpenCvWpfTracking.Common.ConsoleLogHelper.Warning(
+                    "ZONE PRESET VALIDATION",
+                    "SCENE=" + scene.Name +
+                    " / CAMERA=" + scene.Camera +
+                    " / PRESET=" + scene.PresetKind +
+                    " P" + scene.PresetNumber.ToString("00") +
+                    " / REASON=" + _vm.ZonePresetMismatchReason(scene)
+                );
+
             var first = stale[0];
-            throw new InvalidOperationException("재캡처 필요: " + first.Camera + " " + first.PresetKind +
-                " P" + first.PresetNumber.ToString("00") + " / " + first.Name + (stale.Count > 1 ? " 외 " + (stale.Count - 1) + "건" : ""));
+            throw new InvalidOperationException("재캡처 필요: " + first.Camera +
+                " " + first.PresetKind +
+                " P" + first.PresetNumber.ToString("00") +
+                " / " + first.Name + (stale.Count > 1 ? " 외 " + (stale.Count - 1) +
+                "건" : ""));
         }
 
         private void Save()
@@ -1328,7 +1311,6 @@ namespace OpenCvWpfTracking
                 throw new InvalidOperationException("장비·소스·원점 변경 / 저장하지 않습니다. 창을 다시 여세요.");
 
             CommitScene();
-
             EnsurePresetReferencesCurrent();
 
             foreach (var s in _data.Scenes.Where(s => s.EquipmentKey == _equipment && _vm.IsZoneSceneForCurrentAgent(s)))

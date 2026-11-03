@@ -54,7 +54,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly Dictionary<string, string[]> _lastCameraPower = new Dictionary<string, string[]>();
 
         private string PowerTargetKey =>
-            SelectedControlAgentProfile.DisplayName + "|" + ControlAgentIp + "|" + ControlAgentPortText + "|" + EoSourceAddress + "|" + IrSourceAddress;
+            SelectedControlAgentProfile.DisplayName +
+            "|" + ControlAgentIp +
+            "|" + ControlAgentPortText +
+            "|" + EoSourceAddress +
+            "|" + IrSourceAddress;
 
         /// <summary>
         /// 카메라별로 마지막 확인된 전원 상태와 확인 시점을 보관한다.
@@ -90,7 +94,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 !_isDevicePowerStatusStale &&
                 _connectedControlAgentProfile == SelectedControlAgentProfile &&
                 _connectedControlAgentEndpoint == ControlAgentIp + ":" + ControlAgentPortText)
-                return camera == "IR" ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0) : ToOnOff((_currentScbPowerStatus & 0x01) != 0);
+                return camera == "IR"
+                    ? ToOnOff((_currentMcbPowerStatus & 0x20) != 0)
+                    : ToOnOff((_currentScbPowerStatus & 0x01) != 0);
 
             // 오래된 전원 이력은 현재 전원 상태의 근거로 사용하지 않는다.
             // RTSP 단절만으로 실제 전원 꺼짐과 통신 장애를 구분할 수 없다.
@@ -98,7 +104,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         public string CameraPowerStateHelpText =>
-            "전원 상태와 영상 연결 상태는 다릅니다. 연결 해제는 POWER OFF가 아닙니다.\n" + "통신 해제/응답 지연 시 전원은 UNKNOWN입니다. 장비에서 다시 상태를 받으면 갱신합니다.\n" + "비기동형은 영상 수신으로 ON만 확인합니다. 명시적 전원 응답이 없으면 OFF는 확정하지 않습니다.";
+            "전원 상태와 영상 연결 상태는 다릅니다. 연결 해제는 POWER OFF가 아닙니다.\n" +
+            "통신 해제/응답 지연 시 전원은 UNKNOWN입니다. 장비에서 다시 상태를 받으면 갱신합니다.\n" +
+            "비기동형은 영상 수신으로 ON만 확인합니다. 명시적 전원 응답이 없으면 OFF는 확정하지 않습니다.";
 
         public ICommand EoPowerOnCommand { get; private set; }
 
@@ -109,7 +117,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public ICommand IrPowerOffCommand { get; private set; }
 
         public string DevicePowerStatusText =>
-            !_hasDevicePowerStatus ? "WAITING FOR FUNCTION 0x31" : _isDevicePowerStatusStale ? "FUNCTION 0x31 STALE" : string.Format(
+            !_hasDevicePowerStatus
+            ? "WAITING FOR FUNCTION 0x31"
+            : _isDevicePowerStatusStale
+                ? "FUNCTION 0x31 STALE"
+                : string.Format(
             "MCB 0x{0:X2} / SCB 0x{1:X2} / RX {2:HH:mm:ss.fff}",
             _currentMcbPowerStatus,
             _currentScbPowerStatus,
@@ -120,15 +132,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             !IsGpsTabVisible ? "LEGACY" : !_hasDevicePowerStatus ? "WAITING" : _isDevicePowerStatusStale ? "STALE" : "FRESH";
 
         public string DeviceControlConnectionStatusText =>
-            string.Equals(
-            ControlAgentConnectionStatusText,
-            "Connected",
-            StringComparison.OrdinalIgnoreCase
-        ) ? "Connected" : "Disconnected";
+            string.Equals(ControlAgentConnectionStatusText, "Connected", StringComparison.OrdinalIgnoreCase)
+            ? "Connected"
+            : "Disconnected";
 
         public string CurrentGpsPowerText =>
-            _hasDevicePowerStatus &&
-            !_isDevicePowerStatusStale ? ToOnOff((_currentScbPowerStatus & 0x02) != 0) : "UNKNOWN";
+            _hasDevicePowerStatus && !_isDevicePowerStatusStale ? ToOnOff((_currentScbPowerStatus & 0x02) != 0) : "UNKNOWN";
 
         public string EoPowerControlStatusText => _eoPowerCommandPending ? "WAIT" : GetCameraPowerControlText("EO");
 
@@ -138,7 +147,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public string CurrentIrPowerStatusColor => GetPowerStatusColor(IrPowerControlStatusText);
 
-        // V28_2: 영상 재연결/전원 응답 WAIT는 표시만 하고 전원 버튼을 잠그지 않는다.
+        // 2026-11-03 정비: 영상 재연결/전원 응답 WAIT는 표시만 하고 전원 버튼을 잠그지 않는다.
         public bool IsEoPowerControlEnabled => IsOperationCommandEnabled;
 
         public bool IsIrPowerControlEnabled => IsOperationCommandEnabled;
@@ -154,7 +163,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 전원 확인 상태를 화면 표시 색상으로 변환한다.
         /// </summary>
-        private static string GetPowerStatusColor(string value) => value == "ON" ? "#69E39B" : value == "OFF" ? "#FF7B72" : "#FDE68A";
+        private static string GetPowerStatusColor(string value) =>
+            value == "ON" ? "#69E39B" : value == "OFF" ? "#FF7B72" : "#FDE68A";
 
         private static string GetLegacyCameraPowerText(string status, string camera)
         {
@@ -162,25 +172,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return "ON";
 
             if (!string.IsNullOrEmpty(status) &&
-                (status.StartsWith(
-                "[" + camera + "] Connecting",
-                StringComparison.OrdinalIgnoreCase
-            ) ||
-                status.StartsWith(
-                "[" + camera + "] Reconnecting",
-                StringComparison.OrdinalIgnoreCase
-            ) ||
-                status.StartsWith(
-                "[" + camera + "] Waiting",
-                StringComparison.OrdinalIgnoreCase
-            )))
+                (status.StartsWith("[" + camera + "] Connecting", StringComparison.OrdinalIgnoreCase) ||
+                status.StartsWith("[" + camera + "] Reconnecting", StringComparison.OrdinalIgnoreCase) ||
+                status.StartsWith("[" + camera + "] Waiting", StringComparison.OrdinalIgnoreCase)))
                 return "WAIT";
 
             return "OFF";
         }
 
         public string DevicePowerDetailText =>
-            !_hasDevicePowerStatus ? "전원 상태 미수신 (OFF로 간주하지 않음)" : string.Format(
+            !_hasDevicePowerStatus
+            ? "전원 상태 미수신 (OFF로 간주하지 않음)"
+            : string.Format(
             "DRIVER {0} / EO {1} / IR {2} / GPS {3}",
             ToOnOff((_currentMcbPowerStatus & 0x01) != 0),
             ToOnOff((_currentScbPowerStatus & 0x01) != 0),
@@ -288,10 +291,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (_laTcpService == null || !_laTcpService.IsConnected)
             {
-                ConsoleLogHelper.Warning(
-                    "DEVICE POWER",
-                    deviceName + " " + (turnOn ? "ON" : "OFF") + " rejected / Control Agent is not connected"
-                );
+                ConsoleLogHelper.Warning("DEVICE POWER", deviceName + " " + (turnOn ? "ON" : "OFF") + " rejected / Control Agent is not connected");
                 return;
             }
 
@@ -379,16 +379,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State(
                     "DEVICE STATUS RX",
                     string.Format(
-                    "SESSION={0} / ACTIVE_ENDPOINT={1} / CONNECTED_PROFILE={2} / SELECTED_PROFILE={3} / FUNCTION={7} / MCB=0x{4:X2} / SCB=0x{5:X2} / RX={6:HH:mm:ss.fff}",
-                    _connectionSessionId,
-                    _connectedControlAgentEndpoint,
-                    _connectedControlAgentProfile?.DisplayName ?? "UNKNOWN",
-                    SelectedControlAgentProfile?.DisplayName ?? "UNKNOWN",
-                    mcbStatus,
-                    scbStatus,
-                    _devicePowerStatusReceivedAt,
-                    sourceFunction
-                )
+                        "SESSION={0} / ACTIVE_ENDPOINT={1} / CONNECTED_PROFILE={2} / SELECTED_PROFILE={3} / FUNCTION={7} / MCB=0x{4:X2} / SCB=0x{5:X2} / RX={6:HH:mm:ss.fff}",
+                        _connectionSessionId,
+                        _connectedControlAgentEndpoint,
+                        _connectedControlAgentProfile?.DisplayName ?? "UNKNOWN",
+                        SelectedControlAgentProfile?.DisplayName ?? "UNKNOWN",
+                        mcbStatus,
+                        scbStatus,
+                        _devicePowerStatusReceivedAt,
+                        sourceFunction
+                    )
                 );
             }
 
@@ -473,7 +473,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _devicePowerFreshnessTimer?.Start();
             ConsoleLogHelper.State(
                 "CONTROL SESSION",
-                "START / SESSION=" + _connectionSessionId + " / ENDPOINT=" + _connectedControlAgentEndpoint + " / PROFILE=" + (_connectedControlAgentProfile?.DisplayName ?? "UNKNOWN")
+                "START / SESSION=" + _connectionSessionId +
+                " / ENDPOINT=" + _connectedControlAgentEndpoint +
+                " / PROFILE=" + (_connectedControlAgentProfile?.DisplayName ?? "UNKNOWN")
             );
         }
 
@@ -495,7 +497,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void DevicePowerFreshnessTimer_Tick(object sender, EventArgs e)
         {
-            RefreshWebAgentV293();
+            RefreshWebAgentEquipmentState();
             bool pendingChanged = false;
 
             if (_eoPowerCommandPending &&
@@ -554,7 +556,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _isDevicePowerStatusStale = true;
             ConsoleLogHelper.Warning(
                 "DEVICE STATUS RX",
-                "FUNCTION=0x31 STALE / SESSION=" + _connectionSessionId + " / LAST_RX=" + _devicePowerStatusReceivedAt.ToString("HH:mm:ss.fff")
+                "FUNCTION=0x31 STALE / SESSION=" + _connectionSessionId +
+                " / LAST_RX=" + _devicePowerStatusReceivedAt.ToString("HH:mm:ss.fff")
             );
             OnPropertyChanged(nameof(DevicePowerStatusText));
             OnPropertyChanged(nameof(DevicePowerFreshnessText));

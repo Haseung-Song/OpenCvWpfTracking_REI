@@ -22,7 +22,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private const int MinimumRpyStoredSettingsQueryBuild = 93;
 
-        private readonly object _rpyTelemetrySync = new object();
+        private readonly object _rpyTelemetrySync = new object ();
 
         private readonly Stopwatch _rpyRxRateWindow = Stopwatch.StartNew();
 
@@ -266,24 +266,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (!TryParseAngle(
-                RpyRollOffsetInput,
-                -180.0,
-                180.0,
-                out double roll
-            ) ||
-                !TryParseAngle(
-                RpyPitchOffsetInput,
-                -180.0,
-                180.0,
-                out double pitch
-            ) ||
-                !TryParseAngle(
-                RpyYawOffsetInput,
-                0.0,
-                359.99,
-                out double yaw
-            ))
+            if (!TryParseAngle(RpyRollOffsetInput, -180.0, 180.0, out double roll) ||
+                !TryParseAngle(RpyPitchOffsetInput, -180.0, 180.0, out double pitch) ||
+                !TryParseAngle(RpyYawOffsetInput, 0.0, 359.99, out double yaw))
             {
                 RpyOffsetStatusText = "Failed: 입력 범위를 확인하세요";
                 ConsoleLogHelper.Warning("RPY OFFSET", "Invalid input / Roll, Pitch=-180.00~180.00 / Yaw=0.00~359.99");
@@ -299,14 +284,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command(
                 "RPY OFFSET TX",
                 string.Format(
-                CultureInfo.InvariantCulture,
-                "ROLL={0:F2} / PITCH={1:F2} / YAW={2:F2} / PACKET={3} / SENT={4}",
-                roll,
-                pitch,
-                yaw,
-                ToHex(packet),
-                sent
-            )
+                    CultureInfo.InvariantCulture,
+                    "ROLL={0:F2} / PITCH={1:F2} / YAW={2:F2} / PACKET={3} / SENT={4}",
+                    roll,
+                    pitch,
+                    yaw,
+                    ToHex(packet),
+                    sent
+                )
             );
 
             if (!sent)
@@ -327,12 +312,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (!int.TryParse(
-                RpyAutoTxRateInput,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out int frequencyHz
-            ) ||
+            if (!int.TryParse(RpyAutoTxRateInput, NumberStyles.Integer, CultureInfo.InvariantCulture, out int frequencyHz) ||
                 frequencyHz < 0 ||
                 frequencyHz > 30)
             {
@@ -495,10 +475,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (parsedBuild.HasValue &&
                 parsedBuild.Value >= MinimumRpyStoredSettingsQueryBuild &&
-                Interlocked.Exchange(
-                ref _storedRpySettingsQueryRequested,
-                1
-            ) == 0)
+                Interlocked.Exchange(ref _storedRpySettingsQueryRequested, 1) == 0)
             {
                 RequestStoredRpyOffset();
                 RequestStoredRpyRate();
@@ -548,13 +525,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double roll = BitConverter.ToInt16(payload, 1) / 100.0;
             double pitch = BitConverter.ToInt16(payload, 3) / 100.0;
             double yaw = BitConverter.ToUInt16(payload, 5) / 100.0;
-            bool success = result == 0x01 &&
-                roll >= -180.0 &&
-                roll <= 180.0 &&
-                pitch >= -180.0 &&
-                pitch <= 180.0 &&
-                yaw >= 0.0 &&
-                yaw <= 359.99;
+            bool success = result == 0x01 && roll >= -180.0 && roll <= 180.0 && pitch >= -180.0 && pitch <= 180.0 && yaw >= 0.0 && yaw <= 359.99;
             RunOnUiThread(() =>
             {
                 RpyOffsetStatusText = success ? "Applied" : "Failed";
@@ -565,12 +536,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     _storedRpyPitchOffset = pitch;
                     _storedRpyYawOffset = yaw;
                     CurrentRpyOffsetDisplay = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "현재 Offset: R={0:+0.00;-0.00;0.00}° / P={1:+0.00;-0.00;0.00}° / Y={2:0.00}°",
-                        roll,
-                        pitch,
-                        yaw
-                    );
+                            CultureInfo.InvariantCulture,
+                            "현재 Offset: R={0:+0.00;-0.00;0.00}° / P={1:+0.00;-0.00;0.00}° / Y={2:0.00}°",
+                            roll,
+                            pitch,
+                            yaw
+                        );
                     RpyRollOffsetInput = roll.ToString("0.00", CultureInfo.InvariantCulture);
                     RpyPitchOffsetInput = pitch.ToString("0.00", CultureInfo.InvariantCulture);
                     RpyYawOffsetInput = yaw.ToString("0.00", CultureInfo.InvariantCulture);
@@ -580,14 +551,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State(
                 "RPY OFFSET ACK",
                 string.Format(
-                CultureInfo.InvariantCulture,
-                "RESULT={0} / CODE=0x{1:X2} / ROLL={2:F2} / PITCH={3:F2} / YAW={4:F2}",
-                success ? "SUCCESS" : "FAILED",
-                result,
-                roll,
-                pitch,
-                yaw
-            )
+                    CultureInfo.InvariantCulture,
+                    "RESULT={0} / CODE=0x{1:X2} / ROLL={2:F2} / PITCH={3:F2} / YAW={4:F2}",
+                    success ? "SUCCESS" : "FAILED",
+                    result,
+                    roll,
+                    pitch,
+                    yaw
+                )
             );
 
             if (success && _webAgentBuildNumber >= MinimumRpyStoredSettingsQueryBuild)
@@ -611,13 +582,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double roll = BitConverter.ToInt16(payload, 1) / 100.0;
             double pitch = BitConverter.ToInt16(payload, 3) / 100.0;
             double yaw = BitConverter.ToUInt16(payload, 5) / 100.0;
-            bool valid = version == 0x01 &&
-                roll >= -180.0 &&
-                roll <= 180.0 &&
-                pitch >= -180.0 &&
-                pitch <= 180.0 &&
-                yaw >= 0.0 &&
-                yaw <= 359.99;
+            bool valid = version == 0x01 && roll >= -180.0 && roll <= 180.0 && pitch >= -180.0 && pitch <= 180.0 && yaw >= 0.0 && yaw <= 359.99;
 
             if (!valid)
             {
@@ -635,24 +600,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 RpyYawOffsetInput = yaw.ToString("0.00", CultureInfo.InvariantCulture);
                 RpyOffsetStatusText = "DB 저장값 조회 완료";
                 CurrentRpyOffsetDisplay = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "DB 저장 Offset: R={0:+0.00;-0.00;0.00}° / P={1:+0.00;-0.00;0.00}° / Y={2:0.00}°",
-                    roll,
-                    pitch,
-                    yaw
-                );
+                        CultureInfo.InvariantCulture,
+                        "DB 저장 Offset: R={0:+0.00;-0.00;0.00}° / P={1:+0.00;-0.00;0.00}° / Y={2:0.00}°",
+                        roll,
+                        pitch,
+                        yaw
+                    );
                 UpdateGpsHeadingReferenceDisplay();
             });
             ConsoleLogHelper.State(
                 "RPY OFFSET DB RX",
                 string.Format(
-                CultureInfo.InvariantCulture,
-                "FUNCTION=0x2E / VERSION={0} / ROLL={1:F2} / PITCH={2:F2} / YAW={3:F2}",
-                version,
-                roll,
-                pitch,
-                yaw
-            )
+                    CultureInfo.InvariantCulture,
+                    "FUNCTION=0x2E / VERSION={0} / ROLL={1:F2} / PITCH={2:F2} / YAW={3:F2}",
+                    version,
+                    roll,
+                    pitch,
+                    yaw
+                )
             );
         }
 
@@ -719,13 +684,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 RunOnUiThread(() =>
                 {
-                    CurrentRpyDisplay = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "RAW R {0:F2}° / P {1:F2}° / Y {2:F2}°",
-                        roll,
-                        pitch,
-                        yaw
-                    );
+                    CurrentRpyDisplay = string.Format(CultureInfo.InvariantCulture, "RAW R {0:F2}° / P {1:F2}° / Y {2:F2}°", roll, pitch, yaw);
                 });
             }
 
@@ -739,25 +698,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State(
                     "RPY RX",
                     string.Format(
-                    CultureInfo.InvariantCulture,
-                    "ROLL={0:F4} / PITCH={1:F4} / YAW={2:F4} / RX_RATE={3:F1}Hz",
-                    roll,
-                    pitch,
-                    yaw,
-                    receiveRate
-                )
+                        CultureInfo.InvariantCulture,
+                        "ROLL={0:F4} / PITCH={1:F4} / YAW={2:F4} / RX_RATE={3:F1}Hz",
+                        roll,
+                        pitch,
+                        yaw,
+                        receiveRate
+                    )
                 );
             }
         }
 
         private void UpdateRpyRateDisplay()
         {
-            string storedText = _storedRpyAutoTxRate.HasValue ? _storedRpyAutoTxRate.Value.ToString(CultureInfo.InvariantCulture) + " Hz" : "조회 대기";
-            string measuredText = _measuredRpyReceiveRate.HasValue ? string.Format(
-                CultureInfo.InvariantCulture,
-                "약 {0:F1} Hz",
-                _measuredRpyReceiveRate.Value
-            ) : "측정 대기";
+            string storedText = _storedRpyAutoTxRate.HasValue
+                ? _storedRpyAutoTxRate.Value.ToString(CultureInfo.InvariantCulture) + " Hz"
+                : "조회 대기";
+            string measuredText = _measuredRpyReceiveRate.HasValue
+                ? string.Format(CultureInfo.InvariantCulture, "약 {0:F1} Hz", _measuredRpyReceiveRate.Value)
+                : "측정 대기";
             CurrentRpyRateDisplay = "DB 저장 주파수: " + storedText + " / 실측 수신률: " + measuredText;
         }
 
@@ -775,18 +734,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private static bool TryParseAngle(string text, double minimum, double maximum, out double value)
         {
-            bool parsed = double.TryParse(
-                text,
-                NumberStyles.Float,
-                CultureInfo.CurrentCulture,
-                out value
-            ) ||
-                double.TryParse(
-                text,
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out value
-            );
+            bool parsed = double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value) ||
+                double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
             return parsed && !double.IsNaN(value) && !double.IsInfinity(value) && value >= minimum && value <= maximum;
         }
 
@@ -812,13 +761,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return null;
             }
 
-            string digits = new string(buildText.Where(char.IsDigit).ToArray());
-            return int.TryParse(
-                digits,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out int buildNumber
-            ) ? buildNumber : (int?)null;
+            string digits = new string (buildText.Where(char.IsDigit).ToArray());
+            return int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out int buildNumber)
+                ? buildNumber
+                : (int? )null;
         }
 
         private static void RunOnUiThread(Action action)
@@ -853,7 +799,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error(
                     "RPY PROTOCOL",
-                    "Packet encoding self-test failed / OFFSET=" + offsetHex + " / RATE=" + rateHex + " / OFFSET_QUERY=" + offsetQueryHex + " / RATE_QUERY=" + rateQueryHex,
+                    "Packet encoding self-test failed / OFFSET=" + offsetHex +
+                    " / RATE=" + rateHex +
+                    " / OFFSET_QUERY=" + offsetQueryHex +
+                    " / RATE_QUERY=" + rateQueryHex,
                     new InvalidOperationException("RPY packet sample mismatch.")
                 );
             }

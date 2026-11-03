@@ -27,7 +27,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private double _thermalMinimumAreaRatio = 0.0015;
 
-        // 2026-09-22 V25: 기존 FIRE 알고리즘은 유지하고 두 수동 Slider를
+        // 2026-09-22 기존 FIRE 알고리즘은 유지하고 두 수동 Slider를
         // 현장 운용용 프리셋으로 묶는다. 0=SENSITIVE, 1=BALANCED, 2=STRICT.
         private int _fireSensitivityIndex = 1;
 
@@ -182,10 +182,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool IsFireSourceEnabled(bool isInfrared) =>
             FireDetectionSourceIndex == 0 ||
-            (FireDetectionSourceIndex == 1 &&
-            !isInfrared) ||
-            (FireDetectionSourceIndex == 2 &&
-            isInfrared);
+            (FireDetectionSourceIndex == 1 && !isInfrared) ||
+            (FireDetectionSourceIndex == 2 && isInfrared);
 
         public int FireSensitivityIndex
         {
@@ -223,7 +221,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _irFireDetectionService.Reset();
                 ConsoleLogHelper.State(
                     "FIRE DETECTOR",
-                    "Sensitivity changed / PRESET=" + (normalized == 0 ? "SENSITIVE" : normalized == 2 ? "STRICT" : "BALANCED") + " / SOURCE_MODE=" + FireDetectionSourceIndex + " / HOT_THRESHOLD=" + ThermalHotThresholdRatio.ToString("F2") + " / MIN_AREA=" + ThermalMinimumAreaRatio.ToString("F4")
+                    "Sensitivity changed / PRESET=" + (normalized == 0 ? "SENSITIVE" : normalized == 2 ? "STRICT" : "BALANCED") +
+                    " / SOURCE_MODE=" + FireDetectionSourceIndex +
+                    " / HOT_THRESHOLD=" + ThermalHotThresholdRatio.ToString("F2") +
+                    " / MIN_AREA=" + ThermalMinimumAreaRatio.ToString("F4")
                 );
             }
         }
@@ -375,24 +376,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void SetThermalFireBoxGroupingMode(int mode)
         {
             _thermalFireBoxGroupingMode = mode == 1 ? 1 : 2;
-            ThermalFireBoxMode1Background = new SolidColorBrush(_thermalFireBoxGroupingMode == 1 ? Color.FromRgb(
-                42,
-                111,
-                151
-            ) : Color.FromRgb(
-                62,
-                81,
-                94
-            ));
-            ThermalFireBoxMode2Background = new SolidColorBrush(_thermalFireBoxGroupingMode == 2 ? Color.FromRgb(
-                42,
-                111,
-                151
-            ) : Color.FromRgb(
-                62,
-                81,
-                94
-            ));
+            ThermalFireBoxMode1Background = new SolidColorBrush(_thermalFireBoxGroupingMode == 1 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            ThermalFireBoxMode2Background = new SolidColorBrush(_thermalFireBoxGroupingMode == 2 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
             OnPropertyChanged(nameof(ThermalFireBoxGroupingMode));
             ConsoleLogHelper.State("THERMAL FIRE", "BBox grouping mode=" + _thermalFireBoxGroupingMode);
         }
@@ -406,7 +391,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (!CameraFeatureTransportReady || !IsSelectedConnectionTarget || !IsOperationCommandEnabled || IsControlInputLocked)
                 return;
 
-            bool result = IsSelectedControlAgentWebAgent ? (paletteType == 0 ? _webAgentThermalPaletteService.SelectBlackHot() : paletteType == 1 ? _webAgentThermalPaletteService.SelectWhiteHot() : _webAgentThermalPaletteService.SelectRainbow()) : (paletteType == 0 ? _controlCommandService.SelectIrBlackHot() : paletteType == 1 ? _controlCommandService.SelectIrWhiteHot() : _controlCommandService.SelectIrRainbow());
+            bool result = IsSelectedControlAgentWebAgent
+                ? (paletteType == 0
+                    ? _webAgentThermalPaletteService.SelectBlackHot()
+                    : paletteType == 1
+                        ? _webAgentThermalPaletteService.SelectWhiteHot()
+                        : _webAgentThermalPaletteService.SelectRainbow())
+                : (paletteType == 0
+                    ? _controlCommandService.SelectIrBlackHot()
+                    : paletteType == 1 ? _controlCommandService.SelectIrWhiteHot() : _controlCommandService.SelectIrRainbow());
             LogThermalControlCommandResult("PALETTE " + paletteName, result);
 
             if (result)
@@ -473,7 +466,6 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (environmentResult)
                 {
                     ResetThermalPaletteButtonVisuals();
-
                     ResetFireSmokeFrameAnalysis("ENVIRONMENT PALETTE CHANGE");
                 }
 
@@ -572,7 +564,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Info(
                     "THERMAL CONTROL",
-                    "CONTROL AGENT TCP WRITE SUCCESS / " + "DEVICE APPLY UNCONFIRMED / COMMAND=" + commandName + " / VERIFY=CONTROL AGENT AND IR CAMERA"
+                    "CONTROL AGENT TCP WRITE SUCCESS / " +
+                    "DEVICE APPLY UNCONFIRMED / COMMAND=" + commandName +
+                    " / VERIFY=CONTROL AGENT AND IR CAMERA"
                 );
             }
             else
@@ -584,11 +578,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// UpdateThermalFireCandidateState 갱신 함수.
         /// </summary>
-        private void UpdateThermalFireCandidateState(
-            string camera,
-            ThermalFireDetectionResult result,
-            OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame = null
-        )
+        private void UpdateThermalFireCandidateState(string camera, ThermalFireDetectionResult result, OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame = null)
         {
             if (!IsThermalFireDetectionEnabled)
                 result = default(ThermalFireDetectionResult);

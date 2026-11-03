@@ -10,15 +10,7 @@ namespace OpenCvWpfTracking.Services.Control
     {
         public const double PassThresholdPercent = 10.0;
 
-        public FovSyncValidationResult Calculate(
-            int level,
-            double eoLeftX,
-            double eoRightX,
-            int eoFrameWidth,
-            double irLeftX,
-            double irRightX,
-            int irFrameWidth
-        )
+        public FovSyncValidationResult Calculate(int level, double eoLeftX, double eoRightX, int eoFrameWidth, double irLeftX, double irRightX, int irFrameWidth)
         {
             if (level < 1 || level > 10)
             {
@@ -69,15 +61,7 @@ namespace OpenCvWpfTracking.Services.Control
 
         public bool Passed { get; }
 
-        public FovSyncValidationResult(
-            int level,
-            double eoPixelWidth,
-            double irPixelWidth,
-            double eoNormalizedWidth,
-            double irNormalizedWidth,
-            double errorPercent,
-            bool passed
-        )
+        public FovSyncValidationResult(int level, double eoPixelWidth, double irPixelWidth, double eoNormalizedWidth, double irNormalizedWidth, double errorPercent, bool passed)
         {
             Level = level;
             EoPixelWidth = eoPixelWidth;

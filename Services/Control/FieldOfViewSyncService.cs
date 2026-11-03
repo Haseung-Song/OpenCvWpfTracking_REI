@@ -156,15 +156,6 @@ namespace OpenCvWpfTracking.Services.Control
             double focal = minFocal + ((maxFocal - minFocal) * ratio);
             return 2.0 * Math.Atan(sensorWidth / (2.0 * focal)) * 180.0 / Math.PI;
         }
-
-        /// <summary>초점거리 모델의 화각을 표준 위치로 역산한다. 공개 API와 별개인 기존 보조 함수이다.</summary>
-        private static short HfovToPosition(double hfov, double minFocal, double maxFocal, double sensorWidth)
-        {
-            double radians = Math.Max(0.0001, hfov) * Math.PI / 180.0;
-            double focal = sensorWidth / (2.0 * Math.Tan(radians / 2.0));
-            double ratio = (focal - minFocal) / (maxFocal - minFocal);
-            return (short)Math.Round(Math.Max(0.0, Math.Min(1.0, ratio)) * 1000.0);
-        }
     }
 
     public sealed class ZoomFovTarget

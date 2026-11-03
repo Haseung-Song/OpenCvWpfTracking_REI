@@ -17,10 +17,7 @@ namespace OpenCvWpfTracking.Services.Position
                 s.Invalidated ||
                 !s.FixedInstallationConfirmed ||
                 s.Key != f.Key ||
-                !FireSmokeZoneService.ValidPose(
-                f.Position,
-                "EO"
-            ) ||
+                !FireSmokeZoneService.ValidPose(f.Position, "EO") ||
                 f.HorizontalFov <= 0 ||
                 f.HorizontalFov >= 170 ||
                 double.IsNaN(f.HorizontalFov) ||
@@ -148,16 +145,8 @@ namespace OpenCvWpfTracking.Services.Position
 
                 foreach (var cur in p)
                 {
-                    double v0 = Value(
-                        prev,
-                        edge
-                    ), v1 = Value(
-                        cur,
-                        edge
-                    ), bound = edge == 0 ? left : edge == 1 ? right : edge == 2 ? top : bottom;
-                    bool in0 = edge == 0 ||
-                        edge == 2 ? v0 >= bound : v0 <= bound, in1 = edge == 0 ||
-                        edge == 2 ? v1 >= bound : v1 <= bound;
+                    double v0 = Value(prev, edge), v1 = Value(cur, edge), bound = edge == 0 ? left : edge == 1 ? right : edge == 2 ? top : bottom;
+                    bool in0 = edge == 0 || edge == 2 ? v0 >= bound : v0 <= bound, in1 = edge == 0 || edge == 2 ? v1 >= bound : v1 <= bound;
 
                     if (in0 != in1)
                     {

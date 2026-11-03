@@ -14,7 +14,6 @@ namespace OpenCvWpfTracking.Services.Configuration
     public sealed class DigitalZoomEstimate
     {
         #region [속성 및 상태 표시]
-
         public double Factor { get; private set; } = 1;
 
         public bool Enabled { get; private set; }
@@ -22,15 +21,11 @@ namespace OpenCvWpfTracking.Services.Configuration
         public int Direction { get; set; }
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         private bool _previousAtMaximum;
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 시간 기반 디지털 추정을 켜거나 끄며 새 활성화 및 OFF 시 배율을 초기화한다.
         /// </summary>
@@ -49,9 +44,7 @@ namespace OpenCvWpfTracking.Services.Configuration
         }
 
         /// <summary>
-
         /// 연속된 광학 최대 위치 증거가 유효할 때만 경과 시간으로 디지털 배율을 증감한다.
-
         /// </summary>
         public void Advance(double seconds, bool fresh, bool atMaximum, double maximum, double traversalSeconds)
         {
@@ -78,7 +71,6 @@ namespace OpenCvWpfTracking.Services.Configuration
 
             _previousAtMaximum = fresh && atMaximum;
         }
-
         #endregion
     }
 
@@ -86,8 +78,11 @@ namespace OpenCvWpfTracking.Services.Configuration
     public sealed class LensControlTuning
     {
         #region [필드 및 상태 정보]
+        public double MinimumRatio = 1;
 
-        public double MinimumRatio = 1, MaximumRatio = 90, Exponent = 4;
+        public double MaximumRatio = 90;
+
+        public double Exponent = 4;
 
         public int MinimumSpeed = 1;
 
@@ -95,7 +90,9 @@ namespace OpenCvWpfTracking.Services.Configuration
         public double WideHorizontalFov = 65.24;
 
         // 명령 시간 기반 추정은 표시와 클릭 투영에 사용하며 카메라 실측 응답이 아니다.
-        public double DigitalEstimateMaximum = 1, DigitalEstimateSeconds = 10;
+        public double DigitalEstimateMaximum = 1;
+
+        public double DigitalEstimateSeconds = 10;
 
         public bool UseMeasuredSyncAnchors;
 
@@ -103,9 +100,7 @@ namespace OpenCvWpfTracking.Services.Configuration
         public ZoomCalibrationCurve Calibration;
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 새 장비 키에 사용할 독립적인 기본 조정값 복사본을 만든다.
         /// </summary>
@@ -115,18 +110,11 @@ namespace OpenCvWpfTracking.Services.Configuration
         /// 표준 위치를 실측 매칭표 또는 기존 선형 모델로 광학 배율에 환산한다.
         /// </summary>
         public double Ratio(int position) =>
-            Calibration != null ? Calibration.Ratio(position) : UseMeasuredSyncAnchors ? Services.Control.FieldOfViewSyncService.EstimateEoOpticalRatio(
-            position,
-            WideHorizontalFov,
-            24.5,
-            MaximumRatio
-        ) : MinimumRatio + Math.Max(
-            0,
-            Math.Min(
-            1000,
-            position
-        )
-        ) / 1000.0 * (MaximumRatio - MinimumRatio);
+            Calibration != null
+            ? Calibration.Ratio(position)
+            : UseMeasuredSyncAnchors
+                ? Services.Control.FieldOfViewSyncService.EstimateEoOpticalRatio(position, WideHorizontalFov, 24.5, MaximumRatio)
+                : MinimumRatio + Math.Max(0, Math.Min(1000, position)) / 1000.0 * (MaximumRatio - MinimumRatio);
 
         /// <summary>
         /// 광학 배율을 역산한다. 실측 모델은 이진 탐색 후 가장 가까운 위치를 선택한다.
@@ -139,6 +127,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                 return (int)Math.Round(1000 * (ratio - MinimumRatio) / (MaximumRatio - MinimumRatio));
 
             int low = 0, high = 1000;
+
             while (low < high)
             {
                 int mid = (low + high) / 2;
@@ -153,9 +142,7 @@ namespace OpenCvWpfTracking.Services.Configuration
         }
 
         /// <summary>
-
         /// 원시 줌 진행률과 감속 지수로 PT 속도를 환산하며 디지털 추정값은 사용하지 않는다.
-
         /// </summary>
         public byte Speed(int basis, int position, bool enabled)
         {
@@ -171,20 +158,16 @@ namespace OpenCvWpfTracking.Services.Configuration
             int speed = (int)Math.Round(minimum + (basis - minimum) * Math.Pow(1 - progress, Exponent));
             return (byte)Math.Max(Math.Min(basis, MinimumSpeed), Math.Min(basis, speed));
         }
-
         #endregion
     }
 
     public static class ControlTuning
     {
         #region [필드 및 상태 정보]
-
         private static readonly Dictionary<string, LensControlTuning> Values = Load();
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 장비/채널 조정값을 조회하고 없는 키는 기본값 복사본을 잠금 안에서 생성한다.
         /// </summary>
@@ -206,6 +189,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                 if (ZoomCalibrationCurve.SupportsDevice(id) && value.Calibration == null)
                 {
                     value.Calibration = ZoomCalibrationCurve.Get(id, ir);
+
                     if (value.Calibration != null)
                     {
                         value.MinimumRatio = value.Calibration.MinimumRatio;
@@ -218,9 +202,7 @@ namespace OpenCvWpfTracking.Services.Configuration
         }
 
         /// <summary>
-
         /// 설정 XML의 범위를 검증해 읽으며 실패하면 기존 정책대로 안전 기본값 전체를 사용한다.
-
         /// </summary>
         private static Dictionary<string, LensControlTuning> Load()
         {
@@ -262,7 +244,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                         value.WideHorizontalFov = lens.Attribute("WideHFov") == null ? (channel == "IR" ? 24.5 : 65.24) : read("WideHFov");
                         value.DigitalEstimateMaximum = lens.Attribute("DigitalEstimateMax") == null ? 1 : read("DigitalEstimateMax");
                         value.DigitalEstimateSeconds = lens.Attribute("DigitalEstimateSeconds") == null ? 10 : read("DigitalEstimateSeconds");
-                        value.UseMeasuredSyncAnchors = channel == "EO" && (bool?)lens.Attribute("UseMeasuredSyncAnchors") == true;
+                        value.UseMeasuredSyncAnchors = channel == "EO" && (bool? )lens.Attribute("UseMeasuredSyncAnchors") == true;
 
                         if (double.IsNaN(value.DigitalEstimateMaximum) ||
                             double.IsInfinity(value.DigitalEstimateMaximum) ||
@@ -279,8 +261,8 @@ namespace OpenCvWpfTracking.Services.Configuration
                             value.MinimumRatio,
                             value.MaximumRatio,
                             value.Exponent
-                        }.All(x => !double.IsNaN(x) &&
-                            !double.IsInfinity(x)) || value.MinimumRatio < 1 ||
+                        }.All(x => !double.IsNaN(x) && !double.IsInfinity(x)) ||
+                            value.MinimumRatio < 1 ||
                             value.MaximumRatio <= value.MinimumRatio ||
                             value.MaximumRatio > 1000 ||
                             value.Exponent < .1 ||
@@ -313,7 +295,6 @@ namespace OpenCvWpfTracking.Services.Configuration
 
             return result;
         }
-
         #endregion
     }
 }

@@ -25,7 +25,7 @@ namespace OpenCvWpfTracking.Common
 
         /*
          * @brief ParameterRelayCommand 생성자 함수.
-         * @param   Action<object> execute : 실행 이벤트 가 들어왔을때 동작하기 위한 Action함수를 등록, 
+         * @param   Action<object> execute : 실행 이벤트 가 들어왔을때 동작하기 위한 Action함수를 등록,
          * Predicate<object> canExecute : Control이 실행 가능 한지 불가능한지 판단하는 함수 등록.
          * @return
          * @exception
@@ -77,8 +77,8 @@ namespace OpenCvWpfTracking.Common
 
         /*
          * @brief CanExecuteChaged 이벤트를 발생시킵니다
-         * @param   
-         * @return  
+         * @param
+         * @return
          * @exception
          */
         /// <summary>
@@ -91,8 +91,8 @@ namespace OpenCvWpfTracking.Common
 
         /*
          * @brief CanExecuteChaged 이벤트를 발생시킵니다
-         * @param   
-         * @return  
+         * @param
+         * @return
          * @exception
          */
         /// <summary>

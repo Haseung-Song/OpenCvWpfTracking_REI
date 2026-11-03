@@ -20,7 +20,6 @@ namespace OpenCvWpfTracking.Services.Communication
     public class TcpClientService
     {
         #region [상수]
-
         /// <summary>
         /// [TCP] 연결 제한 시간 [ms]
         ///
@@ -35,9 +34,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private const int SEND_TIMEOUT_MS = 1500;
 
         #endregion
-
         #region [필드]
-
         private TcpClient _tcpClient;
 
         private NetworkStream _networkStream;
@@ -51,7 +48,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [TCP] 연결 / 송신 / 해제 동기화 객체
         /// </summary>
-        private readonly object _socketLock = new object();
+        private readonly object _socketLock = new object ();
 
         /// <summary>
         /// 마지막 수신 Log 출력 시간
@@ -67,9 +64,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private bool _isManualDisconnect;
 
         #endregion
-
         #region [이벤트]
-
         public event Action<byte[], DateTime> MessageReceived;
 
         /// <summary>
@@ -80,9 +75,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public event Action ConnectionClosed;
 
         #endregion
-
         #region [속성]
-
         public bool IsConnected
         {
             get
@@ -95,9 +88,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
-
         #region [연결]
-
         /// <summary>
         /// [Web Agent / LA] TCP Server 연결
         ///
@@ -192,9 +183,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
-
         #region [송신]
-
         /// <summary>
         /// Send 송신 함수.
         /// </summary>
@@ -238,9 +227,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
-
         #region [수신]
-
         /// <summary>
         /// ReceiveLoopAsync 수신 함수.
         /// </summary>
@@ -283,11 +270,11 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (OperationCanceledException)
             {
-                // 사용자가 연결 해제를 요청한 정상 종료 흐름
+            // 사용자가 연결 해제를 요청한 정상 종료 흐름
             }
             catch (ObjectDisposedException)
             {
-                // Disconnect 중 Stream 종료로 발생할 수 있는 정상 흐름
+            // Disconnect 중 Stream 종료로 발생할 수 있는 정상 흐름
             }
             catch (Exception ex)
             {
@@ -369,9 +356,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
-
         #region [로그]
-
         /// <summary>
         /// PrintHexData 동작 수행 함수.
         /// </summary>
@@ -388,9 +373,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
-
         #region [연결 해제]
-
         /// <summary>
         /// [TCP] 수동 연결 해제
         ///
@@ -466,7 +449,6 @@ namespace OpenCvWpfTracking.Services.Communication
             _networkStream = null;
             _tcpClient = null;
         }
-
         #endregion
     }
 }

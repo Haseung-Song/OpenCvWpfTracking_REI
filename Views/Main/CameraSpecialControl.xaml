@@ -1,7 +1,7 @@
 ﻿<UserControl x:Class="OpenCvWpfTracking.CameraSpecialControl"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Foreground="#E4ECF2" FontSize="11" HorizontalContentAlignment="Stretch">
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Foreground="#E4ECF2" FontSize="11" HorizontalContentAlignment="Stretch">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
         <Style x:Key="FeatureButton" TargetType="Button">
@@ -40,9 +40,9 @@
                         <TextBlock Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,4,0" FontWeight="SemiBold"/>
                         <Grid Grid.Column="1" Margin="0,0,4,0" IsEnabled="{Binding CanEdit}">
                             <TextBox Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" Padding="4,2" MinHeight="27"
-                                     Visibility="{Binding IsNumeric, Converter={StaticResource BoolVisibility}}" ToolTip="입력 후보값입니다. 현재 장비값은 아래 상태 문구를 확인하세요."/>
+                                Visibility="{Binding IsNumeric, Converter={StaticResource BoolVisibility}}" ToolTip="입력 후보값입니다. 현재 장비값은 아래 상태 문구를 확인하세요."/>
                             <ComboBox ItemsSource="{Binding Options}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedOption}" MinHeight="27"
-                                      Visibility="{Binding HasOptions, Converter={StaticResource BoolVisibility}}" VerticalContentAlignment="Center" FontSize="11"/>
+                                Visibility="{Binding HasOptions, Converter={StaticResource BoolVisibility}}" VerticalContentAlignment="Center" FontSize="11"/>
                             <UniformGrid Columns="2" Visibility="{Binding IsBoolean, Converter={StaticResource BoolVisibility}}">
                                 <Button Content="OFF" Command="{Binding OffCommand}" IsEnabled="{Binding CanOff}" Style="{StaticResource FeatureButton}" Margin="0,0,2,0"/>
                                 <Button Content="ON" Command="{Binding OnCommand}" IsEnabled="{Binding CanOn}" Style="{StaticResource FeatureButton}"/>
@@ -75,7 +75,7 @@
             <StackPanel Margin="7,12,7,24">
                 <!-- WEB 전용 와이퍼·온도는 기존 스크롤 안에 배치하고 끝 여백을 유지한다. -->
                 <Border Visibility="{Binding IsSelectedControlAgentWebAgent, Converter={StaticResource BoolVisibility}}"
-                        BorderBrush="#71838E" BorderThickness="1" CornerRadius="3" Padding="8" Margin="0,0,0,12">
+                    BorderBrush="#71838E" BorderThickness="1" CornerRadius="3" Padding="8" Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="WIPER" FontWeight="Bold" Margin="0,0,0,7"/>
                         <Grid Margin="0,0,0,7">

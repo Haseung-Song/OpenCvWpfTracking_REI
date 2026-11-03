@@ -18,7 +18,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _wasMotionCompensatedSmokeAnalysis;
 
-        private readonly object _aiSmokeCandidateSync = new object();
+        private readonly object _aiSmokeCandidateSync = new object ();
 
         private readonly List<Rect> _latestEoAiSmokeCandidates = new List<Rect>();
 
@@ -103,24 +103,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private void SetSmokeBoxGroupingMode(int mode)
         {
             _smokeBoxGroupingMode = mode == 1 ? 1 : 2;
-            SmokeBoxMode1Background = new SolidColorBrush(_smokeBoxGroupingMode == 1 ? Color.FromRgb(
-                42,
-                111,
-                151
-            ) : Color.FromRgb(
-                62,
-                81,
-                94
-            ));
-            SmokeBoxMode2Background = new SolidColorBrush(_smokeBoxGroupingMode == 2 ? Color.FromRgb(
-                42,
-                111,
-                151
-            ) : Color.FromRgb(
-                62,
-                81,
-                94
-            ));
+            SmokeBoxMode1Background = new SolidColorBrush(_smokeBoxGroupingMode == 1 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
+            SmokeBoxMode2Background = new SolidColorBrush(_smokeBoxGroupingMode == 2 ? Color.FromRgb(42, 111, 151) : Color.FromRgb(62, 81, 94));
             OnPropertyChanged(nameof(SmokeBoxGroupingMode));
             ConsoleLogHelper.State("SMOKE DETECTOR", "BBox grouping mode changed / MODE=" + _smokeBoxGroupingMode);
         }
@@ -151,14 +135,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     snapshot.Add(rectangle);
                 }
 
-                if (box.ClassName.IndexOf(
-                    "fire",
-                    StringComparison.OrdinalIgnoreCase
-                ) >= 0 ||
-                    box.ClassName.IndexOf(
-                    "flame",
-                    StringComparison.OrdinalIgnoreCase
-                ) >= 0)
+                if (box.ClassName.IndexOf("fire", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    box.ClassName.IndexOf("flame", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     fireSnapshot.Add(rectangle);
                 }
@@ -302,7 +280,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private void SetFireSmokeDetectorsForAiConnection(bool enabled, string reason)
         {
-            TryRunAiUiAction(() =>
+            TryRunAiUiAction(
+                () =>
             {
                 // AI 통신 상태가 사용자의 검출 확인란을 변경하지 않는다.
                 if (!enabled)
@@ -310,10 +289,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     IsAutoTrackingEnabled = false;
                     ClearAiSmokeCandidateSnapshots();
                 }
-            }, "FIRE/SMOKE detector connection sync");
+            },
+                "FIRE/SMOKE detector connection sync"
+            );
             ConsoleLogHelper.State(
                 "FIRE / SMOKE",
-                "AI connection mode changed / AI=" + (enabled ? "ON" : "OFF") + " / VIDEO_FIRE=" + IsThermalFireDetectionEnabled + " / VIDEO_SMOKE=" + IsSmokeDetectionEnabled + " / REASON=" + reason
+                "AI connection mode changed / AI=" + (enabled ? "ON" : "OFF") +
+                " / VIDEO_FIRE=" + IsThermalFireDetectionEnabled +
+                " / VIDEO_SMOKE=" + IsSmokeDetectionEnabled +
+                " / REASON=" + reason
             );
         }
 
@@ -351,10 +335,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 OnPropertyChanged(nameof(FireAlertStatusText));
                 // Detector와 진단 수집을 동일한 운용 스위치로 유지한다.
                 IsSmokeDiagnosticEnabled = value;
-                ConsoleLogHelper.State(
-                    "SMOKE DETECTOR",
-                    value ? "Smoke candidate detection enabled" : "Smoke candidate detection disabled"
-                );
+                ConsoleLogHelper.State("SMOKE DETECTOR", value ? "Smoke candidate detection enabled" : "Smoke candidate detection disabled");
             }
         }
 
@@ -558,10 +539,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             bool isInfrared = string.Equals(streamName, "IR", StringComparison.OrdinalIgnoreCase);
             bool sourceEnabled = SmokeDetectionSourceIndex == 0 ||
-                (SmokeDetectionSourceIndex == 1 &&
-                !isInfrared) ||
-                (SmokeDetectionSourceIndex == 2 &&
-                isInfrared);
+                (SmokeDetectionSourceIndex == 1 && !isInfrared) ||
+                (SmokeDetectionSourceIndex == 2 && isInfrared);
             SmokeDetectionService service = isInfrared ? _irSmokeDetectionService : _eoSmokeDetectionService;
             bool compensateCameraMotion = IsAutomaticCameraMotionActive();
 
@@ -570,7 +549,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _wasMotionCompensatedSmokeAnalysis = compensateCameraMotion;
                 ConsoleLogHelper.State(
                     "SMOKE DETECTOR",
-                    "Camera motion compensation " + (compensateCameraMotion ? "enabled" : "disabled") + " / AUTO_SCAN_L=" + IsLaPresetScanRunning + " / AUTO_SCAN_W=" + IsPresetScanRunning + " / PANORAMA=" + IsPanoramaCaptureRunning
+                    "Camera motion compensation " + (compensateCameraMotion ? "enabled" : "disabled") +
+                    " / AUTO_SCAN_L=" + IsLaPresetScanRunning +
+                    " / AUTO_SCAN_W=" + IsPresetScanRunning +
+                    " / PANORAMA=" + IsPanoramaCaptureRunning
                 );
             }
 
@@ -595,8 +577,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             SmokeDetectionResult result = service.Process(
                 frame,
-                IsSmokeDetectionEnabled &&
-                sourceEnabled,
+                IsSmokeDetectionEnabled && sourceEnabled,
                 isInfrared,
                 SmokeMinimumAreaRatio,
                 SmokeChangeThresholdRatio,

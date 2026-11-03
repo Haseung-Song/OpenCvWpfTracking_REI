@@ -5,6 +5,7 @@ using System.Windows.Input;
 
 namespace OpenCvWpfTracking
 {
+    /// <summary>정밀 조그 입력의 보관 경로이다. 현재 화면 미연결 상태와 실행 금지 정책을 유지한다.</summary>
     public partial class MainWindow
     {
         private Button _precisionJogButton;
@@ -14,15 +15,18 @@ namespace OpenCvWpfTracking
         {
             var button = sender as Button;
             byte direction;
-            if (button == null || e.ChangedButton != MouseButton.Left ||
-                !byte.TryParse(Convert.ToString(button.Tag), out direction))
+
+            if (button == null || e.ChangedButton != MouseButton.Left || !byte.TryParse(Convert.ToString(button.Tag), out direction))
                 return;
 
             if (!vm.StartPrecisionJog(direction))
                 return;
+
             _precisionJogButton = button;
+
             if (!button.CaptureMouse())
                 EndPrecisionJog("마우스 캡처 실패");
+
             e.Handled = true;
         }
 
@@ -33,6 +37,7 @@ namespace OpenCvWpfTracking
         {
             if (e.ChangedButton != MouseButton.Left)
                 return;
+
             EndPrecisionJog("마우스 버튼 해제");
             e.Handled = true;
         }
@@ -62,9 +67,12 @@ namespace OpenCvWpfTracking
         {
             var button = _precisionJogButton;
             _precisionJogButton = null;
+
             if (button == null)
                 return;
+
             vm?.StopPrecisionMotion(reason);
+
             if (button.IsMouseCaptured)
                 button.ReleaseMouseCapture();
         }
@@ -76,6 +84,7 @@ namespace OpenCvWpfTracking
         {
             if (!ReferenceEquals(sender, e.OriginalSource))
                 return;
+
             EndPrecisionJog("시험 영역 접힘");
             vm?.StopPrecisionMotion("시험 영역 접힘");
         }

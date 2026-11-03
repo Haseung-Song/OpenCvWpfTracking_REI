@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 2026-10-13 V31_4. Default exponent 4 / minimum speed 1. Maximum zoom reaches the protocol floor. -->
+<!-- 2026-10-13: 기본 감속 지수는 4, 최소 속도는 1이며 최대 줌에서는 프로토콜 최저 속도에 도달한다. -->
 <ControlTuning>
   <Device Id="Default">
     <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="4" MinSpeed="1" WideHFov="65.24" />
     <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="4" MinSpeed="1" WideHFov="24.5" />
   </Device>
-  <!-- V31: relative EO optical curve uses measured EO/IR matching anchors.
-       Digital 1..4x is command-time ESTIMATION (10s provisional), not telemetry.
-       Applied to click projection too; field verification/calibration is required. -->
+  <!-- 2026-11-03 정비: 이 XML은 장비별 기본값과 실측표 로드 실패 시 대체 환산을 보관한다.
+       지정된 7개 장비의 정상 배율 환산에는 ER-WATCHER 1 기준 CSV를 우선 적용한다.
+       디지털 1~4배는 명령 시간에 따른 추정이며 수신된 실측값이 아니다. 기존 SYNC 대응표는 별도 경로로 유지한다. -->
   <Device Id="MR500_MOE">
     <Lens Channel="EO" MinRatio="1" MaxRatio="90" Exponent="4" MinSpeed="1" WideHFov="65.24" UseMeasuredSyncAnchors="true" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />
     <Lens Channel="IR" MinRatio="1" MaxRatio="9" Exponent="4" MinSpeed="1" WideHFov="24.5" DigitalEstimateMax="4" DigitalEstimateSeconds="10" />

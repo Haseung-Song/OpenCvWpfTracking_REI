@@ -23,7 +23,7 @@
 
         /// <summary>
         /// [AI Detector] 클래스 인덱스
-        /// 
+        ///
         /// 0 = [Drone]
         /// 1 = [ONNX]
         /// 2 = [ClassIndex]
@@ -44,7 +44,7 @@
 
         /// <summary>
         /// [AI Detector] 객체 탐지 신뢰도
-        /// 
+        ///
         /// 범위: [0.0 ~ 1.0]
         /// </summary>
         public double Confidence { get; set; }
@@ -140,7 +140,7 @@
 
         /// <summary>
         /// [AI Detector] 화면 표시용 탐지 정보 문자열
-        /// 
+        ///
         /// [Confidence]는 [0.0 ~ 1.0] 범위로 수신되므로,
         /// 화면에는 [%] 단위로 변환하여 표시한다.
         /// </summary>

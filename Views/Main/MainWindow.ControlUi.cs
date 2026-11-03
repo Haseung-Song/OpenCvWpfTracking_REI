@@ -18,17 +18,14 @@ namespace OpenCvWpfTracking
     public partial class MainWindow
     {
         #region [필드 및 상태 정보]
-
         private GlobalControlKeyboard _globalKeyboard;
 
-        private bool _v30UiInitialized;
+        private bool _controlUiInitialized;
 
         private readonly List<Grid> _videoJogOverlays = new List<Grid>();
 
         #endregion
-
         #region [영상 배치 보정]
-
         /// <summary>
         /// IR이 보조 화면일 때 원본 전체가 여백 없이 들어가는 높이를 적용한다.
         /// EO/IR 주화면 전환과 디코더·BBox 좌표·클릭 이동 계산은 변경하지 않는다.
@@ -55,10 +52,9 @@ namespace OpenCvWpfTracking
             var bitmap = IrCameraImageView.Source as System.Windows.Media.Imaging.BitmapSource;
             // 미연결 로고의 비율은 카메라의 원본 비율로 사용하지 않는다.
             bool hasVideo = vm.IrStatusText != null && vm.IrStatusText.EndsWith("] Connected", StringComparison.Ordinal);
-            double aspect = hasVideo &&
-                bitmap != null &&
-                bitmap.PixelWidth > 0 &&
-                bitmap.PixelHeight > 0 ? bitmap.PixelWidth / (double)bitmap.PixelHeight : 4.0 / 3.0;
+            double aspect = hasVideo && bitmap != null && bitmap.PixelWidth > 0 && bitmap.PixelHeight > 0
+                ? bitmap.PixelWidth / (double)bitmap.PixelHeight
+                : 4.0 / 3.0;
             double width = IrVideoContainer.ActualWidth;
 
             if (width <= 4 || aspect <= 0)
@@ -76,43 +72,32 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [기능 처리 함수]
-
         // 2026-10-08: 장비 제어 화면은 기존 보더 색상과 글자 형식을 유지한다.
         /// <summary>
         /// 기존 영상/장비 제어 UI에 옵션과 상태 표시를 한 번만 연결한다.
         /// </summary>
-        private void InitializeV30ControlUi()
+        private void InitializeControlInputUi()
         {
             // 2026-10-12: 화면 재부착 시 Loaded가 반복되어도 제어 요소와 이벤트를 중복 등록하지 않는다.
-            if (_v30UiInitialized)
+            if (_controlUiInitialized)
                 return;
 
-            _v30UiInitialized = true;
-            vm.InitializeV30Status();
-            vm.PropertyChanged += V30PropertyChanged;
+            _controlUiInitialized = true;
+            vm.InitializeControlStatusMonitor();
+            vm.PropertyChanged += OnControlStatePropertyChanged;
             vm.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(vm.IrStatusText))
                     UpdateAuxiliaryIrAspectLayout();
             };
             // IR 보조 슬롯은 실제 영상 종횡비로 맞추고 남는 높이를 지도에 배분한다.
-            System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
-                Image.SourceProperty,
-                typeof(Image)
-            ).AddValueChanged(
-                IrCameraImageView,
-                (s, e) => UpdateAuxiliaryIrAspectLayout()
-            );
+            System.ComponentModel.DependencyPropertyDescriptor.FromProperty(Image.SourceProperty, typeof(Image)).AddValueChanged(IrCameraImageView, (s, e) => UpdateAuxiliaryIrAspectLayout());
             IrVideoContainer.SizeChanged += (s, e) => UpdateAuxiliaryIrAspectLayout();
             Loaded += (s, e) => UpdateAuxiliaryIrAspectLayout();
             AddHandler(Keyboard.PreviewKeyDownEvent, new KeyEventHandler(InputConfirmKey), true);
             AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(ReturnControlFocus), true);
-            var speed = Descendants<Slider>(Content as DependencyObject).FirstOrDefault(s => BindingOperations.GetBinding(
-                s,
-                Slider.ValueProperty
-            )?.Path?.Path == "PanTiltSpeedLevel");
+            var speed = Descendants<Slider>(Content as DependencyObject).FirstOrDefault(s => BindingOperations.GetBinding(s, Slider.ValueProperty)?.Path?.Path == "PanTiltSpeedLevel");
 
             if (speed != null)
             {
@@ -137,10 +122,7 @@ namespace OpenCvWpfTracking
                         Margin = new Thickness(0, 0, 10, 0),
                         ToolTip = "영상 단일 클릭 중심 이동과 방향 안내 표시를 함께 켜거나 끕니다."
                     };
-                    clickMove.SetBinding(
-                        ToggleButton.IsCheckedProperty,
-                        new Binding("IsVideoClickCenterEnabled") { Mode = BindingMode.TwoWay }
-                    );
+                    clickMove.SetBinding(ToggleButton.IsCheckedProperty, new Binding("IsVideoClickCenterEnabled") { Mode = BindingMode.TwoWay });
                     options.Children.Add(clickMove);
                     var fov = new CheckBox
                     {
@@ -154,28 +136,7 @@ namespace OpenCvWpfTracking
                     options.Children.Add(fov);
                     options.Children.Add(CreateFovTuningEditor());
                     // 십자선 도구는 오른쪽 장비 제어가 아닌 각 영상의 배율 버튼 위에 배치한다.
-                    panel.Children.Add(new Border
-                    {
-                        Background = new SolidColorBrush(Color.FromRgb(
-                        68,
-                        79,
-                        88
-                    )),
-                        BorderBrush = new SolidColorBrush(Color.FromRgb(
-                        126,
-                        148,
-                        161
-                    )),
-                        BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(3),
-                        Padding = new Thickness(
-                        5,
-                        3,
-                        5,
-                        3
-                    ),
-                        Child = options
-                    });
+                    panel.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(68, 79, 88)), BorderBrush = new SolidColorBrush(Color.FromRgb(126, 148, 161)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 3, 5, 3), Child = options });
                     Grid.SetRow(panel, outer.RowDefinitions.Count - 1);
                     outer.Children.Add(panel);
                 }
@@ -201,9 +162,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// CTRL/RTSP 카드의 과도한 여백만 줄여 기존 연결/전원 항목이 함께 보이게 한다.
-
         /// </summary>
         private void CompactCommunicationCard()
         {
@@ -228,15 +187,11 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         private bool? _lastVideoControlRoute;
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 활성 창의 영상 영역에 따라 PTZF 채널을 선택하고 채널 전환 시 누름 입력을 정지한다.
         /// </summary>
@@ -247,7 +202,7 @@ namespace OpenCvWpfTracking
 
             bool ir = GetHoveredCameraType() == VideoPopoutCameraType.Ir;
 
-            // V32_4: 원격 제어 또는 서로 다른 DPI/해상도 환경에서는 마우스 포인터가
+            // 2026-11-03 정비: 원격 제어 또는 서로 다른 DPI/해상도 환경에서는 마우스 포인터가
             // EO/IR 경계를 순간적으로 넘으며 MouseLeave/MouseEnter가 연속 발생할 수 있다.
             // 클릭 중심 이동 중 hover만으로 ReleaseAllControlInputs를 호출하면 절대 위치
             // 이동 정지(0x4F)가 송신되므로, 목표 도착 전까지 클릭한 채널을 유지한다.
@@ -273,9 +228,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 기존 보더 높이 안에서 채널별 감속 입력과 오른쪽 적용 버튼을 배치한다.
-
         /// </summary>
         private static Expander CreateFovTuningEditor()
         {
@@ -356,11 +309,9 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 클릭 이동 표시 및 전역 입력 옵션 변경을 UI와 키보드 훅에 반영한다.
-
         /// </summary>
-        private void V30PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnControlStatePropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == "IsVideoClickCenterEnabled")
             {
@@ -417,9 +368,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 텍스트 입력의 Enter/Escape에서 값을 반영하고 제어 창으로 키보드 포커스를 돌린다.
-
         /// </summary>
         private void InputConfirmKey(object sender, KeyEventArgs e)
         {
@@ -432,9 +381,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 입력/선택 컨트롤 외부를 클릭했을 때만 텍스트 편집을 마치고 제어 포커스를 복원한다.
-
         /// </summary>
         private void ReturnControlFocus(object sender, MouseButtonEventArgs e)
         {
@@ -444,6 +391,7 @@ namespace OpenCvWpfTracking
                 return;
 
             DependencyObject item = e.OriginalSource as DependencyObject;
+
             while (item != null)
             {
                 if (item is TextBoxBase ||
@@ -469,9 +417,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 클릭 이동 방향 안내를 함께 표시/숨기고 해제 시 영상 소유 입력을 정지한다.
-
         /// </summary>
         private void SetVideoJogVisible(bool visible)
         {
@@ -485,9 +431,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 채널별 배율·단축키 도움말·방향 입력 안내를 기존 영상 보더에 추가한다.
-
         /// </summary>
         private void AddVideoControls(Border border, bool ir)
         {
@@ -534,10 +478,7 @@ namespace OpenCvWpfTracking
             ratioHost.Loaded += (s, e) => updateRatioScale();
             SizeChanged += (s, e) => updateRatioScale();
             updateRatioScale();
-            var connection = grid.Children.OfType<TextBlock>().FirstOrDefault(t => BindingOperations.GetBinding(
-                t,
-                TextBlock.TextProperty
-            )?.Path?.Path == (ir ? "IrStatusText" : "EoStatusText"));
+            var connection = grid.Children.OfType<TextBlock>().FirstOrDefault(t => BindingOperations.GetBinding(t, TextBlock.TextProperty)?.Path?.Path == (ir ? "IrStatusText" : "EoStatusText"));
 
             if (connection != null)
             {
@@ -568,16 +509,7 @@ namespace OpenCvWpfTracking
             Panel.SetZIndex(ratioHost, 60);
             grid.Children.Add(ratioHost);
             var video = ir ? IrCameraImageView : EoCameraImageView;
-            VideoShortcutGuide.AttachVideoLabelPositions(
-                grid,
-                video,
-                ratioHost,
-                connection,
-                () => VideoShortcutGuide.SourceAspect(
-                video,
-                ir ? 1.25 : 16.0 / 9
-            )
-            );
+            VideoShortcutGuide.AttachVideoLabelPositions(grid, video, ratioHost, connection, () => VideoShortcutGuide.SourceAspect(video, ir ? 1.25 : 16.0 / 9));
             var marker = LogicalDescendants<Control>(grid).FirstOrDefault(c => c.Template == FindResource("CenterCrosshairTemplate"));
 
             if (marker != null)
@@ -712,10 +644,8 @@ namespace OpenCvWpfTracking
                         ToolTip = "디지털 줌 ON/OFF 요청. 전송 성공과 장비 상태 확인은 아래 문구로 구분합니다."
                     };
 
-                    // 정상 운용 중에는 기존 EO/IR 제어 활성 상태를 유지한다. 에이전트의 지원과 상태는
-                    // 진단 증거로 유지하며 이 정보만으로 기존 버튼을 비활성화하지 않는다.
-                    // 2026-10-13: IR 디지털 줌은 설정 지원이 확인된 경우에만 사용한다.
-                    // 다른 IR 렌즈 버튼과 EO 설정 전용 요청 흐름은 바꾸지 않는다.
+                    // 2026-11-03: IR도 연결·운용 잠금·응답 대기만 확인한다.
+                    // 지원 조회 결과만으로 ON/OFF 요청을 막지 않으며 실제 적용은 응답으로 구분한다.
                     if (ir)
                         button.SetBinding(IsEnabledProperty, new Binding("CanSetIrDigitalZoom"));
 
@@ -789,10 +719,7 @@ namespace OpenCvWpfTracking
                     controls.VerticalAlignment = VerticalAlignment.Stretch;
 
                     for (int row = 0; row < controls.RowDefinitions.Count; row++)
-                        controls.RowDefinitions[row].Height = row == 0 ? GridLength.Auto : new GridLength(
-                            row == 3 ? 1.35 : 1,
-                            GridUnitType.Star
-                        );
+                        controls.RowDefinitions[row].Height = row == 0 ? GridLength.Auto : new GridLength(row == 3 ? 1.35 : 1, GridUnitType.Star);
 
                     foreach (var element in controls.Children.OfType<FrameworkElement>().Where(x => Grid.GetRow(x) > 0))
                     {
@@ -823,24 +750,7 @@ namespace OpenCvWpfTracking
                 if (scroll.Content is FrameworkElement content)
                 {
                     var m = content.Margin;
-                    content.Margin = new Thickness(
-                        Math.Max(
-                        3,
-                        m.Left
-                    ),
-                        Math.Max(
-                        8,
-                        m.Top
-                    ),
-                        Math.Max(
-                        5,
-                        m.Right
-                    ),
-                        Math.Max(
-                        14,
-                        m.Bottom
-                    )
-                    );
+                    content.Margin = new Thickness(Math.Max(3, m.Left), Math.Max(8, m.Top), Math.Max(5, m.Right), Math.Max(14, m.Bottom));
                     scroll.Padding = new Thickness(0, 4, 8, 6);
                 }
 
@@ -851,24 +761,7 @@ namespace OpenCvWpfTracking
                 foreach (var element in LogicalDescendants<FrameworkElement>(aiScroll))
                 {
                     var m = element.Margin;
-                    element.Margin = new Thickness(
-                        m.Left,
-                        Math.Max(
-                        0,
-                        Math.Min(
-                        5,
-                        m.Top
-                    )
-                    ),
-                        m.Right,
-                        Math.Max(
-                        0,
-                        Math.Min(
-                        5,
-                        m.Bottom
-                    )
-                    )
-                    );
+                    element.Margin = new Thickness(m.Left, Math.Max(0, Math.Min(5, m.Top)), m.Right, Math.Max(0, Math.Min(5, m.Bottom)));
 
                     // 제어 요소의 높이는 유지하고 버튼 내용을 자르지 않으며 간격에서 공간을 확보한다.
                     if (element is Button button)
@@ -935,16 +828,10 @@ namespace OpenCvWpfTracking
         {
             // 마지막 상태와 도움말 행을 스크롤 영역 안에 유지하고
             // 기본 상단 위치에서도 PTZF/프리셋 카드가 잘리지 않도록 세로 공간을 확보한다.
-            foreach (string header in new[]
+            // 2026-11-03: 같은 PRESET 제목을 가진 LA/WEB 탭 모두 처리한다.
+            foreach (var tab in LogicalDescendants<TabItem>(Content as DependencyObject)
+                .Where(t => Convert.ToString(t.Header) == "PTZF" || Convert.ToString(t.Header) == "PRESET"))
             {
-                "PTZF",
-                "PRESET"
-            }
-
-            )
-            {
-                var tab = LogicalDescendants<TabItem>(Content as DependencyObject).FirstOrDefault(t => Convert.ToString(t.Header) == header);
-
                 if (!(tab?.Content is ScrollViewer scroll) || !(scroll.Content is StackPanel root))
                     continue;
 
@@ -973,104 +860,103 @@ namespace OpenCvWpfTracking
                     nested.Padding = new Thickness(padding.Left, Math.Min(6, padding.Top), padding.Right, Math.Min(6, padding.Bottom));
                 }
 
-                var presetScanCard = header == "PRESET" ? root.Children.OfType<Border>().FirstOrDefault(card => LogicalDescendants<TextBlock>(card).Any(text => text.Text == "AUTO SCAN / LA SCAN OBJECT")) : null;
-                var presetScanTitle = presetScanCard == null ? null : LogicalDescendants<TextBlock>(presetScanCard).First(text => text.Text == "AUTO SCAN / LA SCAN OBJECT");
-                Thickness presetScanMargin = presetScanCard?.Margin ?? new Thickness();
-                // 맨 아래 위치에서는 인접한 제목 또는 프리셋 상태가
-                // 첫 행 중간에서 잘리지 않고 완전하게 표시되도록 맞춘다. 이 여백은 외부 패딩이 아닌
-                // 실제 스크롤 내용이므로 이동 범위 계산에 포함된다.
-                var tail = new Border
+                // 2026-11-03: 카드를 밀어내는 동적 여백을 제거한다.
+                // 위아래 안전 여백만 실제 스크롤 내용에 포함하여 끝 항목까지 이동할 수 있게 한다.
+                // 화면 중간에서 내용이 이어지는 것은 일반 스크롤로 처리하고 카드 간격은 유지한다.
+                root.Margin = new Thickness(2, 8, 2, 12);
+
+                if (Convert.ToString(tab.Header) == "PRESET")
+                    AlignPresetTextEdges(tab, scroll, root);
+            }
+        }
+
+        /// <summary>
+        /// 카드 간격은 유지하고 실제 글자 행 경계에 맞춰 내용 시작·끝 여백만 소폭 조절한다.
+        /// </summary>
+        private void AlignPresetTextEdges(TabItem tab, ScrollViewer scroll, StackPanel root)
+        {
+            var tail = new Border { Height = 0, IsHitTestVisible = false };
+            root.Children.Add(tail);
+            bool adjusting = false;
+
+            root.LayoutUpdated += (sender, args) =>
+            {
+                if (adjusting || !tab.IsSelected || !scroll.IsVisible || scroll.ViewportHeight <= 0)
+                    return;
+
+                var viewport = Descendants<ScrollContentPresenter>(scroll).FirstOrDefault();
+                if (viewport == null)
+                    return;
+
+                double addedTop = root.Margin.Top - 8;
+                var rows = PresetVisibleRows(root, viewport)
+                    .Select(row => new Rect(row.X, row.Y + scroll.VerticalOffset - addedTop, row.Width, row.Height))
+                    .ToArray();
+                double topExtra = 0;
+
+                // 글자 한 행 또는 버튼의 경계만 피한다. 카드 자체의 여백은 변경하지 않는다.
+                foreach (var row in rows.OrderByDescending(row => row.Top))
+                    if (row.Top + topExtra < viewport.ActualHeight && row.Bottom + topExtra > viewport.ActualHeight)
+                        topExtra = viewport.ActualHeight - row.Top;
+
+                topExtra = Math.Min(36, Math.Max(0, topExtra));
+                if (Math.Abs(addedTop - topExtra) > .5)
                 {
-                    Height = 0,
-                    IsHitTestVisible = false
-                };
-                root.Children.Add(tail);
-                bool adjusting = false;
-                root.LayoutUpdated += (s, e) =>
-                {
-                    if (adjusting || !tab.IsSelected || scroll.ViewportHeight <= 0)
-                        return;
-
-                    // 첫 화면의 아래 경계에 오토 스캔 제목이 걸리면 카드 전체를
-                    // 경계 아래로 옮긴다. 원래 위치를 기준으로 계산하여 여백 누적을 막는다.
-                    // 카드 내용과 스크롤 이동 범위는 그대로 유지한다.
-                    if (presetScanCard != null && presetScanTitle.ActualHeight > 0)
-                    {
-                        double addedMargin = presetScanCard.Margin.Top - presetScanMargin.Top;
-                        double cardTop = presetScanCard.TranslatePoint(
-                            new Point(),
-                            scroll
-                        ).Y + scroll.VerticalOffset - scroll.Padding.Top - addedMargin;
-                        double titleBottom = presetScanTitle.TranslatePoint(
-                            new Point(
-                            0,
-                            presetScanTitle.ActualHeight
-                        ),
-                            scroll
-                        ).Y + scroll.VerticalOffset - scroll.Padding.Top - addedMargin;
-                        double desiredMargin = cardTop < scroll.ViewportHeight &&
-                            titleBottom + 4 > scroll.ViewportHeight ? scroll.ViewportHeight - cardTop + 8 : 0;
-
-                        if (Math.Abs(addedMargin - desiredMargin) >= 1)
-                        {
-                            adjusting = true;
-                            presetScanCard.Margin = new Thickness(
-                                presetScanMargin.Left,
-                                presetScanMargin.Top + desiredMargin,
-                                presetScanMargin.Right,
-                                presetScanMargin.Bottom
-                            );
-                            adjusting = false;
-                            return;
-                        }
-                    }
-
-                    double baseOffset = scroll.ScrollableHeight - tail.Height;
-
-                    if (baseOffset <= 0)
-                        return;
-
-                    double anchor = double.PositiveInfinity;
-
-                    foreach (var text in LogicalDescendants<TextBlock>(root))
-                    {
-                        string path = BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path?.Path;
-
-                        if (text.ActualHeight <= 0 ||
-                            text.Visibility != Visibility.Visible ||
-                            !(text.FontWeight == FontWeights.Bold ||
-                            path == "SelectedLaPresetDetailText" ||
-                            path == "SelectedPresetDetailText"))
-                            continue;
-
-                        bool hidden = false;
-
-                        for (DependencyObject parent = text.Parent; parent != null &&
-                            parent != root; parent = LogicalTreeHelper.GetParent(parent))
-                            if (parent is UIElement ui && ui.Visibility != Visibility.Visible)
-                            {
-                                hidden = true;
-                                break;
-                            }
-
-                        if (hidden)
-                            continue;
-
-                        double top = text.TranslatePoint(new Point(), scroll).Y + scroll.VerticalOffset - scroll.Padding.Top;
-
-                        if (top >= baseOffset && top <= baseOffset + 100)
-                            anchor = Math.Min(anchor, top);
-                    }
-
-                    double desired = double.IsPositiveInfinity(anchor) ? 0 : Math.Max(0, anchor - baseOffset);
-
-                    if (Math.Abs(tail.Height - desired) < 1)
-                        return;
-
                     adjusting = true;
-                    tail.Height = desired;
+                    root.Margin = new Thickness(2, 8 + topExtra, 2, 12);
                     adjusting = false;
-                };
+                    return;
+                }
+
+                double baseOffset = Math.Max(0, scroll.ScrollableHeight - tail.Height);
+                double anchor = baseOffset;
+                foreach (var row in rows.OrderBy(row => row.Top))
+                {
+                    double top = row.Top + addedTop;
+                    if (top < anchor && top + row.Height > anchor)
+                        anchor = top + row.Height;
+                }
+
+                double bottomExtra = Math.Min(36, Math.Max(0, anchor - baseOffset));
+                if (Math.Abs(tail.Height - bottomExtra) <= .5)
+                    return;
+
+                bool atBottom = scroll.VerticalOffset >= scroll.ScrollableHeight - 1;
+                adjusting = true;
+                tail.Height = bottomExtra;
+                adjusting = false;
+                if (atBottom)
+                    Dispatcher.BeginInvoke(new Action(scroll.ScrollToEnd));
+            };
+        }
+
+        /// <summary>
+        /// 여러 줄 상세 정보도 카드 전체가 아닌 화면에 배치된 글자 한 행씩 측정한다.
+        /// </summary>
+        private static IEnumerable<Rect> PresetVisibleRows(StackPanel root, Visual viewport)
+        {
+            foreach (var element in LogicalDescendants<FrameworkElement>(root))
+            {
+                if (!element.IsVisible || element.ActualHeight <= 0)
+                    continue;
+
+                if (element is TextBlock text)
+                {
+                    var line = text.ContentStart.GetLineStartPosition(0);
+                    for (int count = 0; line != null && count < 200; count++)
+                    {
+                        Rect rect = line.GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward);
+                        if (!rect.IsEmpty && rect.Height > 0)
+                            yield return text.TransformToAncestor(viewport).TransformBounds(rect);
+
+                        var next = line.GetLineStartPosition(1);
+                        if (next == null || next.CompareTo(line) <= 0)
+                            break;
+                        line = next;
+                    }
+                }
+                else if (element is Button || element is ComboBox)
+                    yield return element.TransformToAncestor(viewport).TransformBounds(new Rect(element.RenderSize));
             }
         }
 
@@ -1167,20 +1053,12 @@ namespace OpenCvWpfTracking
                 grid,
                 panel,
                 video,
-                () => VideoShortcutGuide.SourceAspect(
-                video,
-                ReferenceEquals(
-                border,
-                IrVideoBorder
-            ) ? 1.25 : 16.0 / 9
-            )
+                () => VideoShortcutGuide.SourceAspect(video, ReferenceEquals(border, IrVideoBorder) ? 1.25 : 16.0 / 9)
             );
         }
 
         /// <summary>
-
         /// 연결 상태 요약의 첫 데이터 열을 맞추고 기존 상태/색상 바인딩을 보존한다.
-
         /// </summary>
         private void AlignConnectionStatusRows()
         {
@@ -1197,9 +1075,7 @@ namespace OpenCvWpfTracking
                 }
             }
 
-            foreach (var label in Descendants<TextBlock>(Content as DependencyObject).Where(t => t.Text == "CONTROL" ||
-                t.Text == "CAMERA" ||
-                t.Text == "DETECT").ToArray())
+            foreach (var label in Descendants<TextBlock>(Content as DependencyObject).Where(t => t.Text == "CONTROL" || t.Text == "CAMERA" || t.Text == "DETECT").ToArray())
             {
                 var grid = label.Parent as Grid;
 
@@ -1246,15 +1122,14 @@ namespace OpenCvWpfTracking
                         if (binding != null)
                             item.SetBinding(TextBlock.TextProperty, binding);
 
-                        var foregroundBinding = BindingOperations.GetBinding(
-                            pair.Run,
-                            System.Windows.Documents.TextElement.ForegroundProperty
-                        );
+                        var foregroundBinding = BindingOperations.GetBinding(pair.Run, System.Windows.Documents.TextElement.ForegroundProperty);
 
                         if (foregroundBinding != null)
                             item.SetBinding(TextBlock.ForegroundProperty, foregroundBinding);
 
-                        if (pair.Index == 1 && binding != null && new[]
+                        if (pair.Index == 1 &&
+                            binding != null &&
+                            new[]
                         {
                             "CurrentEoPowerText",
                             "CurrentIrPowerText",
@@ -1278,10 +1153,7 @@ namespace OpenCvWpfTracking
                         cell.SetBinding(VisibilityProperty, visibility);
 
                     // 기동형 전용 항목의 기존 지원 여부 표시 조건은 유지한다.
-                    cell.SetBinding(
-                        VisibilityProperty,
-                        new Binding("IsGpsTabVisible") { Converter = new BooleanToVisibilityConverter() }
-                    );
+                    cell.SetBinding(VisibilityProperty, new Binding("IsGpsTabVisible") { Converter = new BooleanToVisibilityConverter() });
 
                     if (text.Style == null)
                         cell.ClearValue(VisibilityProperty);
@@ -1293,33 +1165,28 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 전역 훅과 속성 구독을 정리하고 상태 타이머 및 제어 입력을 종료한다.
-
         /// </summary>
-        private void ShutdownV30Ui()
+        private void ShutdownControlInputUi()
         {
             _globalKeyboard?.Dispose();
             _globalKeyboard = null;
-            vm.PropertyChanged -= V30PropertyChanged;
-            vm.ShutdownV30Control();
+            vm.PropertyChanged -= OnControlStatePropertyChanged;
+            vm.ShutdownControlInputMonitor();
         }
 
         /// <summary>
         /// 마우스 입력 요소별 제어 소유 토큰을 반환한다.
         /// </summary>
-        private string MouseControlToken(object sender) => "mouse/" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sender);
+        private string MouseControlToken(object sender) =>
+            "mouse/" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sender);
 
         #endregion
-
         #region [필드 및 상태 정보]
-
         private readonly HashSet<UIElement> _captureOwners = new HashSet<UIElement>();
 
         #endregion
-
         #region [기능 처리 함수]
-
         /// <summary>
         /// 마우스 캡처와 해제 보호를 연결한 뒤 소유자별 PTZF 누름 입력을 등록한다.
         /// </summary>
@@ -1339,16 +1206,13 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-
         /// 해당 마우스 입력 토큰을 해제하고 마우스 캡처를 반환한다.
-
         /// </summary>
         private void EndMouseControl(object sender)
         {
             vm.ReleaseControlInput(MouseControlToken(sender));
             (sender as UIElement)?.ReleaseMouseCapture();
         }
-
         #endregion
     }
 }

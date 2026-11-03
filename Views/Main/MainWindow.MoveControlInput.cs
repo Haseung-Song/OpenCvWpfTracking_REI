@@ -17,7 +17,7 @@ namespace OpenCvWpfTracking
     /// 1. Pan Absolute         : -180.00 ~ 180.00
     /// 2. Tilt Absolute        : -90.00 ~ 90.00
     /// 3. Zoom / Focus Position: 0 ~ 1000
-    /// 4. EO Zoom Ratio        : 1.0 ~ 90.0 / IR proportional 1.0 ~ 9.0
+    /// 4. EO 배율 입력: 1.0~90.0 / IR은 같은 표준 위치의 공통 기준표로 환산
     ///
     /// 장비 제어 계산과 Packet 송신은 MainViewModel에서 수행하고,
     /// 이 파일에서는 화면 입력값의 형식과 범위만 관리한다.
@@ -25,7 +25,6 @@ namespace OpenCvWpfTracking
     public partial class MainWindow
     {
         #region [이동 제어 입력 상수]
-
         /// <summary>
         /// Pan Absolute 최소 / 최대 입력값
         /// </summary>
@@ -53,8 +52,8 @@ namespace OpenCvWpfTracking
         /// EO XV-Z2090HC:
         /// 1.0 ~ 90.0배
         ///
-        /// IR Infra-LWZ-25-225-AF1:
-        /// 같은 Position 진행률을 사용하여 1.0 ~ 9.0배로 적용한다.
+        /// IR은 같은 표준 위치를 공통 배율표로 환산한다.
+        /// 내부 끝점 8.15배는 보존하며 화면에는 최대 8.0배로 표시한다.
         /// </summary>
         private double MoveControlZoomRatioMinimumInput => vm.EoOpticalRatioMinimum;
 
@@ -78,9 +77,7 @@ namespace OpenCvWpfTracking
         private const int GpsRateMaximumInput = 10;
 
         #endregion
-
         #region [이동 제어 입력 사전 검사]
-
         /// <summary>
         /// Pan Absolute 숫자 입력 제한
         ///
@@ -96,14 +93,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void PanDecimalNumberOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            if (!(sender is TextBox textBox))
-            {
-                e.Handled = true;
-                return;
-            }
-
-            string previewText = CreatePreviewText(textBox, e.Text);
-            e.Handled = !Regex.IsMatch(previewText, @"^-?\d{0,3}(\.\d{0,2})?$");
+            DecimalNumberOnly_PreviewTextInput(sender, e);
         }
 
         /// <summary>
@@ -193,9 +183,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [이동 제어 입력 초점 해제]
-
         /// <summary>
         /// Pan Absolute 입력 완료 처리
         ///
@@ -277,9 +265,7 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
-
         #region [이동 제어 입력 보조 함수]
-
         /// <summary>
         /// 현재 TextBox에서 선택된 문자열을 새 입력 문자열로 교체한 뒤,
         /// 실제로 적용될 전체 문자열을 생성한다.
@@ -359,7 +345,6 @@ namespace OpenCvWpfTracking
 
             bindingExpression.UpdateSource();
         }
-
         #endregion
     }
 }

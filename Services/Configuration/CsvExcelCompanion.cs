@@ -15,7 +15,7 @@ namespace OpenCvWpfTracking.Services.Configuration
     {
         private const string Ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 
-        private static readonly object Sync = new object();
+        private static readonly object Sync = new object ();
 
         private static readonly Dictionary<string, DateTime> Pending = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
 
@@ -34,7 +34,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                 object gate;
 
                 if (!CsvFileLocks.TryGetValue(key, out gate))
-                    CsvFileLocks[key] = gate = new object();
+                    CsvFileLocks[key] = gate = new object ();
 
                 return gate;
             }
@@ -111,7 +111,9 @@ namespace OpenCvWpfTracking.Services.Configuration
                 if (rows.Count == 0 || rows.Count > 1048576 || rows.Any(r => r.Count > 16384))
                     throw new InvalidDataException("Excel row/column limit; CSV retained.");
 
-                string sheetName = string.Equals(Path.GetFileName(csvPath), "Devices.csv", StringComparison.OrdinalIgnoreCase) ? "Devices" : "Data";
+                string sheetName = string.Equals(Path.GetFileName(csvPath), "Devices.csv", StringComparison.OrdinalIgnoreCase)
+                    ? "Devices"
+                    : "Data";
                 string destination = Path.ChangeExtension(csvPath, "xlsx");
                 temp = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
                 using (var file = File.Create(temp))
@@ -130,7 +132,9 @@ namespace OpenCvWpfTracking.Services.Configuration
                     Part(
                         zip,
                         "xl/workbook.xml",
-                        "<workbook xmlns=\"" + Ns + "\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"" + sheetName + "\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>"
+                        "<workbook xmlns=\"" + Ns +
+                        "\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"" + sheetName +
+                        "\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>"
                     );
                     Part(
                         zip,
@@ -139,10 +143,7 @@ namespace OpenCvWpfTracking.Services.Configuration
                     );
                     Part(zip, "xl/styles.xml", Styles());
                     using (var entry = zip.CreateEntry("xl/worksheets/sheet1.xml", CompressionLevel.Fastest).Open())
-                    using (var x = XmlWriter.Create(
-                        entry,
-                        new XmlWriterSettings { Encoding = new UTF8Encoding(false), CheckCharacters = true }
-                    ))
+                    using (var x = XmlWriter.Create(entry, new XmlWriterSettings { Encoding = new UTF8Encoding(false), CheckCharacters = true }))
                     {
                         x.WriteStartElement("worksheet", Ns);
                         x.WriteStartElement("sheetViews", Ns);
@@ -164,12 +165,9 @@ namespace OpenCvWpfTracking.Services.Configuration
                             widths[col] = Math.Min(
                                 48,
                                 Math.Max(
-                                Math.Max(
-                                12,
-                                col < rows[0].Count ? rows[0][col].Sum(c => c > 255 ? 2 : 1) * 1.25 + 4 : 12
-                            ),
-                                rows.Take(2000).Where(r => r.Count > col).Select(r => r[col].Sum(c => c > 255 ? 2 : 1) + 2.0).DefaultIfEmpty(12).Max()
-                            )
+                                    Math.Max(12, col < rows[0].Count ? rows[0][col].Sum(c => c > 255 ? 2 : 1) * 1.25 + 4 : 12),
+                                    rows.Take(2000).Where(r => r.Count > col).Select(r => r[col].Sum(c => c > 255 ? 2 : 1) + 2.0).DefaultIfEmpty(12).Max()
+                                )
                             );
 
                         x.WriteStartElement("cols", Ns);
@@ -194,16 +192,19 @@ namespace OpenCvWpfTracking.Services.Configuration
                             double height = row == 0 ? 42 : 24;
 
                             for (int col = 0; col < rows[row].Count; col++)
-                                height = Math.Max(
-                                    height,
-                                    Math.Ceiling(rows[row][col].Sum(c => c > 255 ? 2 : 1) / widths[col]) * 16 + 8
-                                );
+                                height = Math.Max(height, Math.Ceiling(rows[row][col].Sum(c => c > 255 ? 2 : 1) / widths[col]) * 16 + 8);
 
                             x.WriteAttributeString("ht", Math.Min(409, height).ToString(CultureInfo.InvariantCulture));
                             x.WriteAttributeString("customHeight", "1");
 
                             for (int col = 0; col < rows[row].Count; col++)
-                                Cell(x, Column(col) + (row + 1), rows[row][col], col < rows[0].Count ? rows[0][col] : "", row == 0);
+                                Cell(
+                                    x,
+                                    Column(col) + (row + 1),
+                                    rows[row][col],
+                                    col < rows[0].Count ? rows[0][col] : "",
+                                    row == 0
+                                );
 
                             x.WriteEndElement();
                         }
@@ -257,14 +258,10 @@ namespace OpenCvWpfTracking.Services.Configuration
 
             if (!title)
             {
-                if ((key.Contains("TIME") ||
-                    key.EndsWith("_AT")) &&
+                if ((key.Contains("TIME") || key.EndsWith("_AT")) &&
                     DateTimeOffset.TryParse(
                     value.StartsWith("=\"") &&
-                    value.EndsWith("\"") ? value.Substring(
-                    2,
-                    value.Length - 3
-                ) : value,
+                    value.EndsWith("\"") ? value.Substring(2, value.Length - 3) : value,
                     CultureInfo.InvariantCulture,
                     DateTimeStyles.None,
                     out date
@@ -274,28 +271,16 @@ namespace OpenCvWpfTracking.Services.Configuration
                     style = 2;
                     serialized = date.DateTime.ToOADate().ToString("R", CultureInfo.InvariantCulture);
                 }
-                else if ((key.Contains("SCORE") ||
-                    key.Contains("CONFIDENCE") ||
-                    key.Contains("RATIO")) &&
+                else if ((key.Contains("SCORE") || key.Contains("CONFIDENCE") || key.Contains("RATIO")) &&
                     value.EndsWith("%") &&
-                    double.TryParse(
-                    value.TrimEnd('%'),
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    out number
-                ))
+                    double.TryParse(value.TrimEnd('%'), NumberStyles.Float, CultureInfo.InvariantCulture, out number))
                 {
                     type = "n";
                     style = 3;
                     serialized = (number / 100).ToString("R", CultureInfo.InvariantCulture);
                 }
                 else if (NumericHeader(key) &&
-                    double.TryParse(
-                    value,
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    out number
-                ) &&
+                    double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number) &&
                     !double.IsNaN(number) &&
                     !double.IsInfinity(number))
                 {
@@ -307,7 +292,8 @@ namespace OpenCvWpfTracking.Services.Configuration
                     "EOHTTPS",
                     "POSITIONSENSORS",
                     "DETECTED"
-                }.Contains(key) && bool.TryParse(value, out flag))
+                }.Contains(key) &&
+                    bool.TryParse(value, out flag))
                 {
                     type = "b";
                     serialized = flag ? "1" : "0";
@@ -334,7 +320,8 @@ namespace OpenCvWpfTracking.Services.Configuration
             x.WriteEndElement();
         }
 
-        private static bool NumericHeader(string key) => new[]
+        private static bool NumericHeader(string key) =>
+            new[]
         {
             "SAVED_ORDER",
             "NUMBER",
@@ -381,7 +368,13 @@ namespace OpenCvWpfTracking.Services.Configuration
         private static string Styles()
         {
             string alignment = "<alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/>";
-            return "<styleSheet xmlns=\"" + Ns + "\"><numFmts count=\"1\"><numFmt numFmtId=\"164\" formatCode=\"yyyy-mm-dd hh:mm:ss\"/></numFmts><fonts count=\"2\"><font><sz val=\"10\"/><name val=\"Malgun Gothic\"/></font><font><b/><sz val=\"10\"/><color rgb=\"FFFFFFFF\"/><name val=\"Malgun Gothic\"/></font></fonts><fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF344550\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"1\"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"4\">" + string.Concat(new[] { 0, 0, 164, 10 }.Select((format, i) => "<xf numFmtId=\"" + format + "\" fontId=\"" + (i == 1 ? 1 : 0) + "\" fillId=\"" + (i == 1 ? 2 : 0) + "\" borderId=\"0\" xfId=\"0\" applyAlignment=\"1\" applyNumberFormat=\"1\">" + alignment + "</xf>")) + "</cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles></styleSheet>";
+            return "<styleSheet xmlns=\"" + Ns +
+                "\"><numFmts count=\"1\"><numFmt numFmtId=\"164\" formatCode=\"yyyy-mm-dd hh:mm:ss\"/></numFmts><fonts count=\"2\"><font><sz val=\"10\"/><name val=\"Malgun Gothic\"/></font><font><b/><sz val=\"10\"/><color rgb=\"FFFFFFFF\"/><name val=\"Malgun Gothic\"/></font></fonts><fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF344550\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"1\"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"4\">" + string.Concat(new[] { 0, 0, 164, 10 }.Select((format, i) => "<xf numFmtId=\"" + format +
+                "\" fontId=\"" + (i == 1 ? 1 : 0) +
+                "\" fillId=\"" + (i == 1 ? 2 : 0) +
+                "\" borderId=\"0\" xfId=\"0\" applyAlignment=\"1\" applyNumberFormat=\"1\">" + alignment +
+                "</xf>")) +
+                "</cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles></styleSheet>";
         }
 
         internal static List<List<string>> Parse(string text)

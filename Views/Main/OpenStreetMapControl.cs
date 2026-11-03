@@ -113,11 +113,7 @@ namespace OpenCvWpfTracking
             ClipToBounds = true;
             Background = Brushes.Black;
             Focusable = true;
-            _tileCacheRoot = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "OpenCvWpfTracking",
-                "MapTiles"
-            );
+            _tileCacheRoot = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCvWpfTracking", "MapTiles");
             // Drag/Zoom 입력마다 Canvas를 즉시 재구성하면 타일이 서로 다른
             // 배율로 섞여 보이고 UI Thread가 과도하게 점유된다. 짧게 묶어서
             // 마지막 View만 렌더링한다.
@@ -138,14 +134,11 @@ namespace OpenCvWpfTracking
 
             try
             {
-                _fallbackImage.Source = new BitmapImage(new Uri(
-                    "pack://application:,,,/Images/Demo/GlobalSystemsTacticalMap.png",
-                    UriKind.Absolute
-                ));
+                _fallbackImage.Source = new BitmapImage(new Uri("pack://application:,,,/Images/Demo/GlobalSystemsTacticalMap.png", UriKind.Absolute));
             }
             catch
             {
-                // 대체 리소스가 없어도 지도 타일 표시는 계속 동작한다.
+            // 대체 리소스가 없어도 지도 타일 표시는 계속 동작한다.
             }
 
             _tileCanvas = new Canvas
@@ -611,6 +604,7 @@ namespace OpenCvWpfTracking
                 if (loadedTileCount > 0)
                 {
                     _tileCanvas.Children.Clear();
+
                     while (preparedCanvas.Children.Count > 0)
                     {
                         UIElement child = preparedCanvas.Children[0];
@@ -652,7 +646,7 @@ namespace OpenCvWpfTracking
             }
             catch (OperationCanceledException)
             {
-                // 최신 Drag/Zoom 요청이 이전 렌더링을 정상적으로 대체한 경우다.
+            // 최신 Drag/Zoom 요청이 이전 렌더링을 정상적으로 대체한 경우다.
             }
             catch (Exception ex)
             {
@@ -660,14 +654,7 @@ namespace OpenCvWpfTracking
             }
         }
 
-        private async Task<bool> LoadTileIntoImageAsync(
-            Image image,
-            int zoom,
-            int x,
-            int y,
-            long version,
-            CancellationToken cancellationToken
-        )
+        private async Task<bool> LoadTileIntoImageAsync(Image image, int zoom, int x, int y, long version, CancellationToken cancellationToken)
         {
             try
             {
@@ -705,7 +692,7 @@ namespace OpenCvWpfTracking
                     _isTileFallbackLogged = true;
                     Log.Warning(ex, "[MAP] OpenStreetMap Tile Load Failed / Static Map Fallback");
                 }
-                // 타일 레이어 뒤에 대체 지도를 유지한다.
+            // 타일 레이어 뒤에 대체 지도를 유지한다.
             }
 
             return false;
@@ -730,7 +717,7 @@ namespace OpenCvWpfTracking
                 }
                 catch
                 {
-                    // 캐시가 없거나 읽기에 실패하면 아래에서 네트워크 요청을 시도한다.
+                // 캐시가 없거나 읽기에 실패하면 아래에서 네트워크 요청을 시도한다.
                 }
             }
 
@@ -764,7 +751,7 @@ namespace OpenCvWpfTracking
             }
             catch
             {
-                // 캐시 저장 실패가 지도 표시를 막지 않게 한다.
+            // 캐시 저장 실패가 지도 표시를 막지 않게 한다.
             }
 
             return bytes;
@@ -815,6 +802,7 @@ namespace OpenCvWpfTracking
         private static double NormalizeLongitude(double longitude)
         {
             double normalized = longitude;
+
             while (normalized < -180.0)
             {
                 normalized += 360.0;

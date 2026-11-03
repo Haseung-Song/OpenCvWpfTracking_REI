@@ -23,13 +23,12 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     public class AiDetectorClientService
     {
         #region [필드]
-
         /// <summary>
         /// 실제 [TCP] [Client] 객체
         /// </summary>
         private TcpClient _tcpClient;
 
-        private readonly object _connectionSync = new object();
+        private readonly object _connectionSync = new object ();
 
         private long _connectionGeneration;
 
@@ -49,7 +48,6 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// [TCP]는 [Packet] 단위로 들어오지 않으므로,
         /// 수신된 [byte[]]를 여기에 계속 누적한다.
         /// </summary>
-
         /// <summary>
         /// 누적 [Buffer]에서 완성 [Packet]을 분리하기 위한 [Parser]
         /// </summary>
@@ -66,9 +64,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         private bool _isReconnectLoopStarted;
 
         #endregion
-
         #region [이벤트]
-
         /// <summary>
         /// 완성된 [AI] [Packet]이 수신되었을 때 발생하는 [Event]
         ///
@@ -78,9 +74,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public event Action<byte[], DateTime> PacketReceived;
 
         #endregion
-
         #region [속성]
-
         /// <summary>
         /// 현재 [TCP] 연결 상태
         /// </summary>
@@ -94,9 +88,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [연결]
-
         /// <summary>
         /// [AI] [Detector Agent]에 [TCP] 연결
         ///
@@ -127,10 +119,13 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
                 if (await Task.WhenAny(connect, Task.Delay(1500)) != connect)
                 {
-                    _ = connect.ContinueWith(t =>
+                    _ = connect.ContinueWith(
+                        t =>
                     {
                         var observed = t.Exception;
-                    }, TaskContinuationOptions.OnlyOnFaulted);
+                    },
+                        TaskContinuationOptions.OnlyOnFaulted
+                    );
                     tcpClient.Close();
                     return false;
                 }
@@ -176,12 +171,10 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [자동 재연결]
-
         /// <summary>
         /// [AI Detector Agent] 자동 재연결 시작
-        /// 
+        ///
         /// [AI Detector Agent] 프로그램이 늦게 켜지거나,
         /// 중간에 종료되었다가 다시 실행되는 경우를 대비하여
         /// 일정 주기마다 [TCP] 연결을 재시도한다.
@@ -199,12 +192,13 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             _isReconnectRunning = true;
             ConsoleLogHelper.PrintLine();
             Console.WriteLine("[AI TCP] Auto Reconnect Start.");
+
             while (_isReconnectRunning)
             {
                 /// <summary>
                 /// 현재 연결이 끊긴 상태일 때만
                 /// [AI Detector Agent] 재연결을 시도한다.
-                /// 
+                ///
                 /// 연결 성공 후, [IsConnected]가 true이므로
                 /// 추가 [Connect] 시도 없이 상태만 유지한다.
                 /// </summary>
@@ -233,7 +227,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
         /// <summary>
         /// [AI Detector Agent] 자동 재연결 재시작
-        /// 
+        ///
         /// 기존 연결 및 자동 재연결 루프를 정리한 뒤,
         /// 새 [IP] / [Port] 기준으로 자동 재연결을 다시 시작한다.
         /// </summary>
@@ -251,7 +245,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
         /// <summary>
         /// [AI Detector Agent] 자동 재연결 중지 요청
-        /// 
+        ///
         /// 기존 [Auto Reconnect] 루프를 종료시키기 위해 사용한다.
         /// </summary>
         public void StopAutoReconnect()
@@ -262,9 +256,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [수신]
-
         /// <summary>
         /// [AI] [Detector Agent]로부터 데이터를 계속 수신하는 [Loop]
         ///
@@ -334,9 +326,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// </summary>
 
         #endregion
-
         #region [패킷 송신]
-
         /// <summary>
         /// [AI Detector Agent] 요청 [Packet] 송신
         ///
@@ -347,7 +337,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// [CMD 52]
         /// [CMD 53]
         /// [CMD 54]
-        /// 
+        ///
         /// 조회 요청에 사용한다.
         /// </summary>
         public async Task<bool> SendAsync(byte[] packet)
@@ -377,9 +367,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
-
         #region [연결 해제]
-
         /// <summary>
         /// [AI] [Detector] [TCP] 연결 종료 및 리소스 정리
         /// </summary>
@@ -401,7 +389,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 }
                 catch
                 {
-                    // 종료 과정에서 발생하는 예외는 무시한다.
+                // 종료 과정에서 발생하는 예외는 무시한다.
                 }
                 finally
                 {
@@ -412,19 +400,6 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 }
             }
         }
-
-        #endregion
-
-        #region [로그]
-
-        /// <summary>
-        /// 수신 [Packet] [HEX] 로그 출력
-        /// </summary>
-        private void PrintHex(string title, byte[] data)
-        {
-            Console.WriteLine(title + " " + BitConverter.ToString(data));
-        }
-
         #endregion
     }
 }

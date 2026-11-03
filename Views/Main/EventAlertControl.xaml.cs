@@ -30,10 +30,6 @@ namespace OpenCvWpfTracking
 
         private MainViewModel _subscribedViewModel;
 
-        private DispatcherOperation _pendingEventTabSelection;
-
-        private int _pendingEventTabIndex = -1;
-
         private bool _hadActiveAiEvent;
 
         private bool _hadActiveFireEvent;
@@ -72,22 +68,8 @@ namespace OpenCvWpfTracking
         {
             if (_aiPager == null)
             {
-                _aiPager = new EventPageController(
-                    AiEventGrid,
-                    AiTotalText,
-                    AiSelectedText,
-                    AiPageText,
-                    AiPreviousButton,
-                    AiNextButton
-                );
-                _firePager = new EventPageController(
-                    FireEventGrid,
-                    FireTotalText,
-                    FireSelectedText,
-                    FirePageText,
-                    FirePreviousButton,
-                    FireNextButton
-                );
+                _aiPager = new EventPageController(AiEventGrid, AiTotalText, AiSelectedText, AiPageText, AiPreviousButton, AiNextButton);
+                _firePager = new EventPageController(FireEventGrid, FireTotalText, FireSelectedText, FirePageText, FirePreviousButton, FireNextButton);
             }
 
             SubscribeEventCollections(DataContext as MainViewModel);
@@ -156,8 +138,8 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void AiDetectionEvents_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            // 2026-09-17: 하이브리드 이벤트마다 탭을 강제로 전환하면 UI가 깜빡이므로
-            // 패널을 여는 시점의 최신 이벤트 선택만 유지한다.
+        // 2026-09-17: 하이브리드 이벤트마다 탭을 강제로 전환하면 UI가 깜빡이므로
+        // 패널을 여는 시점의 최신 이벤트 선택만 유지한다.
         }
 
         /// <summary>
@@ -165,7 +147,7 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void FireDetectionEvents_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            // 2026-09-17: 빈번한 자동 탭 전환 방지.
+        // 2026-09-17: 빈번한 자동 탭 전환 방지.
         }
 
         /// <summary>
@@ -193,27 +175,6 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// 2026-08-24: 실제 새 이벤트 행이 추가된 순간에만 해당 하위 탭을 한 번 선택한다.
-        /// Dispatcher 한 주기 내 연속 추가는 마지막 이벤트 종류로 병합하여 선택 강제를 지속하지 않는다.
-        /// </summary>
-        private void QueueNewEventTabSelection(int tabIndex)
-        {
-            _pendingEventTabIndex = tabIndex == 1 ? 1 : 0;
-
-            if (_pendingEventTabSelection != null && _pendingEventTabSelection.Status == DispatcherOperationStatus.Pending)
-            {
-                return;
-            }
-
-            _pendingEventTabSelection = Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
-            {
-                int resolvedIndex = _pendingEventTabIndex;
-                _pendingEventTabIndex = -1;
-                ApplyEventTabSelection(resolvedIndex, "NEW EVENT");
-            }));
-        }
-
-        /// <summary>
         /// 현재 이벤트 종류와 일치하도록 하위 탭 선택을 적용한다.
         /// </summary>
         private void ApplyEventTabSelection(int tabIndex, string reason)
@@ -224,10 +185,7 @@ namespace OpenCvWpfTracking
 
                 if (viewModel == null || EventTypeTabControl == null || tabIndex < 0)
                 {
-                    ConsoleLogHelper.Warning(
-                        "EVENT UI",
-                        "Event tab auto-selection skipped / ViewModel, TabControl, or index is unavailable"
-                    );
+                    ConsoleLogHelper.Warning("EVENT UI", "Event tab auto-selection skipped / ViewModel, TabControl, or index is unavailable");
                     return;
                 }
 
@@ -236,7 +194,8 @@ namespace OpenCvWpfTracking
                 EventTypeTabControl.SetCurrentValue(TabControl.SelectedIndexProperty, resolvedIndex);
                 ConsoleLogHelper.Info(
                     "EVENT UI",
-                    "Event alert sub-tab selected / REASON=" + reason + " / TYPE=" + (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION")
+                    "Event alert sub-tab selected / REASON=" + reason +
+                    " / TYPE=" + (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION")
                 );
             }
             catch (Exception exception)
@@ -263,15 +222,21 @@ namespace OpenCvWpfTracking
 
                 // 2026-08-24: 저장된 인덱스만 신뢰하지 않고 실제 목록의 최신 시각을
                 // 비교한다. 테스트 프로그램 FIRE 이벤트도 항상 FIRE 탭으로 연결된다.
-                DateTime? latestAiTime = viewModel.AiDetectionEvents.Count > 0 ? viewModel.AiDetectionEvents.Max(item => item.DetectedTime) : (DateTime?)null;
-                DateTime? latestFireTime = viewModel.FireDetectionEvents.Count > 0 ? viewModel.FireDetectionEvents.Max(item => item.DetectedTime) : (DateTime?)null;
-                int resolvedIndex = latestFireTime.HasValue &&
-                    (!latestAiTime.HasValue ||
-                    latestFireTime.Value >= latestAiTime.Value) ? 1 : latestAiTime.HasValue ? 0 : viewModel.SelectedEventAlertTabIndex;
+                DateTime? latestAiTime = viewModel.AiDetectionEvents.Count > 0
+                    ? viewModel.AiDetectionEvents.Max(item => item.DetectedTime)
+                    : (DateTime? )null;
+                DateTime? latestFireTime = viewModel.FireDetectionEvents.Count > 0
+                    ? viewModel.FireDetectionEvents.Max(item => item.DetectedTime)
+                    : (DateTime? )null;
+                int resolvedIndex = latestFireTime.HasValue && (!latestAiTime.HasValue || latestFireTime.Value >= latestAiTime.Value)
+                    ? 1
+                    : latestAiTime.HasValue ? 0 : viewModel.SelectedEventAlertTabIndex;
                 ApplyEventTabSelection(resolvedIndex, "EVENT PANEL OPEN");
                 ConsoleLogHelper.Info(
                     "EVENT UI",
-                    "Event alert tab opened / TYPE=" + (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION") + " / AI_COUNT=" + viewModel.AiDetectionEvents.Count + " / FIRE_COUNT=" + viewModel.FireDetectionEvents.Count
+                    "Event alert tab opened / TYPE=" + (resolvedIndex == 1 ? "FIRE DETECTION" : "AI DETECTION") +
+                    " / AI_COUNT=" + viewModel.AiDetectionEvents.Count +
+                    " / FIRE_COUNT=" + viewModel.FireDetectionEvents.Count
                 );
             }
             catch (Exception exception)
@@ -358,13 +323,7 @@ namespace OpenCvWpfTracking
             try
             {
                 DataGrid grid = sender as DataGrid;
-                EventPageController pager = ReferenceEquals(
-                    grid,
-                    AiEventGrid
-                ) ? _aiPager : ReferenceEquals(
-                    grid,
-                    FireEventGrid
-                ) ? _firePager : null;
+                EventPageController pager = ReferenceEquals(grid, AiEventGrid) ? _aiPager : ReferenceEquals(grid, FireEventGrid) ? _firePager : null;
 
                 if (grid == null || pager == null || e.Column == null || string.IsNullOrWhiteSpace(e.Column.SortMemberPath))
                 {
@@ -373,7 +332,9 @@ namespace OpenCvWpfTracking
                     return;
                 }
 
-                ListSortDirection direction = e.Column.SortDirection == ListSortDirection.Ascending ? ListSortDirection.Descending : ListSortDirection.Ascending;
+                ListSortDirection direction = e.Column.SortDirection == ListSortDirection.Ascending
+                    ? ListSortDirection.Descending
+                    : ListSortDirection.Ascending;
 
                 foreach (DataGridColumn column in grid.Columns)
                 {
@@ -434,14 +395,7 @@ namespace OpenCvWpfTracking
 
             private EventRecordComparer _activeComparer = new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
 
-            internal EventPageController(
-                DataGrid grid,
-                TextBlock totalText,
-                TextBlock selectedText,
-                TextBlock pageText,
-                RepeatButton previousButton,
-                RepeatButton nextButton
-            )
+            internal EventPageController(DataGrid grid, TextBlock totalText, TextBlock selectedText, TextBlock pageText, RepeatButton previousButton, RepeatButton nextButton)
             {
                 _grid = grid ?? throw new ArgumentNullException(nameof(grid));
                 // 2026-10-16: 수직 이동은 페이지 제어가 담당한다. 숨은 논리 스크롤로
@@ -449,11 +403,14 @@ namespace OpenCvWpfTracking
                 ScrollViewer.SetCanContentScroll(_grid, false);
                 _grid.EnableRowVirtualization = false; // 페이지당 최대 22행만 표시한다.
                 _grid.PreviewMouseWheel += (sender, args) => args.Handled = true;
-                _grid.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((sender, args) =>
+                _grid.AddHandler(
+                    ScrollViewer.ScrollChangedEvent,
+                    new ScrollChangedEventHandler((sender, args) =>
                 {
                     if (args.VerticalOffset > 0 && args.OriginalSource is ScrollViewer viewer)
                         viewer.ScrollToVerticalOffset(0);
-                }));
+                })
+                );
                 _totalText = totalText ?? throw new ArgumentNullException(nameof(totalText));
                 _selectedText = selectedText ?? throw new ArgumentNullException(nameof(selectedText));
                 _pageText = pageText ?? throw new ArgumentNullException(nameof(pageText));
@@ -461,11 +418,16 @@ namespace OpenCvWpfTracking
                 _nextButton = nextButton ?? throw new ArgumentNullException(nameof(nextButton));
                 _source = grid.ItemsSource as IList;
                 _view = CollectionViewSource.GetDefaultView(grid.ItemsSource);
-                _refreshTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(80), DispatcherPriority.Background, (sender, args) =>
+                _refreshTimer = new DispatcherTimer(
+                    TimeSpan.FromMilliseconds(80),
+                    DispatcherPriority.Background,
+                    (sender, args) =>
                 {
                     _refreshTimer.Stop();
                     Refresh();
-                }, _grid.Dispatcher);
+                },
+                    _grid.Dispatcher
+                );
                 _refreshTimer.Stop();
 
                 if (_view != null)
@@ -637,8 +599,7 @@ namespace OpenCvWpfTracking
                 var viewport = _rowsViewport ?? (_rowsViewport = FindRowsViewport(_grid));
                 double availableHeight = Math.Max(
                     0.0,
-                    (viewport != null &&
-                    viewport.ActualHeight > 0 ? viewport.ActualHeight : _grid.ActualHeight - headerHeight) - GridBottomReserve
+                    (viewport != null && viewport.ActualHeight > 0 ? viewport.ActualHeight : _grid.ActualHeight - headerHeight) - GridBottomReserve
                 );
 
                 if (availableHeight <= 0.0)
@@ -779,15 +740,12 @@ namespace OpenCvWpfTracking
             private sealed class EventRecordComparer : IComparer, IComparer<object>
             {
                 #region [필드 및 상태 정보]
-
                 private readonly string _sortMemberPath;
 
                 private readonly int _directionFactor;
 
                 #endregion
-
                 #region [초기화]
-
                 internal EventRecordComparer(string sortMemberPath, ListSortDirection direction)
                 {
                     _sortMemberPath = sortMemberPath;
@@ -795,9 +753,7 @@ namespace OpenCvWpfTracking
                 }
 
                 #endregion
-
                 #region [기능 처리 함수]
-
                 /// <summary>
                 /// 현재 정렬 기준에 따라 두 이벤트의 표시 순서를 비교한다.
                 /// </summary>
@@ -877,14 +833,10 @@ namespace OpenCvWpfTracking
                 private static double ParseConfidence(string value)
                 {
                     string normalized = (value ?? string.Empty).Trim().TrimEnd('%');
-                    return double.TryParse(
-                        normalized,
-                        NumberStyles.Float,
-                        CultureInfo.InvariantCulture,
-                        out double result
-                    ) ? result : double.MinValue;
+                    return double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out double result)
+                        ? result
+                        : double.MinValue;
                 }
-
                 #endregion
             }
         }
