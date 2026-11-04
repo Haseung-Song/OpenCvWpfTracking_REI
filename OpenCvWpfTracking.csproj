@@ -200,6 +200,7 @@
     <Compile Include="Services\Position\ZoneImageRegistration.cs" />
     <Compile Include="Services\Configuration\CsvExcelCompanion.cs" />
     <Compile Include="Services\Configuration\DeviceCatalog.cs" />
+    <Compile Include="Services\Configuration\EquipmentStorage.cs" />
     <Content Include="Config\Devices.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

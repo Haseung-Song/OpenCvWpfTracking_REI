@@ -118,7 +118,7 @@ namespace OpenCvWpfTracking
                 {
                     if (source != null)
                     {
-                        string contextHash = PanoramaPresetRegistration.ContextIdentity(context);
+                        string contextHash = vm.PanoramaPresetContextHash;
                         _panoramaCoordinates = PanoramaPresetRegistration.Load(_linkedPanoramaPath, contextHash, source.PixelWidth, source.PixelHeight);
                         PanoramaPresetRegistration.RememberImage(_linkedPanoramaPath, contextHash);
                     }

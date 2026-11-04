@@ -288,7 +288,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ReferenceTilt = originalTilt,
                 CaptureRange = selectedTiltRangeDegrees,
                 CaptureDateTime = DateTimeOffset.Now.ToString("o"),
-                ContextHash = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.ContextIdentity(PanoramaPresetContext),
+                ContextHash = PanoramaPresetContextHash,
                 OpticalCenterX = center.X,
                 OpticalCenterY = center.Y,
                 VerticalFov = 2 * Math.Atan(Math.Tan(tuning.Item1 * Math.PI / 360) / tuning.Item2) * 180 / Math.PI

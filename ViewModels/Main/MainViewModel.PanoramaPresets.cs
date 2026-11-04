@@ -20,11 +20,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public bool IsPanoramaPresetRunning => _panoramaPresetCts != null;
 
-        public string PanoramaPresetContext =>
+        private string LegacyPanoramaPresetContext =>
             PanoramaDeviceKey +
             "|" + EoSourceAddress +
             "|" + OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.ReferenceStamp(PanoramaDeviceKey +
             "|" + EoSourceAddress);
+
+        /// <summary>연동 중 장비 구분은 주소가 아닌 고정 장비 ID를 사용한다.</summary>
+        public string PanoramaPresetContext =>
+            HasRegisteredEquipmentIdentity ? RegisteredEquipmentIdentity : LegacyPanoramaPresetContext;
+
+        /// <summary>과거 사진·ZERO 기록과 호환되는 저장 해시를 같은 장비에 계속 연결한다.</summary>
+        public string PanoramaPresetContextHash
+        {
+            get
+            {
+                var registration = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.ContextIdentity(LegacyPanoramaPresetContext);
+
+                if (!HasRegisteredEquipmentIdentity)
+                    return registration;
+
+                string directory = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.DeviceDirectory(
+                    System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas"),
+                    IsSelectedControlAgentWebAgent, PanoramaDeviceKey, SelectedControlAgentProfile.DisplayName,
+                    SelectedControlAgentProfile.DeviceId);
+                return OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.EquipmentContextHash(directory, registration);
+            }
+        }
 
         /// <summary>
         /// 현재 연결 장비에 해당하는 기존 프리셋만 번호 순서로 복사한다.

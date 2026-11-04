@@ -1718,7 +1718,7 @@ namespace OpenCvWpfTracking
 
         private string _displayedPanoramaDeviceContext;
 
-        private string PanoramaImageDeviceContext => vm.PanoramaDeviceKey + "|" + vm.EoSourceAddress;
+        private string PanoramaImageDeviceContext => vm.PanoramaPresetContext;
 
         /// <summary>
         /// 장비 전환 시 해당 장비의 마지막 사진 또는 전용 폴더 사진만 복원한다.
@@ -1731,7 +1731,7 @@ namespace OpenCvWpfTracking
             PanoramaImage.Source = _defaultPanoramaSource;
             _currentPanoramaFilePath = null;
             PanoramaFileNameText.Text = "ROOFTOP PANORAMA / DEFAULT IMAGE";
-            string contextHash = PanoramaPresetRegistration.ContextIdentity(vm.PanoramaPresetContext);
+            string contextHash = vm.PanoramaPresetContextHash;
             string remembered = PanoramaPresetRegistration.ReadAtomic<string>(PanoramaPresetRegistration.LastImagePath(contextHash));
 
             if (!string.IsNullOrWhiteSpace(remembered) && File.Exists(remembered))
@@ -1778,7 +1778,7 @@ namespace OpenCvWpfTracking
                 if (latestPath == null)
                 {
                     string legacy = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas");
-                    string contextHash = PanoramaPresetRegistration.ContextIdentity(vm.PanoramaPresetContext);
+                    string contextHash = vm.PanoramaPresetContextHash;
 
                     if (Directory.Exists(legacy))
                     {
@@ -1961,7 +1961,8 @@ namespace OpenCvWpfTracking
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas"),
                         profile.AgentType == OpenCvWpfTracking.Models.Main.ControlAgentType.WebAgent,
                         key,
-                        profile.DisplayName
+                        profile.DisplayName,
+                        profile.DeviceId
                     );
                     EnsurePanoramaDefault(directory);
                 }
@@ -1996,7 +1997,8 @@ namespace OpenCvWpfTracking
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas"),
                 vm.IsSelectedControlAgentWebAgent,
                 vm.PanoramaDeviceKey,
-                vm.SelectedControlAgentProfile?.DisplayName
+                vm.SelectedControlAgentProfile?.DisplayName,
+                vm.SelectedControlAgentProfile?.DeviceId
             );
             EnsurePanoramaDefault(directory);
             return directory;

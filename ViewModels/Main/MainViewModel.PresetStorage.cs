@@ -26,8 +26,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private bool _presetStorageLoadFailed;
 
-        /// <summary>장비 종류·제어 주소·카메라 조합으로 저장 대상을 구분한다.</summary>
+        /// <summary>등록 장비는 IP·카메라 주소와 무관한 고정 ID로 구분한다.</summary>
         private string PresetEquipmentContext =>
+            HasRegisteredEquipmentIdentity ? RegisteredEquipmentIdentity : LegacyPresetEquipmentContext;
+
+        public bool HasRegisteredEquipmentIdentity =>
+            SelectedControlAgentProfile != null && !SelectedControlAgentProfile.IsDirectInput &&
+            !string.IsNullOrWhiteSpace(SelectedControlAgentProfile.DeviceId);
+
+        public string RegisteredEquipmentIdentity => EquipmentStorage.Identity(
+            SelectedControlAgentProfile?.DeviceId, IsSelectedControlAgentWebAgent);
+
+        /// <summary>직접 입력과 과거 해시 폴더 복원에만 주소 기반 구분을 유지한다.</summary>
+        private string LegacyPresetEquipmentContext =>
             (SelectedControlAgentProfile?.AgentType.ToString() ?? "Unknown") +
             "|" + PanoramaDeviceKey +
             "|" + PresetCameraIdentity(EoSourceAddress) +
@@ -61,12 +72,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 try
                 {
-                    OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.DeviceDirectory(
+                    string key = DeviceCatalog.StorageDisplayName(profile.DisplayName) + "|" + profile.IpAddress + ":" + profile.Port;
+                    var entry = DeviceCatalog.Get(profile.DeviceId);
+                    string legacy = profile.AgentType + "|" + key + "|" + PresetCameraIdentity(entry.EoAddress) + "|" + PresetCameraIdentity(entry.IrAddress);
+                    EquipmentStorage.ResolvePresets(
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets"),
-                        profile.AgentType == ControlAgentType.WebAgent,
-                        profile.DisplayName + "|" + profile.IpAddress + ":" + profile.Port,
-                        profile.DisplayName
-                    );
+                        profile.DeviceId, profile.AgentType == ControlAgentType.WebAgent, profile.DisplayName,
+                        PresetRowHash(new[] { legacy }), PresetRowHash(new[] { NormalizeLegacyPresetContext(legacy) }));
                 }
                 catch (IOException ex)
                 {
@@ -79,14 +91,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        /// <summary>표시 이름은 파노라마와 통일하고 다른 카메라 구성은 별도 소유 정보로 구분한다.</summary>
+        /// <summary>등록 장비는 고정 ID로 복원하며 직접 입력은 기존 주소 구분을 유지한다.</summary>
         private string ResolveEquipmentPresetDirectory(string context)
         {
             string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets");
+            if (HasRegisteredEquipmentIdentity)
+            {
+                string legacy = LegacyPresetEquipmentContext;
+                return EquipmentStorage.ResolvePresets(root, SelectedControlAgentProfile.DeviceId,
+                    IsSelectedControlAgentWebAgent, SelectedControlAgentProfile.DisplayName,
+                    PresetRowHash(new[] { legacy }), PresetRowHash(new[] { NormalizeLegacyPresetContext(legacy) }));
+            }
+
             string stem = OpenCvWpfTracking.Services.Video.PanoramaPresetRegistration.DeviceDirectory(root, IsSelectedControlAgentWebAgent, PanoramaDeviceKey, SelectedControlAgentProfile?.DisplayName);
             string legacyIdentity = PresetRowHash(new[] { context });
             // Config 행 추가로 표시 순번이 바뀌어도 같은 장비의 폴더를 유지한다.
-            string stableContext = System.Text.RegularExpressions.Regex.Replace(context, @"^([^|]+\|)\s*\d+\.\s*", "$1");
+            string stableContext = NormalizeLegacyPresetContext(context);
             string identity = PresetRowHash(new[] { stableContext });
 
             for (int variant = 1; variant <= 100; variant++)
@@ -134,6 +154,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             throw new IOException("장비별 프리셋 폴더 소유 정보를 확인하세요.");
         }
+
+        /// <summary>과거 표시 순번만 제외하여 이전 해시 폴더를 조회한다.</summary>
+        private static string NormalizeLegacyPresetContext(string context) =>
+            System.Text.RegularExpressions.Regex.Replace(context, @"^([^|]+\|)\s*\d+\.\s*", "$1");
 
         /// <summary>해시 이름으로 저장한 자료는 장비명 폴더로 복사하며 기존 원본은 보존한다.</summary>
         private static void RestoreLegacyEquipmentPresets(string legacy, string directory)

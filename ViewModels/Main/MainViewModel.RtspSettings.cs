@@ -8,6 +8,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public sealed class ControlAgentProfileOption
     {
+        /// <summary>주소·표시 순번과 독립된 장비 설정의 고정 ID.</summary>
+        public string DeviceId { get; }
+
         public string DisplayName { get; }
 
         public string IpAddress { get; }
@@ -24,8 +27,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public ControlAgentType AgentType { get; }
 
-        public ControlAgentProfileOption(string displayName, string ipAddress, string port, string eoPresetName, string irPresetName, bool isDirectInput = false, ControlAgentType agentType = ControlAgentType.WebAgent, bool positionSensors = false)
+        public ControlAgentProfileOption(string displayName, string ipAddress, string port, string eoPresetName, string irPresetName, bool isDirectInput = false, ControlAgentType agentType = ControlAgentType.WebAgent, bool positionSensors = false, string deviceId = null)
         {
+            DeviceId = deviceId;
             DisplayName = displayName;
             IpAddress = ipAddress;
             Port = port;
@@ -114,7 +118,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     e.EoLabel,
                     e.IrLabel,
                     agentType: e.AgentType,
-                    positionSensors: e.PositionSensors
+                    positionSensors: e.PositionSensors,
+                    deviceId: e.Id
                 )).Concat(new[] { new ControlAgentProfileOption("직접 입력", null, null, null, null, isDirectInput: true) }));
 
         public ControlAgentProfileOption SelectedControlAgentProfile

@@ -172,8 +172,11 @@ namespace OpenCvWpfTracking.Services.Video
         /// <summary>
         /// 순번·EO/IR 접미사·해시를 빼고 장비 이름으로 저장한다. 이름 중복 시에만 주소를 붙인다.
         /// </summary>
-        public static string DeviceDirectory(string root, bool web, string deviceKey, string displayName)
+        public static string DeviceDirectory(string root, bool web, string deviceKey, string displayName, string deviceId = null)
         {
+            if (!string.IsNullOrWhiteSpace(deviceId))
+                return Services.Configuration.EquipmentStorage.ResolvePanoramas(root, deviceId, web, displayName);
+
             string name = System.Text.RegularExpressions.Regex.Replace(displayName ?? "DEVICE", @"^\s*\d+\.\s*", "");
             name = System.Text.RegularExpressions.Regex.Replace(name, @"\s+EO\s*/\s*IR\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             string label = new string (name.Select(c => char.IsLetterOrDigit(c) || c == '-' ? c : '_').ToArray());
@@ -238,6 +241,82 @@ namespace OpenCvWpfTracking.Services.Video
 
             throw new IOException("장비별 파노라마 폴더 구분 정보를 확인하세요.");
         }
+
+        private static readonly Dictionary<string, string> EquipmentContextHashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>사진·영점 기록의 기존 해시는 한 번 고정하여 IP 변경 후에도 그대로 사용한다.</summary>
+        public static string EquipmentContextHash(string directory, string legacyHash)
+        {
+            lock (EquipmentContextHashes)
+            {
+                string saved;
+
+                if (EquipmentContextHashes.TryGetValue(directory, out saved))
+                    return saved;
+
+                string path = Path.Combine(directory, ".panorama-context");
+
+                if (File.Exists(path))
+                {
+                    saved = File.ReadAllText(path).Trim();
+
+                    if (!IsContextHash(saved))
+                        throw new IOException("장비 파노라마 연동 식별 기록을 확인하세요. 원본은 유지합니다.");
+                }
+                else
+                {
+                    saved = legacyHash;
+
+                    // 실제 JPG 지문과 일치하는 최신 좌표 파일만 기존 장비 연동의 근거로 사용한다.
+                    foreach (string image in Directory.EnumerateFiles(directory, "Panorama *.jpg").OrderByDescending(File.GetLastWriteTimeUtc))
+                    {
+                        var data = ReadAtomic<PanoramaCoordinateMetadata>(Path.ChangeExtension(image, ".json"));
+
+                        if (data == null || !IsContextHash(data.ContextHash) || data.ImageHash != FileIdentity(image) || !Valid(data))
+                            continue;
+
+                        saved = data.ContextHash;
+                        break;
+                    }
+
+                    string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+
+                    try
+                    {
+                        using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                        using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                        {
+                            writer.Write(saved);
+                            writer.Flush();
+                            stream.Flush(true);
+                        }
+
+                        File.Move(temporary, path);
+                    }
+                    catch (IOException)
+                    {
+                        if (!File.Exists(path))
+                            throw;
+
+                        saved = File.ReadAllText(path).Trim();
+
+                        if (!IsContextHash(saved))
+                            throw;
+                    }
+                    finally
+                    {
+                        if (File.Exists(temporary))
+                            File.Delete(temporary);
+                    }
+                }
+
+                EquipmentContextHashes[directory] = saved;
+                return saved;
+            }
+        }
+
+        private static bool IsContextHash(string value) =>
+            value != null && value.Length == 64 && value.All(c => Uri.IsHexDigit(c));
 
         /// <summary>기존 긴 이름 폴더는 이동·삭제하지 않고 사진 복원 시 호환 경로로 사용한다.</summary>
         public static string LegacyDeviceDirectory(string root, bool web, string deviceKey, string displayName)

@@ -32,7 +32,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private string PanoramaReferencePath =>
             Path.Combine(
             PanoramaPresetRegistration.ConfigDirectory,
-            "reference_" + PanoramaPresetRegistration.ContextIdentity(PanoramaPresetContext) + ".json"
+            "reference_" + PanoramaPresetContextHash + ".json"
         );
 
         /// <summary>같은 장비 재연결은 같은 변환 기록을 사용하며 이전 사진과 연동 번호를 지우지 않는다.</summary>
