@@ -18,13 +18,17 @@ namespace OpenCvWpfTracking
 {
     public sealed class OpticalCalibrationSession
     {
+
         #region [필드 및 상태 정보]
+
         private readonly List<Point> points = new List<Point>();
 
         private readonly List<int> zooms = new List<int>();
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         public bool Active { get; private set; }
 
         public bool FourPoint { get; private set; }
@@ -42,7 +46,9 @@ namespace OpenCvWpfTracking
         public IReadOnlyList<Point> SelectedPoints => points;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 현재 위치와 장비 기준을 고정하여 십자선 보정 점 선택을 시작한다.
         /// </summary>
@@ -155,12 +161,16 @@ namespace OpenCvWpfTracking
         /// </summary>
         public bool CanSave(int zoom, Point pose, string device, bool fresh) =>
             Active && Candidate.HasValue && fresh && zoom == CandidateZoom && device == Device && PoseError(Pose, pose) <= .005;
+
         #endregion
+
     }
 
     internal sealed class InlineOpticalCalibration
     {
+
         #region [필드 및 상태 정보]
+
         private static readonly ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration> controllers = new ConditionalWeakTable<FrameworkElement, InlineOpticalCalibration>();
 
         private readonly FrameworkElement image;
@@ -198,11 +208,15 @@ namespace OpenCvWpfTracking
         private bool hidingForSelection;
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         internal FrameworkElement SettingsPanel { get; private set; }
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 영상에 연결된 십자선 설정 요소를 반환한다.
         /// </summary>
@@ -229,7 +243,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         internal Point? Preview
         {
             get
@@ -245,7 +261,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 해당 영상에서 보정 점 선택을 진행 중인지 확인한다.
         /// </summary>
@@ -256,7 +274,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [초기화]
+
         internal InlineOpticalCalibration(Grid host, FrameworkElement viewport, MainViewModel model, Func<bool> infrared)
         {
             image = viewport;
@@ -488,7 +508,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 현재 위치와 장비 기준을 고정하여 십자선 보정 점 선택을 시작한다.
         /// </summary>
@@ -755,6 +777,8 @@ namespace OpenCvWpfTracking
             pickingHint.Visibility = Visibility.Collapsed;
             OpenCvWpfTracking.Common.ConsoleLogHelper.State("OPTICAL CENTER", (ir() ? "IR" : "EO") + " / CALIBRATION_CANCELED / DIGITAL_ZOOM_ON");
         }
+
         #endregion
+
     }
 }

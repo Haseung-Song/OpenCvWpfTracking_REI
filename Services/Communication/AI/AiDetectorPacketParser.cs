@@ -28,7 +28,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// </summary>
     public class AiDetectorPacketParser
     {
+
         #region [상수]
+
         /// <summary>
         /// [Packet] 시작 문자 [STX]
         /// </summary>
@@ -70,7 +72,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         private const string DetectCommand = "55";
 
         #endregion
+
         #region [패킷 추출]
+
         /// <summary>
         /// [TCP] 수신 [Buffer]에서 완성된 [AI] [Packet]들을 분리한다.
         ///
@@ -150,7 +154,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [검출 패킷 해석]
+
         /// <summary>
         /// [CMD 55] 탐지데이터 [Packet]을 [AiDetectionResult]로 변환한다.
         ///
@@ -188,7 +194,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [응답 데이터 해석]
+
         /// <summary>
         /// [CMD 52] [RTSP] 주소 목록 [Payload] 파싱
         ///
@@ -372,7 +380,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [Common 패킷 해석]
+
         /// <summary>
         /// [AI] [Packet] 공통 구조를 외부에서 파싱한다.
         ///
@@ -466,7 +476,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [체크섬 계산]
+
         /// <summary>
         /// [Checksum] 계산
         ///
@@ -493,7 +505,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [검출 데이터 해석]
+
         /// <summary>
         /// [CMD 55] 탐지데이터 [Payload] 파싱
         ///
@@ -626,6 +640,8 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             result = detectionResult;
             return true;
         }
+
         #endregion
+
     }
 }

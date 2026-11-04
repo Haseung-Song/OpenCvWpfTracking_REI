@@ -28,7 +28,9 @@ namespace OpenCvWpfTracking
     /// </summary>
     public partial class MainWindow : Window
     {
-        #region [필드]
+
+        #region [공유 필드 및 시스템 연동 선언]
+
         // 2026-09-16: MainWindow 전체화면은 작업영역(rcWork)이 아니라
         // 현재 창이 위치한 모니터 전체 영역(rcMonitor)을 사용한다.
         private const uint MonitorDefaultToNearest = 0x00000002;
@@ -174,7 +176,9 @@ namespace OpenCvWpfTracking
         private TabControl _tabDragSource;
 
         #endregion
+
         #region [생성자]
+
         /// <summary>
         /// [Main] 화면 생성자
         ///
@@ -631,7 +635,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [회사 위치 지도 이벤트]
+
         /// <summary>
         /// 메인 화면 GLOBAL SYSTEMS 지도 더블클릭 처리.
         ///
@@ -678,7 +684,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [분리 영상창 이벤트]
+
         /// <summary>
         /// EO 영상 영역 더블클릭 처리.
         ///
@@ -1049,7 +1057,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [창 제목 표시줄 이벤트]
+
         private bool _isNativeWindowSizing;
 
         [StructLayout(LayoutKind.Sequential)]
@@ -1470,7 +1480,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [창 키보드 이벤트]
+
         /// <summary>
         /// [MainWindow] Loaded 처리
         ///
@@ -2388,7 +2400,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [팬·틸트 마우스 이벤트]
+
         /// <summary>
         /// [PAN] 좌측 버튼 MouseDown
         /// </summary>
@@ -2466,7 +2480,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [EO 줌·초점 마우스 이벤트]
+
         /// <summary>
         /// [EO] Zoom 확대 버튼 MouseDown
         /// </summary>
@@ -2512,7 +2528,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [IR 줌·초점 마우스 이벤트]
+
         /// <summary>
         /// [IR] Zoom 확대 버튼 MouseDown
         /// </summary>
@@ -2574,7 +2592,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [연속 동작 정지 이벤트]
+
         /// <summary>
         /// MouseUp 공통 연속 이동 정지
         /// </summary>
@@ -2616,6 +2636,8 @@ namespace OpenCvWpfTracking
 
             Dispatcher.BeginInvoke(new Action(scrollViewer.ScrollToTop));
         }
+
         #endregion
+
     }
 }

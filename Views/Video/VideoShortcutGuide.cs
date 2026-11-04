@@ -15,7 +15,9 @@ namespace OpenCvWpfTracking
     // 2026-10-12: 메인 EO/IR과 분리창의 단축키 안내 내용과 형식을 공유한다.
     internal static class VideoShortcutGuide
     {
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 영상 영역 크기에 맞는 단축키 안내 배율을 계산한다.
         /// </summary>
@@ -315,18 +317,24 @@ namespace OpenCvWpfTracking
             panel.Children.Add(warning);
             return panel;
         }
+
         #endregion
+
     }
 
     internal sealed class DeviceOnOffBrushConverter : IValueConverter
     {
+
         #region [필드 및 상태 정보]
+
         private static readonly Brush OnBrush = LegacyVideoIntegration.FrozenBrush("#55D187");
 
         private static readonly Brush OffBrush = LegacyVideoIntegration.FrozenBrush("#FF6B6B");
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 화면 바인딩 값을 해당 표시 형식으로 변환한다.
         /// </summary>
@@ -337,12 +345,16 @@ namespace OpenCvWpfTracking
         /// 역방향 바인딩에서 사용할 값을 반환한다.
         /// </summary>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+
         #endregion
+
     }
 
     internal sealed class ConnectedVideoVisibilityConverter : IValueConverter
     {
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 화면 바인딩 값을 해당 표시 형식으로 변환한다.
         /// </summary>
@@ -355,12 +367,16 @@ namespace OpenCvWpfTracking
         /// 역방향 바인딩에서 사용할 값을 반환한다.
         /// </summary>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+
         #endregion
+
     }
 
     internal sealed class ConnectedRatioVisibilityConverter : IMultiValueConverter
     {
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 화면 바인딩 값을 해당 표시 형식으로 변환한다.
         /// </summary>
@@ -382,6 +398,8 @@ namespace OpenCvWpfTracking
             Binding.DoNothing,
             Binding.DoNothing
         };
+
         #endregion
+
     }
 }

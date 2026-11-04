@@ -12,7 +12,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+
         #region [필드 및 상태 정보]
+
         /// <summary>과거 WEB 줌 저장값은 호환 변환만 적용하고 새 프리셋은 장비 위치를 그대로 사용한다.</summary>
         private int PresetIrZoomPosition(PresetPointOption preset)
         {
@@ -75,7 +77,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const int PresetIrLensTolerance = 35;
 
         #endregion
+
         #region [기능 처리 함수]
+
         // 줌 복원 제한은 운용자가 설정한 정지 시간과 분리한다.
         // 초점은 기존 저장값으로 복원하되 자동 순회의 정지 시간 시작 조건으로 사용하지 않는다.
         private const int PresetZoomRestoreTimeoutMs = 45000;
@@ -366,7 +370,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private long _presetEoZoomTicks;
 
         private long _presetEoFocusTicks;
@@ -376,7 +382,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private long _presetIrFocusTicks;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 2026-10-14 실제 수신된 유효 Zoom/Focus 증거를 축별로 보관한다. 명령 추정값은 증거가 아니다.
         /// </summary>
@@ -555,6 +563,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value >= 0 && value <= 1000;
         }
+
         #endregion
+
     }
 }

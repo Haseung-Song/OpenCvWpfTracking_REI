@@ -10,7 +10,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+
         #region [필드 및 상태 정보]
+
         // 2026-10-12: 공통 DIGITAL_ZOOM은 켜짐/꺼짐 명령이며 단계별 배율 제어가 아니다.
         private readonly byte[] _digitalCaps = new byte[2];
 
@@ -22,7 +24,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private long _digitalEstimateTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 단조 시계의 경과 시간을 계산해 EO/IR 디지털 추정 모델을 함께 갱신한다.
         /// </summary>
@@ -62,7 +66,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         private double EoDisplayZoomRatio =>
             ControlTuningFor(false).Ratio(GetCurrentPresetStandardZoom()) * (GetCurrentPresetStandardZoom() >= 1000 && _eoDigitalEstimate.Enabled ? _eoDigitalEstimate.Factor : 1);
 
@@ -70,7 +76,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ControlTuningFor(true).Ratio(GetCurrentIrZoomStandardPosition()) * (GetCurrentIrZoomStandardPosition() >= 1000 && _irDigitalEstimate.Enabled ? _irDigitalEstimate.Factor : 1);
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private readonly bool[] _digitalCapsKnown = new bool[2];
 
         private readonly int[] _digitalState =
@@ -108,7 +116,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _centerMoveEpoch;
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         private bool CameraFeatureTransportReady => _isDeviceConnectionRequested && _laTcpService.IsConnected;
 
         public bool CanSetEoDigitalZoom => CanSetDigitalZoom(0);
@@ -129,7 +139,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _videoCenterBusy || _activePanAbsoluteTarget.HasValue || _activeTiltAbsoluteTarget.HasValue;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 채널의 연결·운용 잠금·요청 대기를 확인한다. IR은 지원 조회와 무관하게 수동 요청을 허용한다.
         /// </summary>
@@ -171,7 +183,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         // 2026-10-13: 알림 순서를 바꾸지 않고 속성명 목록을 재사용한다.
         private static readonly string[] DigitalZoomPropertyNames =
         {
@@ -182,7 +196,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         };
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// D-ZOOM 가능 여부 및 상태 표시의 바인딩을 갱신한다.
         /// </summary>
@@ -424,11 +440,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private string _lastDigitalUiSignature;
 
         #endregion
+
         #region [기능 처리 함수]
+
         // 2026-10-12: 시간 기반 이동이 아닌 핀홀 광선 투영을 사용한다. 임시 화각은 현장 보정이 필요하다.
         /// <summary>
         /// 정규화된 영상 클릭 좌표를 핀홀 광선 모델로 PT 절대 목표 각도에 환산한다.
@@ -615,12 +635,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _videoCenterBusy = false;
             }
         }
+
         #endregion
+
     }
 
     internal static class CameraNumberValidation
     {
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 좌표 계산에 사용할 값에 유효하지 않은 수가 포함되었는지 확인한다.
         /// </summary>
@@ -632,6 +656,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             return false;
         }
+
         #endregion
+
     }
 }

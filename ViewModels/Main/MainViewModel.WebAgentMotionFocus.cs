@@ -14,7 +14,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>2026-11-03 정비: WEB 자동 초점 세션과 보관된 정밀 이동의 안전 처리를 관리한다.</summary>
     public partial class MainViewModel
     {
+
         #region [시험 기능 상태]
+
         private bool _isWebAgentFocusControlEnabled = true;
 
         private bool _autoFocusActivatedForSession;
@@ -153,7 +155,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _autoFocusCommand ?? (_autoFocusCommand = new ParameterRelayCommand(ExecuteAutoFocus, CanExecuteAutoFocus));
 
         #endregion
+
         #region [정밀 이동 및 정지]
+
         /// <summary>
         /// 보관된 장비 위치가 정밀 동작 판단에 사용할 만큼 최근에 수신되었는지 확인한다.
         /// </summary>
@@ -365,7 +369,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [자동 초점 요청 및 응답]
+
         /// <summary>
         /// 연결·지원 기능·응답 대기·제어 잠금을 확인해 대상별 AF 명령 실행 가능 여부를 판단한다.
         /// </summary>
@@ -607,7 +613,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [세션 및 안전 타이머]
+
         /// <summary>
         /// 지원 장비 연결 뒤 상태를 조회하고 지원 채널의 연속 AF 기본 OFF 확인을 시작한다.
         /// </summary>
@@ -796,6 +804,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(ControlLockMessage));
             CommandManager.InvalidateRequerySuggested();
         }
+
         #endregion
+
     }
 }

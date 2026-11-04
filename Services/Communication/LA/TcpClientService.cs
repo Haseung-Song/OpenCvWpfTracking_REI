@@ -19,7 +19,9 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public class TcpClientService
     {
+
         #region [상수]
+
         /// <summary>
         /// [TCP] 연결 제한 시간 [ms]
         ///
@@ -34,7 +36,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private const int SEND_TIMEOUT_MS = 1500;
 
         #endregion
+
         #region [필드]
+
         private TcpClient _tcpClient;
 
         private NetworkStream _networkStream;
@@ -64,7 +68,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private bool _isManualDisconnect;
 
         #endregion
+
         #region [이벤트]
+
         public event Action<byte[], DateTime> MessageReceived;
 
         /// <summary>
@@ -75,7 +81,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public event Action ConnectionClosed;
 
         #endregion
+
         #region [속성]
+
         public bool IsConnected
         {
             get
@@ -88,7 +96,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [연결]
+
         /// <summary>
         /// [Web Agent / LA] TCP Server 연결
         ///
@@ -183,7 +193,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [송신]
+
         /// <summary>
         /// Send 송신 함수.
         /// </summary>
@@ -227,7 +239,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [수신]
+
         /// <summary>
         /// ReceiveLoopAsync 수신 함수.
         /// </summary>
@@ -356,7 +370,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [로그]
+
         /// <summary>
         /// PrintHexData 동작 수행 함수.
         /// </summary>
@@ -373,7 +389,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [연결 해제]
+
         /// <summary>
         /// [TCP] 수동 연결 해제
         ///
@@ -449,6 +467,8 @@ namespace OpenCvWpfTracking.Services.Communication
             _networkStream = null;
             _tcpClient = null;
         }
+
         #endregion
+
     }
 }

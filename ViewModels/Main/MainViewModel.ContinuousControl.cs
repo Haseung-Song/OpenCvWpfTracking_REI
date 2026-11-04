@@ -20,7 +20,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _activePanTiltZoomSource;
 
         #region [연속 동작 제어 처리 함수]
+
         #region [키보드 팬·틸트 제어 처리 함수]
+
         /// <summary>
         /// Keyboard 방향키 KeyDown 처리
         ///
@@ -300,7 +302,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [EO/IR] [팬·틸트 연속 동작]
+
         /// <summary>
         /// 2026-09-15: Web Agent Pan/Tilt 연속 이동 해제 시 마지막 이동 축에 맞는
         /// TORUSS 위치 정지 명령을 송신한다. 대각선은 두 축을 각각 정지하며,
@@ -634,6 +638,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         /// <summary>
         /// Pan / Tilt 연속 이동 중 Slider 값이 바뀌면 현재 방향을 유지한 채
         /// Pelco-D Data1 / Data2 속도값만 갱신하여 즉시 재송신한다.
@@ -706,6 +711,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #region [EO] [줌·초점 연속 동작]
+
         /// <summary>
         /// [EO] 주간 카메라 [ZOOM] [Tele] 연속 이동 시작
         ///
@@ -1197,7 +1203,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [IR] [줌·초점 연속 동작]
+
         /// <summary>
         /// [IR] 열상 카메라 [ZOOM] [Tele] 연속 이동 시작
         /// </summary>
@@ -1384,7 +1392,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [CTEC EO 줌·초점 위치 주기 조회]
+
         /// <summary>
         /// [CTEC EO Zoom / Focus] 실시간 Position 조회 시작
         ///
@@ -1582,7 +1592,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [공통 정지 연속 동작]
+
         public void StopPanTiltContinuousMove()
         {
             if (!_isPanTiltMoveActive)
@@ -1927,7 +1939,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.Warning("LENS STATUS", "Post-stop status packet timeout / TYPE=" + moveType + " / WAIT_MS=" + (maximumAttempts * 100));
         }
+
         #endregion
+
         #endregion
+
     }
 }

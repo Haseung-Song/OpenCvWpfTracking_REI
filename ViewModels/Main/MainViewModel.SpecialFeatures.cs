@@ -14,7 +14,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+
         #region [필드 및 상태 정보]
+
         private ObservableCollection<CameraSpecialFeatureRow> _eoSpecialFeatures;
 
         private ObservableCollection<CameraSpecialFeatureRow> _irSpecialFeatures;
@@ -38,7 +40,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private string _specialFeatureSummary;
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         public ObservableCollection<CameraSpecialFeatureRow> EoSpecialFeatures
         {
             get
@@ -78,7 +82,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private IEnumerable<CameraSpecialFeatureRow> SpecialFeatureRows => _eoSpecialFeatures.Concat(_irSpecialFeatures);
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 2026-10-14 규격 대상별 행을 한 번 생성한다. 기존 LENS 제어는 이동하거나 제거하지 않는다.
         /// </summary>
@@ -374,6 +380,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (changed)
                 CommandManager.InvalidateRequerySuggested();
         }
+
         #endregion
+
     }
 }

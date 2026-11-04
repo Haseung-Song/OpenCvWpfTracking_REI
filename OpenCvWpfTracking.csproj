@@ -77,7 +77,7 @@
     <Compile Include="Views\Video\PanoramaPresetOverlay.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.PanoramaPresets.cs" />
     <Compile Include="Views\Main\MainWindow.PanoramaPresets.cs" />
-    <Content Include="V33_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="V34_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Compile Include="Services\Communication\WebAgent\TelemetryClock.cs" />
     <Compile Include="Services\Communication\WebAgent\CameraFeatureProtocol.cs" />
     <Compile Include="Models\Main\CameraSpecialFeatureRow.cs" />

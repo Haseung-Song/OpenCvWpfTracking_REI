@@ -14,7 +14,9 @@ namespace OpenCvWpfTracking
     /// </summary>
     public partial class App : Application
     {
+
         #region [윈도우 시스템 연동]
+
         /// <summary>
         /// [Windows] 콘솔 창 생성 함수
         ///
@@ -57,7 +59,9 @@ namespace OpenCvWpfTracking
         private static extern bool SetStdHandle(int nStdHandle, SafeFileHandle handle);
 
         #endregion
+
         #region [상수]
+
         /// <summary>
         /// 표준 출력([stdout]) 핸들 번호
         /// </summary>
@@ -84,7 +88,9 @@ namespace OpenCvWpfTracking
         private const uint OPEN_EXISTING = 3;
 
         #endregion
+
         #region [FFmpeg 초기화]
+
         /// <summary>
         /// [FFmpeg] [Native DLL] 경로 설정
         ///
@@ -98,7 +104,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [프로그램 시작]
+
         /// <summary>
         /// [WPF] 프로그램 시작 시 최초 실행되는 함수
         ///
@@ -199,7 +207,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [프로그램 종료]
+
         /// <summary>
         /// [WPF] 프로그램 종료 시 호출 함수
         ///
@@ -217,6 +227,8 @@ namespace OpenCvWpfTracking
             AppLogger.Shutdown();
             base.OnExit(e);
         }
+
         #endregion
+
     }
 }

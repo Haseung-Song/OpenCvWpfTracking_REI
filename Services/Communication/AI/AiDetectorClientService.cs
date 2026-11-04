@@ -22,7 +22,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// </summary>
     public class AiDetectorClientService
     {
+
         #region [필드]
+
         /// <summary>
         /// 실제 [TCP] [Client] 객체
         /// </summary>
@@ -64,7 +66,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         private bool _isReconnectLoopStarted;
 
         #endregion
+
         #region [이벤트]
+
         /// <summary>
         /// 완성된 [AI] [Packet]이 수신되었을 때 발생하는 [Event]
         ///
@@ -74,7 +78,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public event Action<byte[], DateTime> PacketReceived;
 
         #endregion
+
         #region [속성]
+
         /// <summary>
         /// 현재 [TCP] 연결 상태
         /// </summary>
@@ -88,7 +94,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [연결]
+
         /// <summary>
         /// [AI] [Detector Agent]에 [TCP] 연결
         ///
@@ -171,7 +179,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [자동 재연결]
+
         /// <summary>
         /// [AI Detector Agent] 자동 재연결 시작
         ///
@@ -256,7 +266,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [수신]
+
         /// <summary>
         /// [AI] [Detector Agent]로부터 데이터를 계속 수신하는 [Loop]
         ///
@@ -326,7 +338,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// </summary>
 
         #endregion
+
         #region [패킷 송신]
+
         /// <summary>
         /// [AI Detector Agent] 요청 [Packet] 송신
         ///
@@ -367,7 +381,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [연결 해제]
+
         /// <summary>
         /// [AI] [Detector] [TCP] 연결 종료 및 리소스 정리
         /// </summary>
@@ -400,6 +416,8 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 }
             }
         }
+
         #endregion
+
     }
 }

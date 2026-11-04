@@ -32,7 +32,9 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public sealed class CtecCameraCommandService
     {
+
         #region [상수]
+
         /// <summary>
         /// [CTEC] 고정 Header / Camera Code
         /// </summary>
@@ -84,7 +86,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private const int MaximumResponseLogLength = 500;
 
         #endregion
+
         #region [필드]
+
         /// <summary>
         /// CTEC 명령 순차 송신 보호
         ///
@@ -113,7 +117,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private int _digestNonceCount;
 
         #endregion
+
         #region [줌 연속 제어]
+
         /// <summary>
         /// [EO] 주간 카메라 [Zoom Tele] 연속 제어 시작
         ///
@@ -144,7 +150,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [줌 절대 위치 제어]
+
         /// <summary>
         /// [EO] 주간 카메라 Optical Zoom 목표 위치 직접 이동
         ///
@@ -186,7 +194,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [초점 절대 위치 제어]
+
         /// <summary>
         /// [EO] 주간 카메라 Focus 목표 위치 직접 이동
         ///
@@ -239,7 +249,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [초점 연속 제어]
+
         /// <summary>
         /// [EO] 주간 카메라 [Focus Near] 연속 제어 시작
         ///
@@ -323,7 +335,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [카메라 조회 명령]
+
         /// <summary>
         /// [EO] 주간 카메라 현재 [Optical Zoom Position] 조회
         ///
@@ -366,7 +380,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [CGI / 패킷 처리 함수]
+
         /// <summary>
         /// CTEC 명령 송신 순서 보호 실행
         /// </summary>
@@ -883,7 +899,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [값 변환 보조 함수]
+
         /// <summary>
         /// Zoom / Focus 속도를 문서 허용 범위 [1 ~ 7]로 보정한다.
         /// </summary>
@@ -901,6 +919,8 @@ namespace OpenCvWpfTracking.Services.Communication
 
             return speed;
         }
+
         #endregion
+
     }
 }

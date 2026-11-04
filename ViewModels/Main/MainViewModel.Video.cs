@@ -268,7 +268,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private Task _irCaptureTask = Task.CompletedTask;
 
         #region [영상 연결 및 해제]
+
         #region [연결]
+
         /// <summary>
         /// 장비 연결 버튼의 진입점이다.
         ///
@@ -581,7 +583,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [연결 해제]
+
         /// <summary>
         /// 영상 연결 해제 함수
         ///
@@ -874,7 +878,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [영상 화면 지우기]
+
         /// <summary>
         /// 지정한 크기의 검은색 [BitmapSource] 생성
         ///
@@ -917,7 +923,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [영상 상태 보조 함수]
+
         /// <summary>
         /// [EO / IR] 전체 영상 연결 여부 확인
         ///
@@ -936,7 +944,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [영상 열기 보조 함수]
+
         /// <summary>
         /// [EO / IR] 영상 연결 시도
         ///
@@ -1271,7 +1281,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [영상 결과 보조 함수]
+
         /// <summary>
         /// 영상 연결 결과 [Console Log] 출력
         /// </summary>
@@ -1283,9 +1295,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #endregion
+
         #region [영상 영상 취득 반복]
+
         #region [FFmpeg 영상 취득 반복]
+
         /// <summary>
         /// 해당 Stream의 Frame을 Dispatcher에 등록할 수 있는지 확인한다.
         ///
@@ -2959,6 +2975,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #region [영상 결과 구분]
+
         /// <summary>
         /// 영상 연결 결과 저장 구조체.
         ///
@@ -2971,8 +2988,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             public bool IrResult;
         }
+
         #endregion
+
         #endregion
+
         #endregion
+
     }
 }

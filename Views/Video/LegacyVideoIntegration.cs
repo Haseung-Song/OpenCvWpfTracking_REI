@@ -16,7 +16,9 @@ namespace OpenCvWpfTracking
 {
     internal static class LegacyVideoIntegration
     {
+
         #region [필드 및 상태 정보]
+
         // 2026-10-15: 기존 최종본의 채널 색상과 변경 불가능한 공유 브러시를 유지한다.
         internal const string EoColor = "#C9E987";
 
@@ -49,7 +51,9 @@ namespace OpenCvWpfTracking
         private static readonly Brush AiBackground = FrozenBrush("#29452F");
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 수정 불가능한 공유 색상 브러시를 만든다.
         /// </summary>
@@ -141,6 +145,8 @@ namespace OpenCvWpfTracking
                 timer.Start();
         // 추가 파노라마 및 이미지 저장 컨텍스트 메뉴는 복구 대상에서 제외한다.
         }
+
         #endregion
+
     }
 }

@@ -24,7 +24,9 @@ namespace OpenCvWpfTracking
     /// </summary>
     public partial class MainWindow
     {
+
         #region [이동 제어 입력 상수]
+
         /// <summary>
         /// Pan Absolute 최소 / 최대 입력값
         /// </summary>
@@ -77,7 +79,9 @@ namespace OpenCvWpfTracking
         private const int GpsRateMaximumInput = 10;
 
         #endregion
+
         #region [이동 제어 입력 사전 검사]
+
         /// <summary>
         /// Pan Absolute 숫자 입력 제한
         ///
@@ -183,7 +187,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [이동 제어 입력 초점 해제]
+
         /// <summary>
         /// Pan Absolute 입력 완료 처리
         ///
@@ -265,7 +271,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [이동 제어 입력 보조 함수]
+
         /// <summary>
         /// 현재 TextBox에서 선택된 문자열을 새 입력 문자열로 교체한 뒤,
         /// 실제로 적용될 전체 문자열을 생성한다.
@@ -345,6 +353,8 @@ namespace OpenCvWpfTracking
 
             bindingExpression.UpdateSource();
         }
+
         #endregion
+
     }
 }

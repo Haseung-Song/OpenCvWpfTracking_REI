@@ -27,7 +27,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// </summary>
     public class AiDetectorPacketBuilder
     {
+
         #region [상수]
+
         /// <summary>
         /// [Packet] 시작 문자 [STX]
         /// </summary>
@@ -39,7 +41,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         private const byte Etx = 0x03;
 
         #endregion
+
         #region [요청 패킷 생성]
+
         /// <summary>
         /// [AI Detector Info] 조회 요청 [Packet] 생성
         ///
@@ -135,7 +139,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         }
 
         #endregion
+
         #region [Common 패킷 생성]
+
         /// <summary>
         /// 공통 요청 [Packet] 생성
         ///
@@ -207,6 +213,8 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             return checksum;
         }
+
         #endregion
+
     }
 }

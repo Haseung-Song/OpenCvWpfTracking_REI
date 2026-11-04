@@ -26,7 +26,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel : INotifyPropertyChanged
     {
+
         #region [상태 구분 열거형]
+
         /// <summary>
         /// 현재 진행 중인 [연속 제어] 종류
         /// </summary>
@@ -59,8 +61,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
-        #region [필드]
+
+        #region [공유 필드 및 제어 속성]
+
         #region [영상 상태 필드]
+
         /// <summary>
         /// [EO] 주간 카메라 [RTSP] 영상 처리 객체
         ///
@@ -78,7 +83,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly FFmpegDecoderService _irDecoder;
 
         #endregion
+
         #region [RTSP 장비별 기본 설정 필드]
+
         /*
          * 장비별 주소와 인증정보는 Config/Devices.csv에서 조회한다.
          * 아래 접근자는 기존 장비 선택 흐름에서 필요한 기본값만 제공한다.
@@ -128,7 +135,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Get("MR500_MOE").IrAddress;
 
         #endregion
+
         #region [LA 통신 필드]
+
         /// <summary>
         /// [Control Agent] 제어 [TCP] 통신 서비스 객체
         ///
@@ -215,7 +224,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _isIrFrameDispatchPending;
 
         #endregion
+
         #region [AI 검출기 통신 필드]
+
         /// <summary>
         /// [AI] [Detector Agent] [TCP] 통신 서비스
         ///
@@ -241,7 +252,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly AiDetectorPacketBuilder _aiPacketBuilder;
 
         #endregion
+
         #region [제어 상태 필드]
+
         /// <summary>
         /// [PAN / TILT] 버튼 1회 클릭 시 이동할 각도 값
         ///
@@ -679,7 +692,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private KeyboardPanTiltDirection _activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
 
         #endregion
+
         #region [제어 속성]
+
         /// <summary>
         /// [EO] 주간 카메라 RTSP 주소 입력값
         ///
@@ -808,6 +823,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private ushort _currentIrFocus;
 
         #region [이동 제어 상수 / 필드]
+
         /// <summary>
         /// 이동 제어 화면에서 사용하는 공통 Lens Position 최소값
         /// </summary>
@@ -1104,8 +1120,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _selectedOperationControlTabIndex;
 
         #endregion
+
         #endregion
+
         #region [LA 패킷 필드]
+
         /// <summary>
         /// [CONTROL AGENT] 수신 [Packet Parser]
         ///
@@ -1142,7 +1161,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const int LaLogIntervalSeconds = 1;
 
         #endregion
+
         #region [AI 검출기 패킷 필드]
+
         /// <summary>
         /// 마지막 [AI Detector] 탐지 로그 출력 시간
         ///
@@ -1157,7 +1178,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const int AiDetectorLogIntervalSeconds = 3;
 
         #endregion
+
         #region [AI 검출기 설정 필드]
+
         /// <summary>
         /// [AI Detector Agent] 연결 [IP]
         /// </summary>
@@ -1250,7 +1273,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private Brush _crosshairBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0x3B, 0x30));
 
         #endregion
+
         #region [AI 오버레이 크기 연결 필드]
+
         /// <summary>
         /// [EO] [RTSP] 원본 영상 너비
         ///
@@ -1284,7 +1309,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private int _irVideoHeight;
 
         #endregion
+
         #region [영상 실행 상태 필드]
+
         /// <summary>
         /// 영상 루프를 중지하기 위한 [CancellationTokenSource]
         ///
@@ -1312,7 +1339,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isDeviceConnectionRequested;
 
         #endregion
+
         #region [영상 연결 필드]
+
         /// <summary>
         /// 왼쪽 상하단 [EO] 주간 영상 출력용 [Image]
         /// </summary>
@@ -1324,7 +1353,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private BitmapSource _irCameraImage;
 
         #endregion
+
         #region [상태 연결 필드]
+
         /// <summary>
         /// [EO] 영상 상태 표시
         /// </summary>
@@ -1364,16 +1395,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isVideoConnecting;
 
         #endregion
+
         #endregion
+
         #region [생성자]
+
         /// <summary>
         /// [MainViewModel] 생성자 (초기화 역할)
         /// </summary>
         public MainViewModel()
         {
             ConsoleLogHelper.InfoSection("MAIN", "MainViewModel initialization started");
+
             #region [명령 초기화]
+
             #region [표시 오버레이 명령 연결]
+
             /// <summary>
             /// [EO / IR] 중앙 십자선 표시 상태 전환
             ///
@@ -1452,8 +1489,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 new AsyncRelayCommand(
                     StopFocusSyncAsync);
 #endif
+
             #endregion
+
             #region [연결 및 해제 명령 연결]
+
             /// <summary>
             /// [Connect] 버튼 클릭 시 호출
             ///
@@ -1474,8 +1514,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InitializeGpsSettings();
             // 2026-10-06: WebAgent EO/IR 전원 제어 및 Function 0x31 상태 동기화.
             InitializeDevicePowerSettings();
+
             #endregion
+
             #region [AI 검출기 설정 명령 연결]
+
             /// <summary>
             /// [AI Detector Agent] 수동 연결
             ///
@@ -1543,8 +1586,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 await RequestAiDetectorRtspVideoSizeAsync(1);
                 AiSettingStatusText = "[AI] Refresh Complete";
             });
+
             #endregion
+
             #region [팬·틸트 명령 연결]
+
             /// <summary>
             /// [PAN] 왼쪽 상대 이동 테스트
             ///
@@ -1597,8 +1643,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.PrintLine();
                 _controlCommandService.TiltGoPosition(targetTilt);
             });
+
             #endregion
+
             #region [줌·초점 명령 연결]
+
             /// <summary>
             /// [ZOOM] 확대 상대 이동 테스트
             ///
@@ -1641,8 +1690,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.PrintLine();
                 _controlCommandService.EoFocusGoPosition((short)targetFocus);
             });
+
             #endregion
+
             #region [이동 제어 명령 연결]
+
             /// <summary>
             /// VertiportNexus 이동 제어 기능을 현재 프로젝트 구조에 맞춰 연결한다.
             ///
@@ -1677,8 +1729,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             StopPresetScanCommand = new RelayCommand(StopPresetScan);
             StopPresetMoveCommand = new RelayCommand(StopPresetMove);
             StopActivePresetScanCommand = new RelayCommand(StopActivePresetScan);
+
             #endregion
+
             #region [LRF 명령 연결]
+
             /// <summary>
             /// [LRF] 거리측정 [1회] 요청
             ///
@@ -1693,8 +1748,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.PrintLine();
                 _controlCommandService.ReadOnceLrfValue();
             });
+
             #endregion
+
             #region [STOP 명령 연결]
+
             /// <summary>
             /// [PT] 연속 이동 정지
             ///
@@ -1709,9 +1767,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.PrintLine();
                 StopAllPtzfMove();
             });
+
             #endregion
+
             #endregion
+
             #region [서비스 초기화]
+
             /// <summary>
             /// EO / IR FFmpeg RTSP Decoder 생성
             /// </summary>
@@ -1785,8 +1847,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /// [OnAiDetectorPacketReceived] 함수가 호출된다.
             /// </summary>
             _aiDetectorClientService.PacketReceived += OnAiDetectorPacketReceived;
+
             #endregion
+
             #region [기본 소스 초기화]
+
             /// <summary>
             /// 기본 영상 주소 초기화
             /// </summary>
@@ -1816,11 +1881,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 $"IR      : {ConsoleLogHelper.MaskRtspPassword(IrSourceAddress)}",
                 $"CONTROL : {ControlAgentIp}:{ControlAgentPortText}"
             );
+
             #endregion
+
         }
 
         #endregion
+
         #region [초기화]
+
         /// <summary>
         /// Control Agent 통신 설정 기본값 초기화
         ///
@@ -1899,7 +1968,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [속성 변경 알림]
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         /// <summary>
@@ -1972,6 +2043,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 System.Windows.Input.CommandManager.InvalidateRequerySuggested();
             }
         }
+
         #endregion
+
     }
 }

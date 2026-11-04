@@ -13,13 +13,17 @@ namespace OpenCvWpfTracking.Services.Control
     // 창 크기와 DPI에 영향을 받지 않는 원본 영상 정규화 좌표를 사용한다.
     public sealed class OpticalCenterCalibration
     {
+
         #region [필드 및 상태 정보]
+
         private readonly List<Tuple<string, int, double, double>> anchors = new List<Tuple<string, int, double, double>>();
 
         private readonly string file;
 
         #endregion
+
         #region [초기화]
+
         public OpticalCenterCalibration(string filePath)
         {
             file = filePath;
@@ -46,7 +50,9 @@ namespace OpenCvWpfTracking.Services.Control
         }
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 원본 영상의 정규화 좌표가 유한한 화면 내부 값인지 확인한다.
         /// </summary>
@@ -146,6 +152,8 @@ namespace OpenCvWpfTracking.Services.Control
             center = aLow + t * a;
             return Valid(center.X, center.Y);
         }
+
         #endregion
+
     }
 }

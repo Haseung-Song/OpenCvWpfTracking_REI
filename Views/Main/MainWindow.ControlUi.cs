@@ -17,7 +17,9 @@ namespace OpenCvWpfTracking
 {
     public partial class MainWindow
     {
+
         #region [필드 및 상태 정보]
+
         private GlobalControlKeyboard _globalKeyboard;
 
         private bool _controlUiInitialized;
@@ -25,7 +27,9 @@ namespace OpenCvWpfTracking
         private readonly List<Grid> _videoJogOverlays = new List<Grid>();
 
         #endregion
+
         #region [영상 배치 보정]
+
         /// <summary>
         /// IR이 보조 화면일 때 원본 전체가 여백 없이 들어가는 높이를 적용한다.
         /// EO/IR 주화면 전환과 디코더·BBox 좌표·클릭 이동 계산은 변경하지 않는다.
@@ -72,7 +76,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [기능 처리 함수]
+
         // 2026-10-08: 장비 제어 화면은 기존 보더 색상과 글자 형식을 유지한다.
         /// <summary>
         /// 기존 영상/장비 제어 UI에 옵션과 상태 표시를 한 번만 연결한다.
@@ -187,11 +193,15 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private bool? _lastVideoControlRoute;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 활성 창의 영상 영역에 따라 PTZF 채널을 선택하고 채널 전환 시 누름 입력을 정지한다.
         /// </summary>
@@ -1182,11 +1192,15 @@ namespace OpenCvWpfTracking
             "mouse/" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sender);
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private readonly HashSet<UIElement> _captureOwners = new HashSet<UIElement>();
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 마우스 캡처와 해제 보호를 연결한 뒤 소유자별 PTZF 누름 입력을 등록한다.
         /// </summary>
@@ -1213,6 +1227,8 @@ namespace OpenCvWpfTracking
             vm.ReleaseControlInput(MouseControlToken(sender));
             (sender as UIElement)?.ReleaseMouseCapture();
         }
+
         #endregion
+
     }
 }

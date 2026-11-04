@@ -23,6 +23,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private const int WebAgentZeroOverlayMinimumMilliseconds = 1200;
 
         #region [이동 제어 처리 함수]
+
         /// <summary>
         /// 이동 제어 입력값을 VertiportNexus 기본값으로 초기화한다.
         ///
@@ -2520,6 +2521,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             return value;
         }
+
         #endregion
+
     }
 }

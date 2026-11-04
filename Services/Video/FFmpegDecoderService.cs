@@ -68,6 +68,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #region [필드]
+
         /// <summary>
         /// [RTSP] / 영상 파일 입력 [Format Context]
         ///
@@ -165,7 +166,9 @@ namespace OpenCvWpfTracking.Services.Video
         private readonly bool _useSmoothPlayback = !string.Equals(Environment.GetEnvironmentVariable("TORUSS_RTSP_PROFILE"), "LOW_LATENCY", StringComparison.OrdinalIgnoreCase);
 
         #endregion
+
         #region [속성]
+
         /// <summary>
         /// [RTSP] 연결 및 [Decoder] 초기화 완료 여부
         /// </summary>
@@ -230,7 +233,9 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
+
         #region [생성자]
+
         /// <summary>
         /// [FFmpeg Decoder Service]
         /// </summary>
@@ -249,7 +254,9 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
+
         #region [열기]
+
         /// <summary>
         /// [RTSP] 연결 및 [FFmpeg] [Decoder] 초기화
         ///
@@ -657,7 +664,9 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
+
         #region [프레임 읽기]
+
         /// <summary>
         /// [RTSP]에서 다음 영상 [Frame]을 읽어 [OpenCV] [Mat]으로 반환
         ///
@@ -819,7 +828,9 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         #endregion
+
         #region [닫기 및 자원 해제]
+
         /// <summary>
         /// [RTSP] 연결 해제 및 [FFmpeg] 리소스 정리
         ///
@@ -925,6 +936,8 @@ namespace OpenCvWpfTracking.Services.Video
         {
             Close();
         }
+
         #endregion
+
     }
 }

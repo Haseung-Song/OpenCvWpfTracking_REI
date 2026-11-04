@@ -739,13 +739,17 @@ namespace OpenCvWpfTracking
             /// </summary>
             private sealed class EventRecordComparer : IComparer, IComparer<object>
             {
+
                 #region [필드 및 상태 정보]
+
                 private readonly string _sortMemberPath;
 
                 private readonly int _directionFactor;
 
                 #endregion
+
                 #region [초기화]
+
                 internal EventRecordComparer(string sortMemberPath, ListSortDirection direction)
                 {
                     _sortMemberPath = sortMemberPath;
@@ -753,7 +757,9 @@ namespace OpenCvWpfTracking
                 }
 
                 #endregion
+
                 #region [기능 처리 함수]
+
                 /// <summary>
                 /// 현재 정렬 기준에 따라 두 이벤트의 표시 순서를 비교한다.
                 /// </summary>
@@ -837,7 +843,9 @@ namespace OpenCvWpfTracking
                         ? result
                         : double.MinValue;
                 }
+
                 #endregion
+
             }
         }
     }

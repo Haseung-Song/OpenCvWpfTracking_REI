@@ -9,7 +9,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+
         #region [파노라마 프리셋 연동 상태]
+
         private CancellationTokenSource _panoramaPresetCts;
 
         private string _panoramaPresetActiveContext;
@@ -65,7 +67,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [기존 프리셋 단일 이동]
+
         /// <summary>
         /// 번호 클릭은 기존 프리셋의 단일 PTZF 이동 경로를 사용한다.
         /// 이미지 좌표로 새로운 이동 각도를 계산하거나 별도 패킷을 만들지 않는다.
@@ -160,6 +164,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             if (_presetSingleMoveCts != null)
                 StopPresetMove();
         }
+
         #endregion
+
     }
 }

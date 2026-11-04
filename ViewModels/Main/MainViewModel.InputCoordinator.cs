@@ -16,7 +16,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+
         #region [필드 및 상태 정보]
+
         // 2026-10-08: 창과 입력 장치가 하나의 축별 누름 상태를 공유한다.
         private readonly Dictionary<string, Tuple<string, int, int>> _controlInputs = new Dictionary<string, Tuple<string, int, int>>();
 
@@ -72,7 +74,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         };
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다.
         /// </summary>
@@ -84,7 +88,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         public bool IsFovSpeedEnabled
         {
             get => _isFovSpeedEnabled;
@@ -169,7 +175,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public int IrMinimumSpeed { get => ControlTuningFor(true).MinimumSpeed; set => SetMinimum(true, value); }
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 유효 범위의 채널별 감속 지수를 반영하고 현재 PT 속도를 갱신한다.
         /// </summary>
@@ -225,13 +233,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             DateTime.UtcNow.Ticks - (ir ? Interlocked.Read(ref _irLensReceivedTicks) : Interlocked.Read(ref _eoLensReceivedTicks)) < TimeSpan.FromSeconds(3).Ticks;
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         public string EoZoomRatioOverlayText => IsLensFresh(false) ? "EO " + DisplayZoomRatioText(false) : "EO —";
 
         public string IrZoomRatioOverlayText => IsLensFresh(true) ? "IR " + DisplayZoomRatioText(true) : "IR —";
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>영상 배지와 상태값의 배율을 소수점 첫째 자리로 통일한다.</summary>
         private string DisplayZoomRatioText(bool ir)
         {
@@ -260,11 +272,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ")";
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private string _lastOpticalSpeedSignature;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 채널별 렌즈 응답 시각을 원자적으로 기록한다.
         /// </summary>
@@ -702,6 +718,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     break;
             }
         }
+
         #endregion
+
     }
 }

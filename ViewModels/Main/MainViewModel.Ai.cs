@@ -58,7 +58,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isIrAiDisplayHoldActive;
 
         #region [AI 검출기 통신]
+
         #region [AI 검출기 연결]
+
         /// <summary>
         /// [AI CONNECT] 버튼 기준 수동 연결 및 초기 설정 적용
         ///
@@ -241,7 +243,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출기 수신]
+
         /// <summary>
         /// [AI Detector Agent] [TCP] 수신 [Packet] 처리 함수
         ///
@@ -360,7 +364,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI RTSP 영상 크기]
+
         /// <summary>접속 및 RTSP URL 변경 때 이전 원본 크기를 무효화한다.</summary>
         private void ResetAiRtspVideoSizes()
         {
@@ -409,7 +415,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출기 패킷 처리]
+
         /// <summary>
         /// [AI Detector] 탐지 결과 처리 함수
         ///
@@ -824,7 +832,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출기 응답 처리]
+
         /// <summary>
         /// [CMD 51] [AI Detector Info] 응답 처리
         ///
@@ -911,7 +921,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출기 요청]
+
         /// <summary>
         /// [AI Detector Info] 조회 요청
         ///
@@ -1133,7 +1145,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출기 표시 보조 함수]
+
         /// <summary>
         /// 2026-08-31: CMD 55의 RTSP Index와 Class Index를 현재 Mapping 및
         /// 모델별 클래스 목록에 연결한다. 조회 실패나 범위 초과 시 기존 Class n 표시를 유지한다.
@@ -1365,7 +1379,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출기 화면 갱신 보조 함수]
+
         /// <summary>
         /// [AI Detector Agent] [RTSP] 조회 결과를 [UI Collection]에 반영한다.
         /// </summary>
@@ -1466,7 +1482,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출기 로그 보조 함수]
+
         /// <summary>
         /// [AI Detector] 탐지 로그 출력 여부 확인
         ///
@@ -1485,7 +1503,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [AI 검출 상자 표시 보조 함수]
+
         /// <summary>
         /// [AI Detector] [Bounding Box] 표시 좌표 보정
         ///
@@ -1501,7 +1521,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             return sourceBox;
         }
+
         #endregion
+
         #endregion
+
     }
 }

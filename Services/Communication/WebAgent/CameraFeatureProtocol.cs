@@ -10,7 +10,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
     /// </summary>
     public sealed class CameraFeatureDefinition
     {
+
         #region [속성 및 상태 표시]
+
         public byte Id { get; private set; }
 
         public string Name { get; private set; }
@@ -26,7 +28,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         public int Targets { get; private set; }
 
         #endregion
+
         #region [초기화]
+
         private CameraFeatureDefinition(byte id, string name, byte type, int min, int max, int targets, params string[] options)
         {
             Id = id;
@@ -39,7 +43,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         }
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         // Targets: bit0=EO, bit1=IR. 코드표의 대상과 값 범위를 그대로 사용한다.
         public static readonly CameraFeatureDefinition[] All =
         {
@@ -74,12 +80,16 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             new CameraFeatureDefinition(0x1D, "디지털 줌", 0, 0, 1, 3, "OFF", "ON"),
             new CameraFeatureDefinition(0x1E, "자동 영상 조정", 3, 1, 1, 2)
         };
+
         #endregion
+
     }
 
     public sealed class CameraFeatureCapability
     {
+
         #region [필드 및 상태 정보]
+
         public byte Id;
 
         public byte Flags;
@@ -93,7 +103,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         public uint OptionMask;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 정의 범위·장비 범위·열거형 지원 마스크의 교집합만 송신 가능하다.
         /// </summary>
@@ -115,7 +127,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
 
             return true;
         }
+
         #endregion
+
     }
 
     /// <summary>
@@ -123,7 +137,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
     /// </summary>
     public static class CameraFeatureProtocol
     {
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 지원 응답의 길이와 항목 중복 및 값 형식을 검증한다.
         /// </summary>
@@ -172,6 +188,8 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             valid = supported && (p[3] & 2) != 0 && min <= max && value >= min && value <= max;
             return true;
         }
+
         #endregion
+
     }
 }

@@ -29,7 +29,9 @@ namespace OpenCvWpfTracking
     /// </summary>
     public partial class VideoPopoutWindow : Window
     {
+
         #region [필드]
+
         private readonly MainViewModel _viewModel;
 
         private readonly double _eoViewportAspectRatio;
@@ -85,7 +87,9 @@ namespace OpenCvWpfTracking
         private Key? _activeLensKey;
 
         #endregion
+
         #region [생성자]
+
         /// <summary>
         /// VideoPopoutWindow 동작 수행 함수.
         /// </summary>
@@ -143,7 +147,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [창 이벤트]
+
         /// <summary>
         /// 2026-09-29: 메인 EO/IR 영상의 현재 크기와 화면 위치를 분리 창의
         /// 최초 Normal 크기로 사용한다. 별도 Decoder는 생성하지 않는다.
@@ -723,7 +729,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [카메라 연결]
+
         /// <summary>
         /// 분리 창에서 표시하고 제어할 카메라를 전환한다.
         ///
@@ -990,7 +998,9 @@ namespace OpenCvWpfTracking
         }
 
         #endregion
+
         #region [단축키 제어]
+
         /// <summary>
         /// 분리 영상 창의 EO / IR 전환 단축키 여부 확인
         /// </summary>
@@ -1102,6 +1112,8 @@ namespace OpenCvWpfTracking
                 _viewModel.StopIrFocusMove();
             }
         }
+
         #endregion
+
     }
 }

@@ -1467,6 +1467,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #region [IR 열상 영상 제어]
+
         /// <summary>
         /// SendIrImageControlCommand 송신 함수.
         /// </summary>
@@ -1626,6 +1627,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         /// <summary>
         /// 거리측정기 [1회] 측정 요청
         ///

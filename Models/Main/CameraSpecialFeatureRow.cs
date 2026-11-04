@@ -13,19 +13,25 @@ namespace OpenCvWpfTracking.Models.Main
 {
     public sealed class CameraFeatureOption
     {
+
         #region [속성 및 상태 표시]
+
         public int Value { get; private set; }
 
         public string Label { get; private set; }
 
         #endregion
+
         #region [초기화]
+
         public CameraFeatureOption(int value, string label)
         {
             Value = value;
             Label = label;
         }
+
         #endregion
+
     }
 
     /// <summary>
@@ -33,7 +39,9 @@ namespace OpenCvWpfTracking.Models.Main
     /// </summary>
     public sealed class CameraSpecialFeatureRow : INotifyPropertyChanged
     {
+
         #region [필드 및 상태 정보]
+
         private readonly Func<bool> _ready;
 
         private readonly Func<bool> _isWebAgent;
@@ -71,7 +79,9 @@ namespace OpenCvWpfTracking.Models.Main
         private int? _requested;
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         public CameraFeatureDefinition Definition { get; private set; }
 
         public byte Target { get; private set; }
@@ -220,11 +230,15 @@ namespace OpenCvWpfTracking.Models.Main
         }
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         #endregion
+
         #region [초기화]
+
         public CameraSpecialFeatureRow(CameraFeatureDefinition definition, byte target, Func<bool> ready, Func<bool> unlocked, Action<CameraSpecialFeatureRow, int> send, Action<CameraSpecialFeatureRow> query, Func<string> connectionHint = null, Func<bool> isWebAgent = null)
         {
             Definition = definition;
@@ -249,7 +263,9 @@ namespace OpenCvWpfTracking.Models.Main
         }
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 장비가 보고한 지원 범위와 선택값에 포함되는지 확인한다.
         /// </summary>
@@ -565,6 +581,8 @@ namespace OpenCvWpfTracking.Models.Main
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
+
         #endregion
+
     }
 }

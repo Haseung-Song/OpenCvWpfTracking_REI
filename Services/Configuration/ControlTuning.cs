@@ -13,7 +13,9 @@ namespace OpenCvWpfTracking.Services.Configuration
     // 2026-10-12: 상한이 있는 선형 표시 모델이며 호출부에서 단조 시계 경과 시간을 전달한다.
     public sealed class DigitalZoomEstimate
     {
+
         #region [속성 및 상태 표시]
+
         public double Factor { get; private set; } = 1;
 
         public bool Enabled { get; private set; }
@@ -21,11 +23,15 @@ namespace OpenCvWpfTracking.Services.Configuration
         public int Direction { get; set; }
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private bool _previousAtMaximum;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 시간 기반 디지털 추정을 켜거나 끄며 새 활성화 및 OFF 시 배율을 초기화한다.
         /// </summary>
@@ -71,13 +77,17 @@ namespace OpenCvWpfTracking.Services.Configuration
 
             _previousAtMaximum = fresh && atMaximum;
         }
+
         #endregion
+
     }
 
     // 2026-10-08: 임시 배율이며 장비별 보정값으로 교체할 수 있다.
     public sealed class LensControlTuning
     {
+
         #region [필드 및 상태 정보]
+
         public double MinimumRatio = 1;
 
         public double MaximumRatio = 90;
@@ -100,7 +110,9 @@ namespace OpenCvWpfTracking.Services.Configuration
         public ZoomCalibrationCurve Calibration;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 새 장비 키에 사용할 독립적인 기본 조정값 복사본을 만든다.
         /// </summary>
@@ -158,16 +170,22 @@ namespace OpenCvWpfTracking.Services.Configuration
             int speed = (int)Math.Round(minimum + (basis - minimum) * Math.Pow(1 - progress, Exponent));
             return (byte)Math.Max(Math.Min(basis, MinimumSpeed), Math.Min(basis, speed));
         }
+
         #endregion
+
     }
 
     public static class ControlTuning
     {
+
         #region [필드 및 상태 정보]
+
         private static readonly Dictionary<string, LensControlTuning> Values = Load();
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 장비/채널 조정값을 조회하고 없는 키는 기본값 복사본을 잠금 안에서 생성한다.
         /// </summary>
@@ -295,6 +313,8 @@ namespace OpenCvWpfTracking.Services.Configuration
 
             return result;
         }
+
         #endregion
+
     }
 }

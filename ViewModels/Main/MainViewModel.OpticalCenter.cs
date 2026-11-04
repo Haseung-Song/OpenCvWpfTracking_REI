@@ -10,16 +10,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
+
         #region [필드 및 상태 정보]
+
         private OpticalCenterCalibration opticalCenters;
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         private OpticalCenterCalibration OpticalCenters =>
             opticalCenters ?? (opticalCenters = new OpticalCenterCalibration(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "OpticalCenters.xml")));
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 인증정보를 제외한 카메라 주소로 보정 저장 키를 구성한다.
         /// </summary>
@@ -90,7 +96,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [속성 및 상태 표시]
+
         public Point OpticalPose => new Point(_currentPan, _currentTilt);
 
         public double CurrentPanoramaPan => NormalizeToSignedAngle(_currentPan);
@@ -120,11 +128,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         public bool IsPanoramaIrSource => _activePanTiltZoomSource == 1;
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         public event Action PositionReferenceChanged;
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 현재 광학 줌과 채널 비율에 따른 파노라마 화각 정보를 반환한다.
         /// </summary>
@@ -162,6 +174,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 위치 기준 변경을 등록된 화면에 알린다.
         /// </summary>
         private void InvalidatePanoramaReference() => PositionReferenceChanged?.Invoke();
+
         #endregion
+
     }
 }

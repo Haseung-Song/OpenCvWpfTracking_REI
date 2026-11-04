@@ -41,7 +41,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private bool _isIrRtspAddressValid;
 
         #region [LA 통신]
+
         #region [LA 연결]
+
         /// <summary>
         /// Control Agent TCP 연결 상태 UI 갱신
         /// </summary>
@@ -463,7 +465,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [LA 수신]
+
         /// <summary>
         /// [CONTROL AGENT] [TCP] 수신 데이터 처리 함수
         ///
@@ -487,7 +491,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [LA 패킷 처리]
+
         /// <summary>
         /// [CONTROL AGENT] 응답 [Packet] 처리 함수
         ///
@@ -755,7 +761,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [LA 로그 보조 함수]
+
         /// <summary>
         /// [CONTROL AGENT] 상태 로그 출력 여부 확인
         ///
@@ -797,7 +805,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         #endregion
+
         #region [LA 패킷 해석]
+
         /// <summary>
         /// [CONTROL AGENT] [Status Packet] 파싱
         ///
@@ -1375,7 +1385,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             LrfDistanceText = $"DISTANCE : {distance:F1} m";
             Console.WriteLine($"[LRF] Distance : {distance:F1} m");
         }
+
         #endregion
+
         #endregion
+
     }
 }

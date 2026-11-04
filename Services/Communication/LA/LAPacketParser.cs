@@ -19,7 +19,9 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public class LAPacketParser
     {
+
         #region [상수]
+
         /// <summary>
         /// [TORUSS] 응답 [Packet Header]
         /// </summary>
@@ -47,7 +49,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private const int MaximumPayloadLength = 4096;
 
         #endregion
+
         #region [필드]
+
         /// <summary>
         /// [TCP] 분할 수신 Packet을 보관하는 누적 Buffer
         ///
@@ -65,7 +69,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private readonly object _bufferLock = new object ();
 
         #endregion
+
         #region [해석]
+
         /// <summary>
         /// 수신 byte[] 데이터를 내부 Buffer에 누적하고,
         /// 완성된 Legacy 또는 가변 길이 Packet만 반환한다.
@@ -197,7 +203,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [체크섬 계산]
+
         /// <summary>
         /// [TORUSS] 응답 [Packet Checksum] 검증
         ///
@@ -228,6 +236,8 @@ namespace OpenCvWpfTracking.Services.Communication
 
             return sum == packet[packet.Length - 1];
         }
+
         #endregion
+
     }
 }

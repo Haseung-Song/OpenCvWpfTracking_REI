@@ -26,7 +26,9 @@ namespace OpenCvWpfTracking.Services.Communication
     /// </summary>
     public sealed class CtecCameraResponseService
     {
+
         #region [상수]
+
         /// <summary>
         /// CTEC 카메라 응답 헤더
         /// </summary>
@@ -61,7 +63,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private const int ReconnectDelayMs = 3000;
 
         #endregion
+
         #region [필드]
+
         /// <summary>
         /// 카메라 응답 수신 TCP Client
         /// </summary>
@@ -116,7 +120,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private TaskCompletionSource<int> _focusPositionWaitSource;
 
         #endregion
+
         #region [이벤트]
+
         /// <summary>
         /// 완성된 CTEC Camera Response Packet 수신 이벤트
         /// </summary>
@@ -131,14 +137,18 @@ namespace OpenCvWpfTracking.Services.Communication
         public event Action<string> ConnectionStatusChanged;
 
         #endregion
+
         #region [속성]
+
         /// <summary>
         /// 현재 CTEC Response TCP 연결 여부
         /// </summary>
         public bool IsConnected => _tcpClient != null && _tcpClient.Connected && _networkStream != null;
 
         #endregion
+
         #region [외부 호출 함수]
+
         /// <summary>
         /// 카메라 [TCP Response Port] 연결 및 수신 Loop 시작
         ///
@@ -207,7 +217,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [연결 반복 처리]
+
         /// <summary>
         /// CTEC Response TCP 연결 / 수신 / 자동 재연결 Loop
         /// </summary>
@@ -316,7 +328,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [위치 응답 대기]
+
         /// <summary>
         /// [EO Zoom] 다음 TCP 9000 Position 응답을 기다린다.
         ///
@@ -434,7 +448,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [수신 / 패킷 해석]
+
         /// <summary>
         /// 카메라 CTEC Response 수신 Loop
         ///
@@ -555,7 +571,9 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         #endregion
+
         #region [공통 보조 함수]
+
         /// <summary>
         /// 자동 재연결 대기
         /// </summary>
@@ -630,6 +648,8 @@ namespace OpenCvWpfTracking.Services.Communication
             _networkStream = null;
             _tcpClient = null;
         }
+
         #endregion
+
     }
 }

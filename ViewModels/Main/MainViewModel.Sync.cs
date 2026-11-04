@@ -17,7 +17,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// </summary>
     public partial class MainViewModel
     {
+
         #region [장비 상태 / 줌 동기화 처리 함수]
+
         /// <summary>
         /// SelectPreviousZoomSyncLevel 동작 수행 함수.
         /// </summary>
@@ -1566,6 +1568,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int safePosition = Math.Max(0, Math.Min(1000, standardPosition));
             return (int)Math.Round(safePosition * CtecEoFocusPositionMax / 1000.0);
         }
+
         #endregion
+
     }
 }

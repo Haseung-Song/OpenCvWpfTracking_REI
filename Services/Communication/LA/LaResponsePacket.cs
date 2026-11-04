@@ -28,7 +28,9 @@
     /// </summary>
     public class LaResponsePacket
     {
+
         #region [필드 / 속성]
+
         /// <summary>
         /// WebAgent에서 수신한 원본 Packet.
         ///
@@ -154,6 +156,8 @@
         /// 손상 또는 비정상 [Packet]
         /// </summary>
         public bool IsValid { get; set; }
+
         #endregion
+
     }
 }

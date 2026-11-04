@@ -14,11 +14,15 @@ namespace OpenCvWpfTracking.Services.Input
     // CallNextHookEx를 항상 호출하여 운영체제와 다른 프로그램의 단축키를 보존한다.
     public sealed class GlobalControlKeyboard : IDisposable
     {
+
         #region [내부 자료형]
+
         private delegate IntPtr HookProc(int code, IntPtr message, IntPtr data);
 
         #endregion
+
         #region [필드 및 상태 정보]
+
         private readonly HookProc _callback;
 
         private readonly Dispatcher _dispatcher;
@@ -32,7 +36,9 @@ namespace OpenCvWpfTracking.Services.Input
         public event Action<Key, bool> KeyChanged;
 
         #endregion
+
         #region [초기화]
+
         /// <summary>
         /// 비차단 키보드 훅과 키 놓침 복구용 100ms 감시를 시작한다.
         /// </summary>
@@ -68,7 +74,9 @@ namespace OpenCvWpfTracking.Services.Input
         }
 
         #endregion
+
         #region [기능 처리 함수]
+
         /// <summary>
         /// 전역 제어에서 처리하는 키인지 확인한다.
         /// </summary>
@@ -210,6 +218,8 @@ namespace OpenCvWpfTracking.Services.Input
         /// </summary>
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr GetModuleHandle(string name);
+
         #endregion
+
     }
 }
