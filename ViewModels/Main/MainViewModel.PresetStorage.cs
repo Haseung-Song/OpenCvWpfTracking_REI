@@ -68,8 +68,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>장비 설정에 등록된 이름을 파노라마와 같은 규칙으로 준비한다.</summary>
         private void InitializeEquipmentPresetFolders()
         {
+            int prepared = 0, attempted = 0;
             foreach (var profile in ControlAgentProfiles.Where(item => !item.IsDirectInput))
             {
+                attempted++;
                 try
                 {
                     string key = DeviceCatalog.StorageDisplayName(profile.DisplayName) + "|" + profile.IpAddress + ":" + profile.Port;
@@ -79,6 +81,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets"),
                         profile.DeviceId, profile.AgentType == ControlAgentType.WebAgent, profile.DisplayName,
                         PresetRowHash(new[] { legacy }), PresetRowHash(new[] { NormalizeLegacyPresetContext(legacy) }));
+                    prepared++;
                 }
                 catch (IOException ex)
                 {
@@ -89,6 +92,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ConsoleLogHelper.Warning("PRESET STORAGE", "장비명 폴더 접근 확인 필요: " + ex.Message);
                 }
             }
+            ConsoleLogHelper.State("PRESET STORAGE", $"장비별 프리셋 경로 준비 / {prepared}/{attempted}개 확인");
         }
 
         /// <summary>등록 장비는 고정 ID로 복원하며 직접 입력은 기존 주소 구분을 유지한다.</summary>

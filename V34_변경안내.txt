@@ -1,4 +1,88 @@
-﻿현재 버전  V34_0
+﻿현재 버전  V34_1
+적용일  2026-11-06
+
+8번 장비 추가
+
+MR500(삼정솔루션)을 Control Agent TCP·EO/IR RTSP·AI EO/IR 선택 목록에 추가했습니다.
+고정 DeviceId는 MR500_SAMJEONG이며 기존 7개 장비 ID·주소는 유지합니다.
+
+제어  192.168.20.174 / TCP 5005
+EO  192.168.0.100:554 / axis-media/media.amp?streamprofile=preview
+IR  192.168.1.101:554 / cam0_1
+
+인증정보는 Config/Devices.csv의 개별 인증 필드를 사용합니다.
+삼정솔루션에는 ER-WATCHER 실측 배율표를 연결하지 않습니다.
+동일 DeviceId의 IP 변경 후에도 프리셋·파노라마 저장 기준은 유지합니다.
+
+WEB AGENT 흑백 팔레트 문서 기준 복원
+
+11:26 재시험에서 교환한 F3/F4가 송신된 것을 확인했지만 BLACK HOT 영상 미일치가 보고되었습니다.
+사용자 요청에 따라 문서의 흑백 팔레트·역상 기준으로 공통 송신 매핑을 복원했습니다.
+WHITE HOT  Cmd1=00 / Cmd2=31 / Data1=F3 / Data2=00
+요청 패킷  FF 01 00 31 F3 00 25
+BLACK HOT  Cmd1=00 / Cmd2=31 / Data1=F4 / Data2=00
+요청 패킷  FF 01 00 31 F4 00 26
+
+일반 팔레트 버튼과 카메라 특수기능은 같은 서비스를 사용합니다.
+장비 ID에 따른 예외는 두지 않습니다. LA 별도 프로토콜과 NEXT/PREV·RAINBOW·NUC는 유지합니다.
+송신 결과와 실제 영상 적용은 다릅니다. 장비별 실제 영상 반응은 현장에서 확인합니다.
+
+삼정 IR 하단 안내 위치
+
+삼정 IR은 스트림 안의 좌우 검은 여백 때문에 하단 안내가 안쪽으로 보였습니다.
+십자선 설정 버튼·배율·연결 문구만 영상 창의 하단 모서리에 맞춥니다.
+메인·보조·분리창에 같은 기준을 사용합니다.
+영상 크롭·원본 비율·빨간 십자선·클릭 이동·구역 좌표 계산은 유지합니다.
+다른 장비와 EO 하단 안내 배치는 유지합니다.
+
+운용 로그와 기술 상세 분리
+
+콘솔·Visual Studio Debug·일반 로그는 시간·수준·분류와 짧은 사실을 표시합니다.
+매 이벤트에 붙던 공통 운용 요약 문장과 긴 구분선은 제거합니다.
+장비별 긴 저장 경로는 기술 파일에 남기고 실제 준비 성공 수를 루프 종료 시 집계합니다.
+실제 EO/IR 속도 기준 전환은 둘 다 보존합니다. 같은 기준이면 기존 호출부에서 기록하지 않습니다.
+
+Logs/rei-viewer-날짜.log  운용 요약과 경고·오류
+Logs/rei-viewer-errors-날짜.log  오류 코드·원인·조치·예외
+Logs/rei-viewer-diagnostics-날짜.log  원문·스레드·패킷·세션·전체 경로·성능
+
+공통 이벤트는 한 번만 생성하고 요약을 별도 속성으로 전달합니다.
+기존 직접 Console.WriteLine의 수신 내용도 기술 파일에 보존하고 공통 출력은 다시 저장하지 않습니다.
+직접 TCP 오류는 일반·오류 파일에도 기록합니다. 송신·응답·도착·미완료 구분을 유지합니다.
+RTSP 인증정보 마스킹, 일반·오류 30일 및 기술 파일 10MB 회전·10개 보존을 유지합니다.
+새 로그 컬렉션·Dispatcher 갱신·UI 자동 스크롤 동작은 추가하거나 변경하지 않습니다.
+
+선택 목록 표시
+
+통신 장비 선택창의 높이를 항목 단위로 맞춰 상하단 일부 행 잘림과 아래 빈 행을 보완합니다.
+AI EO/IR 목록에도 같은 처리를 사용합니다. 직접 RTSP 입력은 한 줄 편집을 유지합니다.
+카드 간격이나 외부 스크롤 여백을 크게 늘리지 않습니다.
+
+수정 파일
+
+Config/Devices.csv·Devices.xlsx / Properties/AssemblyInfo.cs  8번 장비와 버전
+Views/Main/CommunicationComboBoxLayout.cs / MainWindow.xaml  선택 목록 표시
+Services/Communication/WebAgent/WebAgentThermalPaletteService.cs  문서 기준 WEB 흑백 명령 복원
+Views/Video/VideoShortcutGuide.cs / LegacyVideoIntegration.cs / InlineOpticalCalibration.cs  하단 안내 배치
+Views/Video/VideoPopoutWindow.xaml.cs / Views/Main/MainWindow.ControlUi.cs  각 영상 창 연결
+Common/ConsoleLogHelper.cs / AppLogger.cs / OperationalLogText.cs / App.xaml.cs  출력·파일·콘솔 경로
+MainViewModel.PresetStorage.cs / MainWindow.xaml.cs  초기화 경로 준비 집계만 추가
+OpenCvWpfTracking.csproj / V34_변경안내.txt  새 공통 파일 및 이력
+
+자체 확인
+
+Debug·Release x64 빌드 성공.
+장비 설정·주소·식별·Excel 보기 19건, 선택 목록 상하단·여백·배율·재열기 81건 통과.
+흑백 공통 매핑·영상 좌표 불변·하단 표시·연결 해제·로그 분리 및 오류 보존 56건 통과.
+팔레트·명령 생성 실제 소스를 TCP 기록 대체로 검사한 12건 추가 통과. 전체 자체 검사 168건.
+반복 기술 샘플 2,000건의 순서·마스킹·중복 기록 여부를 확인했습니다.
+실장비에 제어 명령을 보내지 않았으며 장비별 영상 반응·장시간 운용은 현장 확인이 필요합니다.
+문서는 기존 서식·표·머릿글·바닥글을 구조 비교했으며 페이지 시각 검수는 수행하지 못했습니다.
+
+아래 과거 변경 이력은 당시 기록입니다.
+======================================================================
+
+현재 버전  V34_0
 적용일  2026-11-04
 
 장비별 저장 기준 보완

@@ -20,16 +20,26 @@
 
         public bool SelectNext() => SelectRelative(1);
 
-        public bool SelectBlackHot() => SendPalette(0xF4);
+        public bool SelectBlackHot() => SendPalette(PolarityOperation(false));
 
-        public bool SelectWhiteHot() => SendPalette(0xF3);
+        public bool SelectWhiteHot() => SendPalette(PolarityOperation(true));
+
+        /// <summary>
+        /// 2026-11-06: 문서의 흑백 팔레트·역상 선택 기준으로 WEB 공통 매핑을 복원한다.
+        /// WHITE HOT은 F3, BLACK HOT은 F4를 사용하며 실제 반영은 영상으로 확인한다.
+        /// 별도 LA 제어 경로와 색상 번호 기반 NEXT·PREV는 유지한다.
+        /// </summary>
+        internal static byte PolarityOperation(bool whiteHot)
+        {
+            return whiteHot ? (byte)0xF3 : (byte)0xF4;
+        }
 
         public bool SelectRainbow() => SendPalette(0xF5);
 
         /// <summary>WEB NUC는 공통 단발 요청만 사용하며 구형 명령으로 재시도하지 않는다.</summary>
         public bool RequestNuc() => _controlCommandService.SetCameraFeature(0x04, 0x01, 0x01);
 
-        /// <summary>와 같은 지원 마스크를 사용하며 원시 번호로 색상 이름을 추정하지 않는다.</summary>
+        /// <summary>카메라가 응답한 지원 마스크를 사용하며 원시 번호로 색상 이름을 추정하지 않는다.</summary>
         public void ApplyPaletteCapability(uint optionMask)
         {
             lock (_relativeSync)
@@ -55,7 +65,7 @@
             }
         }
 
-        /// <summary>정상 동작하던 의 E9 Feature 05 선택 후 E7 조회 순서를 유지한다.</summary>
+        /// <summary>기존 NEXT·PREV의 E9 Feature 05 선택 후 E7 조회 순서를 유지한다.</summary>
         private bool SelectRelative(int offset)
         {
             lock (_relativeSync)

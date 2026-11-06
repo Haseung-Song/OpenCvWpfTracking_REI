@@ -6,3 +6,4 @@
 "ER_WATCHER_2","ER-WATCHER 2(가덕도 34초소)","WebAgent","192.168.0.143","5005","rtsp://192.168.0.140:554/AVStream1_1","root","rmffhqjf1!","rtsp://192.168.0.141:554/cam0_0","root","#i3system123","ControlAgent","","","","false","false"
 "ER_WATCHER_3","ER-WATCHER 3(잠수함사)","WebAgent","192.168.0.113","5005","rtsp://192.168.0.110:554/AVStream1_1","root","rmffhqjf1!","rtsp://192.168.0.111:554/cam0_0","root","rmffhqjf1!","ControlAgent","","","","false","false"
 "ER_WATCHER_4","ER-WATCHER 4(해사교)","WebAgent","192.168.0.123","5005","rtsp://192.168.0.120:554/AVStream1_1","root","rmffhqjf1!","rtsp://192.168.0.121:554/cam0_0","root","rmffhqjf1!","ControlAgent","","","","false","false"
+MR500_SAMJEONG,MR500(삼정솔루션),WebAgent,192.168.20.174,5005,rtsp://192.168.0.100:554/axis-media/media.amp?streamprofile=preview,root,rmffhqjf1!,rtsp://192.168.1.101:554/cam0_1,root,rmffhqjf1!,ControlAgent,,,,FALSE,FALSE

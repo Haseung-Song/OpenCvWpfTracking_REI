@@ -150,7 +150,15 @@ namespace OpenCvWpfTracking
         /// <summary>
         /// 연결 상태와 실제 영상 영역에 따라 배율 및 연결 문구를 배치한다.
         /// </summary>
-        internal static void AttachVideoLabelPositions(FrameworkElement host, FrameworkElement video, FrameworkElement ratio, TextBlock status, Func<double> aspect)
+        internal static Rect VideoLabelRect(FrameworkElement host, FrameworkElement video, double aspect, bool viewportAnchors)
+        {
+            return viewportAnchors
+                ? new Rect(0, 0, host.ActualWidth, host.ActualHeight)
+                : VideoContentRect(host, video, aspect);
+        }
+
+        /// <summary>하단 안내만 별도 기준으로 배치하고 원본 영상 좌표 계산은 유지한다.</summary>
+        internal static void AttachVideoLabelPositions(FrameworkElement host, FrameworkElement video, FrameworkElement ratio, TextBlock status, Func<double> aspect, Func<bool> viewportAnchors = null)
         {
             if (host == null || video == null || ratio == null || status == null || aspect == null)
                 return;
@@ -164,7 +172,7 @@ namespace OpenCvWpfTracking
                 () =>
             {
                 bool connected = (status.Text ?? "").EndsWith("] Connected", StringComparison.Ordinal);
-                Rect area = connected ? VideoContentRect(host, video, aspect()) : Rect.Empty;
+                Rect area = connected ? VideoLabelRect(host, video, aspect(), viewportAnchors?.Invoke() == true) : Rect.Empty;
                 Size size = new Size(host.ActualWidth, host.ActualHeight);
 
                 if (previous == area && previousSize == size && previousConnected == connected)

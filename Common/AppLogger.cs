@@ -31,31 +31,26 @@ namespace OpenCvWpfTracking.Common
             string errorLogFilePath = Path.Combine(logDirectoryPath, "rei-viewer-errors-.log");
             string diagnosticLogFilePath = Path.Combine(logDirectoryPath, "rei-viewer-diagnostics-.log");
             const string template = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}{NewLine}";
-            Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().MinimumLevel.Override("Microsoft", LogEventLevel.Warning).WriteTo.Debug(outputTemplate: template).WriteTo.Logger(operational => operational.Filter.ByExcluding(IsDiagnosticOnly).WriteTo.File(
-                    logFilePath,
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 30,
-                    shared: true,
-                    outputTemplate: template
-                )) // 반복 성능 샘플은 삭제하지 않고 크기가 제한된 별도 진단 파일에 보존한다.
-            .WriteTo.Logger(diagnostic => diagnostic.Filter.ByIncludingOnly(IsDiagnosticOnly).WriteTo.File(
-                    diagnosticLogFilePath,
-                    rollingInterval: RollingInterval.Day,
-                    fileSizeLimitBytes: 10 * 1024 * 1024,
-                    rollOnFileSizeLimit: true,
-                    retainedFileCountLimit: 10,
-                    shared: true,
-                    outputTemplate: template
-                )).WriteTo.Logger(error => error.MinimumLevel.Error().WriteTo.File(
-                    errorLogFilePath,
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 30,
-                    shared: true,
-                    outputTemplate: template
-                )).CreateLogger();
+            var operationalFormatter = new OperationalLogFormatter();
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                .WriteTo.Logger(operational => operational.Filter.ByExcluding(IsDiagnosticOnly)
+                    .WriteTo.Debug(formatter: operationalFormatter)
+                    .WriteTo.File(operationalFormatter, logFilePath,
+                        rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, shared: true))
+                // 기술 파일은 요약 여부와 무관하게 원문 이벤트를 한 번씩 발생 순서대로 보존한다.
+                .WriteTo.File(diagnosticLogFilePath,
+                    rollingInterval: RollingInterval.Day, fileSizeLimitBytes: 10 * 1024 * 1024,
+                    rollOnFileSizeLimit: true, retainedFileCountLimit: 10, shared: true,
+                    outputTemplate: template)
+                .WriteTo.Logger(error => error.MinimumLevel.Error().WriteTo.File(
+                    errorLogFilePath, rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30, shared: true, outputTemplate: template))
+                .CreateLogger();
             _isInitialized = true;
             Log.Information(
-                "[SYSTEM] 로그 시작 | 프로그램=TORUSS | 일반로그={NormalFile} | 오류로그={ErrorFile} | 진단로그={DiagnosticFile}\n\n일반: 한국어 운용 요약 다음 기술 상세 / 오류: 기존 코드·원인·조치 / 진단: 반복 성능 샘플",
+                "[SYSTEM] 로그 시작 | 프로그램=TORUSS | 일반로그={NormalFile} | 오류로그={ErrorFile} | 진단로그={DiagnosticFile}\n\n일반·Debug: 짧은 운용 이력 / 오류: 코드·원인·조치 / 진단: 전체 기술 상세·반복 성능 샘플",
                 logFilePath,
                 errorLogFilePath,
                 diagnosticLogFilePath

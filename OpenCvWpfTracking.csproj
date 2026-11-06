@@ -92,6 +92,7 @@
     <Compile Include="ViewModels\Main\MainViewModel.InputCoordinator.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.CameraFeatureControl.cs" />
     <Compile Include="Views\Main\MainWindow.ControlUi.cs" />
+    <Compile Include="Views\Main\CommunicationComboBoxLayout.cs" />
     <Compile Include="Views\Video\VideoShortcutGuide.cs" />
     <Content Include="Config\ControlTuning.xml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Compile Include="Services\Control\OpticalCenterCalibration.cs" />
@@ -253,6 +254,7 @@
     </Compile>
     <Compile Include="Common\AsyncRelayCommand.cs" />
     <Compile Include="Common\ConsoleLogHelper.cs" />
+    <Compile Include="Common\OperationalLogText.cs" />
     <Compile Include="Common\ParameterRelayCommand.cs" />
     <Compile Include="Common\ControlShortcutKeys.cs" />
     <Compile Include="Common\RelayCommand.cs" />

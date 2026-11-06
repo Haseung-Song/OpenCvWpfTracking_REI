@@ -197,7 +197,7 @@ namespace OpenCvWpfTracking
             /// <summary>
             /// [Console.WriteLine()] 출력 연결
             /// </summary>
-            Console.SetOut(consoleWriter);
+            ConsoleLogHelper.AttachConsoleWriter(consoleWriter);
             /// <summary>
             /// [Console.Error] 출력 연결
             /// </summary>

@@ -1952,8 +1952,10 @@ namespace OpenCvWpfTracking
         /// <summary>등록된 모든 장비 폴더에 공통 기본 사진 0번을 준비한다. 실제 촬영은 1번부터 시작한다.</summary>
         private void InitializeDevicePanoramaFolders()
         {
+            int prepared = 0, attempted = 0;
             foreach (var profile in vm.ControlAgentProfiles.Where(profile => !profile.IsDirectInput))
             {
+                attempted++;
                 try
                 {
                     string key = profile.DisplayName + "|" + profile.IpAddress + ":" + profile.Port;
@@ -1965,12 +1967,14 @@ namespace OpenCvWpfTracking
                         profile.DeviceId
                     );
                     EnsurePanoramaDefault(directory);
+                    prepared++;
                 }
                 catch (Exception ex)
                 {
                     ConsoleLogHelper.Warning("PANORAMA STORAGE", "장비 기본 사진 준비 실패: " + ex.Message);
                 }
             }
+            ConsoleLogHelper.State("PANORAMA STORAGE", $"장비별 파노라마 경로·기본 사진 준비 / {prepared}/{attempted}개 확인");
         }
 
         /// <summary>기본 사진은 실행 파일에 포함된 같은 원본을 복사하며 기존 0번 파일은 덮어쓰지 않는다.</summary>

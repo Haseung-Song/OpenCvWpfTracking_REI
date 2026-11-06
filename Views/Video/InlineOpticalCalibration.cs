@@ -446,9 +446,13 @@ namespace OpenCvWpfTracking
                 }
 
                 settingsToggle.Visibility = Visibility.Visible;
-                double bottom = Math.Max(0, host.ActualHeight - area.Bottom);
-                settingsToggle.Margin = new Thickness(area.Left + 8, 0, 0, bottom + 33);
-                settingsBorder.Margin = new Thickness(area.Left + 8, 0, 0, bottom + 59);
+                // 하단 안내 위치와 실제 보정·클릭 좌표 영역은 분리한다.
+                Rect labelArea = VideoShortcutGuide.VideoLabelRect(
+                    host, image, VideoShortcutGuide.SourceAspect(image, channel ? 1.25 : 16.0 / 9),
+                    LegacyVideoIntegration.UseViewportLabelAnchors(vm, channel));
+                double bottom = Math.Max(0, host.ActualHeight - labelArea.Bottom);
+                settingsToggle.Margin = new Thickness(labelArea.Left + 8, 0, 0, bottom + 33);
+                settingsBorder.Margin = new Thickness(labelArea.Left + 8, 0, 0, bottom + 59);
                 // 보더 폭은 고정 EO 크기가 아닌 실제 원본 영상 표시 영역을 따른다.
                 double width = Math.Min(238, Math.Max(174, area.Width * .36));
                 settingsBorder.Width = Math.Min(width, area.Width - 16);
@@ -459,7 +463,7 @@ namespace OpenCvWpfTracking
                 foreach (var button in buttons.Children.OfType<Button>())
                     button.FontSize = font;
 
-                pickingHint.Margin = new Thickness(area.Left + 90, 0, 0, bottom + 33);
+                pickingHint.Margin = new Thickness(labelArea.Left + 90, 0, 0, bottom + 33);
                 pickingHint.MaxWidth = Math.Max(1, area.Width - 98);
                 DrawGeometry(area);
             }

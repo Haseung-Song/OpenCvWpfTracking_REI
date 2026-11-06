@@ -108,7 +108,9 @@ namespace OpenCvWpfTracking
             Func<double> aspect = () => VideoShortcutGuide.SourceAspect(CameraImage, _cameraType == VideoPopoutCameraType.Ir ? 1.25 : 16.0 / 9);
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content, EoAlarmPanel, CameraImage, aspect);
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content, IrAlarmPanel, CameraImage, aspect);
-            VideoShortcutGuide.AttachVideoLabelPositions((Grid)Content, CameraImage, ZoomRatioHost, CameraStatusText, aspect);
+            VideoShortcutGuide.AttachVideoLabelPositions(
+                (Grid)Content, CameraImage, ZoomRatioHost, CameraStatusText, aspect,
+                () => LegacyVideoIntegration.UseViewportLabelAnchors(_viewModel, _cameraType == VideoPopoutCameraType.Ir));
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             MouseMove += VideoPointerMove;
             MouseLeftButtonUp += VideoPointerUp;

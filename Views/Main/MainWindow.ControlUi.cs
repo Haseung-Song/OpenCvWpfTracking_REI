@@ -519,7 +519,10 @@ namespace OpenCvWpfTracking
             Panel.SetZIndex(ratioHost, 60);
             grid.Children.Add(ratioHost);
             var video = ir ? IrCameraImageView : EoCameraImageView;
-            VideoShortcutGuide.AttachVideoLabelPositions(grid, video, ratioHost, connection, () => VideoShortcutGuide.SourceAspect(video, ir ? 1.25 : 16.0 / 9));
+            VideoShortcutGuide.AttachVideoLabelPositions(
+                grid, video, ratioHost, connection,
+                () => VideoShortcutGuide.SourceAspect(video, ir ? 1.25 : 16.0 / 9),
+                () => LegacyVideoIntegration.UseViewportLabelAnchors(vm, ir));
             var marker = LogicalDescendants<Control>(grid).FirstOrDefault(c => c.Template == FindResource("CenterCrosshairTemplate"));
 
             if (marker != null)

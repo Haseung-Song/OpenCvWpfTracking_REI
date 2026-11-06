@@ -682,6 +682,8 @@
         <!-- [통신 설정] RTSP 선택 ComboBox 스타일 -->
         <Style x:Key="CommunicationComboBoxStyle"
             TargetType="ComboBox">
+            <!-- 2026-11-06: 목록 양 끝의 부분 행과 직접 입력 아래 잔여 공간을 함께 정리한다. -->
+            <Setter Property="local:CommunicationComboBoxLayout.IsEnabled" Value="True"/>
             <Setter Property="Height"
                 Value="30"/>
             <Setter Property="Padding"
@@ -2843,6 +2845,7 @@
 
                                                                                 <!-- [AI Detector] 분석 대상 EO / IR RTSP 프리셋 -->
                                                                                 <ComboBox Height="28"
+                                                                                    local:CommunicationComboBoxLayout.IsEnabled="True"
                                                                                     Margin="0,0,0,6"
                                                                                     ItemsSource="{Binding EoRtspSourceOptions}"
                                                                                     DisplayMemberPath="DisplayName"
@@ -2867,6 +2870,7 @@
                                                                                 </TextBox>
 
                                                                                 <ComboBox Height="28"
+                                                                                    local:CommunicationComboBoxLayout.IsEnabled="True"
                                                                                     Margin="0,0,0,6"
                                                                                     ItemsSource="{Binding IrRtspSourceOptions}"
                                                                                     DisplayMemberPath="DisplayName"

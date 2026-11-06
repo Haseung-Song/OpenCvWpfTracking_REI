@@ -17,6 +17,14 @@ namespace OpenCvWpfTracking
     internal static class LegacyVideoIntegration
     {
 
+        /// <summary>
+        /// 2026-11-06: 영상 자체에 좌우 검은 여백이 포함된 삼정 IR은 하단 안내를 화면 모서리에 둔다.
+        /// 영상·십자선 좌표와 클릭 이동·구역 계산에는 이 배치 기준을 사용하지 않는다.
+        /// </summary>
+        internal static bool UseViewportLabelAnchors(MainViewModel vm, bool ir) =>
+            ir && vm != null && vm.IsSelectedControlAgentWebAgent &&
+            string.Equals(vm.SelectedControlAgentProfile?.DeviceId, "MR500_SAMJEONG", StringComparison.OrdinalIgnoreCase);
+
         #region [필드 및 상태 정보]
 
         // 2026-10-15: 기존 최종본의 채널 색상과 변경 불가능한 공유 브러시를 유지한다.
