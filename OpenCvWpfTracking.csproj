@@ -48,7 +48,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <Prefer32Bit>true</Prefer32Bit>
+    <Prefer32Bit>false</Prefer32Bit>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>false</Optimize>
   </PropertyGroup>
@@ -60,7 +60,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <Prefer32Bit>true</Prefer32Bit>
+    <Prefer32Bit>false</Prefer32Bit>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
@@ -351,10 +351,10 @@
   <Target Name="CopyFireDetectorTestProgram" AfterTargets="Build">
     <ItemGroup>
       <!-- 출력 폴더에 남은 깨진 이름의 문서가 다시 배포되지 않도록 TXT는 명시적으로만 복사한다. -->
-      <FireDetectorProgramFiles Include="$(MSBuildProjectDirectory)\FireCandidateValidator\bin\$(Platform)\$(Configuration)\**\*.*" Exclude="$(MSBuildProjectDirectory)\FireCandidateValidator\bin\$(Platform)\$(Configuration)\**\*.txt" />
+      <FireDetectorProgramFiles Include="$(MSBuildProjectDirectory)\FireCandidateValidator\bin\x64\$(Configuration)\**\*.*" Exclude="$(MSBuildProjectDirectory)\FireCandidateValidator\bin\x64\$(Configuration)\**\*.txt" />
       <FireDetectorProgramFiles Include="$(MSBuildProjectDirectory)\FireCandidateValidator\화재_연기_AI_영상처리_알고리즘 분석_260923.txt" />
     </ItemGroup>
-    <Error Condition="!Exists('$(MSBuildProjectDirectory)\FireCandidateValidator\bin\$(Platform)\$(Configuration)\FireCandidateValidator.exe')" Text="FireCandidateValidator.exe was not built. Build the complete solution." />
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)\FireCandidateValidator\bin\x64\$(Configuration)\FireCandidateValidator.exe')" Text="FireCandidateValidator.exe was not built. Build the complete solution." />
     <Copy SourceFiles="@(FireDetectorProgramFiles)" DestinationFiles="@(FireDetectorProgramFiles->'$(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

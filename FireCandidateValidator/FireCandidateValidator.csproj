@@ -37,7 +37,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="OpenCvSharp">
-      <HintPath>lib\OpenCvSharp.dll</HintPath>
+      <HintPath>..\packages\OpenCvSharp4.4.7.0.20230115\lib\netstandard2.0\OpenCvSharp.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="System" />
@@ -50,11 +50,11 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="lib\x64\OpenCvSharpExtern.dll">
+    <Content Include="..\packages\OpenCvSharp4.runtime.win.4.7.0.20230115\runtimes\win-x64\native\OpenCvSharpExtern.dll">
       <Link>dll\x64\OpenCvSharpExtern.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="lib\x64\opencv_videoio_ffmpeg470_64.dll">
+    <Content Include="..\packages\OpenCvSharp4.runtime.win.4.7.0.20230115\runtimes\win-x64\native\opencv_videoio_ffmpeg470_64.dll">
       <Link>dll\x64\opencv_videoio_ffmpeg470_64.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -86,5 +86,11 @@
   <ItemGroup>
     <Folder Include="dll\x64\" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="EnsureOpenCvPackages" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('..\packages\OpenCvSharp4.4.7.0.20230115\lib\netstandard2.0\OpenCvSharp.dll') Or !Exists('..\packages\OpenCvSharp4.runtime.win.4.7.0.20230115\runtimes\win-x64\native\OpenCvSharpExtern.dll') Or !Exists('..\packages\OpenCvSharp4.runtime.win.4.7.0.20230115\runtimes\win-x64\native\opencv_videoio_ffmpeg470_64.dll')" Text="OpenCV packages are missing. Restore NuGet packages for OpenCvWpfTracking.sln before building." />
+  </Target>
 </Project>
