@@ -30,8 +30,8 @@ namespace OpenCvWpfTracking.Common
             string logFilePath = Path.Combine(logDirectoryPath, "rei-viewer-.log");
             string errorLogFilePath = Path.Combine(logDirectoryPath, "rei-viewer-errors-.log");
             string diagnosticLogFilePath = Path.Combine(logDirectoryPath, "rei-viewer-diagnostics-.log");
-            const string template = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}{NewLine}";
             var operationalFormatter = new OperationalLogFormatter();
+            var technicalFormatter = new ReadableTechnicalLogFormatter();
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -40,13 +40,12 @@ namespace OpenCvWpfTracking.Common
                     .WriteTo.File(operationalFormatter, logFilePath,
                         rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, shared: true))
                 // 기술 파일은 요약 여부와 무관하게 원문 이벤트를 한 번씩 발생 순서대로 보존한다.
-                .WriteTo.File(diagnosticLogFilePath,
+                .WriteTo.File(technicalFormatter, diagnosticLogFilePath,
                     rollingInterval: RollingInterval.Day, fileSizeLimitBytes: 10 * 1024 * 1024,
-                    rollOnFileSizeLimit: true, retainedFileCountLimit: 10, shared: true,
-                    outputTemplate: template)
+                    rollOnFileSizeLimit: true, retainedFileCountLimit: 10, shared: true)
                 .WriteTo.Logger(error => error.MinimumLevel.Error().WriteTo.File(
-                    errorLogFilePath, rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 30, shared: true, outputTemplate: template))
+                    technicalFormatter, errorLogFilePath, rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30, shared: true))
                 .CreateLogger();
             _isInitialized = true;
             Log.Information(

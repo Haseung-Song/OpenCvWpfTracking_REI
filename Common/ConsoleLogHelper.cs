@@ -27,15 +27,6 @@ namespace OpenCvWpfTracking.Common
         };
 
         /// <summary>
-        /// 연속 로그의 시각적 그룹을 구분하기 위한 마지막 Category.
-        /// MOVE/FRAME처럼 반복 빈도가 높은 로그는 별도 공백을 넣지 않고,
-        /// 작업 종류가 바뀔 때만 한 줄을 띄운다.
-        /// </summary>
-        private static string _lastConsoleCategory = string.Empty;
-
-        private static string _lastConsoleRootCategory = string.Empty;
-
-        /// <summary>
         /// Console 출력 가능 여부.
         ///
         /// 프로그램 종료 또는 Console 창이 먼저 닫힌 경우
@@ -353,7 +344,6 @@ namespace OpenCvWpfTracking.Common
             string safeCategory = string.IsNullOrWhiteSpace(category) ? "GENERAL" : category.Trim();
             string safeMessage = MaskRtspInLog(message ?? string.Empty);
             int threadId = Thread.CurrentThread.ManagedThreadId;
-            string rootCategory = GetRootCategory(safeCategory);
             bool warningOrError = level == "WARN" || level == "ERROR";
             bool diagnosticOnly = !warningOrError && (IsDiagnosticLog(safeCategory, safeMessage) ||
                 (safeCategory == "EQUIPMENT STORAGE" && safeMessage.StartsWith("장비 ID 기준 저장 / ", StringComparison.Ordinal)));
@@ -366,15 +356,12 @@ namespace OpenCvWpfTracking.Common
                 // 주기 성능 로그만 기존 핵심 수치를 짧게 표시한다.
                 if (!diagnosticOnly || safeCategory.IndexOf("RTSP PERF", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    if (ShouldInsertBlankLine(safeCategory, rootCategory, IsHighFrequencyCategory(safeCategory)))
-                        WriteConsoleSafe();
-
                     string display = warningOrError
                         ? "[T" + threadId.ToString("00") + "] [" + safeCategory + "] " + safeMessage
                         : diagnosticOnly ? FormatDiagnosticSummary(safeCategory, safeMessage) : summary;
-                    WriteConsoleSafe($"[{DateTime.Now:HH:mm:ss.fff}] [{level.Trim()}] " + display);
-                    _lastConsoleCategory = safeCategory;
-                    _lastConsoleRootCategory = rootCategory;
+                    WriteConsoleSafe($"[{DateTime.Now:HH:mm:ss.fff}] [{level.Trim()}]");
+                    WriteConsoleSafe(ReadableLogLayout.Body(display));
+                    WriteConsoleSafe();
                 }
 
                 // 이벤트를 한 번만 기록한다. 요약은 속성으로, 원문은 메시지로 전달한다.
@@ -423,89 +410,6 @@ namespace OpenCvWpfTracking.Common
 
             return "[성능 진단] " + category + (values.Count == 0 ? " 상태 샘플 수신" : " / " + string.Join(" / ", values)) +
                 " / 전체 수치: Logs의 rei-viewer-diagnostics 파일";
-        }
-
-        /// <summary>
-        /// Category의 최상위 그룹을 반환한다.
-        /// "EO PANORAMA / MOVE" -> "EO PANORAMA"
-        /// </summary>
-        private static string GetRootCategory(string category)
-        {
-            if (string.IsNullOrWhiteSpace(category))
-            {
-                return "GENERAL";
-            }
-
-            int separatorIndex = category.IndexOf(" / ", StringComparison.Ordinal);
-            return separatorIndex < 0 ? category.Trim() : category.Substring(0, separatorIndex).Trim();
-        }
-
-        /// <summary>
-        /// 프레임/이동처럼 초당 또는 반복 횟수가 많은 로그는
-        /// 각 줄 사이에 공백을 넣지 않아 세로 길이가 과도하게 늘어나는 것을 막는다.
-        /// </summary>
-        private static bool IsHighFrequencyCategory(string category)
-        {
-            if (string.IsNullOrWhiteSpace(category))
-            {
-                return false;
-            }
-
-            string upper = category.ToUpperInvariant();
-            return upper.Contains("/ MOVE") ||
-                upper.Contains("/ FRAME") ||
-                upper.Contains("/ STATUS") ||
-                upper.Contains("/ RX") ||
-                upper.Contains("/ TX");
-        }
-
-        /// <summary>
-        /// 작업 그룹이 바뀌거나 주요 이벤트가 시작될 때만 한 줄 공백을 추가한다.
-        /// 같은 Panorama MOVE/FRAME 반복 구간에는 공백을 추가하지 않는다.
-        /// </summary>
-        private static bool ShouldInsertBlankLine(string category, string rootCategory, bool isHighFrequency)
-        {
-            if (string.IsNullOrEmpty(_lastConsoleCategory))
-            {
-                return false;
-            }
-
-            /*
-             * Panorama 촬영 반복 로그는 한 Frame 단위를 눈으로 구분할 수 있게 한다.
-             *
-             *   ... FRAME captured
-             *
-             *   MOVE sent
-             *   MOVE stable
-             *   MOVE arrived
-             *   FRAME captured
-             *
-             * 즉 "이전 FRAME -> 다음 MOVE" 경계에만 공백 한 줄을 추가한다.
-             * MOVE 내부의 sent/stable/arrived 사이에는 공백을 넣지 않는다.
-             */
-            if (string.Equals(rootCategory, "EO PANORAMA", StringComparison.Ordinal) &&
-                string.Equals(_lastConsoleRootCategory, "EO PANORAMA", StringComparison.Ordinal))
-            {
-                bool previousWasFrame = _lastConsoleCategory.IndexOf("/ FRAME", StringComparison.OrdinalIgnoreCase) >= 0;
-                bool currentIsMove = category.IndexOf("/ MOVE", StringComparison.OrdinalIgnoreCase) >= 0;
-
-                if (previousWasFrame && currentIsMove)
-                {
-                    return true;
-                }
-            }
-
-            if (isHighFrequency)
-            {
-                return !string.Equals(_lastConsoleRootCategory, rootCategory, StringComparison.Ordinal);
-            }
-
-            if (!string.Equals(_lastConsoleRootCategory, rootCategory, StringComparison.Ordinal))
-            {
-                return true;
-            }
-
-            return !string.Equals(_lastConsoleCategory, category, StringComparison.Ordinal);
         }
 
         /// <summary>

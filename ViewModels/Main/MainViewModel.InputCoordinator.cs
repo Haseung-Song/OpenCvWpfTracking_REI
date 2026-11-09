@@ -83,8 +83,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private LensControlTuning ControlTuningFor(bool ir)
         {
             var profile = _requestedControlProfile ?? SelectedControlAgentProfile;
-            var device = DeviceCatalog.Entries.FirstOrDefault(x => x.Label + " EO/IR" == profile?.DisplayName);
-            return ControlTuning.Get(device?.Id, ir);
+            return ControlTuning.Get(profile?.DeviceId, ir);
         }
 
         #endregion

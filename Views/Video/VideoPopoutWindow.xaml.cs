@@ -382,7 +382,9 @@ namespace OpenCvWpfTracking
                     _cameraType == VideoPopoutCameraType.Ir,
                     2 * x / width - 1,
                     2 * y / height - 1,
-                    bitmap.PixelWidth / (double)bitmap.PixelHeight
+                    bitmap.PixelWidth / (double)bitmap.PixelHeight,
+                    bitmap.PixelWidth,
+                    bitmap.PixelHeight
                 );
             }
             catch (Exception ex)

@@ -867,7 +867,9 @@ namespace OpenCvWpfTracking
                 ir,
                 2 * pixel.X / bitmap.PixelWidth - 1,
                 2 * pixel.Y / bitmap.PixelHeight - 1,
-                bitmap.PixelWidth / (double)bitmap.PixelHeight
+                bitmap.PixelWidth / (double)bitmap.PixelHeight,
+                bitmap.PixelWidth,
+                bitmap.PixelHeight
             );
         }
 

@@ -20,6 +20,11 @@ namespace OpenCvWpfTracking.Services.Control
 
         private readonly string file;
 
+        // 명시적으로 초기화한 장비를 과거 주소 키에서 다시 가져오지 않도록 파일에도 남긴다.
+        private readonly HashSet<string> identities = new HashSet<string>(StringComparer.Ordinal);
+
+        private readonly HashSet<string> resolvedIdentities = new HashSet<string>(StringComparer.Ordinal);
+
         #endregion
 
         #region [초기화]
@@ -33,7 +38,12 @@ namespace OpenCvWpfTracking.Services.Control
 
             try
             {
-                foreach (var e in XDocument.Load(file).Root.Elements("Point"))
+                var root = XDocument.Load(file).Root;
+
+                foreach (var identity in root.Elements("Identity"))
+                    identities.Add((string)identity.Attribute("Device") ?? "");
+
+                foreach (var e in root.Elements("Point"))
                 {
                     string key = (string)e.Attribute("Device");
                     int zoom = (int)e.Attribute("Zoom");
@@ -58,6 +68,57 @@ namespace OpenCvWpfTracking.Services.Control
         /// </summary>
         public static bool Valid(double x, double y) =>
             !double.IsNaN(x) && !double.IsNaN(y) && !double.IsInfinity(x) && !double.IsInfinity(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1;
+
+        /// <summary>
+        /// 고정 ID에 보정값이 없을 때 같은 장비 이름·채널의 이전 키만 한 번 이전한다.
+        /// 주소별 값이 서로 다르면 자동 병합하지 않고 원본을 보존한다.
+        /// </summary>
+        public string ResolveIdentity(string stableKey, string exactLegacyKey, string displayName, bool ir)
+        {
+            if (stableKey == exactLegacyKey || identities.Contains(stableKey) ||
+                anchors.Any(point => point.Item1 == stableKey) || resolvedIdentities.Contains(stableKey))
+                return stableKey;
+
+            var groups = anchors.Where(point => OpticalDeviceIdentity.MatchesLegacyName(point.Item1, displayName, ir))
+                .GroupBy(point => point.Item1).ToArray();
+            var selected = groups.FirstOrDefault(group => group.Key == exactLegacyKey);
+
+            if (selected == null && groups.Length == 1)
+                selected = groups[0];
+
+            if (selected == null)
+            {
+                resolvedIdentities.Add(stableKey);
+
+                if (groups.Length > 1)
+                    Common.ConsoleLogHelper.Warning("OPTICAL CENTER", "이전 주소별 보정값 중복 / DEVICE_KEY=" + stableKey +
+                        " / 원본 보존·현재 장비 보정 확인 필요");
+
+                return stableKey;
+            }
+
+            var next = anchors.ToList();
+            next.AddRange(selected.Select(point => Tuple.Create(stableKey, point.Item2, point.Item3, point.Item4)));
+            var nextIdentities = new HashSet<string>(identities) { stableKey };
+
+            try
+            {
+                Persist(next, nextIdentities);
+                anchors.Clear();
+                anchors.AddRange(next);
+                identities.Add(stableKey);
+                resolvedIdentities.Add(stableKey);
+                Common.ConsoleLogHelper.State("OPTICAL CENTER", "장비 ID 기준 보정 이전 완료 / DEVICE_KEY=" + stableKey +
+                    " / POINTS=" + selected.Count() + " / 이전 주소 보정 원본 유지");
+                return stableKey;
+            }
+            catch (Exception error)
+            {
+                // 저장 실패 시 확인된 이전 값을 사용한다. 이전 파일과 메모리는 손상시키지 않는다.
+                Common.ConsoleLogHelper.Warning("OPTICAL CENTER", "보정 이전 저장 실패 / 이전 보정 유지 / " + error.GetType().Name);
+                return selected.Key;
+            }
+        }
 
         /// <summary>
         /// 같은 장비의 줌 구간별 보정값을 조회하고 필요한 구간은 보간한다.
@@ -92,9 +153,11 @@ namespace OpenCvWpfTracking.Services.Control
 
             var next = anchors.Where(p => p.Item1 != key || p.Item2 != zoom).ToList();
             next.Add(Tuple.Create(key, zoom, point.X, point.Y));
-            Persist(next);
+            var nextIdentities = new HashSet<string>(identities) { key };
+            Persist(next, nextIdentities);
             anchors.Clear();
             anchors.AddRange(next);
+            identities.Add(key);
         }
 
         /// <summary>
@@ -103,20 +166,23 @@ namespace OpenCvWpfTracking.Services.Control
         public void Reset(string key)
         {
             var next = anchors.Where(p => p.Item1 != key).ToList();
-            Persist(next);
+            var nextIdentities = new HashSet<string>(identities) { key };
+            Persist(next, nextIdentities);
             anchors.Clear();
             anchors.AddRange(next);
+            identities.Add(key);
         }
 
         /// <summary>
         /// 임시 파일을 완성한 뒤 기존 보정 파일을 교체한다.
         /// </summary>
-        private void Persist(List<Tuple<string, int, double, double>> next)
+        private void Persist(List<Tuple<string, int, double, double>> next, IEnumerable<string> nextIdentities)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             var doc = new XDocument(new XElement(
                     "OpticalCenters",
-                    new XAttribute("Version", 1),
+                    new XAttribute("Version", 2),
+                    nextIdentities.OrderBy(key => key).Select(key => new XElement("Identity", new XAttribute("Device", key))),
                     next.Select(p => new XElement(
                             "Point",
                             new XAttribute("Device", p.Item1),

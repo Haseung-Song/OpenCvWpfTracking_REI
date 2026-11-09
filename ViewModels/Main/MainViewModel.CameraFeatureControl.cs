@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -482,7 +483,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 영상·렌즈·자세의 신선도와 제어 잠금을 검증한 뒤 줌 보정 PT 절대 이동을 요청한다.
         /// </summary>
-        public async Task<bool> CenterVideoPointAsync(bool ir, double nx, double ny, double aspect)
+        public async Task<bool> CenterVideoPointAsync(bool ir, double nx, double ny, double aspect, int sourceWidth = 0, int sourceHeight = 0)
         {
             var pose = Volatile.Read(ref _videoCenterPose);
             long now = DateTime.UtcNow.Ticks;
@@ -511,6 +512,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
+            var profile = _requestedControlProfile ?? SelectedControlAgentProfile;
+            string deviceId = Services.Configuration.DeviceCatalog.CanonicalDeviceId(profile?.DeviceId);
+            var geometry = Services.Configuration.ClickProjectionSettings.Get(deviceId, ir);
+            double sourceX = nx, sourceY = ny, sourceAspect = aspect;
+            double mappedX, mappedY, mappedAspect;
+
+            if (!geometry.TryMap(nx, ny, aspect, out mappedX, out mappedY, out mappedAspect))
+            {
+                ConsoleLogHelper.Warning("VIDEO CENTER", "클릭 영상 영역 밖 / DEVICE_ID=" + deviceId +
+                    " / CAMERA=" + (ir ? "IR" : "EO") + " / 명령 미송신");
+                return false;
+            }
+
+            nx = mappedX;
+            ny = mappedY;
+            aspect = mappedAspect;
             var tuning = ControlTuningFor(ir);
             int zoom = ir ? GetCurrentIrZoomStandardPosition() : GetCurrentPresetStandardZoom();
 
@@ -524,10 +541,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             double effectiveRatio = opticalRatio * digitalFactor;
             // 확인된 광각 기준을 유지하고 각도나 PT 이동 시간이 아닌
             // 탄젠트 공간에서 비율을 조정한다. 디지털 배율은 추정값임을 유지한다.
-            double hfov = 2 * Math.Atan(Math.Tan(tuning.WideHorizontalFov * Math.PI / 360) / effectiveRatio) * 180 / Math.PI;
+            double wideFov = geometry.ResolveWideHorizontalFov(tuning.WideHorizontalFov);
+            double hfov = 2 * Math.Atan(Math.Tan(wideFov * Math.PI / 360) / effectiveRatio) * 180 / Math.PI;
             var opticalCenter = GetOpticalCenter(ir);
-            nx -= 2 * (opticalCenter.X - .5);
-            ny -= 2 * (opticalCenter.Y - .5);
+            nx -= 2 * (geometry.CenterX(opticalCenter.X) - .5);
+            ny -= 2 * (geometry.CenterY(opticalCenter.Y) - .5);
             // 보정 중심이 영상 중앙에서 벗어나 가장자리 클릭 좌표가
             // 기존 [-1,1] 범위를 넘어가더라도 같은 투영 광선을 유지한다.
             double rayScale = Math.Max(1, Math.Max(Math.Abs(nx), Math.Abs(ny)));
@@ -608,16 +626,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _centerDeadlineTicks = DateTime.UtcNow.AddSeconds(Math.Min(120, Math.Max(5, 2 * Math.Max(panDistance, tiltDistance) / Math.Max(1, speed) + 3))).Ticks;
                 ConsoleLogHelper.Command(
                     "VIDEO CENTER",
-                    "SOURCE=VIDEO_CLICK / CAMERA=" + (ir ? "IR" : "EO") +
+                    "클릭 이동 요청 송신 / 실제 영상 중앙 도달은 별도 확인\n" +
+                    "DEVICE_ID=" + deviceId + " / DEVICE=" + profile?.DisplayName +
+                    " / AGENT=" + profile?.AgentType + " / CAMERA=" + (ir ? "IR" : "EO") +
+                    " / SOURCE=VIDEO_CLICK" +
                     " / APPROXIMATE_IR=" + approximateIr +
-                    " / MODEL=" + (tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") +
+                    " / MODEL=" + (tuning.Calibration != null ? "SHARED_MEASURED_TABLE" : tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") +
                     " / RAW_ZOOM=" + zoom +
                     " / OPTICAL_RATIO=" + opticalRatio +
                     " / DIGITAL_ESTIMATE=" + digitalFactor +
                     " / EFFECTIVE_RATIO=" + effectiveRatio +
-                    " / XY=" + nx +
-                    "," + ny +
+                    " / SOURCE_XY=" + sourceX.ToString("F6", CultureInfo.InvariantCulture) + "," + sourceY.ToString("F6", CultureInfo.InvariantCulture) +
+                    " / SOURCE_SIZE=" + sourceWidth + "x" + sourceHeight +
+                    " / SOURCE_ASPECT=" + sourceAspect.ToString("F6", CultureInfo.InvariantCulture) +
+                    " / ACTIVE_RECT=" + string.Join(",", new[] { geometry.Left, geometry.Top, geometry.Width, geometry.Height }) +
+                    " / ACTIVE_ASPECT=" + aspect.ToString("F6", CultureInfo.InvariantCulture) +
+                    " / OPTICAL_CENTER=" + opticalCenter.X.ToString("F6", CultureInfo.InvariantCulture) + "," + opticalCenter.Y.ToString("F6", CultureInfo.InvariantCulture) +
+                    " / CORRECTED_XY=" + nx.ToString("F6", CultureInfo.InvariantCulture) + "," + ny.ToString("F6", CultureInfo.InvariantCulture) +
+                    " / GEOMETRY_BASIS=" + geometry.Basis +
+                    " / WIDE_HFOV=" + wideFov +
+                    " / HFOV_SOURCE=" + (geometry.WideHorizontalFov.HasValue ? "DEVICE_CLICK_CONFIG" : "CONTROL_TUNING") +
                     " / ESTIMATED_HFOV=" + hfov +
+                    " / CURRENT_PT=" + pose.Item1 + "," + pose.Item2 +
+                    " / SPEED=" + speed +
                     " / TARGET=" + target.Item1 +
                     "," + tilt +
                     " / TX_ONLY, arrival not confirmed"

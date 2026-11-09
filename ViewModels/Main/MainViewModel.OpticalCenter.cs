@@ -15,6 +15,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private OpticalCenterCalibration opticalCenters;
 
+        private readonly string[] _opticalIdentityKeys = new string[2];
+
+        private readonly string[] _opticalResolvedKeys = new string[2];
+
         #endregion
 
         #region [속성 및 상태 표시]
@@ -38,10 +42,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// 장비와 제어 주소 및 카메라 채널별 보정 키를 만든다.
+        /// 이전 보정값 이전에 사용할 주소 기준 키를 유지한다.
         /// </summary>
-        private string OpticalCenterKey(bool ir) =>
-            OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName(SelectedControlAgentProfile?.DisplayName ?? "DIRECT") +
+        private string LegacyOpticalCenterKey(bool ir) =>
+            OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName((_requestedControlProfile ?? SelectedControlAgentProfile)?.DisplayName ?? "DIRECT") +
             "|" + ControlAgentIp +
             ":" + ControlAgentPortText +
             "|" + CameraIdentity(ir ? IrSourceAddress : EoSourceAddress) +
@@ -51,6 +55,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// 현재 채널의 보정 저장 대상 키를 반환한다.
         /// </summary>
         public string OpticalDeviceKey(bool ir) => OpticalCenterKey(ir);
+
+        /// <summary>등록 장비는 IP 변경과 무관하게 보정값을 유지하고 EO·IR 및 LA·WEB은 분리한다.</summary>
+        private string OpticalCenterKey(bool ir)
+        {
+            var profile = _requestedControlProfile ?? SelectedControlAgentProfile;
+            string stable = OpticalDeviceIdentity.Key(profile?.DeviceId, profile?.AgentType.ToString(), ir, null);
+
+            if (stable == null)
+                return LegacyOpticalCenterKey(ir);
+
+            int channel = ir ? 1 : 0;
+
+            if (_opticalIdentityKeys[channel] != stable)
+            {
+                _opticalResolvedKeys[channel] = OpticalCenters.ResolveIdentity(
+                    stable, LegacyOpticalCenterKey(ir), profile?.DisplayName, ir);
+                _opticalIdentityKeys[channel] = stable;
+            }
+
+            return _opticalResolvedKeys[channel];
+        }
 
         /// <summary>
         /// 현재 채널의 표준 광학 줌 위치를 반환한다.

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Serilog.Events;
@@ -84,32 +85,108 @@ namespace OpenCvWpfTracking.Common
         }
     }
 
+    /// <summary>메모장·콘솔에서 이벤트와 기술 항목을 빈 줄·들여쓰기로 구분한다.</summary>
+    internal static class ReadableLogLayout
+    {
+        internal static string Body(string message)
+        {
+            var result = new System.Text.StringBuilder();
+            bool previousBlank = true;
+
+            foreach (string original in (message ?? "").Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+            {
+                string line = original.Trim();
+
+                if (line.Length == 0)
+                {
+                    if (!previousBlank)
+                        result.AppendLine();
+
+                    previousBlank = true;
+                    continue;
+                }
+
+                // 슬래시가 포함된 주소·경로·HEX는 보존한다. 명시적인 항목 구분자만 줄바꿈한다.
+                string[] fields = line.Length > 100 ? line.Split(new[] { " / " }, StringSplitOptions.None) : new[] { line };
+
+                for (int index = 0; index < fields.Length; index++)
+                    result.Append("  ").AppendLine(fields[index]);
+
+                previousBlank = false;
+            }
+
+            return result.ToString().TrimEnd('\r', '\n');
+        }
+    }
+
     /// <summary>한 이벤트의 짧은 표시 속성을 읽어 Debug·일반 파일에 같은 운용 내용을 출력한다.</summary>
     internal sealed class OperationalLogFormatter : ITextFormatter
     {
         private readonly MessageTemplateTextFormatter _technical = new MessageTemplateTextFormatter(
-            "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}{NewLine}", null);
+            "{Message:lj}{NewLine}{Exception}", CultureInfo.InvariantCulture);
 
         public void Format(LogEvent logEvent, TextWriter output)
         {
             LogEventPropertyValue property;
             var summary = logEvent.Properties.TryGetValue("ViewerOperationalMessage", out property)
                 ? property as ScalarValue : null;
+            string message;
+
             if (summary?.Value is string)
             {
-                output.Write(logEvent.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                output.Write(" [");
-                LogEventPropertyValue sourceLevel;
-                output.Write(logEvent.Properties.TryGetValue("ViewerSourceLevel", out sourceLevel) && sourceLevel is ScalarValue
-                    ? ((ScalarValue)sourceLevel).Value : logEvent.Level.ToString().ToUpperInvariant());
-                output.Write("] ");
-                output.WriteLine((string)summary.Value);
+                message = (string)summary.Value;
             }
             else
             {
                 // 오류·예외와 기존 직접 Serilog 기록은 상세 표현을 그대로 보존한다.
-                _technical.Format(logEvent, output);
+                using (var writer = new StringWriter(CultureInfo.InvariantCulture))
+                {
+                    _technical.Format(logEvent, writer);
+                    message = writer.ToString();
+                }
             }
+
+            ReadableTechnicalLogFormatter.WriteBlock(logEvent, output, message);
+        }
+    }
+
+    /// <summary>기술·오류 파일도 같은 블록 형식을 쓰며 원래 필드와 예외를 누락하지 않는다.</summary>
+    internal sealed class ReadableTechnicalLogFormatter : ITextFormatter
+    {
+        private readonly MessageTemplateTextFormatter _message = new MessageTemplateTextFormatter(
+            "{Message:lj}{NewLine}{Exception}", CultureInfo.InvariantCulture);
+
+        public void Format(LogEvent logEvent, TextWriter output)
+        {
+            using (var writer = new StringWriter(CultureInfo.InvariantCulture))
+            {
+                _message.Format(logEvent, writer);
+                WriteBlock(logEvent, output, writer.ToString());
+            }
+        }
+
+        internal static void WriteBlock(LogEvent logEvent, TextWriter output, string message)
+        {
+            LogEventPropertyValue level;
+            output.Write(logEvent.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture));
+            output.Write(" [");
+            output.Write(logEvent.Properties.TryGetValue("ViewerSourceLevel", out level) && level is ScalarValue
+                ? ((ScalarValue)level).Value : logEvent.Level.ToString().ToUpperInvariant());
+            output.Write("]");
+
+            // 카테고리는 헤더에 한 번만 표시한다. 본문에는 사건 내용과 기술 값만 둔다.
+            var category = Regex.Match(message ?? "", @"^(?:\[T\d+\]\s*)?\[[^\]\r\n]+\]\s*");
+
+            if (category.Success)
+            {
+                output.Write(" ");
+                output.Write(category.Value.Trim());
+                message = message.Substring(category.Length);
+            }
+
+            output.WriteLine();
+            output.WriteLine(ReadableLogLayout.Body(message));
+            output.WriteLine();
         }
     }
 }

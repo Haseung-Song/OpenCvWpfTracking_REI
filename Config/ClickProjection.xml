@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ClickProjection Version="1">
+  <!-- 2026-11-06: 클릭 이동 전용. 화각 미확인 상태에서는 ControlTuning.xml의 기존 값을 유지한다. -->
+  <!-- Left/Top/Width/Height는 디코딩 원본 영상의 0~1 좌표이다. 검은 영역을 자동 추정하지 않는다. -->
+  <!-- WideHFov는 유효 영역의 광각 수평 화각 확인 후에만 추가한다. SYNC에는 적용하지 않는다. -->
+  <Device Id="MR300_TEST">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+  <Device Id="MR500_MOE">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+  <Device Id="LR1000_MOBILE">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+  <Device Id="ER_WATCHER_1">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+  <Device Id="ER_WATCHER_2">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+  <Device Id="ER_WATCHER_3">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+  <Device Id="ER_WATCHER_4">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+  <Device Id="MR500_SAMJEONG">
+    <Lens Channel="EO" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+    <Lens Channel="IR" Left="0" Top="0" Width="1" Height="1" Basis="UNVERIFIED_DEFAULT" />
+  </Device>
+</ClickProjection>
