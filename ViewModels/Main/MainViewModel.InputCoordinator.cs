@@ -163,7 +163,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             $"EO {ControlTuningFor(false).MaximumRatio:F1}x / IR {ZoomDisplayMaximum(true):F1}x OPTICAL";
 
         public string ZoomOpticalRangeText =>
-            $"EO {ControlTuningFor(false).MinimumRatio:F1}~{ControlTuningFor(false).MaximumRatio:F1}x / IR {ControlTuningFor(true).MinimumRatio:F1}~{ZoomDisplayMaximum(true):F1}x 동일 진행률";
+            $"EO {ControlTuningFor(false).MinimumRatio:F1}~{ControlTuningFor(false).MaximumRatio:F1}x / IR {ControlTuningFor(true).MinimumRatio:F1}~{ZoomDisplayMaximum(true):F1}x\nEnter EO ratio; IR follows the same position %.";
 
         public double EoSpeedExponent { get => ControlTuningFor(false).Exponent; set => SetExponent(false, value); }
 

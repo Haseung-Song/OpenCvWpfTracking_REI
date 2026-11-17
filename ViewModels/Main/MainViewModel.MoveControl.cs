@@ -2237,25 +2237,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            bool irResult = _webAgentZoomControlService.SetIrZoomPosition((short)safePosition);
-            RtspSourceOption ctecSource = _connectedEoCtecSource;
-
-            if (ctecSource == null)
-            {
-                bool eoFallbackResult = _controlCommandService.EoZoomGoPosition((short)safePosition);
-                Console.WriteLine("[MOVE CONTROL] ROOFTOP ZOOM FALLBACK " + $"/ EO={eoFallbackResult} / IR={irResult}");
-                ConsoleLogHelper.PrintLine();
-                return;
-            }
-
-            int eoRawTarget = ConvertStandardZoomToCtecRaw(safePosition);
             CancellationTokenSource zoomCts = new CancellationTokenSource();
             _rooftopZoomSyncCts = zoomCts;
-            bool eoResult;
+            bool eoResult = false;
+            bool irResult = false;
 
             try
             {
-                eoResult = await MoveRooftopEoZoomToRawPositionAsync(ctecSource, eoRawTarget, zoomCts.Token);
+                // LA 직접 입력도 프리셋과 같은 0x29를 사용한다. WEB 0xB7 경로로 보내지 않는다.
+                Task<bool> irMoveTask = MoveLaIrZoomFromInputAsync(safePosition, requestType, zoomCts.Token);
+                RtspSourceOption ctecSource = _connectedEoCtecSource;
+                Task<bool> eoMoveTask = ctecSource == null
+                    ? Task.FromResult(_controlCommandService.EoZoomGoPosition((short)safePosition))
+                    : MoveRooftopEoZoomToRawPositionAsync(ctecSource, ConvertStandardZoomToCtecRaw(safePosition), zoomCts.Token);
+                bool[] results = await Task.WhenAll(eoMoveTask, irMoveTask);
+                eoResult = results[0];
+                irResult = results[1];
             }
             finally
             {
@@ -2268,6 +2265,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine("[MOVE CONTROL] ROOFTOP ZOOM RESULT " + $"/ EO={eoResult} / IR={irResult}");
             ConsoleLogHelper.PrintLine();
+        }
+
+        private async Task<bool> MoveLaIrZoomFromInputAsync(int standardPosition, string requestType, CancellationToken token)
+        {
+            if (!await EnsurePresetIrLensFeedbackAsync(true, token))
+                return false;
+
+            int rawTarget = ConvertIrZoomStandardToStatusPosition(standardPosition);
+            return await MoveLaIrZoomAbsoluteAsync(rawTarget, standardPosition, 8, token, requestType);
         }
 
         /// <summary>
@@ -2363,9 +2369,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 이동 제어 Focus Position을 EO / IR에 동시에 적용한다.
         ///
-        /// IR Focus Absolute 0x28 명령은 Pan / Tilt 오동작 이력이 있으므로
-        /// 절대 사용하지 않고, 기존 검증된 Near / Far 연속 명령과
-        /// Function 0x07 상태 피드백을 사용한다.
+        /// IR은 기존 0x2B 절대 위치 명령과 Function 0x07 수신값으로 도착을 확인한다.
+        /// LA의 반전은 표준 목표를 수신 목표로 바꿀 때 한 번 적용한다.
+        /// 무이동 시 연속 명령 전환은 정지·정착이 확인된 경우에만 허용한다.
         /// </summary>
         private async Task ApplyMoveControlFocusPositionAsync(int standardPosition)
         {

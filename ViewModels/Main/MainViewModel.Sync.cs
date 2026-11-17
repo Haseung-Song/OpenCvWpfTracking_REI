@@ -1085,7 +1085,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             if (explicitAbsolute && IsSelectedControlAgentWebAgent)
-                return await TryMoveIrFocusDirectAsync(targetPosition, 1, cancellationToken, true);
+                return await TryMoveIrFocusDirectAsync(targetPosition, 1, cancellationToken, true) == true;
 
             if (!await EnsurePresetIrLensFeedbackAsync(false, cancellationToken))
                 return false;
@@ -1096,10 +1096,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return settled.HasValue && Math.Abs(settled.Value - targetPosition) <= tolerance;
             }
 
-            if (await TryMoveIrFocusDirectAsync(targetPosition, tolerance, cancellationToken))
+            if (!IsSelectedControlAgentWebAgent)
+            {
+                // 이전 수동/절대 명령의 잔여 움직임을 새 명령의 반대 방향 응답으로 판단하지 않는다.
+                string initialSession = _connectionSessionId;
+                int? initialSettled = await WaitForIrFocusStableEvidenceAsync(cancellationToken);
+                if (initialSession != _connectionSessionId)
+                    throw new OperationCanceledException("LA IR Focus 준비 중 연결 세션이 변경되었습니다.");
+                if (!initialSettled.HasValue)
+                    return false;
+                if (Math.Abs(initialSettled.Value - targetPosition) <= tolerance)
+                    return true;
+            }
+
+            bool? directResult = await TryMoveIrFocusDirectAsync(targetPosition, tolerance, cancellationToken);
+            if (directResult == true)
             {
                 return true;
             }
+
+            // 통신 단절·역방향·정지 미확인은 연속 명령으로 덮지 않는다.
+            if (!directResult.HasValue)
+                return false;
 
             // WEB의 지연·미도달을 미지원으로 간주해 연속 명령을 겹쳐 보내지 않는다.
             if (IsSelectedControlAgentWebAgent && _irFocusDirectUnavailableSession != _connectionSessionId)
@@ -1272,12 +1290,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// v2.91 0x2B IR Focus 절대이동을 우선 시도한다.
-        /// 직접 명령이 없는 구형 장비는 새 Focus 피드백이 없거나 목표에 도달하지 않으므로
-        /// 정지 후 호출자가 0x31 적응형 폐루프로 계속 진행한다.
+        /// true는 도착 확인, false는 정지·정착 후 대체 제어 허용,
+        /// null은 통신/방향/정지 확인 실패로 대체 제어 없이 중단한다.
         /// </summary>
         private string _irFocusDirectUnavailableSession;
 
-        private async Task<bool> TryMoveIrFocusDirectAsync(int targetPosition, int tolerance, CancellationToken token, bool explicitAbsolute = false)
+        private async Task<bool?> TryMoveIrFocusDirectAsync(int targetPosition, int tolerance, CancellationToken token, bool explicitAbsolute = false)
         {
             int startPosition = _currentIrFocus;
             string session = _connectionSessionId;
@@ -1288,18 +1306,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             long feedbackTicks = PresetLensTicks(true, false);
-            // 전달받은 목표는 피드백 Raw 좌표이고 0x2B의 전송값은 표준 Far~Near 좌표다.
-            int standardTarget = ConvertIrFocusStandardToStatusPosition(targetPosition);
+            // LA 목표는 이미 GUI에서 한 번 반전된 수신 Raw 좌표다. 송신 직전에 다시 반전하지 않는다.
+            // WEB의 기존 표준 좌표 경로는 유지한다.
+            int wirePosition = IsSelectedControlAgentWebAgent
+                ? ConvertIrFocusStandardToStatusPosition(targetPosition)
+                : targetPosition;
             token.ThrowIfCancellationRequested();
 
-            if (!_controlCommandService.IrFocusGoPosition((short)standardTarget))
+            bool sent = IsSelectedControlAgentWebAgent
+                ? _controlCommandService.IrFocusGoPosition((short)wirePosition)
+                : _controlCommandService.LaIrFocusGoPosition(wirePosition);
+            if (!sent)
             {
-                return false;
+                return null;
             }
 
             ConsoleLogHelper.Command(
                 "IR FOCUS DIRECT",
-                $"CMD2=0x2B / TARGET={targetPosition} / WIRE_POSITION={standardTarget} / START={startPosition}"
+                $"AGENT={(IsSelectedControlAgentWebAgent ? "WEB" : "LA")} / CMD2=0x2B / GUI_TARGET={ConvertIrFocusStandardToStatusPosition(targetPosition)} / TARGET={targetPosition} / WIRE_POSITION={wirePosition} / START={startPosition}"
             );
             var timer = Stopwatch.StartNew();
             long lastFreshMs = 0;
@@ -1308,6 +1332,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             int expectedDirection = Math.Sign(targetPosition - startPosition);
             bool moved = false;
             bool completed = false;
+            bool wrongDirection = false;
+            bool stopSent = true;
 
             try
             {
@@ -1336,6 +1362,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         if (delta != 0 && Math.Sign(delta) != expectedDirection && Math.Abs(delta) > Math.Max(2, tolerance))
                         {
+                            wrongDirection = true;
                             ConsoleLogHelper.Warning("IR FOCUS DIRECT", $"RESULT=DIRECTION_MISMATCH / TARGET={targetPosition} / ACTUAL={current}");
                             break;
                         }
@@ -1371,7 +1398,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 취소·예외·미지원 전환 때도 같은 연결에 정지 명령을 보장한다.
                 if (!completed && session == _connectionSessionId)
                 {
-                    _controlCommandService.StopIrFocus();
+                    stopSent = _controlCommandService.StopIrFocus();
                 }
             }
 
@@ -1391,7 +1418,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             else
             {
-                _irFocusDirectUnavailableSession = session;
+                // LA의 일시적 실패를 세션 전체의 절대명령 미지원으로 저장하지 않는다.
+                if (!stopSent || wrongDirection)
+                    return null;
+
+                int? stopped = await WaitForIrFocusStableEvidenceAsync(token);
+                if (!stopped.HasValue)
+                    return null;
+                if (session != _connectionSessionId)
+                    throw new OperationCanceledException("LA IR Focus 정착 확인 중 연결 세션이 변경되었습니다.");
+                if (Math.Abs(stopped.Value - targetPosition) <= tolerance)
+                    return true;
             }
 
             await Task.Delay(120, token);

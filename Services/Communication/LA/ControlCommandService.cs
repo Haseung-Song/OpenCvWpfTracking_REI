@@ -1283,6 +1283,20 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
+        /// LA의 0x2B 포커스 목표는 Function 0x07 수신 위치와 같은 좌표로 송신한다.
+        /// GUI의 1000-position 반전은 호출부에서 한 번만 적용한다.
+        /// 2026-11-17 실장비 로그: 전송 300에서 수신값이 494에서 감소했다.
+        /// WEB의 표준 좌표 0x2B 경로와 분리하고 실제 도착은 호출부에서 확인한다.
+        /// </summary>
+        public bool LaIrFocusGoPosition(int rawPosition)
+        {
+            if (rawPosition < 0 || rawPosition > 1000)
+                return false;
+
+            return SendUnsignedShortCommand(0x2B, (ushort)rawPosition);
+        }
+
+        /// <summary>
         /// 2026-10-16: WebAgent IR 줌 절대 위치를 CMD2=0xB7로 요청한다.
         /// 위치 0~1000을 상위/하위 바이트 순서로 송신하며 화각×100 값이 아니다.
         /// 범위를 벗어난 값은 보정해 송신하지 않고 거절한다.

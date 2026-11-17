@@ -4138,7 +4138,7 @@
 
                                                                     <StackPanel>
 
-                                                                        <TextBlock Text="ZOOM MOVE"
+                                                                        <TextBlock Text="EO / IR ZOOM CONTROL"
                                                                             HorizontalAlignment="Center"
                                                                             Foreground="White"
                                                                             FontWeight="Bold"
@@ -4151,7 +4151,7 @@
                                                                             FontWeight="Bold"
                                                                             Margin="0,0,0,7"/>
 
-                                                                        <TextBlock Text="Zoom Position (0 ~ 1000)"
+                                                                        <TextBlock Text="Shared Zoom Position (0 ~ 1000)"
                                                                             Foreground="White"
                                                                             FontSize="12"/>
 
@@ -4164,13 +4164,13 @@
                                                                             FontWeight="Bold"
                                                                             VerticalContentAlignment="Center"/>
 
-                                                                        <Button Content="SET ZOOM"
+                                                                        <Button Content="APPLY EO / IR ZOOM"
                                                                             Height="30"
                                                                             Margin="0,0,0,20"
                                                                             Style="{StaticResource EoControlButtonStyle}"
                                                                             Command="{Binding SetZoomPositionCommand}"/>
 
-                                                                        <TextBlock Text="EO Zoom Ratio"
+                                                                        <TextBlock Text="Zoom Ratio (EO reference)"
                                                                             Foreground="White"
                                                                             FontSize="12"/>
 
@@ -4191,7 +4191,7 @@
                                                                             FontWeight="Bold"
                                                                             VerticalContentAlignment="Center"/>
 
-                                                                        <Button Content="SET EO RATIO / IR PROPORTIONAL"
+                                                                        <Button Content="APPLY EO / IR RATIO"
                                                                             Height="30"
                                                                             Style="{StaticResource EoControlButtonStyle}"
                                                                             Command="{Binding SetZoomRatioCommand}"/>
@@ -4210,20 +4210,20 @@
 
                                                                     <StackPanel>
 
-                                                                        <TextBlock Text="FOCUS MOVE"
+                                                                        <TextBlock Text="EO / IR FOCUS CONTROL"
                                                                             HorizontalAlignment="Center"
                                                                             Foreground="White"
                                                                             FontWeight="Bold"
                                                                             Margin="0,0,0,5"/>
 
-                                                                        <TextBlock Text="EO / IR  /  0 = FAR  /  1000 = NEAR"
+                                                                        <TextBlock Text="Both cameras · 0 = FAR / 1000 = NEAR"
                                                                             HorizontalAlignment="Center"
                                                                             Foreground="#8FD3FF"
                                                                             FontSize="10"
                                                                             FontWeight="Bold"
                                                                             Margin="0,0,0,7"/>
 
-                                                                        <TextBlock Text="Focus Position (0 ~ 1000)"
+                                                                        <TextBlock Text="Shared Focus Position (0 ~ 1000)"
                                                                             Foreground="White"
                                                                             FontSize="12"/>
 
@@ -4236,7 +4236,7 @@
                                                                             FontWeight="Bold"
                                                                             VerticalContentAlignment="Center"/>
 
-                                                                        <Button Content="SET FOCUS"
+                                                                        <Button Content="APPLY EO / IR FOCUS"
                                                                             Height="30"
                                                                             Style="{StaticResource EoControlButtonStyle}"
                                                                             Command="{Binding SetFocusPositionCommand}"/>

@@ -259,14 +259,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // LA는 화각 절대 이동을 사용한다. WEB 절대 위치와 기존 SYNC 보정은 변경하지 않는다.
             bool moved = IsSelectedControlAgentWebAgent
                 ? await MoveIrZoomToPositionAsync(rawTarget, token, standardTarget, tolerance)
-                : await MoveLaPresetIrZoomAbsoluteAsync(rawTarget, standardTarget, tolerance, token);
+                : await MoveLaIrZoomAbsoluteAsync(rawTarget, standardTarget, tolerance, token);
             return moved && HasFreshPresetLens(true, true) && IsIrZoomTargetReached(rawTarget, _currentIrZoom, standardTarget, tolerance);
         }
 
         /// <summary>
-        /// LA 프리셋은 규격의 화각 위치 이동 0x29를 한 번 송신하고 실제 도착을 확인한다.
+        /// LA 프리셋·직접 입력은 기존 화각 위치 이동 0x29를 한 번 송신하고 실제 도착을 확인한다.
         /// </summary>
-        private async Task<bool> MoveLaPresetIrZoomAbsoluteAsync(int rawTarget, int standardTarget, int tolerance, CancellationToken token)
+        private async Task<bool> MoveLaIrZoomAbsoluteAsync(int rawTarget, int standardTarget, int tolerance, CancellationToken token, string requestType = "PRESET")
         {
             token.ThrowIfCancellationRequested();
 
@@ -276,6 +276,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             int start = _currentIrZoom;
+            string session = _connectionSessionId;
 
             if (HasFreshPresetLens(true, true) && IsIrZoomTargetReached(rawTarget, start, standardTarget, tolerance))
             {
@@ -302,8 +303,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 ConsoleLogHelper.Command(
-                    "LA PRESET IR ZOOM",
-                    "LA 줌 절대 이동 송신 / CMD2=0x29 / WIRE_POSITION=" + standardTarget +
+                    "LA IR ZOOM ABSOLUTE",
+                    "REQUEST=" + requestType + " / AGENT=LA / CMD2=0x29 / WIRE_POSITION=" + standardTarget +
                     " / EXPECTED_RAW=" + rawTarget +
                     " / RAW_START=" + start +
                     " / TARGET=" + standardTarget
@@ -312,6 +313,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 while (timer.ElapsedMilliseconds < IrZoomSyncTimeoutMs)
                 {
                     token.ThrowIfCancellationRequested();
+                    if (session != _connectionSessionId)
+                        throw new OperationCanceledException("LA IR Zoom 이동 중 연결 세션이 변경되었습니다.");
                     long next = PresetLensTicks(true, true);
 
                     if (next > sequence)
@@ -322,7 +325,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         if ((actual - start) * rawDirection < -tolerance)
                         {
-                            ConsoleLogHelper.Warning("LA PRESET IR ZOOM", "반대 방향 응답 / 정지 후 순회 중단");
+                            ConsoleLogHelper.Warning("LA IR ZOOM ABSOLUTE", "RESULT=DIRECTION_MISMATCH / EXPECTED_RAW=" + rawTarget + " / ACTUAL_RAW=" + actual);
                             return false;
                         }
 
@@ -335,7 +338,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     if (timer.ElapsedMilliseconds - lastFeedbackMs > 3000)
                     {
-                        ConsoleLogHelper.Warning("LA PRESET IR ZOOM", "3초간 새 줌 응답 없음 / 정지 후 순회 중단");
+                        ConsoleLogHelper.Warning("LA IR ZOOM ABSOLUTE", "RESULT=FEEDBACK_TIMEOUT / 3초간 새 줌 응답 없음");
                         return false;
                     }
 
@@ -344,15 +347,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (!reached)
                 {
-                    ConsoleLogHelper.Warning("LA PRESET IR ZOOM", "목표 도착 미확인 / 순회 중단");
+                    ConsoleLogHelper.Warning("LA IR ZOOM ABSOLUTE", "RESULT=TARGET_NOT_REACHED");
                     return false;
                 }
 
                 int settled = await WaitForIrLensSettledPositionAsync(true, token);
-                bool confirmed = HasFreshPresetLens(true, true) && IsIrZoomTargetReached(rawTarget, settled, standardTarget, tolerance);
+                bool confirmed = session == _connectionSessionId && HasFreshPresetLens(true, true) && IsIrZoomTargetReached(rawTarget, settled, standardTarget, tolerance);
                 ConsoleLogHelper.State(
-                    "LA PRESET IR ZOOM",
-                    "화각 절대 이동 확인 / 재송신·중간 정지 없음 / TARGET=" + standardTarget +
+                    "LA IR ZOOM ABSOLUTE",
+                    "REQUEST=" + requestType + " / RESULT=" + (confirmed ? "COMPLETED" : "UNCONFIRMED") + " / TARGET=" + standardTarget +
                     " / ACTUAL=" + GetCurrentIrZoomStandardPosition() +
                     " / CONFIRMED=" + confirmed
                 );
@@ -362,7 +365,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             finally
             {
                 // 정상 절대 이동에는 STOP을 끼워 넣지 않는다. 취소·미도달·통신 단절 시에만 안전 정지한다.
-                if (started && !completed)
+                if (started && !completed && session == _connectionSessionId)
                 {
                     _controlCommandService.StopIrZoom();
                 }
