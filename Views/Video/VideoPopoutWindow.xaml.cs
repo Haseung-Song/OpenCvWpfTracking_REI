@@ -31,7 +31,6 @@ namespace OpenCvWpfTracking
     {
 
         #region [필드]
-
         private readonly MainViewModel _viewModel;
 
         private readonly double _eoViewportAspectRatio;
@@ -96,32 +95,51 @@ namespace OpenCvWpfTracking
         public VideoPopoutWindow(MainViewModel viewModel, VideoPopoutCameraType cameraType, double eoViewportAspectRatio, double irViewportAspectRatio, Visual eoRenderedVideo, Visual irRenderedVideo)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
             _cameraType = cameraType;
+
             _eoViewportAspectRatio = NormalizeAspectRatio(eoViewportAspectRatio, 940.0 / 650.0);
+
             _irViewportAspectRatio = NormalizeAspectRatio(irViewportAspectRatio, 440.0 / 365.0);
+
             _eoRenderedVideo = eoRenderedVideo ?? throw new ArgumentNullException(nameof(eoRenderedVideo));
+
             _irRenderedVideo = irRenderedVideo ?? throw new ArgumentNullException(nameof(irRenderedVideo));
+
             InitializeComponent();
+
             DataContext = _viewModel;
+
             ConfigureCameraBinding();
+
             LegacyVideoIntegration.Attach(CalibratedCrosshair, CameraImage, _viewModel, () => _cameraType == VideoPopoutCameraType.Ir);
+
             Func<double> aspect = () => VideoShortcutGuide.SourceAspect(CameraImage, _cameraType == VideoPopoutCameraType.Ir ? 1.25 : 16.0 / 9);
+
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content, EoAlarmPanel, CameraImage, aspect);
+
             VideoShortcutGuide.AttachVideoAlarmPositions((Grid)Content, IrAlarmPanel, CameraImage, aspect);
-            VideoShortcutGuide.AttachVideoLabelPositions(
-                (Grid)Content, CameraImage, ZoomRatioHost, CameraStatusText, aspect,
-                () => LegacyVideoIntegration.UseViewportLabelAnchors(_viewModel, _cameraType == VideoPopoutCameraType.Ir));
+
+            VideoShortcutGuide.AttachVideoLabelPositions((Grid)Content, CameraImage, ZoomRatioHost, CameraStatusText, aspect, () => LegacyVideoIntegration.UseViewportLabelAnchors(_viewModel, _cameraType == VideoPopoutCameraType.Ir));
+
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
             MouseMove += VideoPointerMove;
+
             MouseLeftButtonUp += VideoPointerUp;
+
             MouseLeave += (s, e) => _centerClickPending = false;
+
             // 메인 영상과 동일한 비대화형 방향 안내를 사용한다.
             _directionHints = new Grid
             {
                 IsHitTestVisible = false
             };
+
             VideoShortcutGuide.BindJogVisibility(_directionHints, _cameraType == VideoPopoutCameraType.Ir);
+
             Panel.SetZIndex(_directionHints, 70);
+
             string[] symbols =
             {
                 "◀",
@@ -131,7 +149,9 @@ namespace OpenCvWpfTracking
             };
 
             for (int i = 0; i < 4; i++)
+            {
                 _directionHints.Children.Add(new TextBlock { Text = symbols[i], Width = 28, Height = 28, Opacity = .55, TextAlignment = TextAlignment.Center, FontSize = 20, Foreground = Brushes.LightSkyBlue, Margin = new Thickness(8), HorizontalAlignment = i == 0 ? HorizontalAlignment.Left : i == 1 ? HorizontalAlignment.Right : HorizontalAlignment.Center, VerticalAlignment = i == 2 ? VerticalAlignment.Top : i == 3 ? VerticalAlignment.Bottom : VerticalAlignment.Center });
+            }
 
             ((Grid)Content).Children.Add(_directionHints);
         }
@@ -139,13 +159,18 @@ namespace OpenCvWpfTracking
         private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName != "IsVideoClickCenterEnabled")
+            {
                 return;
+            }
 
             _centerClickGeneration++;
+
             _centerClickPending = false;
 
             if (_directionHints != null)
+            {
                 VideoShortcutGuide.BindJogVisibility(_directionHints, _cameraType == VideoPopoutCameraType.Ir);
+            }
         }
 
         #endregion
@@ -174,15 +199,21 @@ namespace OpenCvWpfTracking
             ResizeMode = ResizeMode.CanResize;
             WindowState = WindowState.Normal;
             Topmost = false;
+
             ApplyInitialWindowBounds();
+
             _windowedLocation = new Point(Left, Top);
+
             ApplyViewportAspectRatio();
+
             UpdateCameraInfoScale();
+
             Keyboard.Focus(this);
 
             if (_beginDragWhenLoaded)
             {
                 _beginDragWhenLoaded = false;
+
                 Dispatcher.BeginInvoke(new Action(TryBeginDragMove), System.Windows.Threading.DispatcherPriority.Input);
             }
         }
@@ -199,10 +230,15 @@ namespace OpenCvWpfTracking
 
             ResizeMode = ResizeMode.CanResize;
             Topmost = false;
+
             ApplyInitialWindowBounds();
+
             _windowedLocation = new Point(Left, Top);
+
             Activate();
+
             Focus();
+
             Dispatcher.BeginInvoke(new Action(TryBeginDragMove), System.Windows.Threading.DispatcherPriority.Input);
         }
 
@@ -215,7 +251,9 @@ namespace OpenCvWpfTracking
 
             Left = _initialWindowBounds.Left;
             Top = _initialWindowBounds.Top;
+
             Width = Math.Max(MinWidth, _initialWindowBounds.Width);
+
             Height = Math.Max(MinHeight, _initialWindowBounds.Height);
         }
 
@@ -229,13 +267,15 @@ namespace OpenCvWpfTracking
             try
             {
                 AlignWindowWithCurrentPointer();
+
                 DragMove();
+
                 _windowedLocation = new Point(Left, Top);
             }
             catch (InvalidOperationException)
             {
-            // MainWindow에서 분리 창으로 입력 소유권이 전환되는 짧은 구간에
-            // 버튼 상태가 먼저 해제되면 Normal 창만 유지한다.
+                // MainWindow에서 분리 창으로 입력 소유권이 전환되는 짧은 구간에
+                // 버튼 상태가 먼저 해제되면 Normal 창만 유지한다.
             }
         }
 
@@ -246,7 +286,9 @@ namespace OpenCvWpfTracking
         private void AlignWindowWithCurrentPointer()
         {
             Point pointerInWindow = Mouse.GetPosition(this);
+
             Point pointerOnScreen = PointToScreen(pointerInWindow);
+
             PresentationSource presentationSource = PresentationSource.FromVisual(this);
 
             if (presentationSource?.CompositionTarget != null)
@@ -255,10 +297,15 @@ namespace OpenCvWpfTracking
             }
 
             double windowWidth = ActualWidth > 0.0 ? ActualWidth : Width;
+
             double windowHeight = ActualHeight > 0.0 ? ActualHeight : Height;
+
             double anchorX = Math.Max(0.0, Math.Min(windowWidth, _tearOffDragAnchor.X));
+
             double anchorY = Math.Max(0.0, Math.Min(windowHeight, _tearOffDragAnchor.Y));
+
             Left = pointerOnScreen.X - anchorX;
+
             Top = pointerOnScreen.Y - anchorY;
         }
 
@@ -269,10 +316,10 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (InlineOpticalCalibration.IsActive(CameraImage) ||
-                InlineOpticalCalibration.IsSettingsHit(CameraImage, e.OriginalSource as DependencyObject))
+            if (InlineOpticalCalibration.IsActive(CameraImage) || InlineOpticalCalibration.IsSettingsHit(CameraImage, e.OriginalSource as DependencyObject))
             {
                 _centerClickPending = false;
+
                 return;
             }
 
@@ -280,6 +327,7 @@ namespace OpenCvWpfTracking
             if (ZoomRatioToggleButton.IsMouseOver)
             {
                 _centerClickPending = false;
+
                 return;
             }
 
@@ -298,8 +346,11 @@ namespace OpenCvWpfTracking
             if (e.ClickCount == 2)
             {
                 _centerClickGeneration++;
+
                 _centerClickPending = false;
+
                 TogglePopoutFullScreen();
+
                 return;
             }
 
@@ -310,28 +361,35 @@ namespace OpenCvWpfTracking
 
             // 클릭은 메인 화면처럼 중앙 이동하고 실제 드래그일 때만 창을 이동한다.
             _centerClickStart = e.GetPosition(CameraImage);
+
             _centerClickPending = true;
         }
 
         private void VideoPointerMove(object sender, MouseEventArgs e)
         {
             if (!_centerClickPending || e.LeftButton != MouseButtonState.Pressed)
+            {
                 return;
+            }
 
             Point point = e.GetPosition(CameraImage);
 
-            if (Math.Abs(point.X - _centerClickStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
-                Math.Abs(point.Y - _centerClickStart.Y) < SystemParameters.MinimumVerticalDragDistance)
+            if (Math.Abs(point.X - _centerClickStart.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y - _centerClickStart.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
                 return;
+            }
 
             _centerClickPending = false;
 
             if (WindowState == WindowState.Maximized)
+            {
                 return;
+            }
 
             try
             {
                 DragMove();
+
                 _windowedLocation = new Point(Left, Top);
             }
             catch (InvalidOperationException)
@@ -342,50 +400,58 @@ namespace OpenCvWpfTracking
         private async void VideoPointerUp(object sender, MouseButtonEventArgs e)
         {
             bool pending = _centerClickPending;
+
             _centerClickPending = false;
 
             if (!pending || !_viewModel.IsVideoClickCenterEnabled || e.ChangedButton != MouseButton.Left || e.ClickCount > 1)
+            {
                 return;
+            }
 
             Point point = e.GetPosition(CameraImage);
 
-            if (Math.Abs(point.X - _centerClickStart.X) >= SystemParameters.MinimumHorizontalDragDistance ||
-                Math.Abs(point.Y - _centerClickStart.Y) >= SystemParameters.MinimumVerticalDragDistance)
+            if (Math.Abs(point.X - _centerClickStart.X) >= SystemParameters.MinimumHorizontalDragDistance || Math.Abs(point.Y - _centerClickStart.Y) >= SystemParameters.MinimumVerticalDragDistance)
+            {
                 return;
+            }
 
             var bitmap = (CameraImage.Fill as ImageBrush)?.ImageSource as System.Windows.Media.Imaging.BitmapSource;
 
             if (bitmap == null || bitmap.PixelWidth <= 0 || bitmap.PixelHeight <= 0)
+            {
                 return;
+            }
 
             double scale = Math.Min(CameraImage.ActualWidth / bitmap.PixelWidth, CameraImage.ActualHeight / bitmap.PixelHeight);
 
             if (scale <= 0)
+            {
                 return;
+            }
 
             double width = bitmap.PixelWidth * scale, height = bitmap.PixelHeight * scale;
+
             double x = point.X - (CameraImage.ActualWidth - width) / 2, y = point.Y - (CameraImage.ActualHeight - height) / 2;
 
             if (x < 0 || y < 0 || x > width || y > height)
+            {
                 return;
+            }
 
             e.Handled = true;
+
             int generation = ++_centerClickGeneration;
+
             await System.Threading.Tasks.Task.Delay(MainWindow.VideoDoubleClickDelay);
 
             if (generation != _centerClickGeneration || !_viewModel.IsVideoClickCenterEnabled)
+            {
                 return;
+            }
 
             try
             {
-                await _viewModel.CenterVideoPointAsync(
-                    _cameraType == VideoPopoutCameraType.Ir,
-                    2 * x / width - 1,
-                    2 * y / height - 1,
-                    bitmap.PixelWidth / (double)bitmap.PixelHeight,
-                    bitmap.PixelWidth,
-                    bitmap.PixelHeight
-                );
+                await _viewModel.CenterVideoPointAsync(_cameraType == VideoPopoutCameraType.Ir, 2 * x / width - 1, 2 * y / height - 1, bitmap.PixelWidth / (double)bitmap.PixelHeight, bitmap.PixelWidth, bitmap.PixelHeight);
             }
             catch (Exception ex)
             {
@@ -401,13 +467,16 @@ namespace OpenCvWpfTracking
             if (WindowState == WindowState.Maximized)
             {
                 RestoreInitialWindowSize();
+
                 return;
             }
 
             _windowedLocation = new Point(Left, Top);
+
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             WindowState = WindowState.Maximized;
+
             // 전체 화면이어도 다른 앱으로 전환했을 때 최상위를 강제하지 않는다.
             Topmost = false;
         }
@@ -421,8 +490,8 @@ namespace OpenCvWpfTracking
             WindowState = WindowState.Normal;
             ResizeMode = ResizeMode.CanResize;
             Topmost = false;
-            Dispatcher.BeginInvoke(
-                new Action(() =>
+
+            Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (_initialWindowBounds.IsEmpty)
                 {
@@ -435,16 +504,16 @@ namespace OpenCvWpfTracking
                 {
                     Left = _windowedLocation.X;
                     Top = _windowedLocation.Y;
+
                     Width = Math.Max(MinWidth, _initialWindowBounds.Width);
+
                     Height = Math.Max(MinHeight, _initialWindowBounds.Height);
                 }
                 finally
                 {
                     _isApplyingViewportAspectRatio = false;
                 }
-            }),
-                System.Windows.Threading.DispatcherPriority.Loaded
-            );
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         /// <summary>
@@ -460,6 +529,7 @@ namespace OpenCvWpfTracking
             }
 
             ApplyViewportAspectRatio();
+
             UpdateCameraInfoScale();
         }
 
@@ -475,35 +545,38 @@ namespace OpenCvWpfTracking
             }
 
             double scale = VideoShortcutGuide.Scale(CameraImage.ActualWidth, CameraImage.ActualHeight);
+
             CameraInfoScaleTransform.ScaleX = scale;
             CameraInfoScaleTransform.ScaleY = scale;
 
             if (ZoomRatioScaleTransform != null)
             {
                 ZoomRatioScaleTransform.ScaleX = VideoShortcutGuide.LabelScale(CameraImage.ActualWidth, CameraImage.ActualHeight);
+
                 ZoomRatioScaleTransform.ScaleY = ZoomRatioScaleTransform.ScaleX;
             }
 
             if (CameraStatusText != null)
             {
                 double labelScale = VideoShortcutGuide.LabelScale(CameraImage.ActualWidth, CameraImage.ActualHeight);
+
                 CameraStatusText.LayoutTransform = new ScaleTransform(labelScale, labelScale);
             }
         }
 
         private void ApplyViewportAspectRatio()
         {
-            if (_isApplyingViewportAspectRatio ||
-                _currentViewportAspectRatio <= 0.0 ||
-                CameraImage.ActualWidth <= 0.0 ||
-                CameraImage.ActualHeight <= 0.0)
+            if (_isApplyingViewportAspectRatio || _currentViewportAspectRatio <= 0.0 || CameraImage.ActualWidth <= 0.0 || CameraImage.ActualHeight <= 0.0)
             {
                 return;
             }
 
             double nonClientWidth = Math.Max(0.0, ActualWidth - CameraImage.ActualWidth);
+
             double nonClientHeight = Math.Max(0.0, ActualHeight - CameraImage.ActualHeight);
+
             double clientWidth = Math.Max(1.0, ActualWidth - nonClientWidth);
+
             double targetHeight = clientWidth / _currentViewportAspectRatio + nonClientHeight;
 
             if (Math.Abs(ActualHeight - targetHeight) < 0.5)
@@ -529,21 +602,28 @@ namespace OpenCvWpfTracking
 
         private static double NormalizeAspectRatio(double aspectRatio, double fallbackAspectRatio)
         {
-            return double.IsNaN(aspectRatio) || double.IsInfinity(aspectRatio) || aspectRatio <= 0.0
-                ? fallbackAspectRatio
-                : aspectRatio;
+            if (double.IsNaN(aspectRatio) || double.IsInfinity(aspectRatio) || aspectRatio <= 0.0)
+            {
+                return fallbackAspectRatio;
+            }
+            else
+            {
+                return aspectRatio;
+            }
         }
 
         private void CameraInfoToggleButton_Click(object sender, RoutedEventArgs e)
         {
             bool showInfo = CameraInfoBorder.Visibility != Visibility.Visible;
+
             CameraInfoBorder.Visibility = showInfo ? Visibility.Visible : Visibility.Hidden;
+
             CameraInfoToggleButton.Content = showInfo ? "▲" : "▼";
+
             CameraInfoToggleButton.ToolTip = showInfo ? "단축키 안내 숨기기" : "단축키 안내 표시하기";
-            ConsoleLogHelper.Info(
-                "VIDEO POPOUT / INFO PANEL",
-                "Shortcut guide visibility changed / CAMERA=" + GetCameraName() + " / VISIBLE=" + showInfo
-            );
+
+            ConsoleLogHelper.Info("VIDEO POPOUT / INFO PANEL", "Shortcut guide visibility changed / CAMERA=" + GetCameraName() + " / VISIBLE=" + showInfo);
+
             Keyboard.Focus(this);
         }
 
@@ -567,27 +647,30 @@ namespace OpenCvWpfTracking
             if (e.Key == Key.System || Keyboard.Modifiers != ModifierKeys.None)
             {
                 _viewModel.ReleaseControlOwner("popout");
+
                 return;
             }
 
-            if (!IsTextInputFocused() &&
-                !_viewModel.IsControlInputLocked &&
-                _viewModel.HandleControlKey("popout", e.Key, true, _cameraType == VideoPopoutCameraType.Ir, e.IsRepeat))
+            if (!IsTextInputFocused() && !_viewModel.IsControlInputLocked && _viewModel.HandleControlKey("popout", e.Key, true, _cameraType == VideoPopoutCameraType.Ir, e.IsRepeat))
             {
                 e.Handled = true;
+
                 return;
             }
 
             if (e.Key == Key.Escape)
             {
                 e.Handled = true;
+
                 Close();
+
                 return;
             }
 
             if (_viewModel.IsControlInputLocked)
             {
                 e.Handled = true;
+
                 return;
             }
 
@@ -596,44 +679,48 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            /// <summary>
-            /// EO / IR 주화면 전환
-            ///
-            /// 렌즈가 움직이는 중 카메라를 전환하면
-            /// 이전 카메라의 연속 명령이 남을 수 있으므로
-            /// 전환 전에 반드시 현재 렌즈 이동을 정지한다.
-            /// </summary>
+            // EO / IR 주화면 전환
+            //
+            // 렌즈가 움직이는 중 카메라를 전환하면
+            // 이전 카메라의 연속 명령이 남을 수 있으므로
+            // 전환 전에 반드시 현재 렌즈 이동을 정지한다.
+            //
             if (IsVideoSwitchShortcutKey(e.Key))
             {
                 if (!e.IsRepeat)
                 {
                     VideoPopoutCameraType targetCameraType = e.Key == Key.R ? VideoPopoutCameraType.Eo : VideoPopoutCameraType.Ir;
+
                     SwitchCamera(targetCameraType);
-                    /// <summary>
-                    /// 분리 창의 선택 상태와 메인 화면의
-                    /// 큰 영상 위치를 동일하게 맞춘다.
-                    /// </summary>
+
+                    // 분리 창의 선택 상태와 메인 화면의
+                    // 큰 영상 위치를 동일하게 맞춘다.
+                    //
                     MainWindow mainWindow = Owner as MainWindow;
+
                     mainWindow?.SelectPrimaryVideo(targetCameraType);
                 }
 
                 e.Handled = true;
+
                 return;
             }
 
-            /// <summary>
-            /// 분리 창에서도 메인 화면과 동일하게
-            /// 방향키 Pan / Tilt 제어를 사용할 수 있도록 한다.
-            ///
-            /// MainViewModel이 기존 방향키 눌림 상태와
-            /// 대각선 조합을 모두 관리하므로,
-            /// 분리 창에서는 KeyDown / KeyUp만 그대로 전달한다.
-            /// </summary>
+            // 분리 창에서도 메인 화면과 동일하게
+            // 방향키 Pan / Tilt 제어를 사용할 수 있도록 한다.
+            //
+            // MainViewModel이 기존 방향키 눌림 상태와
+            // 대각선 조합을 모두 관리하므로,
+            // 분리 창에서는 KeyDown / KeyUp만 그대로 전달한다.
+            //
             if (IsPanTiltShortcutKey(e.Key))
             {
                 _viewModel.SetActivePanTiltZoomSource(_cameraType == VideoPopoutCameraType.Ir);
+
                 _viewModel.HandlePanTiltKeyDown(e.Key);
+
                 e.Handled = true;
+
                 return;
             }
 
@@ -649,11 +736,14 @@ namespace OpenCvWpfTracking
             if (_activeLensKey.HasValue)
             {
                 e.Handled = true;
+
                 return;
             }
 
             _activeLensKey = e.Key;
+
             StartLensMove(e.Key);
+
             e.Handled = true;
         }
 
@@ -665,27 +755,31 @@ namespace OpenCvWpfTracking
             if (_viewModel.HandleControlKey("popout", e.Key, false, _cameraType == VideoPopoutCameraType.Ir))
             {
                 e.Handled = true;
+
                 return;
             }
 
             if (_viewModel.IsControlInputLocked)
             {
                 _activeLensKey = null;
+
                 e.Handled = true;
+
                 return;
             }
 
-            /// <summary>
-            /// 분리 창 방향키 해제 처리
-            ///
-            /// Left + Up 대각선 이동 중 Up만 해제하면
-            /// MainViewModel이 남아 있는 Left 상태를 기준으로
-            /// Pan Left 단독 이동으로 자동 전환한다.
-            /// </summary>
+            // 분리 창 방향키 해제 처리
+            //
+            // Left + Up 대각선 이동 중 Up만 해제하면
+            // MainViewModel이 남아 있는 Left 상태를 기준으로
+            // Pan Left 단독 이동으로 자동 전환한다.
+            //
             if (IsPanTiltShortcutKey(e.Key))
             {
                 _viewModel.HandlePanTiltKeyUp(e.Key);
+
                 e.Handled = true;
+
                 return;
             }
 
@@ -695,6 +789,7 @@ namespace OpenCvWpfTracking
             }
 
             StopActiveLensMove();
+
             e.Handled = true;
         }
 
@@ -707,13 +802,15 @@ namespace OpenCvWpfTracking
             _viewModel.ReleaseControlOwner("popout");
 
             if (_viewModel.IsGlobalControlEnabled)
+            {
                 return;
+            }
 
-            /// <summary>
-            /// Alt + Tab 또는 다른 창 클릭으로 KeyUp이 누락될 수 있으므로
-            /// 렌즈 이동과 Keyboard Pan / Tilt 상태를 모두 정리한다.
-            /// </summary>
+            // Alt + Tab 또는 다른 창 클릭으로 KeyUp이 누락될 수 있으므로
+            // 렌즈 이동과 Keyboard Pan / Tilt 상태를 모두 정리한다.
+            //
             StopActiveLensMove();
+
             _viewModel.ResetKeyboardPanTiltState();
         }
 
@@ -723,12 +820,14 @@ namespace OpenCvWpfTracking
         private void Window_Closing(object sender, CancelEventArgs e)
         {
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
             _viewModel.ReleaseControlOwner("popout");
-            /// <summary>
-            /// 분리 창 종료 시 장비에 연속 이동 명령이 남지 않도록
-            /// 렌즈와 Pan / Tilt를 모두 강제 정지한다.
-            /// </summary>
+
+            // 분리 창 종료 시 장비에 연속 이동 명령이 남지 않도록
+            // 렌즈와 Pan / Tilt를 모두 강제 정지한다.
+            //
             StopActiveLensMove();
+
             _viewModel.ResetKeyboardPanTiltState();
         }
 
@@ -755,24 +854,38 @@ namespace OpenCvWpfTracking
                 return;
             }
 
-            /// <summary>
-            /// 이전 카메라에 연속 렌즈 명령이 남지 않도록
-            /// 영상 전환 전에 진행 중인 동작을 정지한다.
-            /// </summary>
+            // 이전 카메라에 연속 렌즈 명령이 남지 않도록
+            // 영상 전환 전에 진행 중인 동작을 정지한다.
+            //
             StopActiveLensMove();
+
             _cameraType = cameraType;
+
             _viewModel.ReleaseControlOwner("popout");
+
             _viewModel.SetActivePanTiltZoomSource(_cameraType == VideoPopoutCameraType.Ir);
+
             ConfigureCameraBinding();
+
             Keyboard.Focus(this);
+
             Console.WriteLine();
+
             Console.WriteLine("[VIDEO POPOUT SWITCH] CAMERA : " + (_cameraType == VideoPopoutCameraType.Eo ? "EO" : "IR"));
+
             ConsoleLogHelper.PrintLine();
         }
 
         private string GetCameraName()
         {
-            return _cameraType == VideoPopoutCameraType.Eo ? "EO" : "IR";
+            if (_cameraType == VideoPopoutCameraType.Eo)
+            {
+                return "EO";
+            }
+            else
+            {
+                return "IR";
+            }
         }
 
         /// <summary>
@@ -800,13 +913,21 @@ namespace OpenCvWpfTracking
         private void ConfigureCameraBinding()
         {
             string imagePropertyName;
+
             string statusPropertyName;
+
             string detectionBoxesPropertyName;
+
             string fireSmokeBoxesPropertyName;
+
             string videoWidthPropertyName;
+
             string videoHeightPropertyName;
+
             string cameraTitle;
+
             Color statusColor;
+
             Visual renderedVideo;
 
             if (_cameraType == VideoPopoutCameraType.Eo)
@@ -821,6 +942,7 @@ namespace OpenCvWpfTracking
                 videoHeightPropertyName = "EoVideoHeight";
                 cameraTitle = "EO CAMERA / SHORTCUT CONTROL";
                 statusColor = ((SolidColorBrush)LegacyVideoIntegration.ChannelBrush(false)).Color;
+
                 // EO 팝업은 메인 EO 영상 영역과 동일한 비율을 사용한다.
                 Width = 1050;
                 Height = 720;
@@ -838,6 +960,7 @@ namespace OpenCvWpfTracking
                 videoHeightPropertyName = "IrVideoHeight";
                 cameraTitle = "IR CAMERA / SHORTCUT CONTROL";
                 statusColor = ((SolidColorBrush)LegacyVideoIntegration.ChannelBrush(true)).Color;
+
                 //
                 // IR 영상은 EO보다 좁은 센서 종횡비를 사용한다.
                 // 분리 창의 가로 크기를 줄이고 원본 비율을 유지하여
@@ -849,14 +972,20 @@ namespace OpenCvWpfTracking
             }
 
             ConfigureRenderedVideoBrush(renderedVideo, imagePropertyName);
+
             ConfigureDetectionOverlayBinding(detectionBoxesPropertyName, fireSmokeBoxesPropertyName, videoWidthPropertyName, videoHeightPropertyName);
+
             BindingOperations.SetBinding(CameraStatusText, TextBlock.TextProperty, new Binding(statusPropertyName) { Mode = BindingMode.OneWay });
+
             CameraStatusText.Foreground = LegacyVideoIntegration.ChannelBrush(_cameraType == VideoPopoutCameraType.Ir);
+
             // 2026-09-17: 저해상도 IR/BW 팔레트에서 상태 문구가 영상에 묻히지 않도록
             // IR은 작게 표시하고 두 채널 모두 검정 외곽 그림자로 명암 대비를 확보한다.
             CameraStatusText.FontSize = 14;
             CameraStatusText.Background = null;
+
             CameraStatusText.Padding = new Thickness(4, 1, 4, 1);
+
             CameraStatusText.Effect = new DropShadowEffect
             {
                 Color = Colors.Black,
@@ -864,15 +993,22 @@ namespace OpenCvWpfTracking
                 ShadowDepth = 1.0,
                 Opacity = 1.0
             };
+
             CameraTitleText.Text = cameraTitle;
+
             CameraTitleText.Foreground = new SolidColorBrush(statusColor);
+
             CameraInfoBorder.BorderBrush = new SolidColorBrush(statusColor);
+
             // 메인·분리 영상창의 설명 내용과 크기 계산을 공유한다.
             CameraInfoBorder.Child = VideoShortcutGuide.CreateContent(_cameraType == VideoPopoutCameraType.Ir);
+
             CameraInfoToggleButton.BorderBrush = new SolidColorBrush(statusColor);
+
             // 2026-09-21: 분리 영상창도 현재 선택된 EO/IR 채널의
             // FIRE/SMOKE 경고만 메인 화면과 동일하게 표시한다.
             EoAlarmPanel.Visibility = _cameraType == VideoPopoutCameraType.Eo ? Visibility.Visible : Visibility.Collapsed;
+
             IrAlarmPanel.Visibility = _cameraType == VideoPopoutCameraType.Ir ? Visibility.Visible : Visibility.Collapsed;
 
             if (IsLoaded)
@@ -896,21 +1032,17 @@ namespace OpenCvWpfTracking
                     AlignmentX = AlignmentX.Center,
                     AlignmentY = AlignmentY.Center
                 };
-                BindingOperations.SetBinding(
-                    imageBrush,
-                    ImageBrush.ImageSourceProperty,
-                    new Binding(imagePropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-                );
+
+                BindingOperations.SetBinding(imageBrush, ImageBrush.ImageSourceProperty, new Binding(imagePropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
                 CameraImage.Fill = imageBrush;
-                ConsoleLogHelper.State(
-                    "VIDEO POPOUT / RENDER SYNC",
-                    "Original frame binding applied / CAMERA=" + GetCameraName() +
-                    " / ASPECT=" + _currentViewportAspectRatio.ToString("F4")
-                );
+
+                ConsoleLogHelper.State("VIDEO POPOUT / RENDER SYNC", "Original frame binding applied / CAMERA=" + GetCameraName() + " / ASPECT=" + _currentViewportAspectRatio.ToString("F4"));
             }
             catch (Exception exception)
             {
                 ConsoleLogHelper.Error("VIDEO POPOUT / RENDER SYNC", "Original frame binding failed", exception);
+
                 CameraImage.Fill = Brushes.Black;
             }
         }
@@ -921,14 +1053,16 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void ConfigureDetectionOverlayBinding(string detectionBoxesPropertyName, string fireSmokeBoxesPropertyName, string videoWidthPropertyName, string videoHeightPropertyName)
         {
-            ZoomRatioText.SetBinding(
-                System.Windows.Controls.TextBlock.TextProperty,
-                new Binding(_cameraType == VideoPopoutCameraType.Ir ? "IrZoomRatioOverlayText" : "EoZoomRatioOverlayText") { Source = _viewModel }
-            );
+            ZoomRatioText.SetBinding(System.Windows.Controls.TextBlock.TextProperty, new Binding(_cameraType == VideoPopoutCameraType.Ir ? "IrZoomRatioOverlayText" : "EoZoomRatioOverlayText") { Source = _viewModel });
+
             VideoShortcutGuide.BindRatioVisibility(ZoomRatioText, _cameraType == VideoPopoutCameraType.Ir);
+
             VideoShortcutGuide.BindRatioToggleVisibility(ZoomRatioToggleButton, _cameraType == VideoPopoutCameraType.Ir);
+
             ZoomRatioToggleButton.Template = VideoShortcutGuide.RatioToggleTemplate();
+
             ZoomRatioToggleButton.Foreground = LegacyVideoIntegration.ChannelBrush(_cameraType == VideoPopoutCameraType.Ir);
+
             ZoomRatioText.Foreground = LegacyVideoIntegration.ChannelBrush(_cameraType == VideoPopoutCameraType.Ir);
 
             foreach (var overlay in new[]
@@ -941,62 +1075,54 @@ namespace OpenCvWpfTracking
             )
             {
                 overlay.SetBinding(ZoneOverlayView.SourceWidthProperty, new Binding(videoWidthPropertyName) { Source = _viewModel });
+
                 overlay.SetBinding(ZoneOverlayView.SourceHeightProperty, new Binding(videoHeightPropertyName) { Source = _viewModel });
             }
 
             string zonePropertyName = _cameraType == VideoPopoutCameraType.Ir ? "IrZoneOverlay" : "EoZoneOverlay";
-            PopoutZoneOverlay.SetBinding(
-                ZoneOverlayView.ItemsProperty,
-                new Binding(zonePropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-            );
+
+            PopoutZoneOverlay.SetBinding(ZoneOverlayView.ItemsProperty, new Binding(zonePropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
             ConsoleLogHelper.State("VIDEO POPOUT / ZONE OVERLAY", "메인 구역 공유 / CAMERA=" + GetCameraName() + " / SOURCE=" + zonePropertyName);
+
             PopoutAiOverlay.SetBinding(ZoneOverlayView.ItemsProperty, new Binding(detectionBoxesPropertyName) { Source = _viewModel });
+
             PopoutVisionOverlay.SetBinding(ZoneOverlayView.ItemsProperty, new Binding(fireSmokeBoxesPropertyName) { Source = _viewModel });
 
             try
             {
                 BindingOperations.ClearBinding(PopoutDetectionItems, ItemsControl.ItemsSourceProperty);
+
                 BindingOperations.ClearBinding(PopoutDetectionItems, FrameworkElement.WidthProperty);
+
                 BindingOperations.ClearBinding(PopoutDetectionItems, FrameworkElement.HeightProperty);
+
                 BindingOperations.ClearBinding(PopoutFireSmokeDetectionItems, ItemsControl.ItemsSourceProperty);
+
                 BindingOperations.ClearBinding(PopoutFireSmokeDetectionItems, FrameworkElement.WidthProperty);
+
                 BindingOperations.ClearBinding(PopoutFireSmokeDetectionItems, FrameworkElement.HeightProperty);
-                BindingOperations.SetBinding(
-                    PopoutDetectionItems,
-                    ItemsControl.ItemsSourceProperty,
-                    new Binding(detectionBoxesPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-                );
-                BindingOperations.SetBinding(
-                    PopoutDetectionItems,
-                    FrameworkElement.WidthProperty,
-                    new Binding(videoWidthPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-                );
-                BindingOperations.SetBinding(
-                    PopoutDetectionItems,
-                    FrameworkElement.HeightProperty,
-                    new Binding(videoHeightPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-                );
-                BindingOperations.SetBinding(
-                    PopoutFireSmokeDetectionItems,
-                    ItemsControl.ItemsSourceProperty,
-                    new Binding(fireSmokeBoxesPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-                );
-                BindingOperations.SetBinding(
-                    PopoutFireSmokeDetectionItems,
-                    FrameworkElement.WidthProperty,
-                    new Binding(videoWidthPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-                );
-                BindingOperations.SetBinding(
-                    PopoutFireSmokeDetectionItems,
-                    FrameworkElement.HeightProperty,
-                    new Binding(videoHeightPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay }
-                );
+
+                BindingOperations.SetBinding(PopoutDetectionItems, ItemsControl.ItemsSourceProperty, new Binding(detectionBoxesPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
+                BindingOperations.SetBinding(PopoutDetectionItems, FrameworkElement.WidthProperty, new Binding(videoWidthPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
+                BindingOperations.SetBinding(PopoutDetectionItems, FrameworkElement.HeightProperty, new Binding(videoHeightPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
+                BindingOperations.SetBinding(PopoutFireSmokeDetectionItems, ItemsControl.ItemsSourceProperty, new Binding(fireSmokeBoxesPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
+                BindingOperations.SetBinding(PopoutFireSmokeDetectionItems, FrameworkElement.WidthProperty, new Binding(videoWidthPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
+                BindingOperations.SetBinding(PopoutFireSmokeDetectionItems, FrameworkElement.HeightProperty, new Binding(videoHeightPropertyName) { Source = _viewModel, Mode = BindingMode.OneWay });
+
                 ConsoleLogHelper.State("VIDEO POPOUT / AI OVERLAY", "AI + FIRE/SMOKE overlays linked / CAMERA=" + GetCameraName());
             }
             catch (Exception exception)
             {
                 PopoutDetectionItems.ItemsSource = null;
+
                 PopoutFireSmokeDetectionItems.ItemsSource = null;
+
                 ConsoleLogHelper.Error("VIDEO POPOUT / AI OVERLAY", "Detection overlay binding failed / CAMERA=" + GetCameraName(), exception);
             }
         }
@@ -1094,6 +1220,7 @@ namespace OpenCvWpfTracking
             }
 
             Key activeKey = _activeLensKey.Value;
+
             _activeLensKey = null;
 
             if (_viewModel.IsControlInputLocked)
@@ -1104,6 +1231,7 @@ namespace OpenCvWpfTracking
             if (_cameraType == VideoPopoutCameraType.Eo)
             {
                 _viewModel.StopContinuousMove();
+
                 return;
             }
 
@@ -1116,8 +1244,6 @@ namespace OpenCvWpfTracking
                 _viewModel.StopIrFocusMove();
             }
         }
-
         #endregion
-
     }
 }

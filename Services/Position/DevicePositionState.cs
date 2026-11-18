@@ -9,7 +9,7 @@ namespace OpenCvWpfTracking.Services.Position
     /// </summary>
     public sealed class DevicePositionState
     {
-        private readonly object _sync = new object ();
+        private readonly object _sync = new object();
 
         private bool _connected;
 
@@ -166,38 +166,16 @@ namespace OpenCvWpfTracking.Services.Position
             lock (_sync)
             {
                 PositionDataStatus ptzStatus = ResolveStatus(_ptzUpdatedAt, true, maximumPtzLensAge, capturedAt);
+
                 PositionDataStatus eoLensStatus = ResolveStatus(_eoLensUpdatedAt, true, maximumPtzLensAge, capturedAt);
+
                 PositionDataStatus irLensStatus = ResolveStatus(_irLensUpdatedAt, true, maximumPtzLensAge, capturedAt);
+
                 PositionDataStatus gpsStatus = ResolveStatus(_gpsUpdatedAt, _gpsValueValid, maximumTelemetryAge, capturedAt);
+
                 PositionDataStatus imuStatus = ResolveStatus(_imuUpdatedAt, _imuValueValid, maximumTelemetryAge, capturedAt);
-                return new PositionSnapshot(
-                    capturedAt,
-                    source,
-                    presetId,
-                    ptzStatus == PositionDataStatus.Valid ? _pan : null,
-                    ptzStatus == PositionDataStatus.Valid ? _tilt : null,
-                    eoLensStatus == PositionDataStatus.Valid ? _eoZoom : null,
-                    eoLensStatus == PositionDataStatus.Valid ? _eoFocus : null,
-                    irLensStatus == PositionDataStatus.Valid ? _irZoom : null,
-                    irLensStatus == PositionDataStatus.Valid ? _irFocus : null,
-                    gpsStatus == PositionDataStatus.Valid ? _latitude : null,
-                    gpsStatus == PositionDataStatus.Valid ? _longitude : null,
-                    gpsStatus == PositionDataStatus.Valid ? _altitude : null,
-                    gpsStatus == PositionDataStatus.Valid ? _gpsSpeed : null,
-                    gpsStatus == PositionDataStatus.Valid ? _gpsCourse : null,
-                    gpsStatus == PositionDataStatus.Valid ? _gpsHdop : null,
-                    gpsStatus == PositionDataStatus.Valid ? _gpsSatelliteCount : null,
-                    gpsStatus == PositionDataStatus.Valid ? _gpsFixStatus : null,
-                    imuStatus == PositionDataStatus.Valid ? _roll : null,
-                    imuStatus == PositionDataStatus.Valid ? _pitch : null,
-                    imuStatus == PositionDataStatus.Valid ? _yaw : null,
-                    ptzStatus,
-                    eoLensStatus,
-                    irLensStatus,
-                    gpsStatus,
-                    imuStatus,
-                    _connected
-                );
+
+                return new PositionSnapshot(capturedAt, source, presetId, ptzStatus == PositionDataStatus.Valid ? _pan : null, ptzStatus == PositionDataStatus.Valid ? _tilt : null, eoLensStatus == PositionDataStatus.Valid ? _eoZoom : null, eoLensStatus == PositionDataStatus.Valid ? _eoFocus : null, irLensStatus == PositionDataStatus.Valid ? _irZoom : null, irLensStatus == PositionDataStatus.Valid ? _irFocus : null, gpsStatus == PositionDataStatus.Valid ? _latitude : null, gpsStatus == PositionDataStatus.Valid ? _longitude : null, gpsStatus == PositionDataStatus.Valid ? _altitude : null, gpsStatus == PositionDataStatus.Valid ? _gpsSpeed : null, gpsStatus == PositionDataStatus.Valid ? _gpsCourse : null, gpsStatus == PositionDataStatus.Valid ? _gpsHdop : null, gpsStatus == PositionDataStatus.Valid ? _gpsSatelliteCount : null, gpsStatus == PositionDataStatus.Valid ? _gpsFixStatus : null, imuStatus == PositionDataStatus.Valid ? _roll : null, imuStatus == PositionDataStatus.Valid ? _pitch : null, imuStatus == PositionDataStatus.Valid ? _yaw : null, ptzStatus, eoLensStatus, irLensStatus, gpsStatus, imuStatus, _connected);
             }
         }
 
@@ -218,7 +196,14 @@ namespace OpenCvWpfTracking.Services.Position
                 return PositionDataStatus.Invalid;
             }
 
-            return now - updatedAt.Value > maximumAge ? PositionDataStatus.Stale : PositionDataStatus.Valid;
+            if (now - updatedAt.Value > maximumAge)
+            {
+                return PositionDataStatus.Stale;
+            }
+            else
+            {
+                return PositionDataStatus.Valid;
+            }
         }
     }
 }

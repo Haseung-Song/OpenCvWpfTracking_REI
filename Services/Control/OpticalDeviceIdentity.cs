@@ -11,19 +11,19 @@ namespace OpenCvWpfTracking.Services.Control
         {
             // 직접 입력은 같은 실장비임을 확인할 ID가 없으므로 기존 주소 구분을 유지한다.
             if (string.IsNullOrWhiteSpace(deviceId))
+            {
                 return directKey;
+            }
 
-            return "DEVICE|" + (agentType ?? "").ToUpperInvariant() + "|" +
-                DeviceCatalog.CanonicalDeviceId(deviceId).ToUpperInvariant() + "|" + (ir ? "IR" : "EO");
+            return "DEVICE|" + (agentType ?? "").ToUpperInvariant() + "|" + DeviceCatalog.CanonicalDeviceId(deviceId).ToUpperInvariant() + "|" + (ir ? "IR" : "EO");
         }
 
         /// <summary>순번·설치 장소 접미사가 달라져도 같은 이름·채널의 과거 보정만 찾는다.</summary>
         public static bool MatchesLegacyName(string key, string displayName, bool ir)
         {
             string[] fields = (key ?? "").Split('|');
-            return fields.Length == 4 && fields[3] == (ir ? "IR" : "EO") &&
-                string.Equals(DeviceCatalog.DisplayIdentity(fields[0]), DeviceCatalog.DisplayIdentity(displayName),
-                    StringComparison.OrdinalIgnoreCase);
+
+            return fields.Length == 4 && fields[3] == (ir ? "IR" : "EO") && string.Equals(DeviceCatalog.DisplayIdentity(fields[0]), DeviceCatalog.DisplayIdentity(displayName), StringComparison.OrdinalIgnoreCase);
         }
     }
 }

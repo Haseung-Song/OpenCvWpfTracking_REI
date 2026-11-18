@@ -25,7 +25,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// 6. [CMD 06] [RTSP] / [ONNX] [Mapping] 조회
     /// 7. [CMD 07] [RTSP] 원본 영상 크기 조회
     /// </summary>
-    public class AiDetectorPacketBuilder
+    public class AiDetectorPacketBuilder : IAiDetectorPacketBuilderPort
     {
 
         #region [상수]
@@ -65,6 +65,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public byte[] BuildRtspAddressSetRequest(string eoRtspAddress, string irRtspAddress)
         {
             string payload = string.Join(((char)0x1F).ToString(), eoRtspAddress, irRtspAddress);
+
             return BuildRequestPacket("02", payload);
         }
 
@@ -104,9 +105,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public byte[] BuildRtspOnnxMappingSetRequest(int rtsp0OnnxIndex, int rtsp1OnnxIndex, double confidence, double iou)
         {
             string confidenceText = confidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+
             string iouText = iou.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-            string payload = $"0:{rtsp0OnnxIndex}^{confidenceText}^{iouText}" + ((char)0x1F).ToString() +
-                $"1:{rtsp1OnnxIndex}^{confidenceText}^{iouText}";
+
+            string payload = $"0:{rtsp0OnnxIndex}^{confidenceText}^{iouText}" + ((char)0x1F).ToString() + $"1:{rtsp1OnnxIndex}^{confidenceText}^{iouText}";
+
             return BuildRequestPacket("05", payload);
         }
 
@@ -164,6 +167,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             }
 
             byte[] commandBytes = Encoding.ASCII.GetBytes(command);
+
             byte[] payloadBytes = Encoding.UTF8.GetBytes(payload);
 
             if (payloadBytes.Length > 999)
@@ -172,20 +176,35 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             }
 
             string sizeText = payloadBytes.Length.ToString("D3");
+
             byte[] sizeBytes = Encoding.ASCII.GetBytes(sizeText);
+
             byte checksum = CalculateChecksum(commandBytes, payloadBytes);
+
             int packetSize = 1 + commandBytes.Length + sizeBytes.Length + payloadBytes.Length + 1 + 1;
+
             byte[] packet = new byte[packetSize];
+
             int index = 0;
+
             packet[index++] = Stx;
+
             Array.Copy(commandBytes, 0, packet, index, commandBytes.Length);
+
             index += commandBytes.Length;
+
             Array.Copy(sizeBytes, 0, packet, index, sizeBytes.Length);
+
             index += sizeBytes.Length;
+
             Array.Copy(payloadBytes, 0, packet, index, payloadBytes.Length);
+
             index += payloadBytes.Length;
+
             packet[index++] = checksum;
+
             packet[index] = Etx;
+
             return packet;
         }
 
@@ -213,8 +232,6 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             return checksum;
         }
-
         #endregion
-
     }
 }

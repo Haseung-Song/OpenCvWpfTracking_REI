@@ -21,7 +21,7 @@ namespace OpenCvWpfTracking.Services.Video
     /// - [FFmpeg] [Native DLL] 경로 설정 필요
     /// - 반환되는 [Mat]은 호출부에서 [Dispose] 필요
     /// </summary>
-    public unsafe class FFmpegDecoderService : IDisposable
+    public unsafe class FFmpegDecoderService : IDisposable, IFFmpegDecoderServicePort
     {
         public sealed class DecoderPerformanceSnapshot
         {
@@ -117,7 +117,7 @@ namespace OpenCvWpfTracking.Services.Video
         /// [ReadFrame()]과 [Close()]가 동시에
         /// [FFmpeg] 포인터를 접근하지 못하도록 제어한다.
         /// </summary>
-        private readonly object _syncLock = new object ();
+        private readonly object _syncLock = new object();
 
         /// <summary>
         /// 로그 출력용 영상 구분 이름
@@ -189,7 +189,13 @@ namespace OpenCvWpfTracking.Services.Video
 
         public string LastOpenErrorText { get; private set; }
 
-        public bool IsAuthenticationFailure => LastOpenErrorCode == ffmpeg.AVERROR_HTTP_UNAUTHORIZED;
+        public bool IsAuthenticationFailure
+        {
+            get
+            {
+                return LastOpenErrorCode == ffmpeg.AVERROR_HTTP_UNAUTHORIZED;
+            }
+        }
 
         public DecoderPerformanceSnapshot CaptureAndResetPerformance()
         {
@@ -226,7 +232,9 @@ namespace OpenCvWpfTracking.Services.Video
                 long observed = Interlocked.CompareExchange(ref destination, value, current);
 
                 if (observed == current)
+                {
                     break;
+                }
 
                 current = observed;
             }
@@ -237,7 +245,7 @@ namespace OpenCvWpfTracking.Services.Video
         #region [생성자]
 
         /// <summary>
-        /// [FFmpeg Decoder Service]
+        /// [FFmpeg 영상 디코딩 서비스]
         /// </summary>
         /// <param name = "streamName">
         /// 로그 출력용 영상 이름
@@ -250,7 +258,14 @@ namespace OpenCvWpfTracking.Services.Video
 
         private int InterruptCallback(void* opaque)
         {
-            return Volatile.Read(ref _interruptRequested) != 0 || _openCancellationToken.IsCancellationRequested ? 1 : 0;
+            if (Volatile.Read(ref _interruptRequested) != 0 || _openCancellationToken.IsCancellationRequested)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
         }
 
         #endregion
@@ -281,14 +296,19 @@ namespace OpenCvWpfTracking.Services.Video
                 _openCancellationToken = cancellationToken;
 
                 if (cancellationToken.IsCancellationRequested)
+                {
                     return false;
+                }
 
                 bool opened = OpenWithAuthenticationFallback(RtspUriNormalization.Connect(rtspUrl));
 
                 if (!cancellationToken.IsCancellationRequested)
+                {
                     return opened;
+                }
 
                 Close();
+
                 return false;
             }
         }
@@ -296,36 +316,35 @@ namespace OpenCvWpfTracking.Services.Video
         private bool OpenWithAuthenticationFallback(string rtspUrl)
         {
             if (OpenCore(rtspUrl) || !IsAuthenticationFailure)
+            {
                 return IsOpened;
+            }
 
             RtspAuthenticationRelay relay = null;
 
             try
             {
                 relay = new RtspAuthenticationRelay(rtspUrl);
+
                 string localAddress = relay.Start();
 
                 if (OpenCore(localAddress))
                 {
                     _authenticationRelay = relay;
-                    ConsoleLogHelper.State(
-                        "RTSP AUTH COMPAT",
-                        "Local MD5-compatible relay connected / TARGET=" + ConsoleLogHelper.MaskRtspPassword(rtspUrl)
-                    );
+
+                    ConsoleLogHelper.State("RTSP AUTH COMPAT", "Local MD5-compatible relay connected / TARGET=" + ConsoleLogHelper.MaskRtspPassword(rtspUrl));
+
                     return true;
                 }
             }
             catch (Exception ex)
             {
                 // 인증정보가 포함될 수 있어 예외 원문 대신 진단 코드만 사용한다.
-                ConsoleLogHelper.State(
-                    "RTSP AUTH COMPAT",
-                    "Compatibility connection failed / original device settings retained / " + ex.GetType().Name +
-                    " / HRESULT=0x" + ex.HResult.ToString("X8")
-                );
+                ConsoleLogHelper.State("RTSP AUTH COMPAT", "Compatibility connection failed / original device settings retained / " + ex.GetType().Name + " / HRESULT=0x" + ex.HResult.ToString("X8"));
             }
 
             relay?.Dispose();
+
             return false;
         }
 
@@ -334,72 +353,100 @@ namespace OpenCvWpfTracking.Services.Video
         private bool OpenCore(string rtspUrl)
         {
             Close();
+
             Interlocked.Exchange(ref _interruptRequested, 0);
+
             LastOpenErrorCode = 0;
             LastOpenErrorText = string.Empty;
-            /// <summary>
-            /// [RTSP] 연결 시도 로그
-            /// </summary>
+
+            // [RTSP] 연결 시도 로그
+            //
             Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] Open Try...");
-            /// <summary>
-            /// [RTSP] 연결 대상 주소 로그
-            /// </summary>
+
+            // [RTSP] 연결 대상 주소 로그
+            //
             Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] Source : " + $"{ConsoleLogHelper.MaskRtspPassword(rtspUrl)}");
+
             Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] Playback Profile : " + (_useSmoothPlayback ? "SMOOTH" : "LOW_LATENCY"));
+
             ConsoleLogHelper.PrintLine();
+
             ffmpeg.avformat_network_init();
+
             AVFormatContext* formatContext = ffmpeg.avformat_alloc_context();
 
             if (formatContext == null)
             {
                 LastOpenErrorText = "avformat_alloc_context failed";
+
                 return false;
             }
 
             formatContext->interrupt_callback.callback = _interruptCallback;
             formatContext->interrupt_callback.opaque = null;
+
             AVDictionary* options = CreateRtspOptions();
+
             int result = ffmpeg.avformat_open_input(&formatContext, rtspUrl, null, &options);
+
             Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] avformat_open_input Result : {result}");
+
             ConsoleLogHelper.PrintLine();
+
             ffmpeg.av_dict_free(&options);
 
             if (result < 0)
             {
                 LastOpenErrorCode = result;
+
                 LastOpenErrorText = GetOpenErrorText(result);
-                Console.WriteLine(IsAuthenticationFailure
-                    ? $"[{_streamName}] [RTSP AUTH] Authentication Failed / RESULT=401 Unauthorized"
-                    : $"[{_streamName}] [FFmpeg RTSP] avformat_open_input Failed / RESULT={LastOpenErrorText}");
+
+                Console.WriteLine(IsAuthenticationFailure ? $"[{_streamName}] [RTSP AUTH] Authentication Failed / RESULT=401 Unauthorized" : $"[{_streamName}] [FFmpeg RTSP] avformat_open_input Failed / RESULT={LastOpenErrorText}");
+
                 Console.WriteLine();
+
                 return false;
             }
 
             _formatContext = formatContext;
 
             if (!LoadStreamInfo())
+            {
                 return false;
+            }
 
             if (!FindVideoStream())
+            {
                 return false;
+            }
 
             if (!OpenCodec())
+            {
                 return false;
+            }
 
             AllocateDecodeBuffer();
+
             IsOpened = true;
+
             Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] Open Success.");
+
             Console.WriteLine();
+
             return true;
         }
 
         private static string GetOpenErrorText(int errorCode)
         {
             if (errorCode == ffmpeg.AVERROR_HTTP_UNAUTHORIZED)
+            {
                 return "401 Unauthorized";
+            }
 
             if (errorCode == ffmpeg.AVERROR_HTTP_BAD_REQUEST)
+            {
                 return "400 Bad Request";
+            }
 
             return errorCode.ToString();
         }
@@ -474,86 +521,87 @@ namespace OpenCvWpfTracking.Services.Video
         private AVDictionary* CreateRtspOptions()
         {
             AVDictionary* options = null;
-            /// <summary>
-            /// [RTSP] 전송 방식을 [TCP]로 고정
-            ///
-            /// UDP Packet 손실보다
-            /// 영상 연결 안정성을 우선한다.
-            /// </summary>
+
+            // [RTSP] 전송 방식을 [TCP]로 고정
+            //
+            // UDP Packet 손실보다
+            // 영상 연결 안정성을 우선한다.
+            //
             ffmpeg.av_dict_set(&options, "rtsp_transport", "tcp", 0);
-            /// <summary>
-            /// [RTSP] 일반 입출력 Timeout
-            ///
-            /// 단위:
-            /// microsecond
-            ///
-            /// 5000000 = 5초
-            ///
-            /// 입력 또는 출력 처리가 지연되는 경우
-            /// 최대 5초까지만 대기한다.
-            /// </summary>
+
+            // [RTSP] 일반 입출력 Timeout
+            //
+            // 단위:
+            // 시간 단위: 마이크로초
+            //
+            // 5000000 = 5초
+            //
+            // 입력 또는 출력 처리가 지연되는 경우
+            // 최대 5초까지만 대기한다.
+            //
             ffmpeg.av_dict_set(&options, "timeout", "5000000", 0);
-            /// <summary>
-            /// [RTSP] Socket 연결 및 수신 Timeout
-            ///
-            /// 5000000 = 5초
-            ///
-            /// RTSP Server가 응답하지 않을 경우
-            /// 최대 대기시간을 제한한다.
-            /// </summary>
+
+            // [RTSP] Socket 연결 및 수신 Timeout
+            //
+            // 5000000 = 5초
+            //
+            // RTSP Server가 응답하지 않을 경우
+            // 최대 대기시간을 제한한다.
+            //
             ffmpeg.av_dict_set(&options, "stimeout", "5000000", 0);
-            /// <summary>
-            /// [RTSP] 데이터 읽기 / 쓰기 Timeout
-            ///
-            /// 5000000 = 5초
-            ///
-            /// 연결 이후 영상 데이터가 일정 시간 동안 수신되지 않으면
-            /// 현재 읽기 동작을 실패 처리할 수 있도록 제한한다.
-            /// </summary>
+
+            // [RTSP] 데이터 읽기 / 쓰기 Timeout
+            //
+            // 5000000 = 5초
+            //
+            // 연결 이후 영상 데이터가 일정 시간 동안 수신되지 않으면
+            // 현재 읽기 동작을 실패 처리할 수 있도록 제한한다.
+            //
             ffmpeg.av_dict_set(&options, "rw_timeout", "5000000", 0);
-            /// <summary>
-            /// [RTSP] Packet 최대 지연 허용 시간
-            ///
-            /// 500000 = 0.5초
-            ///
-            /// Packet 지연 누적을 제한하여
-            /// 실시간 영상 출력 지연을 줄인다.
-            /// </summary>
+
+            // [RTSP] Packet 최대 지연 허용 시간
+            //
+            // 500000 = 0.5초
+            //
+            // Packet 지연 누적을 제한하여
+            // 실시간 영상 출력 지연을 줄인다.
+            //
             ffmpeg.av_dict_set(&options, "max_delay", _useSmoothPlayback ? "150000" : "500000", 0);
-            /// <summary>
-            /// [FFmpeg] 입력 Stream 분석 최대 시간
-            ///
-            /// 1000000 = 1초
-            ///
-            /// Video Stream 및 Codec 정보를 탐색할 시간을 확보하면서
-            /// 초기 연결이 과도하게 지연되지 않도록 제한한다.
-            /// </summary>
+
+            // [FFmpeg] 입력 Stream 분석 최대 시간
+            //
+            // 1000000 = 1초
+            //
+            // Video Stream 및 Codec 정보를 탐색할 시간을 확보하면서
+            // 초기 연결이 과도하게 지연되지 않도록 제한한다.
+            //
             ffmpeg.av_dict_set(&options, "analyzeduration", "1000000", 0);
-            /// <summary>
-            /// [FFmpeg] Stream 탐색 최대 데이터 크기
-            ///
-            /// 65536 Byte
-            ///
-            /// 초기 Stream 정보 탐색에 사용할 데이터 크기를 제한한다.
-            /// </summary>
+
+            // [FFmpeg] Stream 탐색 최대 데이터 크기
+            //
+            // 버퍼 크기: 65536바이트
+            //
+            // 초기 Stream 정보 탐색에 사용할 데이터 크기를 제한한다.
+            //
             ffmpeg.av_dict_set(&options, "probesize", "65536", 0);
 
-            /// <summary>
-            /// [FFmpeg] 내부 입력 Buffer 최소화
-            ///
-            /// Buffer에 Frame이 과도하게 누적되어
-            /// 실시간 화면이 늦게 표시되는 현상을 줄인다.
-            /// </summary>
+            // [FFmpeg] 내부 입력 Buffer 최소화
+            //
+            // Buffer에 Frame이 과도하게 누적되어
+            // 실시간 화면이 늦게 표시되는 현상을 줄인다.
+            //
             if (_useSmoothPlayback)
             {
                 // 2026-09-16: 2~4 프레임 수준의 작은 재정렬 여유로 TCP 지터를 흡수한다.
                 // 대기열 누적은 ViewModel의 Latest Frame 정책에서 차단한다.
                 ffmpeg.av_dict_set(&options, "reorder_queue_size", "4", 0);
+
                 ffmpeg.av_dict_set(&options, "buffer_size", "1048576", 0);
             }
             else
             {
                 ffmpeg.av_dict_set(&options, "fflags", "nobuffer", 0);
+
                 ffmpeg.av_dict_set(&options, "flags", "low_delay", 0);
             }
 
@@ -572,7 +620,9 @@ namespace OpenCvWpfTracking.Services.Video
             if (result < 0)
             {
                 Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] avformat_find_stream_info Failed");
+
                 Close();
+
                 return false;
             }
 
@@ -591,6 +641,7 @@ namespace OpenCvWpfTracking.Services.Video
                 if (_formatContext->streams[i]->codecpar->codec_type == AVMediaType.AVMEDIA_TYPE_VIDEO)
                 {
                     _videoStreamIndex = i;
+
                     break;
                 }
             }
@@ -598,7 +649,9 @@ namespace OpenCvWpfTracking.Services.Video
             if (_videoStreamIndex < 0)
             {
                 Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] Video Stream Not Found");
+
                 Close();
+
                 return false;
             }
 
@@ -611,45 +664,55 @@ namespace OpenCvWpfTracking.Services.Video
         private bool OpenCodec()
         {
             AVCodecParameters* codecParameters = _formatContext->streams[_videoStreamIndex]->codecpar;
+
             AVCodec* codec = ffmpeg.avcodec_find_decoder(codecParameters->codec_id);
 
             if (codec == null)
             {
                 Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] Decoder Not Found");
+
                 Close();
+
                 return false;
             }
 
             _codecContext = ffmpeg.avcodec_alloc_context3(codec);
+
             ffmpeg.avcodec_parameters_to_context(_codecContext, codecParameters);
-            /// <summary>
-            /// [RTSP] 원본 영상 해상도 저장
-            ///
-            /// [AI Detector] [Bounding Box] 좌표 기준과
-            /// [Canvas Overlay] 좌표 기준을 맞추기 위해 사용한다.
-            /// </summary>
+
+            // [RTSP] 원본 영상 해상도 저장
+            //
+            // [AI Detector] [Bounding Box] 좌표 기준과
+            // [Canvas Overlay] 좌표 기준을 맞추기 위해 사용한다.
+            //
             VideoWidth = _codecContext->width;
             VideoHeight = _codecContext->height;
-            /// <summary>
-            /// [RTSP] 원본 영상 해상도 로그
-            ///
-            /// [FFmpeg]에서 읽은 실제 영상 해상도를 출력하며,
-            /// [AI Detector] [Bounding Box] 좌표 기준과
-            /// [Overlay Canvas] 크기 설정 확인에 사용한다.
-            /// </summary>
+
+            // [RTSP] 원본 영상 해상도 로그
+            //
+            // [FFmpeg]에서 읽은 실제 영상 해상도를 출력하며,
+            // [AI Detector] [Bounding Box] 좌표 기준과
+            // [Overlay Canvas] 크기 설정 확인에 사용한다.
+            //
             ConsoleLogHelper.PrintLine();
+
             Console.WriteLine($"[{_streamName}] [FFmpeg RTSP SIZE] {VideoWidth} x {VideoHeight}");
+
             Console.WriteLine();
+
             int result = ffmpeg.avcodec_open2(_codecContext, codec, null);
 
             if (result < 0)
             {
                 Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] avcodec_open2 Failed");
+
                 Close();
+
                 return false;
             }
 
             Console.WriteLine($"[{_streamName}] [FFmpeg RTSP] Codec : " + ffmpeg.avcodec_get_name(codecParameters->codec_id));
+
             return true;
         }
 
@@ -659,7 +722,9 @@ namespace OpenCvWpfTracking.Services.Video
         private void AllocateDecodeBuffer()
         {
             _packet = ffmpeg.av_packet_alloc();
+
             _frame = ffmpeg.av_frame_alloc();
+
             _packetPendingSend = false;
         }
 
@@ -695,15 +760,21 @@ namespace OpenCvWpfTracking.Services.Video
                 while (true)
                 {
                     long decodeStarted = Stopwatch.GetTimestamp();
+
                     int result = ffmpeg.avcodec_receive_frame(_codecContext, _frame);
+
                     long decodeElapsed = Stopwatch.GetTimestamp() - decodeStarted;
+
                     Interlocked.Add(ref _metricDecodeTicks, decodeElapsed);
+
                     Interlocked.Increment(ref _metricDecodeCount);
+
                     UpdateMaximum(ref _metricDecodeMaxTicks, decodeElapsed);
 
                     if (result >= 0)
                     {
                         CaptureFrameTiming(_frame);
+
                         return ConvertFrameToMat(_frame);
                     }
 
@@ -715,10 +786,15 @@ namespace OpenCvWpfTracking.Services.Video
                     if (_packetPendingSend)
                     {
                         decodeStarted = Stopwatch.GetTimestamp();
+
                         result = ffmpeg.avcodec_send_packet(_codecContext, _packet);
+
                         decodeElapsed = Stopwatch.GetTimestamp() - decodeStarted;
+
                         Interlocked.Add(ref _metricDecodeTicks, decodeElapsed);
+
                         Interlocked.Increment(ref _metricDecodeCount);
+
                         UpdateMaximum(ref _metricDecodeMaxTicks, decodeElapsed);
 
                         if (result == ffmpeg.AVERROR(ffmpeg.EAGAIN))
@@ -727,32 +803,45 @@ namespace OpenCvWpfTracking.Services.Video
                         }
 
                         ffmpeg.av_packet_unref(_packet);
+
                         _packetPendingSend = false;
 
                         if (result < 0)
+                        {
                             return null;
+                        }
 
                         continue;
                     }
 
                     long readStarted = Stopwatch.GetTimestamp();
+
                     result = ffmpeg.av_read_frame(_formatContext, _packet);
+
                     long readElapsed = Stopwatch.GetTimestamp() - readStarted;
+
                     Interlocked.Add(ref _metricReadTicks, readElapsed);
+
                     Interlocked.Increment(ref _metricReadCount);
+
                     UpdateMaximum(ref _metricReadMaxTicks, readElapsed);
 
                     if (result < 0)
+                    {
                         return null;
+                    }
 
                     if (_packet->stream_index != _videoStreamIndex)
                     {
                         ffmpeg.av_packet_unref(_packet);
+
                         continue;
                     }
 
                     _packetPendingSend = true;
+
                     Interlocked.Add(ref _metricPacketBytes, Math.Max(0, _packet->size));
+
                     Interlocked.Increment(ref _metricPacketCount);
                 }
             }
@@ -761,8 +850,11 @@ namespace OpenCvWpfTracking.Services.Video
         private void CaptureFrameTiming(AVFrame* frame)
         {
             long bestEffortTimestamp = frame->best_effort_timestamp;
+
             long timestamp = bestEffortTimestamp != ffmpeg.AV_NOPTS_VALUE ? bestEffortTimestamp : frame->pts;
+
             bool hasTimestamp = timestamp != ffmpeg.AV_NOPTS_VALUE && _formatContext != null && _videoStreamIndex >= 0;
+
             double timestampMilliseconds = 0.0;
 
             if (hasTimestamp)
@@ -799,31 +891,33 @@ namespace OpenCvWpfTracking.Services.Video
         private Mat ConvertFrameToMat(AVFrame* sourceFrame)
         {
             int width = sourceFrame->width;
+
             int height = sourceFrame->height;
+
             Mat mat = new Mat(height, width, MatType.CV_8UC3);
-            _swsContext = ffmpeg.sws_getCachedContext(
-                _swsContext,
-                width,
-                height,
-                (AVPixelFormat)sourceFrame->format,
-                width,
-                height,
-                AVPixelFormat.AV_PIX_FMT_BGR24,
-                2,
-                null,
-                null,
-                null
-            );
+
+            _swsContext = ffmpeg.sws_getCachedContext(_swsContext, width, height, (AVPixelFormat)sourceFrame->format, width, height, AVPixelFormat.AV_PIX_FMT_BGR24, 2, null, null, null);
+
             byte_ptrArray4 dstData = default;
+
             int_array4 dstLineSize = default;
+
             dstData[0] = (byte*)mat.Data;
+
             dstLineSize[0] = (int)mat.Step();
+
             long scaleStarted = Stopwatch.GetTimestamp();
+
             ffmpeg.sws_scale(_swsContext, sourceFrame->data, sourceFrame->linesize, 0, height, dstData, dstLineSize);
+
             long scaleElapsed = Stopwatch.GetTimestamp() - scaleStarted;
+
             Interlocked.Add(ref _metricScaleTicks, scaleElapsed);
+
             Interlocked.Increment(ref _metricScaleCount);
+
             UpdateMaximum(ref _metricScaleMaxTicks, scaleElapsed);
+
             return mat;
         }
 
@@ -846,18 +940,28 @@ namespace OpenCvWpfTracking.Services.Video
             // lock을 얻기 전에 먼저 Flag를 올려 현재 av_read_frame 호출을 중단시킨다.
             // 기존에는 ReadFrame의 5초 rw_timeout이 끝날 때까지 Close가 대기했다.
             Interlocked.Exchange(ref _interruptRequested, 1);
+
             var relay = Interlocked.Exchange(ref _authenticationRelay, null);
+
             relay?.Dispose();
+
             // [Close()] 중에는 [ReadFrame()] 못 들어오게
             lock (_syncLock)
             {
                 IsOpened = false;
+
                 FreePacket();
+
                 FreeFrame();
+
                 FreeCodecContext();
+
                 FreeFormatContext();
+
                 FreeSwsContext();
+
                 _videoStreamIndex = -1;
+
                 VideoWidth = 0;
                 VideoHeight = 0;
             }
@@ -871,10 +975,14 @@ namespace OpenCvWpfTracking.Services.Video
             _packetPendingSend = false;
 
             if (_packet == null)
+            {
                 return;
+            }
 
             AVPacket* packet = _packet;
+
             ffmpeg.av_packet_free(&packet);
+
             _packet = null;
         }
 
@@ -884,10 +992,14 @@ namespace OpenCvWpfTracking.Services.Video
         private void FreeFrame()
         {
             if (_frame == null)
+            {
                 return;
+            }
 
             AVFrame* frame = _frame;
+
             ffmpeg.av_frame_free(&frame);
+
             _frame = null;
         }
 
@@ -897,10 +1009,14 @@ namespace OpenCvWpfTracking.Services.Video
         private void FreeCodecContext()
         {
             if (_codecContext == null)
+            {
                 return;
+            }
 
             AVCodecContext* codecContext = _codecContext;
+
             ffmpeg.avcodec_free_context(&codecContext);
+
             _codecContext = null;
         }
 
@@ -910,10 +1026,14 @@ namespace OpenCvWpfTracking.Services.Video
         private void FreeFormatContext()
         {
             if (_formatContext == null)
+            {
                 return;
+            }
 
             AVFormatContext* formatContext = _formatContext;
+
             ffmpeg.avformat_close_input(&formatContext);
+
             _formatContext = null;
         }
 
@@ -923,9 +1043,12 @@ namespace OpenCvWpfTracking.Services.Video
         private void FreeSwsContext()
         {
             if (_swsContext == null)
+            {
                 return;
+            }
 
             ffmpeg.sws_freeContext(_swsContext);
+
             _swsContext = null;
         }
 
@@ -936,8 +1059,6 @@ namespace OpenCvWpfTracking.Services.Video
         {
             Close();
         }
-
         #endregion
-
     }
 }

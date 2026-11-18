@@ -53,7 +53,20 @@
         /// 2026-08-26: AI Agent가 0~1000 정수 스케일로 보내는 Confidence를
         /// UI/이벤트 공통 0~1 범위로 변환한다. 기존 0~1 프로토콜 값도 호환한다.
         /// </summary>
-        public double NormalizedConfidence => Confidence > 1.0 ? Confidence / 1000.0 : Confidence;
+        public double NormalizedConfidence
+        {
+            get
+            {
+                if (Confidence > 1.0)
+                {
+                    return Confidence / 1000.0;
+                }
+                else
+                {
+                    return Confidence;
+                }
+            }
+        }
 
         /// <summary>
         /// [Bounding Box] 좌측 X 좌표
@@ -78,12 +91,24 @@
         /// <summary>
         /// [Bounding Box] 너비
         /// </summary>
-        public int Width => Right - Left;
+        public int Width
+        {
+            get
+            {
+                return Right - Left;
+            }
+        }
 
         /// <summary>
         /// [Bounding Box] 높이
         /// </summary>
-        public int Height => Bottom - Top;
+        public int Height
+        {
+            get
+            {
+                return Bottom - Top;
+            }
+        }
 
         // 2026-09-17: BBox와 Label의 레이아웃 폭을 분리한다.
         public int OverlayLeft { get; set; }
@@ -129,9 +154,11 @@
                 switch (ClassIndex)
                 {
                     case 0:
+
                         // [Drone] 탐지 클래스
                         return "Drone";
                     default:
+
                         // [Index] 탐지 클래스
                         return $"Class {ClassIndex}";
                 }
@@ -173,9 +200,21 @@
 
         public int Bottom { get; set; }
 
-        public int Width => Right - Left;
+        public int Width
+        {
+            get
+            {
+                return Right - Left;
+            }
+        }
 
-        public int Height => Bottom - Top;
+        public int Height
+        {
+            get
+            {
+                return Bottom - Top;
+            }
+        }
 
         /// <summary>
         /// 2026-09-17: 우측 경계의 작은 BBox에서 라벨이 영상 밖으로 잘리지 않도록
@@ -201,6 +240,12 @@
 
         public int BoxOffsetY { get; set; }
 
-        public string DisplayText => $"{DetectionType} #{DisplayOrder} | {ConfidencePercent:F1}%";
+        public string DisplayText
+        {
+            get
+            {
+                return $"{DetectionType} #{DisplayOrder} | {ConfidencePercent:F1}%";
+            }
+        }
     }
 }

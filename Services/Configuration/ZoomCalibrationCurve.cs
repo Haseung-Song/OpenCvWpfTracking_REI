@@ -21,20 +21,36 @@ namespace OpenCvWpfTracking.Services.Configuration
             try
             {
                 string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "ER-WATCHER1_ZoomCalibration.csv");
+
                 var values = Load(path);
+
                 ConsoleLogHelper.State("줌 실측표", "ER-WATCHER 1 기준표를 납품 장비 1~4·환경부·기동형·LA에 공통 적용 / EO 30배 초과는 카탈로그 끝점 연결 추정 / 개별 장비 실측 아님");
+
                 return values;
             }
             catch (Exception error)
             {
                 ConsoleLogHelper.Warning("줌 실측표", "설정 읽기 실패 / 기존 환산 유지 / " + error.GetType().Name);
+
                 return new Dictionary<string, ZoomCalibrationCurve>();
             }
         });
 
-        public double MinimumRatio => _ratios[0];
+        public double MinimumRatio
+        {
+            get
+            {
+                return _ratios[0];
+            }
+        }
 
-        public double MaximumRatio => _ratios[_ratios.Length - 1];
+        public double MaximumRatio
+        {
+            get
+            {
+                return _ratios[_ratios.Length - 1];
+            }
+        }
 
         private ZoomCalibrationCurve(int[] positions, double[] ratios, int lastMeasuredPosition)
         {
@@ -65,10 +81,20 @@ namespace OpenCvWpfTracking.Services.Configuration
         public static ZoomCalibrationCurve Get(string deviceId, bool ir)
         {
             if (!SupportsDevice(deviceId))
+            {
                 return null;
+            }
 
             ZoomCalibrationCurve curve;
-            return Curves.Value.TryGetValue(ir ? "IR" : "EO", out curve) ? curve : null;
+
+            if (Curves.Value.TryGetValue(ir ? "IR" : "EO", out curve))
+            {
+                return curve;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         /// <summary>단조 증가·양 끝점·실측/추정 구분을 검증하고 측정 중단 기능 없이 표만 읽는다.</summary>
@@ -77,12 +103,16 @@ namespace OpenCvWpfTracking.Services.Configuration
             var lines = File.ReadAllLines(path).Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#")).ToArray();
 
             if (lines.Length < 5 || lines[0].TrimStart('\uFEFF') != "Channel,Raw,Ratio,Basis")
+            {
                 throw new FormatException("줌 실측표 헤더 오류");
+            }
 
             var rows = lines.Skip(1).Select(line => line.Split(',')).ToArray();
 
             if (rows.Any(row => row.Length != 4 || (row[0] != "EO" && row[0] != "IR")))
+            {
                 throw new FormatException("줌 실측표 채널·열 오류");
+            }
 
             var result = new Dictionary<string, ZoomCalibrationCurve>();
 
@@ -95,40 +125,46 @@ namespace OpenCvWpfTracking.Services.Configuration
             )
             {
                 var entries = rows.Where(row => row[0] == channel).ToArray();
+
                 var positions = new List<int>();
+
                 var ratios = new List<double>();
+
                 int measuredEnd = -1;
+
                 bool estimated = false;
 
                 foreach (var row in entries)
                 {
                     int position = int.Parse(row[1], CultureInfo.InvariantCulture);
+
                     double ratio = double.Parse(row[2], CultureInfo.InvariantCulture);
+
                     bool measured = row[3] == "Measured";
 
-                    if ((!measured && row[3] != "CatalogEstimate") ||
-                        (measured && estimated) ||
-                        position < 0 ||
-                        position > 1000 ||
-                        double.IsNaN(ratio) ||
-                        double.IsInfinity(ratio) ||
-                        ratio < 1 ||
-                        ratio > 1000 ||
-                        (positions.Count > 0 && (position <= positions.Last() ||
-                        ratio <= ratios.Last())))
+                    if ((!measured && row[3] != "CatalogEstimate") || (measured && estimated) || position < 0 || position > 1000 || double.IsNaN(ratio) || double.IsInfinity(ratio) || ratio < 1 || ratio > 1000 || (positions.Count > 0 && (position <= positions.Last() || ratio <= ratios.Last())))
+                    {
                         throw new FormatException("줌 실측표 순서·범위 오류");
+                    }
 
                     positions.Add(position);
+
                     ratios.Add(ratio);
 
                     if (measured)
+                    {
                         measuredEnd = position;
+                    }
                     else
+                    {
                         estimated = true;
+                    }
                 }
 
                 if (positions.Count < 2 || positions[0] != 0 || ratios[0] != 1 || positions.Last() != 1000 || measuredEnd < 0)
+                {
                     throw new FormatException("줌 실측표 끝점 오류");
+                }
 
                 result[channel] = new ZoomCalibrationCurve(positions.ToArray(), ratios.ToArray(), measuredEnd);
             }
@@ -140,17 +176,26 @@ namespace OpenCvWpfTracking.Services.Configuration
         public double Ratio(int position)
         {
             int value = Math.Max(0, Math.Min(1000, position));
+
             int upper = Array.BinarySearch(_positions, value);
 
             if (upper >= 0)
+            {
                 return _ratios[upper];
+            }
 
             upper = ~upper;
+
             int lower = upper - 1;
+
             double progress = (value - _positions[lower]) / (double)(_positions[upper] - _positions[lower]);
+
             return _ratios[lower] + progress * (_ratios[upper] - _ratios[lower]);
         }
 
-        public bool IsEstimated(int position) => position > _lastMeasuredPosition;
+        public bool IsEstimated(int position)
+        {
+            return position > _lastMeasuredPosition;
+        }
     }
 }

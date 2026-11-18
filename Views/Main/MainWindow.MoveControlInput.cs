@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using OpenCvWpfTracking.ViewModels.Main;
 
 namespace OpenCvWpfTracking
 {
@@ -57,9 +56,15 @@ namespace OpenCvWpfTracking
         /// IR은 같은 표준 위치를 공통 배율표로 환산한다.
         /// 내부 끝점 8.15배는 보존하며 화면에는 최대 8.0배로 표시한다.
         /// </summary>
-        private double MoveControlZoomRatioMinimumInput => vm.EoOpticalRatioMinimum;
+        private double MoveControlZoomRatioMinimumInput
+        {
+            get { return vm.EoOpticalRatioMinimum; }
+        }
 
-        private double MoveControlZoomRatioMaximumInput => vm.EoOpticalRatioMaximum;
+        private double MoveControlZoomRatioMaximumInput
+        {
+            get { return vm.EoOpticalRatioMaximum; }
+        }
 
         // 2026-10-01: IMU/RPY 설정값도 장비 허용 범위에서만 입력되도록 보정한다.
         private const double RpySignedMinimumInput = -180.0;
@@ -117,10 +122,12 @@ namespace OpenCvWpfTracking
             if (!(sender is TextBox textBox))
             {
                 e.Handled = true;
+
                 return;
             }
 
             string previewText = CreatePreviewText(textBox, e.Text);
+
             e.Handled = !Regex.IsMatch(previewText, @"^-?\d{0,3}(\.\d{0,2})?$");
         }
 
@@ -136,10 +143,12 @@ namespace OpenCvWpfTracking
             if (!(sender is TextBox textBox))
             {
                 e.Handled = true;
+
                 return;
             }
 
             string previewText = CreatePreviewText(textBox, e.Text);
+
             e.Handled = !Regex.IsMatch(previewText, @"^\d{0,4}$");
         }
 
@@ -163,10 +172,12 @@ namespace OpenCvWpfTracking
             if (!(sender is TextBox textBox))
             {
                 e.Handled = true;
+
                 return;
             }
 
             string previewText = CreatePreviewText(textBox, e.Text);
+
             e.Handled = !Regex.IsMatch(previewText, @"^\d{0,2}(\.\d{0,1})?$");
         }
 
@@ -179,10 +190,12 @@ namespace OpenCvWpfTracking
             if (!(sender is TextBox textBox))
             {
                 e.Handled = true;
+
                 return;
             }
 
             string previewText = CreatePreviewText(textBox, e.Text);
+
             e.Handled = !Regex.IsMatch(previewText, @"^\d{0,3}(\.\d{0,2})?$");
         }
 
@@ -284,9 +297,13 @@ namespace OpenCvWpfTracking
         private static string CreatePreviewText(TextBox textBox, string inputText)
         {
             string currentText = textBox.Text ?? string.Empty;
+
             int selectionStart = textBox.SelectionStart;
+
             int selectionLength = textBox.SelectionLength;
+
             string removedSelectionText = currentText.Remove(selectionStart, selectionLength);
+
             return removedSelectionText.Insert(selectionStart, inputText ?? string.Empty);
         }
 
@@ -311,8 +328,11 @@ namespace OpenCvWpfTracking
             }
 
             double clampedValue = Math.Max(minimum, Math.Min(maximum, parsedValue));
+
             clampedValue = Math.Round(clampedValue, decimalDigits, MidpointRounding.AwayFromZero);
+
             textBox.Text = clampedValue.ToString("F" + decimalDigits);
+
             UpdateTextBindingSource(textBox);
         }
 
@@ -334,7 +354,9 @@ namespace OpenCvWpfTracking
             }
 
             int clampedValue = Math.Max(minimum, Math.Min(maximum, parsedValue));
+
             textBox.Text = clampedValue.ToString();
+
             UpdateTextBindingSource(textBox);
         }
 
@@ -353,8 +375,6 @@ namespace OpenCvWpfTracking
 
             bindingExpression.UpdateSource();
         }
-
         #endregion
-
     }
 }

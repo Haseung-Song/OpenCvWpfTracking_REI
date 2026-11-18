@@ -17,7 +17,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// Header(0xFF)와 Function을 확인하여 Legacy 12Byte 또는
     /// Function 0x23~0x30 및 0x32~0x34의 Payload 길이 기반으로 분리한다.
     /// </summary>
-    public class LAPacketParser
+    public class LAPacketParser : ILAPacketParserPort
     {
 
         #region [상수]
@@ -66,7 +66,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// Parse / Reset 동시 호출 방지용 Lock
         /// </summary>
-        private readonly object _bufferLock = new object ();
+        private readonly object _bufferLock = new object();
 
         #endregion
 
@@ -93,34 +93,33 @@ namespace OpenCvWpfTracking.Services.Communication
                 {
                     int headerIndex = FindHeaderIndex();
 
-                    /// <summary>
-                    /// Header가 없으면 현재 Buffer는 Packet으로 사용할 수 없다.
-                    /// 다음 수신 데이터에 이전 쓰레기 byte를 연결하지 않도록 제거한다.
-                    /// </summary>
+                    // Header가 없으면 현재 Buffer는 Packet으로 사용할 수 없다.
+                    // 다음 수신 데이터에 이전 쓰레기 byte를 연결하지 않도록 제거한다.
+                    //
                     if (headerIndex < 0)
                     {
                         _receiveBuffer.Clear();
+
                         break;
                     }
 
-                    /// <summary>
-                    /// Header 앞쪽에 불필요한 byte가 존재하면 제거한다.
-                    /// </summary>
+                    // Header 앞쪽에 불필요한 byte가 존재하면 제거한다.
+                    //
                     if (headerIndex > 0)
                     {
                         _receiveBuffer.RemoveRange(0, headerIndex);
                     }
 
-                    /// <summary>
-                    /// Header와 Function이 아직 모이지 않은 경우
-                    /// 다음 TCP 수신까지 Buffer를 유지한다.
-                    /// </summary>
+                    // Header와 Function이 아직 모이지 않은 경우
+                    // 다음 TCP 수신까지 Buffer를 유지한다.
+                    //
                     if (_receiveBuffer.Count < 2)
                     {
                         break;
                     }
 
                     int packetSize = LegacyPacketSize;
+
                     byte function = _receiveBuffer[1];
 
                     if (function == DevicePowerStatusFunction)
@@ -139,6 +138,7 @@ namespace OpenCvWpfTracking.Services.Communication
                         if (payloadLength > MaximumPayloadLength)
                         {
                             _receiveBuffer.RemoveAt(0);
+
                             continue;
                         }
 
@@ -151,22 +151,25 @@ namespace OpenCvWpfTracking.Services.Communication
                     }
 
                     byte[] packet = _receiveBuffer.GetRange(0, packetSize).ToArray();
+
                     bool isValid = ValidateChecksum(packet);
 
                     if (isValid)
                     {
                         packets.Add(new LaResponsePacket { RawData = packet, IsValid = true });
+
                         _receiveBuffer.RemoveRange(0, packetSize);
+
                         continue;
                     }
 
-                    /// <summary>
-                    /// Checksum이 맞지 않으면 현재 0xFF가 실제 Header가 아닐 수 있다.
-                    ///
-                    /// Buffer 전체를 버리지 않고 첫 byte만 제거한 뒤
-                    /// 다음 0xFF 위치에서 다시 Packet 조립을 시도한다.
-                    /// </summary>
+                    // Checksum이 맞지 않으면 현재 0xFF가 실제 Header가 아닐 수 있다.
+                    //
+                    // Buffer 전체를 버리지 않고 첫 byte만 제거한 뒤
+                    // 다음 0xFF 위치에서 다시 Packet 조립을 시도한다.
+                    //
                     packets.Add(new LaResponsePacket { RawData = packet, IsValid = false });
+
                     _receiveBuffer.RemoveAt(0);
                 }
             }
@@ -236,8 +239,6 @@ namespace OpenCvWpfTracking.Services.Communication
 
             return sum == packet[packet.Length - 1];
         }
-
         #endregion
-
     }
 }

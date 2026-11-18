@@ -11,12 +11,12 @@ namespace OpenCvWpfTracking.Services.Communication
     /// <summary>
     /// LA가 내부적으로 연결하는 MCB의 유지보수 명령을 직접 송신한다.
     ///
-    /// Packet: AA AA Cmd1 Length ASCII-Data XOR
+    /// 패킷 예시: AA AA Cmd1 Length ASCII-Data XOR
     ///
     /// Pan  Cmd1 = 0x01
     /// Tilt Cmd1 = 0x02
     /// </summary>
-    public sealed class McbMaintenanceCommandService
+    public sealed class McbMaintenanceCommandService : IMcbMaintenanceCommandServicePort
     {
         private const int ConnectTimeoutMs = 1500;
 
@@ -78,6 +78,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 BuildCoolPacket(command1, "|2"),
                 BuildCoolPacket(command1, "(")
             };
+
             return SendPacketsAsync(ipAddress, port, packets, commandName, SetOriginInterPacketDelayMs, MotorEnableStabilizationMs);
         }
 
@@ -99,9 +100,13 @@ namespace OpenCvWpfTracking.Services.Communication
                 {
                     client.NoDelay = true;
                     client.SendTimeout = SendTimeoutMs;
+
                     ConsoleLogHelper.PrintLine();
+
                     Console.WriteLine($"[MCB DIRECT] {commandName} CONNECT : " + $"{ipAddress}:{port}");
+
                     Task connectTask = client.ConnectAsync(ipAddress, port);
+
                     Task completedTask = await Task.WhenAny(connectTask, Task.Delay(ConnectTimeoutMs));
 
                     if (completedTask != connectTask)
@@ -109,19 +114,26 @@ namespace OpenCvWpfTracking.Services.Communication
                         // 2026-09-29: Timeout으로 using TcpClient가 Dispose된 뒤
                         // ConnectAsync가 fault되어도 예외가 미관찰 상태로 남지 않게 한다.
                         ObserveTimedOutConnectTask(connectTask, commandName, ipAddress, port);
+
                         Console.WriteLine($"[MCB DIRECT] {commandName} FAILED : CONNECT TIMEOUT");
+
                         ConsoleLogHelper.PrintLine();
+
                         return false;
                     }
 
                     await connectTask;
+
                     using (NetworkStream stream = client.GetStream())
                     {
                         for (int index = 0; index < packets.Length; index++)
                         {
                             byte[] packet = packets[index];
+
                             await stream.WriteAsync(packet, 0, packet.Length);
+
                             await stream.FlushAsync();
+
                             PrintPacket(commandName, packet);
 
                             if (index < packets.Length - 1)
@@ -133,19 +145,24 @@ namespace OpenCvWpfTracking.Services.Communication
                         if (postSendDelayMs > 0)
                         {
                             Console.WriteLine($"[MCB DIRECT] {commandName} MOTOR ENABLE STABILIZING : " + $"{postSendDelayMs}ms");
+
                             await Task.Delay(postSendDelayMs);
                         }
                     }
                 }
 
                 Console.WriteLine($"[MCB DIRECT] {commandName} SEND COMPLETE");
+
                 ConsoleLogHelper.PrintLine();
+
                 return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[MCB DIRECT] {commandName} FAILED : " + ex.Message);
+
                 ConsoleLogHelper.PrintLine();
+
                 return false;
             }
             finally
@@ -159,17 +176,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private static void ObserveTimedOutConnectTask(Task connectTask, string commandName, string ipAddress, int port)
         {
-            _ = connectTask.ContinueWith(
-                faultedTask =>
+            _ = connectTask.ContinueWith(faultedTask =>
             {
                 Exception observedException = faultedTask.Exception;
-                Debug.WriteLine($"[MCB DIRECT CONNECT TIMEOUT CLEANUP] {commandName} / " +
-                    $"{ipAddress}:{port} / " + observedException?.GetBaseException().Message);
-            },
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default
-            );
+
+                Debug.WriteLine($"[MCB DIRECT CONNECT TIMEOUT CLEANUP] {commandName} / " + $"{ipAddress}:{port} / " + observedException?.GetBaseException().Message);
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -187,6 +199,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private static byte[] BuildTextPacket(byte command1, string commandText)
         {
             byte[] data = Encoding.ASCII.GetBytes(commandText);
+
             byte checksum = 0x00;
 
             foreach (byte value in data)
@@ -195,12 +208,19 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             byte[] packet = new byte[2 + 1 + 1 + data.Length + 1];
+
             packet[0] = 0xAA;
+
             packet[1] = 0xAA;
+
             packet[2] = command1;
+
             packet[3] = (byte)data.Length;
+
             Array.Copy(data, 0, packet, 4, data.Length);
+
             packet[packet.Length - 1] = checksum;
+
             return packet;
         }
 

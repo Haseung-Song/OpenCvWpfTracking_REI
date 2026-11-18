@@ -5173,9 +5173,9 @@
                                                                         HorizontalAlignment="Center"
                                                                         Margin="0,0,0,0">
 
-                                                                        <!-- 2026-09-17 실장비 확인:
-                                                                            Near(0x03)는 상태값 감소, Far(0x04)는 상태값 증가.
-                                                                            따라서 표시 기준 FOCUS +는 Far, FOCUS -는 Near로 연결한다. -->
+                                                                        <!-- WEB: FOCUS +는 Far, FOCUS -는 Near.
+                                                                            LA: 화면/수신 좌표 반전을 고려하여 ContinuousControlFeature에서
+                                                                            수동 명령만 교환한다(+는 0x03, -는 0x04). -->
                                                                         <Button Content="FOCUS +"
                                                                             Width="85"
                                                                             Margin="5"

@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version='1.0' encoding='utf-8'?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="15.0">
   <Import Project="packages\OpenCvSharp4.runtime.win.4.7.0.20230115\build\netstandard\OpenCvSharp4.runtime.win.props" Condition="Exists('packages\OpenCvSharp4.runtime.win.4.7.0.20230115\build\netstandard\OpenCvSharp4.runtime.win.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -16,8 +16,7 @@
     <WarningLevel>4</WarningLevel>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
+    <NuGetPackageImportStamp />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -77,28 +76,41 @@
     <Compile Include="Views\Video\PanoramaPresetOverlay.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.PanoramaPresets.cs" />
     <Compile Include="Views\Main\MainWindow.PanoramaPresets.cs" />
-    <Content Include="V34_변경안내.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="V34_변경안내.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Services\Communication\WebAgent\TelemetryClock.cs" />
     <Compile Include="Services\Communication\WebAgent\CameraFeatureProtocol.cs" />
     <Compile Include="Models\Main\CameraSpecialFeatureRow.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.SpecialFeatures.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.PresetLens.cs" />
-    <Compile Include="Views\Main\CameraSpecialControl.xaml.cs"><DependentUpon>CameraSpecialControl.xaml</DependentUpon></Compile>
-    <Page Include="Views\Main\CameraSpecialControl.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Compile Include="Views\Main\CameraSpecialControl.xaml.cs">
+      <DependentUpon>CameraSpecialControl.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Views\Main\CameraSpecialControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Compile Include="Services\Configuration\ControlTuning.cs" />
     <Compile Include="Services\Configuration\ZoomCalibrationCurve.cs" />
-    <Content Include="Config\ER-WATCHER1_ZoomCalibration.csv"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Config\ER-WATCHER1_ZoomCalibration.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Services\Input\GlobalControlKeyboard.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.InputCoordinator.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.CameraFeatureControl.cs" />
     <Compile Include="Views\Main\MainWindow.ControlUi.cs" />
     <Compile Include="Views\Main\CommunicationComboBoxLayout.cs" />
     <Compile Include="Views\Video\VideoShortcutGuide.cs" />
-    <Content Include="Config\ControlTuning.xml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Config\ControlTuning.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Services\Control\OpticalCenterCalibration.cs" />
     <Compile Include="Services\Control\OpticalDeviceIdentity.cs" />
     <Compile Include="Services\Configuration\ClickProjectionSettings.cs" />
-    <Content Include="Config\ClickProjection.xml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Config\ClickProjection.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="ViewModels\Main\MainViewModel.OpticalCenter.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.ScanTraversal.cs" />
     <Compile Include="Views\Video\InlineOpticalCalibration.cs" />
@@ -169,6 +181,39 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\WebAgentMotionFocusFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\WebAgentEquipmentFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\PanoramaReferenceFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\PanoramaPresetsFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\SpecialFeaturesFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\PresetLensFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\InputCoordinatorFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\CameraFeatureControlFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\OpticalCenterFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\ScanTraversalFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\RoutesFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\ZonesFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\AiFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\ContinuousControlFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\ControlAgentFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\WebAgentProtocolFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\FireEventsFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\EventAlertsFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\MoveControlFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\PanoramaFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\PositionFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\PresetStorageFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\PropertiesFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\RtspSettingsFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\RpySettingsFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\GpsSettingsFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\DevicePowerFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\SystemDateTimeFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\SmokeFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\SyncFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\ThermalFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\VideoFeatureContext.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\ScreenStateFeatureContext.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="FireCandidateValidator\FireCandidateValidator.csproj">
@@ -337,7 +382,6 @@
     <Content Include="FFmpeg\swscale-9.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <!-- 2026-10-02: 화각 동기화 실측 Anchor 및 역산 근거를 모든 빌드 산출물에 함께 배포한다. -->
     <Content Include="EO_IR_화각동기화_실측역산_적용정리_261002.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -353,12 +397,11 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="CopyFireDetectorTestProgram" AfterTargets="Build">
     <ItemGroup>
-      <!-- 출력 폴더에 남은 깨진 이름의 문서가 다시 배포되지 않도록 TXT는 명시적으로만 복사한다. -->
       <FireDetectorProgramFiles Include="$(MSBuildProjectDirectory)\FireCandidateValidator\bin\$(Platform)\$(Configuration)\**\*.*" Exclude="$(MSBuildProjectDirectory)\FireCandidateValidator\bin\$(Platform)\$(Configuration)\**\*.txt" />
       <FireDetectorProgramFiles Include="$(MSBuildProjectDirectory)\FireCandidateValidator\화재_연기_AI_영상처리_알고리즘 분석_260923.txt" />
     </ItemGroup>
     <Error Condition="!Exists('$(MSBuildProjectDirectory)\FireCandidateValidator\bin\$(Platform)\$(Configuration)\FireCandidateValidator.exe')" Text="FireCandidateValidator.exe was not built. Build the complete solution." />
-    <Copy SourceFiles="@(FireDetectorProgramFiles)" DestinationFiles="@(FireDetectorProgramFiles->'$(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FireDetectorProgramFiles)" DestinationFiles="@(FireDetectorProgramFiles-&gt;'$(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -366,4 +409,65 @@
     </PropertyGroup>
     <Error Condition="!Exists('packages\OpenCvSharp4.runtime.win.4.7.0.20230115\build\netstandard\OpenCvSharp4.runtime.win.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\OpenCvSharp4.runtime.win.4.7.0.20230115\build\netstandard\OpenCvSharp4.runtime.win.props'))" />
   </Target>
+  <ItemGroup>
+    <Compile Include="ViewModels\Main\Features\WebAgentMotionFocusFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\WebAgentEquipmentFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\PanoramaReferenceFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\PanoramaPresetsFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\SpecialFeaturesFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\PresetLensFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\InputCoordinatorFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\CameraFeatureControlFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\OpticalCenterFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\ScanTraversalFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\RoutesFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\ZonesFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\AiFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\ContinuousControlFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\ControlAgentFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\WebAgentProtocolFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\FireEventsFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\EventAlertsFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\MoveControlFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\PanoramaFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\PositionFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\PresetStorageFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\PropertiesFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\RtspSettingsFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\RpySettingsFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\GpsSettingsFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\DevicePowerFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\SystemDateTimeFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\SmokeFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\SyncFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\ThermalFeature.cs" />
+    <Compile Include="ViewModels\Main\Features\VideoFeature.cs" />
+<Compile Include="ViewModels\Main\Features\VideoPerformanceRecorder.cs" />
+    <Compile Include="ViewModels\Main\Features\ScreenStateFeature.cs" />
+    <Compile Include="ViewModels\Main\MainViewModel.FeatureComposition.cs" />
+<Compile Include="ViewModels\Main\FeatureAdapters\FeatureCallbacks.cs" />
+<Compile Include="ViewModels\Main\FeatureAdapters\FeatureRuntimeServices.cs" />
+<Compile Include="ViewModels\Main\FeatureAdapters\FeatureComposition.cs" />
+<Compile Include="ViewModels\Main\FeatureAdapters\PropertyChangeCoordinator.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Services\Contracts\IFFmpegDecoderServicePort.cs" />
+    <Compile Include="Services\Contracts\ITcpClientServicePort.cs" />
+    <Compile Include="Services\Contracts\IControlCommandServicePort.cs" />
+    <Compile Include="Services\Contracts\IMcbMaintenanceCommandServicePort.cs" />
+    <Compile Include="Services\Contracts\IWebAgentZoomControlServicePort.cs" />
+    <Compile Include="Services\Contracts\IWebAgentThermalPaletteServicePort.cs" />
+    <Compile Include="Services\Contracts\ICtecCameraCommandServicePort.cs" />
+    <Compile Include="Services\Contracts\ICtecCameraResponseServicePort.cs" />
+    <Compile Include="Services\Contracts\IAiDetectorClientServicePort.cs" />
+    <Compile Include="Services\Contracts\IAiDetectorPacketParserPort.cs" />
+    <Compile Include="Services\Contracts\IAiDetectorPacketBuilderPort.cs" />
+    <Compile Include="Services\Contracts\IFieldOfViewSyncServicePort.cs" />
+    <Compile Include="Services\Contracts\ILAPacketParserPort.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="리팩터링_통합안내_261118.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

@@ -3,7 +3,7 @@
 namespace OpenCvWpfTracking.Services.Communication.WebAgent
 {
     /// <summary>
-    /// [Environment Equipment / Web Agent]
+    /// [환경 장비 / 웹 에이전트]
     /// EO / IR Zoom Position 제어 Adapter
     ///
     /// 환경장비에서 사용하는 공통 Position 범위:
@@ -12,7 +12,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
     /// ViewModel이 기존 장비 Packet 구현에 직접 의존하지 않도록
     /// Web Agent 기준의 Zoom 제어 진입점을 별도로 제공한다.
     /// </summary>
-    public sealed class WebAgentZoomControlService
+    public sealed class WebAgentZoomControlService : IWebAgentZoomControlServicePort
     {
         private readonly ControlCommandService _controlCommandService;
 
@@ -38,7 +38,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             }
 
             bool eoResult = _controlCommandService.EoZoomGoPosition(ClampPosition(eoPosition));
+
             bool irResult = _controlCommandService.IrZoomGoPosition(irRawPosition);
+
             return eoResult && irResult;
         }
 
@@ -57,8 +59,11 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             }
 
             short safePosition = ClampPosition(position);
+
             bool eoResult = _controlCommandService.EoZoomGoPosition(safePosition);
+
             bool irResult = _controlCommandService.IrZoomGoPosition(safePosition);
+
             return eoResult && irResult;
         }
 
@@ -99,6 +104,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             }
 
             ConsoleLogHelper.Warning("WEB AGENT IR ZOOM", $"RESULT=INVALID_POSITION / CMD2=0xB7 / POSITION={position} / RANGE=0~1000");
+
             return false;
         }
 

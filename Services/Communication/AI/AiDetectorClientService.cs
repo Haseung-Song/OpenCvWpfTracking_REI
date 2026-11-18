@@ -20,7 +20,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     /// - 이 클래스는 [Packet] 내용을 해석하지 않는다.
     /// - [Packet] 해석은 [AiDetectorPacketParser]가 담당한다.
     /// </summary>
-    public class AiDetectorClientService
+    public class AiDetectorClientService : IAiDetectorClientServicePort
     {
 
         #region [필드]
@@ -30,7 +30,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         /// </summary>
         private TcpClient _tcpClient;
 
-        private readonly object _connectionSync = new object ();
+        private readonly object _connectionSync = new object();
 
         private long _connectionGeneration;
 
@@ -89,7 +89,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             get
             {
                 lock (_connectionSync)
+                {
                     return _tcpClient != null && _tcpClient.Connected && _networkStream != null;
+                }
             }
         }
 
@@ -107,11 +109,15 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public async Task<bool> ConnectAsync(string ip, int port)
         {
             TcpClient tcpClient = null;
+
             long generation;
+
             lock (_connectionSync)
             {
                 if (IsConnected)
+                {
                     return true;
+                }
 
                 generation = ++_connectionGeneration;
             }
@@ -119,50 +125,64 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             try
             {
                 ConsoleLogHelper.PrintLine();
+
                 Console.WriteLine("[AI TCP] Connect Try...");
+
                 Console.WriteLine($"[AI TCP] Target : {ip}:{port}");
+
                 Console.WriteLine();
+
                 tcpClient = new TcpClient();
+
                 var connect = tcpClient.ConnectAsync(ip, port);
 
                 if (await Task.WhenAny(connect, Task.Delay(1500)) != connect)
                 {
-                    _ = connect.ContinueWith(
-                        t =>
+                    _ = connect.ContinueWith(t =>
                     {
                         var observed = t.Exception;
-                    },
-                        TaskContinuationOptions.OnlyOnFaulted
-                    );
+                    }, TaskContinuationOptions.OnlyOnFaulted);
+
                     tcpClient.Close();
+
                     return false;
                 }
 
                 await connect;
+
                 lock (_connectionSync)
                 {
                     if (generation != _connectionGeneration)
                     {
                         tcpClient.Close();
+
                         return false;
                     }
 
                     _tcpClient = tcpClient;
+
                     _networkStream = tcpClient.GetStream();
+
                     _cts = new CancellationTokenSource();
+
                     // 각 수신 작업의 스트림·취소 토큰을 고정해 이전 작업이 새 세션 소켓을 읽지 않게 한다.
                     var stream = _networkStream;
+
                     var token = _cts.Token;
+
                     _ = Task.Run(() => ReceiveLoopAsync(stream, token, generation));
                 }
 
                 Console.WriteLine("[AI TCP] Connect Success.");
+
                 ConsoleLogHelper.PrintLine();
+
                 return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("[AI TCP ERROR] Connect Failed : " + ex.Message);
+
                 ConsoleLogHelper.PrintLine();
 
                 try
@@ -194,24 +214,27 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             if (_isReconnectLoopStarted)
             {
                 ConsoleLogHelper.PrintLine();
+
                 Console.WriteLine("[AI TCP] Auto Reconnect Already Running.");
+
                 return;
             }
 
             _isReconnectLoopStarted = true;
             _isReconnectRunning = true;
+
             ConsoleLogHelper.PrintLine();
+
             Console.WriteLine("[AI TCP] Auto Reconnect Start.");
 
             while (_isReconnectRunning)
             {
-                /// <summary>
-                /// 현재 연결이 끊긴 상태일 때만
-                /// [AI Detector Agent] 재연결을 시도한다.
-                ///
-                /// 연결 성공 후, [IsConnected]가 true이므로
-                /// 추가 [Connect] 시도 없이 상태만 유지한다.
-                /// </summary>
+                // 현재 연결이 끊긴 상태일 때만
+                // [AI Detector Agent] 재연결을 시도한다.
+                //
+                // 연결 성공 후, [IsConnected]가 true이므로
+                // 추가 [Connect] 시도 없이 상태만 유지한다.
+                //
                 if (!IsConnected)
                 {
                     bool connected = await ConnectAsync(ip, port);
@@ -232,6 +255,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             }
 
             _isReconnectLoopStarted = false;
+
             Console.WriteLine("[AI TCP] Auto Reconnect Stop.");
         }
 
@@ -245,11 +269,13 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         {
             // [AI] [Detector] [TCP] 연결 종료 및 리소스 정리
             Disconnect();
-            /// <summary>
-            /// 기존 [Auto Reconnect] 루프가 종료될 시간을 짧게 확보한다.
-            /// </summary>
+
+            // 기존 [Auto Reconnect] 루프가 종료될 시간을 짧게 확보한다.
+            //
             await Task.Delay(300);
+
             _isReconnectLoopStarted = false;
+
             await StartAutoReconnectAsync(ip, port, retryIntervalMs);
         }
 
@@ -261,7 +287,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public void StopAutoReconnect()
         {
             _isReconnectRunning = false;
+
             ConsoleLogHelper.PrintLine();
+
             Console.WriteLine("[AI TCP] Auto Reconnect Stop Request.");
         }
 
@@ -281,6 +309,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         private async Task ReceiveLoopAsync(NetworkStream stream, CancellationToken token, long generation)
         {
             byte[] buffer = new byte[4096];
+
             var receiveBuffer = new List<byte>();
 
             try
@@ -293,15 +322,20 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                     if (readSize <= 0)
                     {
                         Console.WriteLine("[AI TCP] Server Disconnected.");
+
                         break;
                     }
 
                     // 실제 수신된 [byte]만 누적 [Buffer]에 추가
                     if (token.IsCancellationRequested || generation != Interlocked.Read(ref _connectionGeneration))
+                    {
                         break;
+                    }
 
                     for (int i = 0; i < readSize; i++)
+                    {
                         receiveBuffer.Add(buffer[i]);
+                    }
 
                     // 누적 [Buffer]에서 완성 [Packet] 분리
                     List<byte[]> packets = _packetParser.ExtractPackets(receiveBuffer);
@@ -312,7 +346,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                         // [Raw HEX Log]는 [Console] 도배 방지를 위해 기본 출력하지 않는다.
                         // 필요 시 디버깅할 때만 주석 해제한다.
                         if (!token.IsCancellationRequested && generation == Interlocked.Read(ref _connectionGeneration))
+                        {
                             PacketReceived?.Invoke(packet, DateTime.Now);
+                        }
                     }
                 }
             }
@@ -325,12 +361,17 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             catch (Exception ex)
             {
                 ConsoleLogHelper.PrintLine();
+
                 Console.WriteLine("[AI TCP ERROR] Receive Failed : " + ex.Message);
             }
 
             lock (_connectionSync)
+            {
                 if (generation == _connectionGeneration)
+                {
                     Disconnect();
+                }
+            }
         }
 
         /// <summary>
@@ -359,23 +400,32 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             if (_tcpClient == null || !_tcpClient.Connected)
             {
                 ConsoleLogHelper.PrintLine();
+
                 Console.WriteLine("[AI TCP] Send Failed : Not Connected");
+
                 ConsoleLogHelper.PrintLine();
+
                 return false;
             }
 
             try
             {
                 NetworkStream stream = _tcpClient.GetStream();
+
                 await stream.WriteAsync(packet, 0, packet.Length);
+
                 Console.WriteLine("[AI TCP SEND] " + BitConverter.ToString(packet));
+
                 ConsoleLogHelper.PrintLine();
+
                 return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("[AI TCP ERROR] Send Failed : " + ex.Message);
+
                 ConsoleLogHelper.PrintLine();
+
                 return false;
             }
         }
@@ -396,28 +446,34 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 try
                 {
                     _cts?.Cancel();
+
                     NetworkStream stream = _networkStream;
+
                     TcpClient client = _tcpClient;
+
                     _networkStream = null;
                     _tcpClient = null;
+
                     stream?.Close();
+
                     client?.Close();
                 }
                 catch
                 {
-                // 종료 과정에서 발생하는 예외는 무시한다.
+                    // 종료 과정에서 발생하는 예외는 무시한다.
                 }
                 finally
                 {
                     _cts?.Dispose();
+
                     _cts = null;
+
                     ConsoleLogHelper.PrintLine();
+
                     Console.WriteLine("[AI TCP] Disconnected.");
                 }
             }
         }
-
         #endregion
-
     }
 }

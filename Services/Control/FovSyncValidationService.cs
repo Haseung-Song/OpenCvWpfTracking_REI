@@ -23,6 +23,7 @@ namespace OpenCvWpfTracking.Services.Control
             }
 
             double eoPixelWidth = Math.Abs(eoRightX - eoLeftX);
+
             double irPixelWidth = Math.Abs(irRightX - irLeftX);
 
             if (eoPixelWidth < 1.0 || irPixelWidth < 1.0)
@@ -31,17 +32,12 @@ namespace OpenCvWpfTracking.Services.Control
             }
 
             double eoNormalizedWidth = eoPixelWidth / eoFrameWidth;
+
             double irNormalizedWidth = irPixelWidth / irFrameWidth;
+
             double errorPercent = Math.Abs(eoNormalizedWidth - irNormalizedWidth) / eoNormalizedWidth * 100.0;
-            return new FovSyncValidationResult(
-                level,
-                eoPixelWidth,
-                irPixelWidth,
-                eoNormalizedWidth,
-                irNormalizedWidth,
-                errorPercent,
-                errorPercent <= PassThresholdPercent
-            );
+
+            return new FovSyncValidationResult(level, eoPixelWidth, irPixelWidth, eoNormalizedWidth, irNormalizedWidth, errorPercent, errorPercent <= PassThresholdPercent);
         }
     }
 

@@ -17,7 +17,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// 4. 연결 종료 감지 및 상위 계층 재연결 요청
     /// 5. Disconnect 시 Socket / Stream / Token 리소스 정리
     /// </summary>
-    public class TcpClientService
+    public class TcpClientService : ITcpClientServicePort
     {
 
         #region [상수]
@@ -38,7 +38,6 @@ namespace OpenCvWpfTracking.Services.Communication
         #endregion
 
         #region [필드]
-
         private TcpClient _tcpClient;
 
         private NetworkStream _networkStream;
@@ -52,7 +51,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// [TCP] 연결 / 송신 / 해제 동기화 객체
         /// </summary>
-        private readonly object _socketLock = new object ();
+        private readonly object _socketLock = new object();
 
         /// <summary>
         /// 마지막 수신 Log 출력 시간
@@ -70,7 +69,6 @@ namespace OpenCvWpfTracking.Services.Communication
         #endregion
 
         #region [이벤트]
-
         public event Action<byte[], DateTime> MessageReceived;
 
         /// <summary>
@@ -83,7 +81,6 @@ namespace OpenCvWpfTracking.Services.Communication
         #endregion
 
         #region [속성]
-
         public bool IsConnected
         {
             get
@@ -110,67 +107,93 @@ namespace OpenCvWpfTracking.Services.Communication
             if (IsConnected)
             {
                 Console.WriteLine("[TCP] Already Connected.");
+
                 return true;
             }
 
             ConsoleLogHelper.InfoSection("TCP", "Connect Try...", string.Empty, $"TARGET : {ip}:{port}");
+
             TcpClient newClient = new TcpClient
             {
                 NoDelay = true,
                 SendTimeout = SEND_TIMEOUT_MS
             };
+
             // 연결 해제는 수신 루프뿐 아니라 진행 중인 연결 시도도 무효화한다.
             long connectGeneration;
+
             lock (_socketLock)
+            {
                 connectGeneration = ++_sessionGeneration;
+            }
 
             try
             {
                 Task connectTask = newClient.ConnectAsync(ip, port);
+
                 Task completedTask = await Task.WhenAny(connectTask, Task.Delay(CONNECT_TIMEOUT_MS));
 
                 if (completedTask != connectTask)
                 {
                     ConsoleLogHelper.StateSection("TCP", "Connect Failed", string.Empty, "REASON : Timeout", $"TARGET : {ip}:{port}");
+
                     // 2026-09-29: Timeout 뒤 Socket을 닫으면 진행 중인
                     // ConnectAsync가 나중에 fault될 수 있다. 해당 예외를 반드시
                     // 관찰하여 Finalizer Thread의 UnobservedTaskException을 막는다.
                     ObserveTimedOutConnectTask(connectTask, $"TCP {ip}:{port}");
+
                     newClient.Close();
+
                     newClient.Dispose();
+
                     return false;
                 }
 
                 await connectTask;
+
                 long sessionGeneration;
+
                 CancellationToken receiveToken;
+
                 lock (_socketLock)
                 {
                     if (connectGeneration != _sessionGeneration)
                     {
                         newClient.Close();
+
                         newClient.Dispose();
+
                         return false;
                     }
 
                     CleanupSocketInternal();
+
                     sessionGeneration = ++_sessionGeneration;
+
                     _tcpClient = newClient;
+
                     _networkStream = _tcpClient.GetStream();
+
                     _cts = new CancellationTokenSource();
+
                     receiveToken = _cts.Token;
                     _isManualDisconnect = false;
+
                     _receiveLoopTask = Task.Run(() => ReceiveLoopAsync(receiveToken, sessionGeneration));
                 }
 
                 ConsoleLogHelper.StateSection("TCP", "Connect Success", string.Empty, $"TARGET : {ip}:{port}");
+
                 return true;
             }
             catch (Exception ex)
             {
                 newClient.Close();
+
                 newClient.Dispose();
+
                 ConsoleLogHelper.StateSection("TCP", "Connect Failed", string.Empty, $"REASON : {ex.Message}", $"TARGET : {ip}:{port}");
+
                 return false;
             }
         }
@@ -180,16 +203,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private static void ObserveTimedOutConnectTask(Task connectTask, string connectionName)
         {
-            _ = connectTask.ContinueWith(
-                faultedTask =>
+            _ = connectTask.ContinueWith(faultedTask =>
             {
                 Exception observedException = faultedTask.Exception;
+
                 Debug.WriteLine($"[TCP CONNECT TIMEOUT CLEANUP] {connectionName} / " + observedException?.GetBaseException().Message);
-            },
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default
-            );
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         #endregion
@@ -204,6 +223,7 @@ namespace OpenCvWpfTracking.Services.Communication
             if (data == null || data.Length == 0)
             {
                 Console.WriteLine("[TCP SEND] Invalid Packet.");
+
                 return false;
             }
 
@@ -214,17 +234,22 @@ namespace OpenCvWpfTracking.Services.Communication
                     if (!CanSend())
                     {
                         Console.WriteLine("[TCP SEND] Not Connected.");
+
                         return false;
                     }
 
                     _networkStream.Write(data, 0, data.Length);
+
                     _networkStream.Flush();
+
                     PrintHexData("[TCP SEND]", data);
+
                     return true;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("[TCP ERROR] Send Failed : " + ex.Message);
+
                     return false;
                 }
             }
@@ -248,6 +273,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private async Task ReceiveLoopAsync(CancellationToken token, long sessionGeneration)
         {
             byte[] buffer = new byte[2048];
+
             bool shouldNotifyConnectionClosed = false;
 
             try
@@ -255,6 +281,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 while (!token.IsCancellationRequested)
                 {
                     NetworkStream stream;
+
                     lock (_socketLock)
                     {
                         stream = _networkStream;
@@ -270,44 +297,56 @@ namespace OpenCvWpfTracking.Services.Communication
                     if (readSize <= 0)
                     {
                         Console.WriteLine("[TCP] Server Disconnected.");
+
                         shouldNotifyConnectionClosed = true;
+
                         break;
                     }
 
                     if (token.IsCancellationRequested || sessionGeneration != Interlocked.Read(ref _sessionGeneration))
+                    {
                         break;
+                    }
 
                     byte[] receivedData = CopyReceivedData(buffer, readSize);
+
                     PrintReceiveLogIfNeeded(receivedData);
+
                     RaiseMessageReceived(receivedData);
                 }
             }
             catch (OperationCanceledException)
             {
-            // 사용자가 연결 해제를 요청한 정상 종료 흐름
+                // 사용자가 연결 해제를 요청한 정상 종료 흐름
             }
             catch (ObjectDisposedException)
             {
-            // Disconnect 중 Stream 종료로 발생할 수 있는 정상 흐름
+                // Disconnect 중 Stream 종료로 발생할 수 있는 정상 흐름
             }
             catch (Exception ex)
             {
                 Console.WriteLine("[TCP ERROR] Receive Failed : " + ex.Message);
+
                 shouldNotifyConnectionClosed = true;
             }
             finally
             {
                 bool isManualDisconnect;
+
                 bool isCurrentSession;
+
                 lock (_socketLock)
                 {
                     // 2026-09-17: 이전 ReceiveLoop의 finally가 새 연결의
                     // NetworkStream을 닫는 재연결 Race를 차단한다.
                     isCurrentSession = sessionGeneration == _sessionGeneration;
+
                     isManualDisconnect = _isManualDisconnect;
 
                     if (isCurrentSession)
+                    {
                         CleanupSocketInternal();
+                    }
                 }
 
                 if (isCurrentSession && shouldNotifyConnectionClosed && !isManualDisconnect)
@@ -323,7 +362,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private byte[] CopyReceivedData(byte[] buffer, int readSize)
         {
             byte[] receivedData = new byte[readSize];
+
             Array.Copy(buffer, receivedData, readSize);
+
             return receivedData;
         }
 
@@ -338,6 +379,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             PrintReceivePackets(receivedData);
+
             _lastRecvLogTime = DateTime.Now;
         }
 
@@ -409,11 +451,15 @@ namespace OpenCvWpfTracking.Services.Communication
         public async Task DisconnectAsync()
         {
             Task receiveLoop;
+
             lock (_socketLock)
             {
                 _isManualDisconnect = true;
+
                 ++_sessionGeneration;
+
                 receiveLoop = _receiveLoopTask;
+
                 CleanupSocketInternal();
             }
 
@@ -423,6 +469,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             Console.WriteLine("[TCP] Disconnected.");
+
             Console.WriteLine();
         }
 
@@ -445,6 +492,7 @@ namespace OpenCvWpfTracking.Services.Communication
             try
             {
                 _networkStream?.Close();
+
                 _networkStream?.Dispose();
             }
             catch (Exception ex)
@@ -455,6 +503,7 @@ namespace OpenCvWpfTracking.Services.Communication
             try
             {
                 _tcpClient?.Close();
+
                 _tcpClient?.Dispose();
             }
             catch (Exception ex)
@@ -463,12 +512,11 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             _cts?.Dispose();
+
             _cts = null;
             _networkStream = null;
             _tcpClient = null;
         }
-
         #endregion
-
     }
 }

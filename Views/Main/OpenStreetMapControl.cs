@@ -113,7 +113,9 @@ namespace OpenCvWpfTracking
             ClipToBounds = true;
             Background = Brushes.Black;
             Focusable = true;
+
             _tileCacheRoot = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCvWpfTracking", "MapTiles");
+
             // Drag/Zoom 입력마다 Canvas를 즉시 재구성하면 타일이 서로 다른
             // 배율로 섞여 보이고 UI Thread가 과도하게 점유된다. 짧게 묶어서
             // 마지막 View만 렌더링한다.
@@ -121,11 +123,14 @@ namespace OpenCvWpfTracking
             {
                 Interval = TimeSpan.FromMilliseconds(DragRenderIntervalMilliseconds)
             };
+
             _renderDebounceTimer.Tick += RenderDebounceTimer_Tick;
+
             _root = new Grid
             {
                 Background = Brushes.Black
             };
+
             _fallbackImage = new Image
             {
                 Stretch = Stretch.UniformToFill,
@@ -138,7 +143,7 @@ namespace OpenCvWpfTracking
             }
             catch
             {
-            // 대체 리소스가 없어도 지도 타일 표시는 계속 동작한다.
+                // 대체 리소스가 없어도 지도 타일 표시는 계속 동작한다.
             }
 
             _tileCanvas = new Canvas
@@ -146,7 +151,9 @@ namespace OpenCvWpfTracking
                 Background = Brushes.Transparent,
                 ClipToBounds = true
             };
+
             _markerLayer = BuildMarkerLayer();
+
             TextBlock attribution = new TextBlock
             {
                 Text = "© OpenStreetMap contributors",
@@ -158,6 +165,7 @@ namespace OpenCvWpfTracking
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(5)
             };
+
             _statusText = new TextBlock
             {
                 Text = "OPENSTREETMAP",
@@ -170,66 +178,78 @@ namespace OpenCvWpfTracking
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(6)
             };
+
             _root.Children.Add(_fallbackImage);
+
             _root.Children.Add(_tileCanvas);
+
             _root.Children.Add(_markerLayer);
+
             _root.Children.Add(attribution);
+
             _root.Children.Add(_statusText);
+
             Content = _root;
+
             Loaded += OpenStreetMapControl_Loaded;
+
             SizeChanged += OpenStreetMapControl_SizeChanged;
+
             MouseWheel += OpenStreetMapControl_MouseWheel;
+
             MouseLeftButtonDown += OpenStreetMapControl_MouseLeftButtonDown;
+
             MouseLeftButtonUp += OpenStreetMapControl_MouseLeftButtonUp;
+
             MouseMove += OpenStreetMapControl_MouseMove;
+
             MouseLeave += OpenStreetMapControl_MouseLeave;
+
             Unloaded += OpenStreetMapControl_Unloaded;
         }
 
         public double CenterLatitude
         {
-            get
-            {
-                return _centerLatitude;
-            }
+            get { return _centerLatitude; }
         }
 
         public double CenterLongitude
         {
-            get
-            {
-                return _centerLongitude;
-            }
+            get { return _centerLongitude; }
         }
 
         public int Zoom
         {
-            get
-            {
-                return _zoom;
-            }
+            get { return _zoom; }
         }
 
         // 중심·배율을 함께 초기화하고 초기화 값을 덮어쓸 수 있는 드래그 상태를 취소한다.
         public void ResetDefaultView()
         {
             EndDrag();
+
             SetView(DefaultLatitude, DefaultLongitude, DefaultZoom);
         }
 
         public void SetView(double latitude, double longitude, int zoom)
         {
             _centerLatitude = ClampLatitude(latitude);
+
             _centerLongitude = NormalizeLongitude(longitude);
+
             _zoom = Math.Max(MinimumZoom, Math.Min(MaximumZoom, zoom));
+
             RequestRender();
         }
 
         private static HttpClient CreateHttpClient()
         {
             HttpClient client = new HttpClient();
+
             client.Timeout = TimeSpan.FromSeconds(5);
+
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OpenCvWpfTracking-REI/1.0");
+
             return client;
         }
 
@@ -250,11 +270,13 @@ namespace OpenCvWpfTracking
                 IsHitTestVisible = false,
                 ClipToBounds = true
             };
+
             _companyMarker = new Grid
             {
                 Width = 170,
                 Height = 65
             };
+
             Canvas crosshair = new Canvas
             {
                 Width = 44,
@@ -262,6 +284,7 @@ namespace OpenCvWpfTracking
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top
             };
+
             Ellipse ring = new Ellipse
             {
                 Width = 28,
@@ -269,25 +292,35 @@ namespace OpenCvWpfTracking
                 Stroke = Brushes.Red,
                 StrokeThickness = 3
             };
+
             Canvas.SetLeft(ring, 8);
+
             Canvas.SetTop(ring, 8);
+
             Border vertical = new Border
             {
                 Width = 3,
                 Height = 44,
                 Background = Brushes.Red
             };
+
             Canvas.SetLeft(vertical, 20.5);
+
             Border horizontal = new Border
             {
                 Width = 44,
                 Height = 3,
                 Background = Brushes.Red
             };
+
             Canvas.SetTop(horizontal, 20.5);
+
             crosshair.Children.Add(ring);
+
             crosshair.Children.Add(vertical);
+
             crosshair.Children.Add(horizontal);
+
             Border labelBorder = new Border
             {
                 Background = new SolidColorBrush(Color.FromRgb(32, 53, 61)),
@@ -298,6 +331,7 @@ namespace OpenCvWpfTracking
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Bottom
             };
+
             labelBorder.Child = new TextBlock
             {
                 Text = "GLOBAL SYSTEMS",
@@ -305,9 +339,13 @@ namespace OpenCvWpfTracking
                 FontWeight = FontWeights.Bold,
                 FontSize = 14
             };
+
             _companyMarker.Children.Add(crosshair);
+
             _companyMarker.Children.Add(labelBorder);
+
             layer.Children.Add(_companyMarker);
+
             return layer;
         }
 
@@ -325,29 +363,34 @@ namespace OpenCvWpfTracking
             }
 
             double markerWorldX;
+
             double markerWorldY;
+
             LatLonToWorldPixel(DefaultLatitude, DefaultLongitude, _zoom, out markerWorldX, out markerWorldY);
+
             double markerScreenX = markerWorldX - viewLeftWorld;
+
             double markerScreenY = markerWorldY - viewTopWorld;
+
             // [2026-08-24] 지도 축척에 맞춰 회사 Marker도 함께 확대/축소한다.
             double markerScale = Math.Max(0.45, Math.Min(1.35, 1.0 + ((_zoom - DefaultZoom) * 0.10)));
+
             _companyMarker.RenderTransformOrigin = new System.Windows.Point(0, 0);
+
             _companyMarker.RenderTransform = new ScaleTransform(markerScale, markerScale);
+
             // 지도 표식 그리드 크기는 170×65이다.
             // 44×44 십자선을 가로 중앙에 배치한다.
             // 그리드 기준 십자선 중심은 가로 85, 세로 22이다.
             Canvas.SetLeft(_companyMarker, markerScreenX - (85.0 * markerScale));
+
             Canvas.SetTop(_companyMarker, markerScreenY - (22.0 * markerScale));
         }
 
         private void OpenStreetMapControl_Loaded(object sender, RoutedEventArgs e)
         {
-            Log.Information(
-                "[MAP] OpenStreetMap Loaded / CENTER=({Latitude:F6}, {Longitude:F6}) / ZOOM={Zoom}",
-                _centerLatitude,
-                _centerLongitude,
-                _zoom
-            );
+            Log.Information("[MAP] OpenStreetMap Loaded / CENTER=({Latitude:F6}, {Longitude:F6}) / ZOOM={Zoom}", _centerLatitude, _centerLongitude, _zoom);
+
             RequestRender();
         }
 
@@ -359,6 +402,7 @@ namespace OpenCvWpfTracking
         private void OpenStreetMapControl_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             int delta = e.Delta > 0 ? 1 : -1;
+
             int newZoom = Math.Max(MinimumZoom, Math.Min(MaximumZoom, _zoom + delta));
 
             if (newZoom == _zoom)
@@ -367,15 +411,13 @@ namespace OpenCvWpfTracking
             }
 
             int previousZoom = _zoom;
+
             _zoom = newZoom;
-            Log.Information(
-                "[MAP] Zoom Changed / {PreviousZoom} -> {CurrentZoom} / CENTER=({Latitude:F6}, {Longitude:F6})",
-                previousZoom,
-                _zoom,
-                _centerLatitude,
-                _centerLongitude
-            );
+
+            Log.Information("[MAP] Zoom Changed / {PreviousZoom} -> {CurrentZoom} / CENTER=({Latitude:F6}, {Longitude:F6})", previousZoom, _zoom, _centerLatitude, _centerLongitude);
+
             RequestWheelRender();
+
             e.Handled = true;
         }
 
@@ -387,10 +429,14 @@ namespace OpenCvWpfTracking
             }
 
             Focus();
+
             _isDragging = true;
             _hasDragged = false;
+
             _dragStartPoint = e.GetPosition(this);
+
             LatLonToWorldPixel(_centerLatitude, _centerLongitude, _zoom, out _dragStartCenterWorldX, out _dragStartCenterWorldY);
+
             CaptureMouse();
         }
 
@@ -402,7 +448,9 @@ namespace OpenCvWpfTracking
             }
 
             Point currentPoint = e.GetPosition(this);
+
             double deltaX = currentPoint.X - _dragStartPoint.X;
+
             double deltaY = currentPoint.Y - _dragStartPoint.Y;
 
             if (Math.Abs(deltaX) >= 2.0 || Math.Abs(deltaY) >= 2.0)
@@ -411,8 +459,11 @@ namespace OpenCvWpfTracking
             }
 
             double newCenterWorldX = _dragStartCenterWorldX - deltaX;
+
             double newCenterWorldY = _dragStartCenterWorldY - deltaY;
+
             WorldPixelToLatLon(newCenterWorldX, newCenterWorldY, _zoom, out _centerLatitude, out _centerLongitude);
+
             RequestRender();
         }
 
@@ -445,15 +496,11 @@ namespace OpenCvWpfTracking
 
             if (_hasDragged)
             {
-                Log.Information(
-                    "[MAP] Drag End / CENTER=({Latitude:F6}, {Longitude:F6}) / ZOOM={Zoom}",
-                    _centerLatitude,
-                    _centerLongitude,
-                    _zoom
-                );
+                Log.Information("[MAP] Drag End / CENTER=({Latitude:F6}, {Longitude:F6}) / ZOOM={Zoom}", _centerLatitude, _centerLongitude, _zoom);
             }
 
             _hasDragged = false;
+
             // 마지막 Drag 좌표는 Debounce 대기 없이 확정하여 조작 종료 후
             // 지도가 즉시 선명해지도록 한다.
             RequestRenderImmediate();
@@ -471,6 +518,7 @@ namespace OpenCvWpfTracking
             if (!_renderDebounceTimer.IsEnabled)
             {
                 _renderDebounceTimer.Interval = TimeSpan.FromMilliseconds(DragRenderIntervalMilliseconds);
+
                 _renderDebounceTimer.Start();
             }
         }
@@ -486,9 +534,13 @@ namespace OpenCvWpfTracking
             // 휠 동작 중에도 중간 Zoom마다 타일 Canvas와 HTTP 작업을 만들었기 때문에
             // 실시간 이벤트 UI와 Dispatcher 시간을 경쟁했다.
             _renderCancellation.Cancel();
+
             ++_renderVersion;
+
             _renderDebounceTimer.Stop();
+
             _renderDebounceTimer.Interval = TimeSpan.FromMilliseconds(WheelRenderDebounceMilliseconds);
+
             _renderDebounceTimer.Start();
         }
 
@@ -500,12 +552,14 @@ namespace OpenCvWpfTracking
             }
 
             _renderDebounceTimer.Stop();
+
             StartLatestRender();
         }
 
         private void RenderDebounceTimer_Tick(object sender, EventArgs e)
         {
             _renderDebounceTimer.Stop();
+
             StartLatestRender();
         }
 
@@ -514,36 +568,55 @@ namespace OpenCvWpfTracking
             // 새 Drag/Zoom View가 확정되면 이전 HTTP/Cache 작업도 취소하여
             // 보이지 않을 타일 요청이 AI/영상처리 자원을 계속 점유하지 않게 한다.
             _renderCancellation.Cancel();
+
             _renderCancellation.Dispose();
+
             _renderCancellation = new CancellationTokenSource();
+
             RenderTilesAsync(++_renderVersion, _renderCancellation.Token);
         }
 
         private void OpenStreetMapControl_Unloaded(object sender, RoutedEventArgs e)
         {
             _renderDebounceTimer.Stop();
+
             _renderCancellation.Cancel();
+
             ++_renderVersion;
         }
 
         private async void RenderTilesAsync(long version, CancellationToken cancellationToken)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
+
             // 비동기 로딩 중 View가 바뀌어도 계산 기준이 섞이지 않도록
             // 이번 렌더링의 Zoom/크기를 Snapshot으로 고정한다.
             int renderZoom = _zoom;
+
             double renderWidth = ActualWidth;
+
             double renderHeight = ActualHeight;
+
             double centerWorldX;
+
             double centerWorldY;
+
             LatLonToWorldPixel(_centerLatitude, _centerLongitude, renderZoom, out centerWorldX, out centerWorldY);
+
             double viewLeftWorld = centerWorldX - renderWidth / 2.0;
+
             double viewTopWorld = centerWorldY - renderHeight / 2.0;
+
             int firstTileX = (int)Math.Floor(viewLeftWorld / TileSize);
+
             int firstTileY = (int)Math.Floor(viewTopWorld / TileSize);
+
             int lastTileX = (int)Math.Floor((viewLeftWorld + renderWidth) / TileSize);
+
             int lastTileY = (int)Math.Floor((viewTopWorld + renderHeight) / TileSize);
+
             int tileCount = 1 << renderZoom;
+
             // 현재 Canvas는 유지하고, 보이지 않는 준비 Canvas에 새 View를
             // 완성한 뒤 한 번에 교체한다. 확대 중 깨진 타일 모자이크를 방지한다.
             Canvas preparedCanvas = new Canvas
@@ -551,6 +624,7 @@ namespace OpenCvWpfTracking
                 Width = renderWidth,
                 Height = renderHeight
             };
+
             List<Task<bool>> tileTasks = new List<Task<bool>>();
 
             for (int tileY = firstTileY; tileY <= lastTileY; tileY++)
@@ -563,8 +637,11 @@ namespace OpenCvWpfTracking
                 for (int rawTileX = firstTileX; rawTileX <= lastTileX; rawTileX++)
                 {
                     int tileX = Mod(rawTileX, tileCount);
+
                     double left = rawTileX * TileSize - viewLeftWorld;
+
                     double top = tileY * TileSize - viewTopWorld;
+
                     Image tileImage = new Image
                     {
                         Width = TileSize,
@@ -572,10 +649,15 @@ namespace OpenCvWpfTracking
                         Stretch = Stretch.Fill,
                         SnapsToDevicePixels = true
                     };
+
                     RenderOptions.SetBitmapScalingMode(tileImage, BitmapScalingMode.LowQuality);
+
                     Canvas.SetLeft(tileImage, Math.Floor(left));
+
                     Canvas.SetTop(tileImage, Math.Floor(top));
+
                     preparedCanvas.Children.Add(tileImage);
+
                     tileTasks.Add(LoadTileIntoImageAsync(tileImage, renderZoom, tileX, tileY, version, cancellationToken));
                 }
             }
@@ -608,7 +690,9 @@ namespace OpenCvWpfTracking
                     while (preparedCanvas.Children.Count > 0)
                     {
                         UIElement child = preparedCanvas.Children[0];
+
                         preparedCanvas.Children.RemoveAt(0);
+
                         _tileCanvas.Children.Add(child);
                     }
 
@@ -622,31 +706,22 @@ namespace OpenCvWpfTracking
                 if (!_isInitialRenderCompleted)
                 {
                     _isInitialRenderCompleted = true;
+
                     InitialRenderCompleted?.Invoke(this, EventArgs.Empty);
-                    Log.Information(
-                        "[MAP] Initial View Ready / ZOOM={Zoom} / LOADED={Loaded}/{Total}",
-                        renderZoom,
-                        loadedTileCount,
-                        tileResults.Length
-                    );
+
+                    Log.Information("[MAP] Initial View Ready / ZOOM={Zoom} / LOADED={Loaded}/{Total}", renderZoom, loadedTileCount, tileResults.Length);
                 }
 
                 stopwatch.Stop();
 
                 if (stopwatch.ElapsedMilliseconds >= 250)
                 {
-                    Log.Information(
-                        "[MAP] Tile Render Completed / ZOOM={Zoom} / LOADED={Loaded}/{Total} / ELAPSED_MS={ElapsedMs}",
-                        renderZoom,
-                        loadedTileCount,
-                        tileResults.Length,
-                        stopwatch.ElapsedMilliseconds
-                    );
+                    Log.Information("[MAP] Tile Render Completed / ZOOM={Zoom} / LOADED={Loaded}/{Total} / ELAPSED_MS={ElapsedMs}", renderZoom, loadedTileCount, tileResults.Length, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException)
             {
-            // 최신 Drag/Zoom 요청이 이전 렌더링을 정상적으로 대체한 경우다.
+                // 최신 Drag/Zoom 요청이 이전 렌더링을 정상적으로 대체한 경우다.
             }
             catch (Exception ex)
             {
@@ -674,6 +749,7 @@ namespace OpenCvWpfTracking
                     if (_isTileFallbackLogged)
                     {
                         _isTileFallbackLogged = false;
+
                         Log.Information("[MAP] OpenStreetMap Tile Load Recovered");
                     }
 
@@ -690,9 +766,11 @@ namespace OpenCvWpfTracking
                 if (!_isTileFallbackLogged)
                 {
                     _isTileFallbackLogged = true;
+
                     Log.Warning(ex, "[MAP] OpenStreetMap Tile Load Failed / Static Map Fallback");
                 }
-            // 타일 레이어 뒤에 대체 지도를 유지한다.
+
+                // 타일 레이어 뒤에 대체 지도를 유지한다.
             }
 
             return false;
@@ -700,12 +778,7 @@ namespace OpenCvWpfTracking
 
         private async Task<byte[]> GetTileBytesAsync(int zoom, int x, int y, CancellationToken cancellationToken)
         {
-            string cachePath = System.IO.Path.Combine(
-                _tileCacheRoot,
-                zoom.ToString(CultureInfo.InvariantCulture),
-                x.ToString(CultureInfo.InvariantCulture),
-                y.ToString(CultureInfo.InvariantCulture) + ".png"
-            );
+            string cachePath = System.IO.Path.Combine(_tileCacheRoot, zoom.ToString(CultureInfo.InvariantCulture), x.ToString(CultureInfo.InvariantCulture), y.ToString(CultureInfo.InvariantCulture) + ".png");
 
             if (File.Exists(cachePath))
             {
@@ -717,12 +790,14 @@ namespace OpenCvWpfTracking
                 }
                 catch
                 {
-                // 캐시가 없거나 읽기에 실패하면 아래에서 네트워크 요청을 시도한다.
+                    // 캐시가 없거나 읽기에 실패하면 아래에서 네트워크 요청을 시도한다.
                 }
             }
 
             string tileUrl = string.Format(CultureInfo.InvariantCulture, "https://tile.openstreetmap.org/{0}/{1}/{2}.png", zoom, x, y);
+
             byte[] bytes;
+
             await TileDownloadGate.WaitAsync(cancellationToken);
 
             try
@@ -730,6 +805,7 @@ namespace OpenCvWpfTracking
                 using (HttpResponseMessage response = await HttpClient.GetAsync(tileUrl, cancellationToken))
                 {
                     response.EnsureSuccessStatusCode();
+
                     bytes = await response.Content.ReadAsByteArrayAsync();
                 }
             }
@@ -751,7 +827,7 @@ namespace OpenCvWpfTracking
             }
             catch
             {
-            // 캐시 저장 실패가 지도 표시를 막지 않게 한다.
+                // 캐시 저장 실패가 지도 표시를 막지 않게 한다.
             }
 
             return bytes;
@@ -760,12 +836,16 @@ namespace OpenCvWpfTracking
         private static BitmapImage CreateBitmap(byte[] bytes)
         {
             BitmapImage bitmap = new BitmapImage();
+
             using (MemoryStream stream = new MemoryStream(bytes, false))
             {
                 bitmap.BeginInit();
+
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.StreamSource = stream;
+
                 bitmap.EndInit();
+
                 bitmap.Freeze();
             }
 
@@ -775,27 +855,39 @@ namespace OpenCvWpfTracking
         private static void LatLonToWorldPixel(double latitude, double longitude, int zoom, out double worldX, out double worldY)
         {
             double safeLatitude = ClampLatitude(latitude);
+
             double normalizedLongitude = NormalizeLongitude(longitude);
+
             double scale = TileSize * (1 << zoom);
+
             worldX = (normalizedLongitude + 180.0) / 360.0 * scale;
+
             double sinLatitude = Math.Sin(safeLatitude * Math.PI / 180.0);
+
             double normalizedY = 0.5 - Math.Log((1.0 + sinLatitude) / (1.0 - sinLatitude)) / (4.0 * Math.PI);
+
             worldY = normalizedY * scale;
         }
 
         private static void WorldPixelToLatLon(double worldX, double worldY, int zoom, out double latitude, out double longitude)
         {
             double scale = TileSize * (1 << zoom);
+
             longitude = worldX / scale * 360.0 - 180.0;
+
             double normalizedY = 0.5 - worldY / scale;
+
             latitude = 90.0 - 360.0 * Math.Atan(Math.Exp(-normalizedY * 2.0 * Math.PI)) / Math.PI;
+
             latitude = ClampLatitude(latitude);
+
             longitude = NormalizeLongitude(longitude);
         }
 
         private static double ClampLatitude(double latitude)
         {
             const double maximumMercatorLatitude = 85.05112878;
+
             return Math.Max(-maximumMercatorLatitude, Math.Min(maximumMercatorLatitude, latitude));
         }
 
@@ -819,7 +911,15 @@ namespace OpenCvWpfTracking
         private static int Mod(int value, int modulus)
         {
             int result = value % modulus;
-            return result < 0 ? result + modulus : result;
+
+            if (result < 0)
+            {
+                return result + modulus;
+            }
+            else
+            {
+                return result;
+            }
         }
     }
 }

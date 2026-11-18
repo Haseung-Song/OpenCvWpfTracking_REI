@@ -46,7 +46,13 @@
         ///
         /// 위치: packet[0]
         /// </summary>
-        public byte Header => RawData[0];
+        public byte Header
+        {
+            get
+            {
+                return RawData[0];
+            }
+        }
 
         /// <summary>
         /// [Function Number]
@@ -65,7 +71,13 @@
         ///
         /// [0x04] [LRF] 거리측정 응답 [Packet]
         /// </summary>
-        public byte Function => RawData[1];
+        public byte Function
+        {
+            get
+            {
+                return RawData[1];
+            }
+        }
 
         /// <summary>
         /// [Checksum] 값
@@ -74,17 +86,47 @@
         ///
         /// 위치: Packet의 마지막 Byte.
         /// </summary>
-        public byte Checksum => RawData[RawData.Length - 1];
+        public byte Checksum
+        {
+            get
+            {
+                return RawData[RawData.Length - 1];
+            }
+        }
 
-        public bool IsVariableLength => Function >= 0x23 && Function <= 0x36 && Function != 0x31;
+        public bool IsVariableLength
+        {
+            get
+            {
+                return Function >= 0x23 && Function <= 0x36 && Function != 0x31;
+            }
+        }
 
         /// <summary>
         /// 2026-10-06: PTZF + MCB/SCB 상태를 전달하는 고정 13Byte 응답.
         /// </summary>
-        public bool IsDevicePowerStatus => Function == 0x31 && RawData != null && RawData.Length == 13;
+        public bool IsDevicePowerStatus
+        {
+            get
+            {
+                return Function == 0x31 && RawData != null && RawData.Length == 13;
+            }
+        }
 
-        public int PayloadLength =>
-            IsVariableLength && RawData != null && RawData.Length >= 5 ? RawData[2] | RawData[3] << 8 : 0;
+        public int PayloadLength
+        {
+            get
+            {
+                if (IsVariableLength && RawData != null && RawData.Length >= 5)
+                {
+                    return RawData[2] | RawData[3] << 8;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+        }
 
         public byte[] Payload
         {
@@ -96,7 +138,9 @@
                 }
 
                 byte[] payload = new byte[PayloadLength];
+
                 System.Buffer.BlockCopy(RawData, 4, payload, 0, PayloadLength);
+
                 return payload;
             }
         }
@@ -107,7 +151,13 @@
         /// Function 0x07:
         /// 열영상 카메라 Zoom / Focus 위치 상태
         /// </summary>
-        public bool IsIrCameraStatus => Function == 0x07;
+        public bool IsIrCameraStatus
+        {
+            get
+            {
+                return Function == 0x07;
+            }
+        }
 
         /// <summary>
         /// [IR Zoom Position]
@@ -124,8 +174,20 @@
         /// 정상 운용 범위:
         /// 0 ~ 1000
         /// </summary>
-        public ushort IrZoomPosition =>
-            IsIrCameraStatus && RawData != null && RawData.Length >= 6 ? (ushort)(RawData[2] | RawData[3] << 8) : (ushort)0;
+        public ushort IrZoomPosition
+        {
+            get
+            {
+                if (IsIrCameraStatus && RawData != null && RawData.Length >= 6)
+                {
+                    return (ushort)(RawData[2] | RawData[3] << 8);
+                }
+                else
+                {
+                    return (ushort)0;
+                }
+            }
+        }
 
         /// <summary>
         /// [IR Focus Position]
@@ -140,8 +202,20 @@
         /// 정상 운용 범위:
         /// 0 ~ 1000
         /// </summary>
-        public ushort IrFocusPosition =>
-            IsIrCameraStatus && RawData != null && RawData.Length >= 6 ? (ushort)(RawData[4] | RawData[5] << 8) : (ushort)0;
+        public ushort IrFocusPosition
+        {
+            get
+            {
+                if (IsIrCameraStatus && RawData != null && RawData.Length >= 6)
+                {
+                    return (ushort)(RawData[4] | RawData[5] << 8);
+                }
+                else
+                {
+                    return (ushort)0;
+                }
+            }
+        }
 
         /// <summary>
         /// [Packet] 유효성 여부
@@ -156,8 +230,6 @@
         /// 손상 또는 비정상 [Packet]
         /// </summary>
         public bool IsValid { get; set; }
-
         #endregion
-
     }
 }

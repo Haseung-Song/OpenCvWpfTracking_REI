@@ -40,6 +40,7 @@ namespace OpenCvWpfTracking.Common
         public ParameterRelayCommand(Action<object> execute, Predicate<object> canExecute)
         {
             this.execute = execute ?? throw new ArgumentNullException("execute");
+
             this.canExecute = canExecute;
         }
 

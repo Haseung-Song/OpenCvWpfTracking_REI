@@ -26,7 +26,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
     ///
     /// 현재 [US] [Unit Separator] [0x1F] 기준으로 구분한다.
     /// </summary>
-    public class AiDetectorPacketParser
+    public class AiDetectorPacketParser : IAiDetectorPacketParserPort
     {
 
         #region [상수]
@@ -100,6 +100,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 if (stxIndex < 0)
                 {
                     receiveBuffer.Clear();
+
                     break;
                 }
 
@@ -117,12 +118,14 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
                 // 2. [SIZE] 3자리 읽기
                 string sizeText = Encoding.ASCII.GetString(receiveBuffer.GetRange(3, 3).ToArray());
+
                 int payloadSize;
 
                 // [SIZE]가 숫자가 아니면 비정상 [Packet]으로 보고 [STX] 하나 제거 후 재탐색
                 if (!int.TryParse(sizeText, NumberStyles.None, CultureInfo.InvariantCulture, out payloadSize))
                 {
                     receiveBuffer.RemoveAt(0);
+
                     continue;
                 }
 
@@ -140,13 +143,16 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 {
                     // [ETX] 위치가 안 맞으면 현재 [STX]가 잘못된 시작점일 수 있음
                     receiveBuffer.RemoveAt(0);
+
                     continue;
                 }
 
                 // 5. 완성 [Packet] 복사
                 byte[] packet = receiveBuffer.GetRange(0, packetSize).ToArray();
+
                 // 6. [Buffer]에서 잘라낸 [Packet] 제거
                 receiveBuffer.RemoveRange(0, packetSize);
+
                 packets.Add(packet);
             }
 
@@ -166,8 +172,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public bool TryParseDetectionPacket(byte[] packet, out AiDetectionResult result)
         {
             result = null;
+
             string command;
+
             string payload;
+
             bool checksumValid;
 
             // 1. 공통 [Packet] 구조 파싱
@@ -180,6 +189,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             if (!checksumValid)
             {
                 Console.WriteLine("[AI PARSER] Checksum Invalid.");
+
                 return false;
             }
 
@@ -242,6 +252,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             for (int i = 0; i < tokens.Length; i++)
             {
                 string[] parts = tokens[i].Split(':');
+
                 AiOnnxInfo info = new AiOnnxInfo
                 {
                     Index = i,
@@ -309,7 +320,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                     }
 
                     int onnxIndex;
+
                     double confidence;
+
                     double iou;
 
                     if (!int.TryParse(values[0], out onnxIndex))
@@ -317,22 +330,12 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                         continue;
                     }
 
-                    if (!double.TryParse(
-                        values[1],
-                        System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        out confidence
-                    ))
+                    if (!double.TryParse(values[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out confidence))
                     {
                         continue;
                     }
 
-                    if (!double.TryParse(
-                        values[2],
-                        System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        out iou
-                    ))
+                    if (!double.TryParse(values[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out iou))
                     {
                         continue;
                     }
@@ -353,6 +356,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         public bool TryParseRtspVideoSizePayload(string payload, out int rtspIndex, out int width, out int height)
         {
             rtspIndex = -1;
+
             width = 0;
             height = 0;
 
@@ -363,10 +367,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             string[] parts = payload.Split(PayloadSeparator);
 
-            if (parts.Length != 3 ||
-                !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out rtspIndex) ||
-                !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out width) ||
-                !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out height))
+            if (parts.Length != 3 || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out rtspIndex) || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out width) || !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out height))
             {
                 return false;
             }
@@ -409,6 +410,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             if (!checksumValid)
             {
                 Console.WriteLine("[AI PARSER] Checksum Invalid.");
+
                 return false;
             }
 
@@ -446,8 +448,10 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             // [CMD] 추출
             command = Encoding.ASCII.GetString(packet, 1, 2);
+
             // [SIZE] 추출
             string sizeText = Encoding.ASCII.GetString(packet, 3, 3);
+
             int payloadSize;
 
             if (!int.TryParse(sizeText, NumberStyles.None, CultureInfo.InvariantCulture, out payloadSize))
@@ -465,13 +469,19 @@ namespace OpenCvWpfTracking.Services.Communication.AI
 
             // [Payload] [byte] 추출
             byte[] payloadBytes = new byte[payloadSize];
+
             Array.Copy(packet, HeaderSize, payloadBytes, 0, payloadSize);
+
             payload = Encoding.UTF8.GetString(payloadBytes);
+
             // 수신 [Checksum] 위치:
             // 프레임 전체 길이는 헤더 크기와 페이로드 크기의 합이다.
             byte receivedChecksum = packet[HeaderSize + payloadSize];
+
             byte calculatedChecksum = CalculateChecksum(command, payloadBytes);
+
             checksumValid = receivedChecksum == calculatedChecksum;
+
             return true;
         }
 
@@ -489,6 +499,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
         private byte CalculateChecksum(string command, byte[] payloadBytes)
         {
             byte sum = 0;
+
             byte[] commandBytes = Encoding.ASCII.GetBytes(command);
 
             for (int i = 0; i < commandBytes.Length; i++)
@@ -531,12 +542,11 @@ namespace OpenCvWpfTracking.Services.Communication.AI
                 return false;
             }
 
-            /// <summary>
-            /// [Payload] 내부 파라미터 분리
-            ///
-            /// [AI Detector Agent] [Payload]는
-            /// [US] [Unit Separator] [0x1F] 기준으로 구분한다.
-            /// </summary>
+            // [Payload] 내부 파라미터 분리
+            //
+            // [AI Detector Agent] [Payload]는
+            // [US] [Unit Separator] [0x1F] 기준으로 구분한다.
+            //
             string[] tokens = payload.Split(new[] { PayloadSeparator }, StringSplitOptions.RemoveEmptyEntries);
 
             // 최소 [4]개는 있어야 한다.
@@ -547,9 +557,13 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             }
 
             int index = 0;
+
             long frameTime;
+
             int inferenceMs;
+
             int rtspIndex;
+
             int detectionCount;
 
             if (!long.TryParse(tokens[index++], out frameTime))
@@ -578,6 +592,7 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             if (tokens.Length < expectedTokenCount)
             {
                 Console.WriteLine("[AI PARSER] Payload token count invalid. " + $"Token:{tokens.Length}, Expected:{expectedTokenCount}");
+
                 return false;
             }
 
@@ -592,11 +607,17 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             for (int i = 0; i < detectionCount; i++)
             {
                 long objectId;
+
                 int classIndex;
+
                 double confidence;
+
                 int left;
+
                 int top;
+
                 int right;
+
                 int bottom;
 
                 if (!long.TryParse(tokens[index++], out objectId))
@@ -638,10 +659,9 @@ namespace OpenCvWpfTracking.Services.Communication.AI
             }
 
             result = detectionResult;
+
             return true;
         }
-
         #endregion
-
     }
 }

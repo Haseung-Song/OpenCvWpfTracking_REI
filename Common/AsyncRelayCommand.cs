@@ -15,8 +15,6 @@ namespace OpenCvWpfTracking.Common
         ///
         /// @brief AsyncRelayCommand 생성자 함수.
         /// @param Func<Task> executeAsync : 실행 이벤트가 들어왔을 때 동작하기 위한 비동기 메서드 등록
-        /// @return
-        /// @exception
          //////
         /// <summary>
         /// AsyncRelayCommand 동작 수행 함수.
@@ -29,8 +27,6 @@ namespace OpenCvWpfTracking.Common
         /// @brief AsyncRelayCommand 생성자 함수.
         /// @param Func<Task> executeAsync : 실행 이벤트가 들어왔을 때 동작하기 위한 비동기 메서드 등록,
         /// Func<bool> canExecute : Control이 실행 가능 여부를 판단하는 함수 등록
-        /// @return
-        /// @exception
          //////
         /// <summary>
         /// AsyncRelayCommand 동작 수행 함수.
@@ -38,6 +34,7 @@ namespace OpenCvWpfTracking.Common
         public AsyncRelayCommand(Func<Task> executeAsync, Func<bool> canExecute)
         {
             this.executeAsync = executeAsync ?? throw new ArgumentNullException(nameof(executeAsync));
+
             this.canExecute = canExecute;
         }
 
@@ -71,7 +68,6 @@ namespace OpenCvWpfTracking.Common
         ///
         /// @brief [비동기 메서드] 실행
         /// @param object parameter
-        /// @return
          //////
         /// <summary>
         /// Execute 처리 함수.
@@ -108,9 +104,6 @@ namespace OpenCvWpfTracking.Common
 
         ///
         /// @brief CanExecuteChanged 이벤트를 발생시킵니다
-        /// @param
-        /// @return
-        /// @exception
          //////
         /// <summary>
         /// RaiseCanExecuteChanged 동작 수행 함수.
@@ -122,9 +115,6 @@ namespace OpenCvWpfTracking.Common
 
         ///
         /// @brief CanExecuteChanged 이벤트를 발생시킵니다
-        /// @param
-        /// @return
-        /// @exception
          //////
         /// <summary>
         /// OnCanExecuteChanged 상태 및 이벤트 처리 함수.

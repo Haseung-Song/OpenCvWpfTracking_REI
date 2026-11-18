@@ -12,7 +12,6 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
     {
 
         #region [속성 및 상태 표시]
-
         public byte Id { get; private set; }
 
         public string Name { get; private set; }
@@ -30,7 +29,6 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         #endregion
 
         #region [초기화]
-
         private CameraFeatureDefinition(byte id, string name, byte type, int min, int max, int targets, params string[] options)
         {
             Id = id;
@@ -80,16 +78,13 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             new CameraFeatureDefinition(0x1D, "디지털 줌", 0, 0, 1, 3, "OFF", "ON"),
             new CameraFeatureDefinition(0x1E, "자동 영상 조정", 3, 1, 1, 2)
         };
-
         #endregion
-
     }
 
     public sealed class CameraFeatureCapability
     {
 
         #region [필드 및 상태 정보]
-
         public byte Id;
 
         public byte Flags;
@@ -111,25 +106,19 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         /// </summary>
         public bool Allows(CameraFeatureDefinition definition, int value)
         {
-            if ((Flags & 5) != 5 ||
-                ValueType != definition.ValueType ||
-                Minimum > Maximum ||
-                value < Minimum ||
-                value > Maximum ||
-                value < definition.Minimum ||
-                value > definition.Maximum ||
-                value < 0 ||
-                value > 255)
+            if ((Flags & 5) != 5 || ValueType != definition.ValueType || Minimum > Maximum || value < Minimum || value > Maximum || value < definition.Minimum || value > definition.Maximum || value < 0 || value > 255)
+            {
                 return false;
+            }
 
             if (ValueType == 1 || definition.Id == 0x04)
+            {
                 return value < 32 && (OptionMask & (1u << value)) != 0;
+            }
 
             return true;
         }
-
         #endregion
-
     }
 
     /// <summary>
@@ -149,22 +138,29 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             entries = null;
 
             if (p == null || p.Length < 13 || p[0] != 2 || p[1] > 1 || p.Length < 13 + 12 * p[12])
+            {
                 return false;
+            }
 
             var result = new List<CameraFeatureCapability>();
+
             var ids = new HashSet<byte>();
 
             for (int o = 13; o < 13 + 12 * p[12]; o += 12)
             {
                 if (!ids.Add(p[o]))
+                {
                     return false;
+                }
 
                 // 미래 확장/알 수 없는 타입은 지원으로 추정하지 않는다.
                 result.Add(new CameraFeatureCapability { Id = p[o], Flags = (byte)(p[o + 3] == 0 && (p[o + 1] & 0xE0) == 0 ? p[o + 1] : 0), ValueType = p[o + 2], Minimum = BitConverter.ToInt16(p, o + 4), Maximum = BitConverter.ToInt16(p, o + 6), OptionMask = BitConverter.ToUInt32(p, o + 8) });
             }
 
             target = p[1];
+
             entries = result;
+
             return true;
         }
 
@@ -174,22 +170,30 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         public static bool TryState(byte[] p, out byte target, out byte id, out bool supported, out bool valid, out short value)
         {
             target = id = 0;
+
             supported = valid = false;
+
             value = 0;
 
             if (p == null || p.Length < 18 || p[0] != 1 || p[1] > 1 || (p[3] & 0xFC) != 0)
+            {
                 return false;
+            }
 
             target = p[1];
+
             id = p[2];
+
             supported = (p[3] & 1) != 0;
+
             value = BitConverter.ToInt16(p, 4);
+
             int min = BitConverter.ToInt16(p, 6), max = BitConverter.ToInt16(p, 8);
+
             valid = supported && (p[3] & 2) != 0 && min <= max && value >= min && value <= max;
+
             return true;
         }
-
         #endregion
-
     }
 }

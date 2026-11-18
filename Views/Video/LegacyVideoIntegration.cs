@@ -2,8 +2,6 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -16,14 +14,14 @@ namespace OpenCvWpfTracking
 {
     internal static class LegacyVideoIntegration
     {
-
         /// <summary>
         /// 2026-11-06: 영상 자체에 좌우 검은 여백이 포함된 삼정 IR은 하단 안내를 화면 모서리에 둔다.
         /// 영상·십자선 좌표와 클릭 이동·구역 계산에는 이 배치 기준을 사용하지 않는다.
         /// </summary>
-        internal static bool UseViewportLabelAnchors(MainViewModel vm, bool ir) =>
-            ir && vm != null && vm.IsSelectedControlAgentWebAgent &&
-            string.Equals(vm.SelectedControlAgentProfile?.DeviceId, "MR500_SAMJEONG", StringComparison.OrdinalIgnoreCase);
+        internal static bool UseViewportLabelAnchors(MainViewModel vm, bool ir)
+        {
+            return ir && vm != null && vm.IsSelectedControlAgentWebAgent && string.Equals(vm.SelectedControlAgentProfile?.DeviceId, "MR500_SAMJEONG", StringComparison.OrdinalIgnoreCase);
+        }
 
         #region [필드 및 상태 정보]
 
@@ -68,25 +66,56 @@ namespace OpenCvWpfTracking
         internal static Brush FrozenBrush(string color)
         {
             var brush = (Brush)new BrushConverter().ConvertFromString(color);
+
             brush.Freeze();
+
             return brush;
         }
 
         /// <summary>
         /// EO 또는 IR의 기존 채널 표시색을 반환한다.
         /// </summary>
-        internal static Brush ChannelBrush(bool ir) => ir ? Ir : Eo;
+        internal static Brush ChannelBrush(bool ir)
+        {
+            if (ir)
+            {
+                return Ir;
+            }
+            else
+            {
+                return Eo;
+            }
+        }
 
         /// <summary>
         /// 이벤트 종류에 대응하는 기존 글자색을 반환한다.
         /// </summary>
-        internal static Brush EventBrush(string type) => type == "FIRE" ? Fire : type == "SMOKE" ? Smoke : Ai;
+        internal static Brush EventBrush(string type)
+        {
+            if (type == "FIRE")
+            {
+                return Fire;
+            }
+            else
+            {
+                return type == "SMOKE" ? Smoke : Ai;
+            }
+        }
 
         /// <summary>
         /// 이벤트 종류에 대응하는 기존 행 배경색을 반환한다.
         /// </summary>
-        internal static Brush EventBackground(string type) =>
-            type == "FIRE" ? FireBackground : type == "SMOKE" ? SmokeBackground : AiBackground;
+        internal static Brush EventBackground(string type)
+        {
+            if (type == "FIRE")
+            {
+                return FireBackground;
+            }
+            else
+            {
+                return type == "SMOKE" ? SmokeBackground : AiBackground;
+            }
+        }
 
         /// <summary>
         /// 최신 실제 영상 프레임을 확인하여 이미지 파일로 저장한다.
@@ -94,30 +123,40 @@ namespace OpenCvWpfTracking
         internal static async Task<string> SaveSnapshotAsync(MainViewModel vm, bool ir)
         {
             if (!vm.SnapshotFrameFresh(ir))
+            {
                 throw new InvalidOperationException("연결된 채널의 최신 실제 프레임이 필요합니다.");
+            }
 
             var source = ir ? vm.IRCameraImage : vm.EOCameraImage;
 
             if (source == null)
+            {
                 throw new InvalidOperationException("저장할 영상이 없습니다.");
+            }
 
             var frame = source.CloneCurrentValue();
+
             frame.Freeze();
+
             return await Task.Run(() =>
             {
                 string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Snapshots");
+
                 Directory.CreateDirectory(dir);
-                string file = Path.Combine(
-                        dir,
-                        (ir ? "IR_" : "EO_") + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") +
-                    "_" + Guid.NewGuid().ToString("N").Substring(0, 8) +
-                    ".png"
-                    );
+
+                string file = Path.Combine(dir, (ir ? "IR_" : "EO_") + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".png");
+
                 var encoder = new PngBitmapEncoder();
+
                 encoder.Frames.Add(BitmapFrame.Create(frame));
+
                 using (var stream = new FileStream(file, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
                     encoder.Save(stream);
+                }
+
                 Common.ConsoleLogHelper.Info("SNAPSHOT", "Saved source frame without WPF overlays / " + file);
+
                 return file;
             });
         }
@@ -128,33 +167,45 @@ namespace OpenCvWpfTracking
         internal static void Attach(FrameworkElement marker, FrameworkElement image, MainViewModel vm, Func<bool> ir)
         {
             var move = new TranslateTransform();
+
             marker.RenderTransform = move;
+
             var inline = new InlineOpticalCalibration((Grid)marker.Parent, image, vm, ir);
+
             var timer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(100)
             };
+
             timer.Tick += (s, e) =>
             {
                 var source = ir() ? vm.IRCameraImage : vm.EOCameraImage;
 
                 if (source == null)
+                {
                     return;
+                }
 
                 var center = inline.Preview ?? vm.GetOpticalCenter(ir());
+
                 double scale = Math.Min(image.ActualWidth / source.PixelWidth, image.ActualHeight / source.PixelHeight);
+
                 move.X = (center.X - .5) * source.PixelWidth * scale;
+
                 move.Y = (center.Y - .5) * source.PixelHeight * scale;
             };
+
             marker.Loaded += (s, e) => timer.Start();
+
             marker.Unloaded += (s, e) => timer.Stop();
 
             if (marker.IsLoaded)
+            {
                 timer.Start();
-        // 추가 파노라마 및 이미지 저장 컨텍스트 메뉴는 복구 대상에서 제외한다.
+            }
+
+            // 추가 파노라마 및 이미지 저장 컨텍스트 메뉴는 복구 대상에서 제외한다.
         }
-
         #endregion
-
     }
 }

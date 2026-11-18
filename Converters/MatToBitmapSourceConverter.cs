@@ -29,17 +29,7 @@ namespace OpenCvWpfTracking.Converters
                 pixelFormat = PixelFormats.Bgra32;
             }
 
-            return BitmapSource.Create(
-                frame.Width,
-                frame.Height,
-                96,
-                96,
-                pixelFormat,
-                null,
-                frame.Data,
-                (int)(frame.Step() * frame.Height),
-                (int)frame.Step()
-            );
+            return BitmapSource.Create(frame.Width, frame.Height, 96, 96, pixelFormat, null, frame.Data, (int)(frame.Step() * frame.Height), (int)frame.Step());
         }
 
         /// <summary>
@@ -50,14 +40,20 @@ namespace OpenCvWpfTracking.Converters
         public static WriteableBitmap UpdateOrCreate(Mat frame, WriteableBitmap bitmap)
         {
             if (frame == null || frame.Empty())
+            {
                 return bitmap;
+            }
 
             PixelFormat pixelFormat = PixelFormats.Bgr24;
 
             if (frame.Channels() == 1)
+            {
                 pixelFormat = PixelFormats.Gray8;
+            }
             else if (frame.Channels() == 4)
+            {
                 pixelFormat = PixelFormats.Bgra32;
+            }
 
             if (bitmap == null || bitmap.PixelWidth != frame.Width || bitmap.PixelHeight != frame.Height || bitmap.Format != pixelFormat)
             {
@@ -65,8 +61,11 @@ namespace OpenCvWpfTracking.Converters
             }
 
             int stride = (int)frame.Step();
+
             int bufferSize = checked(stride * frame.Height);
+
             bitmap.WritePixels(new Int32Rect(0, 0, frame.Width, frame.Height), frame.Data, bufferSize, stride);
+
             return bitmap;
         }
     }

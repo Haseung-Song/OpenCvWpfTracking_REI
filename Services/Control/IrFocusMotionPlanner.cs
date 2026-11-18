@@ -22,7 +22,10 @@ namespace OpenCvWpfTracking.Services.Control
 
         private int _minimumPulseMs = 30;
 
-        public double UnitsPerSecond => _unitsPerSecond;
+        public double UnitsPerSecond
+        {
+            get { return _unitsPerSecond; }
+        }
 
         public int ReversalCount { get; private set; }
 
@@ -39,7 +42,9 @@ namespace OpenCvWpfTracking.Services.Control
         public int PulseMilliseconds(int error)
         {
             double rate = Math.Max(_unitsPerSecond, _pulseUnitsPerSecond);
+
             double scale = ReversalCount > 0 ? 0.30 : 0.50;
+
             return Math.Max(_minimumPulseMs, Math.Min(180, (int)Math.Floor(Math.Max(1, error - _stopTravel) * 1000.0 / rate * scale)));
         }
 
@@ -51,21 +56,30 @@ namespace OpenCvWpfTracking.Services.Control
         public void ObserveFeedback(int delta, long elapsedMs)
         {
             if (elapsedMs < 20 || elapsedMs > 3000)
+            {
                 return;
+            }
 
             _sampleMs += elapsedMs;
+
             _sampleDelta += delta;
 
             if (_sampleMs < 250)
+            {
                 return;
+            }
 
             _feedbackMs = _feedbackMs * 0.5 + _sampleMs * 0.5;
+
             double measured = Math.Abs(_sampleDelta) * 1000.0 / _sampleMs;
+
             _sampleMs = 0;
             _sampleDelta = 0;
 
             if (measured >= 1 && measured <= 2000)
+            {
                 _unitsPerSecond = _unitsPerSecond * 0.6 + measured * 0.4;
+            }
         }
 
         public void ObserveSettled(int start, int stopped, int settled, long onMs, bool pulse)
@@ -75,6 +89,7 @@ namespace OpenCvWpfTracking.Services.Control
             if (pulse && onMs >= 20 && settled != start)
             {
                 double measured = Math.Abs(settled - start) * 1000.0 / onMs;
+
                 _pulseUnitsPerSecond = Math.Max(1, Math.Min(4000, Math.Max(measured, _pulseUnitsPerSecond * 0.5 + measured * 0.5)));
             }
         }
@@ -82,6 +97,7 @@ namespace OpenCvWpfTracking.Services.Control
         public bool TryReverse()
         {
             ReversalCount++;
+
             return ReversalCount <= 2;
         }
 

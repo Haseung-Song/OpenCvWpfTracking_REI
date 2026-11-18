@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -10,16 +10,17 @@ namespace OpenCvWpfTracking
     /// <summary>통신 장비 선택 목록의 높이를 완전한 항목 단위로 맞춘다.</summary>
     public static class CommunicationComboBoxLayout
     {
-        public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
-            "IsEnabled",
-            typeof(bool),
-            typeof(CommunicationComboBoxLayout),
-            new PropertyMetadata(false, OnIsEnabledChanged)
-        );
+        public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached("IsEnabled", typeof(bool), typeof(CommunicationComboBoxLayout), new PropertyMetadata(false, OnIsEnabledChanged));
 
-        public static bool GetIsEnabled(DependencyObject element) => (bool)element.GetValue(IsEnabledProperty);
+        public static bool GetIsEnabled(DependencyObject element)
+        {
+            return (bool)element.GetValue(IsEnabledProperty);
+        }
 
-        public static void SetIsEnabled(DependencyObject element, bool value) => element.SetValue(IsEnabledProperty, value);
+        public static void SetIsEnabled(DependencyObject element, bool value)
+        {
+            element.SetValue(IsEnabledProperty, value);
+        }
 
         private static void OnIsEnabledChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)
         {
@@ -46,9 +47,7 @@ namespace OpenCvWpfTracking
 
         private static void AlignRows(ComboBox combo)
         {
-            if (!combo.IsDropDownOpen || combo.Items.Count == 0 ||
-                !(combo.Template.FindName("PART_Popup", combo) is Popup popup) ||
-                !(popup.Child is FrameworkElement root))
+            if (!combo.IsDropDownOpen || combo.Items.Count == 0 || !(combo.Template.FindName("PART_Popup", combo) is Popup popup) || !(popup.Child is FrameworkElement root))
             {
                 return;
             }
@@ -62,12 +61,16 @@ namespace OpenCvWpfTracking
 
             // 이전 열기의 높이는 다시 계산하고 스크롤은 항목 단위로 이동시킨다.
             scroll.ClearValue(FrameworkElement.HeightProperty);
+
             scroll.CanContentScroll = true;
+
             root.UseLayoutRounding = true;
             root.SnapsToDevicePixels = true;
+
             root.UpdateLayout();
 
             var viewport = scroll.Template.FindName("PART_ScrollContentPresenter", scroll) as FrameworkElement;
+
             var item = combo.ItemContainerGenerator.ContainerFromIndex(0) as FrameworkElement;
 
             if (viewport == null || item == null)
@@ -76,6 +79,7 @@ namespace OpenCvWpfTracking
             }
 
             double rowHeight = item.ActualHeight + item.Margin.Top + item.Margin.Bottom;
+
             double available = viewport.ActualHeight;
 
             if (rowHeight <= 0 || available < rowHeight || double.IsInfinity(rowHeight))
@@ -84,20 +88,22 @@ namespace OpenCvWpfTracking
             }
 
             int rows = Math.Min(combo.Items.Count, (int)Math.Floor((available + 0.01) / rowHeight));
+
             double chrome = Math.Max(0, scroll.ActualHeight - available);
 
             // 잘린 마지막 행과 그 아래 빈 공간을 함께 줄이며 바깥 컨트롤 간격은 유지한다.
             scroll.Height = rows * rowHeight + chrome;
+
             root.UpdateLayout();
 
-            if (combo.SelectedItem != null &&
-                combo.ItemContainerGenerator.ContainerFromItem(combo.SelectedItem) is FrameworkElement selected)
+            if (combo.SelectedItem != null && combo.ItemContainerGenerator.ContainerFromItem(combo.SelectedItem) is FrameworkElement selected)
             {
                 selected.BringIntoView();
             }
         }
 
-        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        private static T FindVisualChild<T>(DependencyObject parent)
+            where T : DependencyObject
         {
             for (int index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
             {

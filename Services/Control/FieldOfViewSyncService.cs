@@ -6,7 +6,7 @@ namespace OpenCvWpfTracking.Services.Control
     /// 2026-10-02: 동일 건물 기준으로 재측정한 Level 0~10 실측 Anchor를 사용한다.
     /// Anchor 사이는 IR Position을 기준으로 EO Position을 구간 선형 역산한다.
     /// </summary>
-    public sealed class FieldOfViewSyncService
+    public sealed class FieldOfViewSyncService : IFieldOfViewSyncServicePort
     {
         public const double AllowedErrorPercent = 10.0;
 
@@ -17,17 +17,23 @@ namespace OpenCvWpfTracking.Services.Control
         public static double EstimateEoOpticalRatio(int position, double eoWide, double irWide, double maximum)
         {
             int p = Math.Max(0, Math.Min(1000, position));
+
             double scale = Math.Tan(eoWide * Math.PI / 360) / Math.Tan(irWide * Math.PI / 360);
+
             int previousPosition = 0;
+
             double previousRatio = 1;
 
             for (int i = 1; i < CalibratedEoPositions.Length; i++)
             {
                 double ratio = Math.Max(previousRatio, Math.Min(maximum, scale * (1 + 8 * CalibratedIrPositions[i] / 1000.0)));
+
                 int nextPosition = CalibratedEoPositions[i];
 
                 if (p <= nextPosition)
+                {
                     return previousRatio + (ratio - previousRatio) * (p - previousPosition) / (nextPosition - previousPosition);
+                }
 
                 previousPosition = nextPosition;
                 previousRatio = ratio;
@@ -85,10 +91,15 @@ namespace OpenCvWpfTracking.Services.Control
         public ZoomFovTarget CreateTarget(int level)
         {
             int safeLevel = Math.Max(0, Math.Min(10, level));
+
             short irPosition = CalibratedIrPositions[safeLevel];
+
             short eoPosition = GetEoPositionForIr(irPosition);
+
             double irHfov = PositionToHfov(irPosition, IrMinFocalMm, IrMaxFocalMm, IrSensorWidthMm);
+
             double eoHfov = PositionToHfov(eoPosition, EoMinFocalMm, EoMaxFocalMm, EoSensorWidthMm);
+
             return new ZoomFovTarget(safeLevel, eoPosition, irPosition, eoHfov, irHfov);
         }
 
@@ -117,6 +128,7 @@ namespace OpenCvWpfTracking.Services.Control
             for (int index = 0; index < CalibratedIrPositions.Length - 1; index++)
             {
                 int irStart = CalibratedIrPositions[index];
+
                 int irEnd = CalibratedIrPositions[index + 1];
 
                 if (safeIr > irEnd)
@@ -125,7 +137,9 @@ namespace OpenCvWpfTracking.Services.Control
                 }
 
                 int eoStart = CalibratedEoPositions[index];
+
                 int eoEnd = CalibratedEoPositions[index + 1];
+
                 int irSpan = irEnd - irStart;
 
                 if (irSpan <= 0)
@@ -135,6 +149,7 @@ namespace OpenCvWpfTracking.Services.Control
                 }
 
                 double ratio = (safeIr - irStart) / (double)irSpan;
+
                 return (short)Math.Round(eoStart + ((eoEnd - eoStart) * ratio));
             }
 
@@ -146,6 +161,7 @@ namespace OpenCvWpfTracking.Services.Control
         public static double GetErrorPercent(double firstHfov, double secondHfov)
         {
             double reference = Math.Max(0.0001, secondHfov);
+
             return Math.Abs(firstHfov - secondHfov) / reference * 100.0;
         }
 
@@ -153,7 +169,9 @@ namespace OpenCvWpfTracking.Services.Control
         private static double PositionToHfov(short position, double minFocal, double maxFocal, double sensorWidth)
         {
             double ratio = Math.Max(0.0, Math.Min(1.0, position / 1000.0));
+
             double focal = minFocal + ((maxFocal - minFocal) * ratio);
+
             return 2.0 * Math.Atan(sensorWidth / (2.0 * focal)) * 180.0 / Math.PI;
         }
     }

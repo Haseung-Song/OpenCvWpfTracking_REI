@@ -16,13 +16,11 @@ namespace OpenCvWpfTracking.Services.Input
     {
 
         #region [내부 자료형]
-
         private delegate IntPtr HookProc(int code, IntPtr message, IntPtr data);
 
         #endregion
 
         #region [필드 및 상태 정보]
-
         private readonly HookProc _callback;
 
         private readonly Dispatcher _dispatcher;
@@ -46,30 +44,42 @@ namespace OpenCvWpfTracking.Services.Input
         {
             _dispatcher = dispatcher;
             _callback = Hook;
+
             using (var process = Process.GetCurrentProcess())
             using (var module = process.MainModule)
+            {
                 _hook = SetWindowsHookEx(13, _callback, GetModuleHandle(module.ModuleName), 0);
+            }
 
             if (_hook == IntPtr.Zero)
+            {
                 throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            }
 
             _watchdog = new DispatcherTimer(DispatcherPriority.Input, dispatcher)
             {
                 Interval = TimeSpan.FromMilliseconds(100)
             };
+
             _watchdog.Tick += (s, e) =>
             {
                 // 2026-10-13: 누름 키가 없으면 복사본을 만들지 않으며 순회 중에는 복사본을 사용한다.
                 if (_held.Count == 0)
+                {
                     return;
+                }
 
                 foreach (int vk in new List<int>(_held))
+                {
                     if ((GetAsyncKeyState(vk) & 0x8000) == 0)
                     {
                         _held.Remove(vk);
+
                         KeyChanged?.Invoke(KeyInterop.KeyFromVirtualKey(vk), false);
                     }
+                }
             };
+
             _watchdog.Start();
         }
 
@@ -80,19 +90,10 @@ namespace OpenCvWpfTracking.Services.Input
         /// <summary>
         /// 전역 제어에서 처리하는 키인지 확인한다.
         /// </summary>
-        private static bool Supported(Key key) =>
-            key == Key.Left ||
-            key == Key.Right ||
-            key == Key.Up ||
-            key == Key.Down ||
-            key == Key.W ||
-            key == Key.S ||
-            key == Key.A ||
-            key == Key.D ||
-            key == Key.R ||
-            key == Key.T ||
-            key == Key.Z ||
-            key == Key.C;
+        private static bool Supported(Key key)
+        {
+            return key == Key.Left || key == Key.Right || key == Key.Up || key == Key.Down || key == Key.W || key == Key.S || key == Key.A || key == Key.D || key == Key.R || key == Key.T || key == Key.Z || key == Key.C;
+        }
 
         /// <summary>
         /// 훅 처리 실패를 기록하고 다른 프로그램으로 키 이벤트를 항상 전달한다.
@@ -105,10 +106,7 @@ namespace OpenCvWpfTracking.Services.Input
             }
             catch (Exception ex)
             {
-                ConsoleLogHelper.Warning(
-                    "GLOBAL INPUT",
-                    "Hook callback failed / " + ex.GetType().Name + " / HRESULT=0x" + ex.HResult.ToString("X8")
-                );
+                ConsoleLogHelper.Warning("GLOBAL INPUT", "Hook callback failed / " + ex.GetType().Name + " / HRESULT=0x" + ex.HResult.ToString("X8"));
             }
 
             return CallNextHookEx(_hook, code, message, data);
@@ -122,20 +120,22 @@ namespace OpenCvWpfTracking.Services.Input
             if (code >= 0 && _hook != IntPtr.Zero)
             {
                 int flags = Marshal.ReadInt32(data, 8), vk = Marshal.ReadInt32(data);
+
                 var key = KeyInterop.KeyFromVirtualKey(vk);
+
                 int msg = message.ToInt32();
+
                 bool down = msg == 0x100 || msg == 0x104, up = msg == 0x101 || msg == 0x105;
+
                 // 주입된 키 입력과 운영체제 보조키 조합은 처리하지 않는다.
-                bool modifier = (GetAsyncKeyState(0x12) & 0x8000) != 0 ||
-                    (GetAsyncKeyState(0x11) & 0x8000) != 0 ||
-                    (GetAsyncKeyState(0x10) & 0x8000) != 0 ||
-                    (GetAsyncKeyState(0x5B) & 0x8000) != 0 ||
-                    (GetAsyncKeyState(0x5C) & 0x8000) != 0;
+                bool modifier = (GetAsyncKeyState(0x12) & 0x8000) != 0 || (GetAsyncKeyState(0x11) & 0x8000) != 0 || (GetAsyncKeyState(0x10) & 0x8000) != 0 || (GetAsyncKeyState(0x5B) & 0x8000) != 0 || (GetAsyncKeyState(0x5C) & 0x8000) != 0;
 
                 if ((flags & 0x10) == 0 && modifier && down)
                 {
                     foreach (int held in new List<int>(_held))
+                    {
                         Dispatch(held, false);
+                    }
 
                     _held.Clear();
                 }
@@ -143,13 +143,17 @@ namespace OpenCvWpfTracking.Services.Input
                 if ((flags & 0x10) == 0 && Supported(key))
                 {
                     if (up && _held.Remove(vk))
+                    {
                         Dispatch(vk, false);
+                    }
                     else if (down && !modifier)
                     {
                         bool first = _held.Add(vk);
 
                         if (first || key == Key.Z || key == Key.C)
+                        {
                             Dispatch(vk, true);
+                        }
                     }
                 }
             }
@@ -161,14 +165,15 @@ namespace OpenCvWpfTracking.Services.Input
         private void Dispatch(int vk, bool down)
         {
             if (!_dispatcher.HasShutdownStarted)
-                _dispatcher.BeginInvoke(
-                    DispatcherPriority.Input,
-                    new Action(() =>
+            {
+                _dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
                 {
                     if (_hook != IntPtr.Zero)
+                    {
                         KeyChanged?.Invoke(KeyInterop.KeyFromVirtualKey(vk), down);
-                })
-                );
+                    }
+                }));
+            }
         }
 
         /// <summary>
@@ -181,11 +186,14 @@ namespace OpenCvWpfTracking.Services.Input
             if (_hook != IntPtr.Zero)
             {
                 UnhookWindowsHookEx(_hook);
+
                 _hook = IntPtr.Zero;
             }
 
             _held.Clear();
+
             KeyChanged = null;
+
             ConsoleLogHelper.State("GLOBAL INPUT", "Hook released");
         }
 
@@ -218,8 +226,6 @@ namespace OpenCvWpfTracking.Services.Input
         /// </summary>
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr GetModuleHandle(string name);
-
         #endregion
-
     }
 }

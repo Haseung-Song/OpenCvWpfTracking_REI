@@ -16,7 +16,7 @@ namespace OpenCvWpfTracking.Common
     /// </summary>
     public static class ConsoleLogHelper
     {
-        private static readonly object ConsoleLock = new object ();
+        private static readonly object ConsoleLock = new object();
 
         // 로그 경계 문자는 불변 테이블을 재사용해 로그마다 새 배열을 만들지 않는다.
         private static readonly char[] RtspAuthorityBoundaries =
@@ -25,6 +25,24 @@ namespace OpenCvWpfTracking.Common
             '?',
             '#'
         };
+
+        // 2026-11-12: 로그마다 정규식·성능 항목 배열을 생성하지 않고 불변 자료를 재사용한다.
+        private static readonly System.Text.RegularExpressions.Regex RtspAddressInLog =
+            new System.Text.RegularExpressions.Regex(@"rtsp://[^\s""'<>]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private static readonly string[] PerformanceMetricKeys =
+        {
+            "RTSP_BITRATE_MBPS", "PACKET_RATE", "DECODE_FPS", "LAST_FRAME_MS"
+        };
+
+        private static readonly string[] PerformanceMetricLabels =
+        {
+            "비트레이트(Mbps)", "수신률", "디코딩FPS", "최근프레임지연(ms)"
+        };
+
+        private static readonly System.Text.RegularExpressions.Regex[] PerformanceMetricPatterns =
+            PerformanceMetricKeys.Select(key => new System.Text.RegularExpressions.Regex(
+                @"(?:^| / |\r?\n\s*)" + key + @"=([^/\r\n]+)")).ToArray();
 
         /// <summary>
         /// Console 출력 가능 여부.
@@ -40,7 +58,13 @@ namespace OpenCvWpfTracking.Common
 
         private static long _totalWriteCount;
 
-        public static long TotalWriteCount => Interlocked.Read(ref _totalWriteCount);
+        public static long TotalWriteCount
+        {
+            get
+            {
+                return Interlocked.Read(ref _totalWriteCount);
+            }
+        }
 
         /// <summary>
         /// Console 로그 구분선.
@@ -70,6 +94,7 @@ namespace OpenCvWpfTracking.Common
             lock (ConsoleLock)
             {
                 Console.SetOut(new NormalizedConsoleTextWriter(writer ?? TextWriter.Null));
+
                 _isConsoleOutputAvailable = true;
             }
         }
@@ -123,31 +148,51 @@ namespace OpenCvWpfTracking.Common
         public static string MaskRtspPassword(string rtspAddress)
         {
             if (string.IsNullOrWhiteSpace(rtspAddress))
+            {
                 return string.Empty;
+            }
 
             rtspAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(rtspAddress);
+
             int scheme = rtspAddress.IndexOf("://", StringComparison.Ordinal);
 
             if (scheme < 0)
+            {
                 return rtspAddress;
+            }
 
             int authority = scheme + 3, end = rtspAddress.IndexOfAny(RtspAuthorityBoundaries, authority);
 
             if (end < 0)
+            {
                 end = rtspAddress.Length;
+            }
 
             int at = rtspAddress.LastIndexOf('@', end - 1, end - authority);
-            return at < authority ? rtspAddress : rtspAddress.Substring(0, authority) + "**:**" + rtspAddress.Substring(at);
+
+            if (at < authority)
+            {
+                return rtspAddress;
+            }
+            else
+            {
+                return rtspAddress.Substring(0, authority) + "**:**" + rtspAddress.Substring(at);
+            }
         }
 
         /// <summary>로그 본문에 포함된 RTSP 주소의 인증 정보를 마스킹한다.</summary>
-        public static string MaskRtspInLog(string message) =>
-            System.Text.RegularExpressions.Regex.Replace(
-            message ?? string.Empty,
-            @"rtsp://[^\s""'<>]+",
-            m => MaskRtspPassword(m.Value),
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase
-        );
+        public static string MaskRtspInLog(string message)
+        {
+            string text = message ?? string.Empty;
+
+            // 주소가 없는 일반 로그는 원문을 그대로 반환해 불필요한 정규식 검색을 생략한다.
+            if (text.IndexOf("rtsp://", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return text;
+            }
+
+            return RtspAddressInLog.Replace(text, match => MaskRtspPassword(match.Value));
+        }
 
         /// <summary>
         /// 일반 실행 흐름 로그.
@@ -187,12 +232,15 @@ namespace OpenCvWpfTracking.Common
         public static void Error(string category, string message, Exception exception = null)
         {
             string code = GetOperationalErrorCode(category);
+
             string feature = GetFriendlyFeatureName(category);
+
             string cause = GetFriendlyCause(message, exception);
+
             string action = GetRecommendedAction(category);
-            string detail = $"[장애 요약] 코드={code} | 기능={feature} | 원인={cause} | 조치={action}" + Environment.NewLine +
-                "    [기술 상세] " + (message ?? string.Empty) + (exception == null ? string.Empty : Environment.NewLine +
-                "    [예외] " + exception);
+
+            string detail = $"[장애 요약] 코드={code} | 기능={feature} | 원인={cause} | 조치={action}" + Environment.NewLine + "    [기술 상세] " + (message ?? string.Empty) + (exception == null ? string.Empty : Environment.NewLine + "    [예외] " + exception);
+
             Write("ERROR", category, detail);
         }
 
@@ -201,27 +249,34 @@ namespace OpenCvWpfTracking.Common
             string value = (category ?? string.Empty).ToUpperInvariant();
 
             if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY"))
+            {
                 return "E-VIDEO-001";
+            }
 
             if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT"))
+            {
                 return "E-COMM-001";
+            }
 
-            if (value.Contains("ZOOM") ||
-                value.Contains("FOCUS") ||
-                value.Contains("PAN") ||
-                value.Contains("TILT") ||
-                value.Contains("SYNC") ||
-                value.Contains("MOVE"))
+            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE"))
+            {
                 return "E-PTZF-001";
+            }
 
             if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE"))
+            {
                 return "E-DETECT-001";
+            }
 
             if (value.Contains("PANORAMA"))
+            {
                 return "E-PANO-001";
+            }
 
             if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE"))
+            {
                 return "E-DATA-001";
+            }
 
             return "E-SYSTEM-001";
         }
@@ -231,67 +286,108 @@ namespace OpenCvWpfTracking.Common
             string value = (category ?? string.Empty).ToUpperInvariant();
 
             if (value.Contains("RTSP") || value.Contains("VIDEO"))
+            {
                 return "실시간 영상";
+            }
 
             if (value.Contains("DISPLAY"))
+            {
                 return "화면 표시";
+            }
 
             if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT"))
+            {
                 return "장비 통신";
+            }
 
-            if (value.Contains("ZOOM") ||
-                value.Contains("FOCUS") ||
-                value.Contains("PAN") ||
-                value.Contains("TILT") ||
-                value.Contains("SYNC") ||
-                value.Contains("MOVE"))
+            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE"))
+            {
                 return "카메라 PTZF 제어";
+            }
 
             if (value.Contains("FIRE") || value.Contains("SMOKE") || value.Contains("DETECTION") || value.Contains("AI"))
+            {
                 return "화재·연기 감지";
+            }
 
             if (value.Contains("PANORAMA"))
+            {
                 return "파노라마 생성";
+            }
 
             if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE"))
+            {
                 return "설정·데이터 저장";
+            }
 
-            return string.IsNullOrWhiteSpace(category) ? "프로그램" : category;
+            if (string.IsNullOrWhiteSpace(category))
+            {
+                return "프로그램";
+            }
+            else
+            {
+                return category;
+            }
         }
 
         private static string GetFriendlyCause(string message, Exception exception)
         {
             // 파일 공유·바이트 범위 잠금 오류를 AI 또는 네트워크 장애로 분류하지 않는다.
             if (exception is IOException && ((exception.HResult & 0xFFFF) == 32 || (exception.HResult & 0xFFFF) == 33))
+            {
                 return "다른 작업 또는 프로그램이 파일을 잠그고 있습니다";
+            }
 
             string value = ((message ?? string.Empty) + " " + (exception?.Message ?? string.Empty)).ToUpperInvariant();
 
             if (value.Contains("TIMEOUT"))
+            {
                 return "장비 응답 시간이 초과되었습니다";
+            }
 
             if (value.Contains("DISCONNECT") || value.Contains("CONNECTION"))
+            {
                 return "장비 또는 영상 연결이 끊겼습니다";
+            }
 
             if (value.Contains("CANCEL"))
+            {
                 return "작업이 취소되었습니다";
+            }
 
             if (value.Contains("ACCESS") || value.Contains("UNAUTHORIZED"))
+            {
                 return "접근 권한 또는 인증 정보가 올바르지 않습니다";
+            }
 
             if (value.Contains("FILE") || value.Contains("DIRECTORY") || value.Contains("CSV"))
+            {
                 return "파일을 읽거나 저장하지 못했습니다";
+            }
 
             if (value.Contains("DECODE"))
+            {
                 return "영상 디코딩에 실패했습니다";
+            }
 
             if (value.Contains("RENDER") || value.Contains("DISPLAY"))
+            {
                 return "영상 화면 갱신에 실패했습니다";
+            }
 
             if (value.Contains("COMMAND") || value.Contains("SEND") || value.Contains("PACKET"))
+            {
                 return "제어 명령을 전송하거나 처리하지 못했습니다";
+            }
 
-            return exception == null ? "요청한 작업을 완료하지 못했습니다" : exception.GetType().Name + ": " + exception.Message;
+            if (exception == null)
+            {
+                return "요청한 작업을 완료하지 못했습니다";
+            }
+            else
+            {
+                return exception.GetType().Name + ": " + exception.Message;
+            }
         }
 
         private static string GetRecommendedAction(string category)
@@ -299,30 +395,39 @@ namespace OpenCvWpfTracking.Common
             string value = (category ?? string.Empty).ToUpperInvariant();
 
             if (value == "CSV AUDIT")
+            {
                 return "CSV를 연 프로그램·중복 Viewer를 닫고 저장 경로·권한을 확인. 실패한 감사 행은 자동 복구되지 않으므로 화면 목록을 CSV로 저장";
+            }
 
             if (value.Contains("RTSP") || value.Contains("VIDEO") || value.Contains("DISPLAY"))
+            {
                 return "카메라 전원·RTSP 주소·네트워크 상태를 확인 후 재연결";
+            }
 
             if (value.Contains("DEVICE") || value.Contains("TCP") || value.Contains("AGENT") || value.Contains("CONNECT"))
+            {
                 return "Agent IP/Port와 장비 전원을 확인 후 CONNECT 재시도";
+            }
 
-            if (value.Contains("ZOOM") ||
-                value.Contains("FOCUS") ||
-                value.Contains("PAN") ||
-                value.Contains("TILT") ||
-                value.Contains("SYNC") ||
-                value.Contains("MOVE"))
+            if (value.Contains("ZOOM") || value.Contains("FOCUS") || value.Contains("PAN") || value.Contains("TILT") || value.Contains("SYNC") || value.Contains("MOVE"))
+            {
                 return "장비 연결과 현재 상태값 수신 여부를 확인 후 STOP→재시도";
+            }
 
             if (value.Contains("AI") || value.Contains("DETECTION") || value.Contains("FIRE") || value.Contains("SMOKE"))
+            {
                 return "AI 연결·입력 영상·모델 설정을 확인";
+            }
 
             if (value.Contains("PANORAMA"))
+            {
                 return "EO 영상 연결과 저장 경로를 확인 후 다시 촬영";
+            }
 
             if (value.Contains("CSV") || value.Contains("PRESET") || value.Contains("STORAGE"))
+            {
                 return "파일 경로·권한·남은 디스크 공간을 확인";
+            }
 
             return "오류 코드와 기술 상세를 담당자에게 전달";
         }
@@ -342,13 +447,16 @@ namespace OpenCvWpfTracking.Common
         private static void Write(string level, string category, string message)
         {
             string safeCategory = string.IsNullOrWhiteSpace(category) ? "GENERAL" : category.Trim();
+
             string safeMessage = MaskRtspInLog(message ?? string.Empty);
+
             int threadId = Thread.CurrentThread.ManagedThreadId;
+
             bool warningOrError = level == "WARN" || level == "ERROR";
-            bool diagnosticOnly = !warningOrError && (IsDiagnosticLog(safeCategory, safeMessage) ||
-                (safeCategory == "EQUIPMENT STORAGE" && safeMessage.StartsWith("장비 ID 기준 저장 / ", StringComparison.Ordinal)));
-            string summary = warningOrError ? null : "[" + OperationalLogText.Category(safeCategory) + "] " +
-                OperationalLogText.Summary(safeCategory, safeMessage);
+
+            bool diagnosticOnly = !warningOrError && (IsDiagnosticLog(safeCategory, safeMessage) || (safeCategory == "EQUIPMENT STORAGE" && safeMessage.StartsWith("장비 ID 기준 저장 / ", StringComparison.Ordinal)));
+
+            string summary = warningOrError ? null : "[" + OperationalLogText.Category(safeCategory) + "] " + OperationalLogText.Summary(safeCategory, safeMessage);
 
             lock (ConsoleLock)
             {
@@ -356,11 +464,12 @@ namespace OpenCvWpfTracking.Common
                 // 주기 성능 로그만 기존 핵심 수치를 짧게 표시한다.
                 if (!diagnosticOnly || safeCategory.IndexOf("RTSP PERF", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    string display = warningOrError
-                        ? "[T" + threadId.ToString("00") + "] [" + safeCategory + "] " + safeMessage
-                        : diagnosticOnly ? FormatDiagnosticSummary(safeCategory, safeMessage) : summary;
+                    string display = warningOrError ? "[T" + threadId.ToString("00") + "] [" + safeCategory + "] " + safeMessage : diagnosticOnly ? FormatDiagnosticSummary(safeCategory, safeMessage) : summary;
+
                     WriteConsoleSafe($"[{DateTime.Now:HH:mm:ss.fff}] [{level.Trim()}]");
+
                     WriteConsoleSafe(ReadableLogLayout.Body(display));
+
                     WriteConsoleSafe();
                 }
 
@@ -373,43 +482,26 @@ namespace OpenCvWpfTracking.Common
         private static bool IsDiagnosticLog(string category, string message)
         {
             string name = (category ?? string.Empty).ToUpperInvariant();
-            return name.Contains("RTSP PERF") ||
-                name.Contains("PAN/TILT POSITION") ||
-                name.Contains("/ FRAME") ||
-                name.Contains("/ RX") ||
-                name.Contains("/ TX") ||
-                (name == "IR ZOOM SYNC" && (message ?? string.Empty).Contains("STATUS_STEP="));
+
+            return name.Contains("RTSP PERF") || name.Contains("PAN/TILT POSITION") || name.Contains("/ FRAME") || name.Contains("/ RX") || name.Contains("/ TX") || (name == "IR ZOOM SYNC" && (message ?? string.Empty).Contains("STATUS_STEP="));
         }
 
         /// <summary>콘솔에서는 영상 성능의 핵심 수치만 보여주고 전체 샘플은 진단 파일로 안내한다.</summary>
         private static string FormatDiagnosticSummary(string category, string message)
         {
-            string[] keys =
-            {
-                "RTSP_BITRATE_MBPS",
-                "PACKET_RATE",
-                "DECODE_FPS",
-                "LAST_FRAME_MS"
-            };
-            string[] labels =
-            {
-                "비트레이트(Mbps)",
-                "수신률",
-                "디코딩FPS",
-                "최근프레임지연(ms)"
-            };
             var values = new System.Collections.Generic.List<string>();
 
-            for (int index = 0; index < keys.Length; index++)
+            for (int index = 0; index < PerformanceMetricPatterns.Length; index++)
             {
-                var match = System.Text.RegularExpressions.Regex.Match(message ?? string.Empty, @"(?:^| / |\r?\n\s*)" + keys[index] + @"=([^/\r\n]+)");
+                var match = PerformanceMetricPatterns[index].Match(message ?? string.Empty);
 
                 if (match.Success)
-                    values.Add(labels[index] + "=" + match.Groups[1].Value.Trim());
+                {
+                    values.Add(PerformanceMetricLabels[index] + "=" + match.Groups[1].Value.Trim());
+                }
             }
 
-            return "[성능 진단] " + category + (values.Count == 0 ? " 상태 샘플 수신" : " / " + string.Join(" / ", values)) +
-                " / 전체 수치: Logs의 rei-viewer-diagnostics 파일";
+            return "[성능 진단] " + category + (values.Count == 0 ? " 상태 샘플 수신" : " / " + string.Join(" / ", values)) + " / 전체 수치: Logs의 rei-viewer-diagnostics 파일";
         }
 
         /// <summary>
@@ -418,7 +510,9 @@ namespace OpenCvWpfTracking.Common
         private static void WriteStructuredSection(string level, string category, params string[] lines)
         {
             string safeCategory = string.IsNullOrWhiteSpace(category) ? "GENERAL" : category.Trim();
+
             string header = $"[{DateTime.Now:HH:mm:ss.fff}] " + $"[{level}] " + $"[T{Thread.CurrentThread.ManagedThreadId:00}] " + $"[{safeCategory}]";
+
             WriteSection(header, lines, level, safeCategory);
         }
 
@@ -438,6 +532,7 @@ namespace OpenCvWpfTracking.Common
         {
             // 긴 구분선과 반복 표제를 만들지 않고 공통 이벤트 경로를 사용한다.
             string body = lines == null ? string.Empty : string.Join(Environment.NewLine, lines);
+
             Write(level, string.IsNullOrWhiteSpace(category) ? header.Trim('[', ']') : category, body);
         }
 
@@ -458,7 +553,9 @@ namespace OpenCvWpfTracking.Common
             try
             {
                 Interlocked.Increment(ref _totalWriteCount);
+
                 _writingStructuredConsole = true;
+
                 try
                 {
                     Console.WriteLine(message ?? string.Empty);
@@ -476,11 +573,13 @@ namespace OpenCvWpfTracking.Common
                  * 이후 Console 출력을 중지한다.
                  */
                 _isConsoleOutputAvailable = false;
+
                 Debug.WriteLine(message ?? string.Empty);
             }
             catch (ObjectDisposedException)
             {
                 _isConsoleOutputAvailable = false;
+
                 Debug.WriteLine(message ?? string.Empty);
             }
         }
@@ -494,11 +593,15 @@ namespace OpenCvWpfTracking.Common
         private static void WriteSerilog(string level, string message, bool diagnosticOnly, string summary)
         {
             message = MaskRtspInLog(message);
+
             // 경고·오류는 진단 전용으로 숨기지 않고 기존 일반·오류 파일에 남긴다.
-            var logger = Log.ForContext("ViewerDiagnosticOnly", diagnosticOnly && level != "WARN" && level != "ERROR")
-                .ForContext("ViewerSourceLevel", level.Trim());
+            var logger = Log.ForContext("ViewerDiagnosticOnly", diagnosticOnly && level != "WARN" && level != "ERROR").ForContext("ViewerSourceLevel", level.Trim());
+
             if (summary != null)
+            {
                 logger = logger.ForContext("ViewerOperationalMessage", MaskRtspInLog(summary));
+            }
+
             switch (level)
             {
                 case "WARN":
@@ -534,6 +637,7 @@ namespace OpenCvWpfTracking.Common
                 _category = category;
                 _operation = operation;
                 _startedAt = DateTime.Now;
+
                 Info(_category, $"START / {_operation}");
             }
 
@@ -548,7 +652,9 @@ namespace OpenCvWpfTracking.Common
                 }
 
                 _isDisposed = true;
+
                 TimeSpan elapsed = DateTime.Now - _startedAt;
+
                 Info(_category, $"END / {_operation} / ELAPSED={elapsed.TotalMilliseconds:F0}ms");
             }
         }
@@ -562,7 +668,7 @@ namespace OpenCvWpfTracking.Common
         {
             private readonly TextWriter _inner;
 
-            private readonly object _writeLock = new object ();
+            private readonly object _writeLock = new object();
 
             private readonly StringBuilder _pendingLine = new StringBuilder();
 
@@ -580,7 +686,10 @@ namespace OpenCvWpfTracking.Common
                 _inner = inner ?? TextWriter.Null;
             }
 
-            public override Encoding Encoding => _inner.Encoding;
+            public override Encoding Encoding
+            {
+                get { return _inner.Encoding; }
+            }
 
             /// <summary>
             /// Write 저장 함수.
@@ -597,6 +706,7 @@ namespace OpenCvWpfTracking.Common
                     if (value == '\n')
                     {
                         FlushPendingLine();
+
                         return;
                     }
 
@@ -643,6 +753,7 @@ namespace OpenCvWpfTracking.Common
                 lock (_writeLock)
                 {
                     Write(value);
+
                     FlushPendingLine();
                 }
             }
@@ -675,8 +786,11 @@ namespace OpenCvWpfTracking.Common
             private void FlushPendingLine()
             {
                 string line = MaskRtspInLog(_pendingLine.ToString());
+
                 _pendingLine.Clear();
+
                 string trimmed = line.Trim();
+
                 bool isSeparator = trimmed.Length >= 20 && trimmed.All(character => character == '=');
 
                 if (isSeparator)
@@ -687,8 +801,10 @@ namespace OpenCvWpfTracking.Common
                     }
 
                     SafeWriteLine(LogLine);
+
                     _separatorSinceContent = true;
                     _lastLineWasBlank = false;
+
                     return;
                 }
 
@@ -697,6 +813,7 @@ namespace OpenCvWpfTracking.Common
                     if (!_separatorSinceContent && !_lastLineWasBlank)
                     {
                         SafeWriteLine();
+
                         _lastLineWasBlank = true;
                     }
 
@@ -707,12 +824,13 @@ namespace OpenCvWpfTracking.Common
                 {
                     // 기존 TCP 송수신 등 직접 콘솔 기록도 시간·스레드와 함께 기술 파일에 보존한다.
                     // 공통 Helper를 거치지 않은 줄은 내용을 재해석하여 성공·실패를 만들어 내지 않는다.
-                    string legacyLevel = line.StartsWith("[TCP ERROR]", StringComparison.Ordinal) || line.StartsWith("[ERROR]", StringComparison.Ordinal)
-                        ? "ERROR" : line.StartsWith("[WARN]", StringComparison.Ordinal) ? "WARN" : "INFO";
+                    string legacyLevel = line.StartsWith("[TCP ERROR]", StringComparison.Ordinal) || line.StartsWith("[ERROR]", StringComparison.Ordinal) ? "ERROR" : line.StartsWith("[WARN]", StringComparison.Ordinal) ? "WARN" : "INFO";
+
                     WriteSerilog(legacyLevel, $"[T{Thread.CurrentThread.ManagedThreadId:00}] [CONSOLE] " + line, true, null);
                 }
 
                 SafeWriteLine(line);
+
                 _separatorSinceContent = false;
                 _lastLineWasBlank = false;
             }
@@ -725,14 +843,20 @@ namespace OpenCvWpfTracking.Common
             private void SafeWriteLine(string value = null)
             {
                 if (_innerUnavailable)
+                {
                     return;
+                }
 
                 try
                 {
                     if (value == null)
+                    {
                         _inner.WriteLine();
+                    }
                     else
+                    {
                         _inner.WriteLine(value);
+                    }
                 }
                 catch (IOException ex)
                 {
@@ -747,7 +871,9 @@ namespace OpenCvWpfTracking.Common
             private void SafeFlush()
             {
                 if (_innerUnavailable)
+                {
                     return;
+                }
 
                 try
                 {
@@ -773,7 +899,7 @@ namespace OpenCvWpfTracking.Common
                 }
                 catch
                 {
-                // 진단 출력 실패는 애플리케이션 기능에 영향을 주지 않는다.
+                    // 진단 출력 실패는 애플리케이션 기능에 영향을 주지 않는다.
                 }
             }
         }

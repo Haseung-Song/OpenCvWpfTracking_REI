@@ -37,7 +37,13 @@ namespace OpenCvWpfTracking.Services.Position
         public System.Windows.Media.Imaging.BitmapSource Thumbnail { get; set; }
 
         [XmlIgnore]
-        public string DisplayColor => ColorForKind(Kind);
+        public string DisplayColor
+        {
+            get
+            {
+                return ColorForKind(Kind);
+            }
+        }
 
         /// <summary>구역 편집·메인 영상·분리 영상에 같은 등급 색상을 사용한다.</summary>
         public static string ColorForKind(string kind)
@@ -55,7 +61,10 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
-        public override string ToString() => Name + " / " + Kind + " / " + (Fire ? "FIRE " : "") + (Smoke ? "SMOKE" : "");
+        public override string ToString()
+        {
+            return Name + " / " + Kind + " / " + (Fire ? "FIRE " : "") + (Smoke ? "SMOKE" : "");
+        }
     }
 
     public sealed class FireSmokeScene
@@ -102,8 +111,10 @@ namespace OpenCvWpfTracking.Services.Position
 
         public List<FireSmokeZone> Zones { get; set; } = new List<FireSmokeZone>();
 
-        public override string ToString() =>
-            Name + (PresetNumber > 0 ? " / " + PresetKind + " P" + PresetNumber.ToString("00") : "") + (Invalidated ? " / 재등록 필요" : "");
+        public override string ToString()
+        {
+            return Name + (PresetNumber > 0 ? " / " + PresetKind + " P" + PresetNumber.ToString("00") : "") + (Invalidated ? " / 재등록 필요" : "");
+        }
     }
 
     public sealed class FireSmokeZoneFile
@@ -127,13 +138,21 @@ namespace OpenCvWpfTracking.Services.Position
 
         public string Context { get; set; } = "";
 
-        public string Detail => Level + " / " + Zone + "\n" + Reason + "\n" + Context;
-
-        public static ZoneAssessment Unknown(string reason) =>
-            new ZoneAssessment
+        public string Detail
         {
-            Reason = reason
-        };
+            get
+            {
+                return Level + " / " + Zone + "\n" + Reason + "\n" + Context;
+            }
+        }
+
+        public static ZoneAssessment Unknown(string reason)
+        {
+            return new ZoneAssessment
+            {
+                Reason = reason
+            };
+        }
     }
 
     public sealed class ZoneFrameContext
@@ -158,8 +177,10 @@ namespace OpenCvWpfTracking.Services.Position
 
         public double HorizontalFov { get; set; }
 
-        public double ReferenceEoFov(int zoom) =>
-            new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)zoom);
+        public double ReferenceEoFov(int zoom)
+        {
+            return new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)zoom);
+        }
     }
 
     /// <summary>정합 순간 실패를 위한 표시 전용 보관소다. 탐지 판정에는 이 결과를 전달하지 않는다.</summary>
@@ -176,7 +197,10 @@ namespace OpenCvWpfTracking.Services.Position
 
         private readonly Dictionary<string, Entry> _entries = new Dictionary<string, Entry>();
 
-        public void Clear() => _entries.Clear();
+        public void Clear()
+        {
+            _entries.Clear();
+        }
 
         public List<FireSmokeScene> Update(string camera, ZoneFrameContext frame, IEnumerable<FireSmokeScene> current, IEnumerable<string> allowedIds, DateTimeOffset confirmedAt, bool ready, out int heldCount)
         {
@@ -185,6 +209,7 @@ namespace OpenCvWpfTracking.Services.Position
             if (!ready || frame == null || !FireSmokeZoneService.ValidPose(frame.Position, camera))
             {
                 Clear();
+
                 return new List<FireSmokeScene>();
             }
 
@@ -193,10 +218,13 @@ namespace OpenCvWpfTracking.Services.Position
             foreach (var key in _entries.Keys.ToArray())
             {
                 var entry = _entries[key];
+
                 double age = (frame.At - entry.ConfirmedAt).TotalSeconds;
 
                 if (!allowed.Contains(key) || age < 0 || age > 3 || !SameView(entry.Frame, frame, camera))
+                {
                     _entries.Remove(key);
+                }
             }
 
             var fresh = new HashSet<string>();
@@ -204,36 +232,38 @@ namespace OpenCvWpfTracking.Services.Position
             foreach (var scene in current)
             {
                 string key = scene.Id + scene.Revision;
+
                 double age = (frame.At - confirmedAt).TotalSeconds;
 
                 if (!allowed.Contains(key) || age < 0 || age > 1.5)
+                {
                     continue;
+                }
 
                 fresh.Add(key);
+
                 Entry previous;
 
                 // 같은 정합 프레임을 재사용해도 표시 보존 시간을 연장하지 않는다.
                 if (!_entries.TryGetValue(key, out previous) || confirmedAt > previous.ConfirmedAt)
+                {
                     _entries[key] = new Entry
                     {
                         Scene = scene,
                         Frame = frame,
                         ConfirmedAt = confirmedAt
                     };
+                }
             }
 
             heldCount = _entries.Keys.Count(key => !fresh.Contains(key));
+
             return _entries.Values.Select(entry => entry.Scene).ToList();
         }
 
         private static bool SameView(ZoneFrameContext previous, ZoneFrameContext current, string camera)
         {
-            return previous.Key == current.Key &&
-                previous.Epoch == current.Epoch &&
-                previous.ChannelEpoch == current.ChannelEpoch &&
-                previous.Width == current.Width &&
-                previous.Height == current.Height &&
-                FireSmokeZoneService.IsCameraPoseStable(previous.Position, current.Position, camera);
+            return previous.Key == current.Key && previous.Epoch == current.Epoch && previous.ChannelEpoch == current.ChannelEpoch && previous.Width == current.Width && previous.Height == current.Height && FireSmokeZoneService.IsCameraPoseStable(previous.Position, current.Position, camera);
         }
     }
 
@@ -248,52 +278,57 @@ namespace OpenCvWpfTracking.Services.Position
         public static bool IsCameraPoseStable(PositionSnapshot reference, PositionSnapshot current, string camera)
         {
             if (!ValidPose(reference, camera) || !ValidPose(current, camera))
+            {
                 return false;
+            }
 
             int? expected = camera == "IR" ? reference.IrZoom : reference.EoZoom;
+
             int? actual = camera == "IR" ? current.IrZoom : current.EoZoom;
-            return PanDistance(reference.Pan.Value, current.Pan.Value) <= .05 &&
-                Math.Abs(reference.Tilt.Value - current.Tilt.Value) <= .05 &&
-                expected.HasValue &&
-                LensWithin(actual, expected.Value, ZoomTolerance);
+
+            return PanDistance(reference.Pan.Value, current.Pan.Value) <= .05 && Math.Abs(reference.Tilt.Value - current.Tilt.Value) <= .05 && expected.HasValue && LensWithin(actual, expected.Value, ZoomTolerance);
         }
 
         /// <summary>사진·도형·분류는 보존하고 장면 방향과 저장된 프리셋 방향에만 동일한 변환을 적용한다.</summary>
         public static bool RebaseZero(FireSmokeZoneFile data, PanoramaZoneRebase operation)
         {
-            if (operation == null ||
-                string.IsNullOrWhiteSpace(operation.OperationId) ||
-                string.IsNullOrWhiteSpace(operation.EquipmentKey) ||
-                !Finite(operation.PanDelta) ||
-                !Finite(operation.TiltDelta))
+            if (operation == null || string.IsNullOrWhiteSpace(operation.OperationId) || string.IsNullOrWhiteSpace(operation.EquipmentKey) || !Finite(operation.PanDelta) || !Finite(operation.TiltDelta))
+            {
                 throw new InvalidDataException("구역 ZERO 변환 기록 확인 필요");
+            }
 
             if (data.AppliedZeroOperations == null)
+            {
                 data.AppliedZeroOperations = new List<string>();
+            }
 
             if (data.AppliedZeroOperations.Contains(operation.OperationId))
+            {
                 return false;
+            }
 
             foreach (var scene in data.Scenes.Where(item => item.EquipmentKey == operation.EquipmentKey))
             {
                 // 이전 버전에서 이미 무효화된 근거 불명 구역은 자동으로 유효화하지 않는다.
                 scene.Pan = SignedAngle(scene.Pan + operation.PanDelta);
+
                 scene.Tilt += operation.TiltDelta;
 
                 if (scene.PresetNumber > 0)
                 {
                     var signature = (scene.PresetSignature ?? "").Split('|');
+
                     double pan, tilt;
 
-                    if (signature.Length < 8 ||
-                        !double.TryParse(signature[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) ||
-                        !double.TryParse(signature[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) ||
-                        !Finite(pan) ||
-                        !Finite(tilt))
+                    if (signature.Length < 8 || !double.TryParse(signature[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) || !double.TryParse(signature[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) || !Finite(pan) || !Finite(tilt))
+                    {
                         throw new InvalidDataException("구역 프리셋의 ZERO 이전 방향 확인 필요: " + scene.Name);
+                    }
 
                     signature[1] = SignedAngle(pan + operation.PanDelta).ToString("R", CultureInfo.InvariantCulture);
+
                     signature[2] = (tilt + operation.TiltDelta).ToString("R", CultureInfo.InvariantCulture);
+
                     scene.PresetSignature = string.Join("|", signature);
                 }
 
@@ -301,57 +336,62 @@ namespace OpenCvWpfTracking.Services.Position
             }
 
             data.AppliedZeroOperations.Add(operation.OperationId);
+
             return true;
         }
 
-        private static double SignedAngle(double value) => ((value + 180) % 360 + 360) % 360 - 180;
+        private static double SignedAngle(double value)
+        {
+            return ((value + 180) % 360 + 360) % 360 - 180;
+        }
 
-        public static bool LensWithin(int? actual, int expected, int tolerance) =>
-            actual.HasValue &&
-            actual.Value >= 0 &&
-            actual.Value <= 1000 &&
-            expected >= 0 &&
-            expected <= 1000 &&
-            Math.Abs((long)actual.Value - expected) <= tolerance;
+        public static bool LensWithin(int? actual, int expected, int tolerance)
+        {
+            return actual.HasValue && actual.Value >= 0 && actual.Value <= 1000 && expected >= 0 && expected <= 1000 && Math.Abs((long)actual.Value - expected) <= tolerance;
+        }
 
         private static bool LensTextWithin(string saved, string current, int tolerance)
         {
             int before, after;
-            return int.TryParse(saved, out before) && int.TryParse(current, out after)
-                ? LensWithin(after, before, tolerance)
-                : saved == current;
+
+            if (int.TryParse(saved, out before) && int.TryParse(current, out after))
+            {
+                return LensWithin(after, before, tolerance);
+            }
+            else
+            {
+                return saved == current;
+            }
         }
 
         /// <summary>과거 전체 프리셋 지문도 읽되 해당 카메라의 렌즈와 실제 방향만 비교한다.</summary>
         public static string PresetMismatch(FireSmokeScene scene, PresetPointOption current)
         {
             var parts = (scene.PresetSignature ?? "").Split('|');
+
             double pan, tilt;
 
-            if (parts.Length < 8 ||
-                parts[0] != current.Number.ToString(CultureInfo.InvariantCulture) ||
-                double.IsNaN(current.Pan) ||
-                double.IsInfinity(current.Pan) ||
-                double.IsNaN(current.Tilt) ||
-                double.IsInfinity(current.Tilt) ||
-                !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) ||
-                !double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) ||
-                double.IsNaN(pan) ||
-                double.IsInfinity(pan) ||
-                double.IsNaN(tilt) ||
-                double.IsInfinity(tilt))
+            if (parts.Length < 8 || parts[0] != current.Number.ToString(CultureInfo.InvariantCulture) || double.IsNaN(current.Pan) || double.IsInfinity(current.Pan) || double.IsNaN(current.Tilt) || double.IsInfinity(current.Tilt) || !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out pan) || !double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out tilt) || double.IsNaN(pan) || double.IsInfinity(pan) || double.IsNaN(tilt) || double.IsInfinity(tilt))
+            {
                 return "등록 기준 미확인";
+            }
 
             if (PanDistance(pan, current.Pan) > .015000001 || Math.Abs(tilt - current.Tilt) > .015000001)
+            {
                 return "PAN/TILT 변경";
+            }
 
             bool ir = scene.Camera == "IR";
 
             if (!LensTextWithin(parts[ir ? 5 : 3], ir ? current.IrZoomText : current.EoZoomText, ZoomTolerance))
+            {
                 return (ir ? "IR" : "EO") + " ZOOM 변경";
+            }
 
             if (!LensTextWithin(parts[ir ? 6 : 4], ir ? current.IrFocusText : current.EoFocusText, FocusTolerance))
+            {
                 return (ir ? "IR" : "EO") + " FOCUS 변경";
+            }
 
             return null;
         }
@@ -359,77 +399,52 @@ namespace OpenCvWpfTracking.Services.Position
         public static void Validate(FireSmokeZoneFile data)
         {
             if (data == null || data.Version != 1 || data.Scenes == null || data.Scenes.Count > 100)
+            {
                 throw new InvalidDataException("구역 설정 버전 또는 장면 수가 올바르지 않습니다.");
+            }
 
             var ids = new HashSet<string>();
 
             foreach (var scene in data.Scenes)
             {
-                if (scene == null ||
-                    string.IsNullOrWhiteSpace(scene.Id) ||
-                    !ids.Add(scene.Id) ||
-                    string.IsNullOrWhiteSpace(scene.Key) ||
-                    string.IsNullOrWhiteSpace(scene.EquipmentKey) ||
-                    string.IsNullOrWhiteSpace(scene.Name) ||
-                    (scene.Camera != "EO" && scene.Camera != "IR") ||
-                    !Finite(scene.Pan) ||
-                    !Finite(scene.Tilt) ||
-                    !Finite(scene.AngleTolerance) ||
-                    !Finite(scene.HorizontalFov) ||
-                    scene.HorizontalFov < 0 ||
-                    scene.HorizontalFov >= 170 ||
-                    scene.AngleTolerance < 0.05 ||
-                    scene.AngleTolerance > 2 ||
-                    scene.FrameWidth < 1 ||
-                    scene.FrameHeight < 1 ||
-                    !scene.FixedInstallationConfirmed ||
-                    scene.ReferencePng == null ||
-                    scene.ReferencePng.Length > 16000000 ||
-                    scene.Zones == null ||
-                    scene.Zones.Count > 100 ||
-                    scene.PresetNumber < 0 ||
-                    scene.PresetNumber > 63 ||
-                    (scene.PresetNumber > 0 &&
-                    ((scene.PresetKind != "LA" &&
-                    scene.PresetKind != "WEB") ||
-                    string.IsNullOrWhiteSpace(scene.PresetSignature))))
+                if (scene == null || string.IsNullOrWhiteSpace(scene.Id) || !ids.Add(scene.Id) || string.IsNullOrWhiteSpace(scene.Key) || string.IsNullOrWhiteSpace(scene.EquipmentKey) || string.IsNullOrWhiteSpace(scene.Name) || (scene.Camera != "EO" && scene.Camera != "IR") || !Finite(scene.Pan) || !Finite(scene.Tilt) || !Finite(scene.AngleTolerance) || !Finite(scene.HorizontalFov) || scene.HorizontalFov < 0 || scene.HorizontalFov >= 170 || scene.AngleTolerance < 0.05 || scene.AngleTolerance > 2 || scene.FrameWidth < 1 || scene.FrameHeight < 1 || !scene.FixedInstallationConfirmed || scene.ReferencePng == null || scene.ReferencePng.Length > 16000000 || scene.Zones == null || scene.Zones.Count > 100 || scene.PresetNumber < 0 || scene.PresetNumber > 63 || (scene.PresetNumber > 0 && ((scene.PresetKind != "LA" && scene.PresetKind != "WEB") || string.IsNullOrWhiteSpace(scene.PresetSignature))))
+                {
                     throw new InvalidDataException("기준 장면 정보가 올바르지 않습니다.");
+                }
 
                 foreach (var z in scene.Zones)
                 {
-                    if (z == null ||
-                        string.IsNullOrWhiteSpace(z.Name) ||
-                        (!z.Fire && !z.Smoke) ||
-                        (z.Kind != "허용" && z.Kind != "주의" && z.Kind != "위험") ||
-                        !Finite(z.X) ||
-                        !Finite(z.Y) ||
-                        !Finite(z.Width) ||
-                        !Finite(z.Height) ||
-                        z.X < 0 ||
-                        z.Y < 0 ||
-                        z.Width < 0.005 ||
-                        z.Height < 0.005 ||
-                        z.X + z.Width > 1.000001 ||
-                        z.Y + z.Height > 1.000001)
+                    if (z == null || string.IsNullOrWhiteSpace(z.Name) || (!z.Fire && !z.Smoke) || (z.Kind != "허용" && z.Kind != "주의" && z.Kind != "위험") || !Finite(z.X) || !Finite(z.Y) || !Finite(z.Width) || !Finite(z.Height) || z.X < 0 || z.Y < 0 || z.Width < 0.005 || z.Height < 0.005 || z.X + z.Width > 1.000001 || z.Y + z.Height > 1.000001)
+                    {
                         throw new InvalidDataException("구역 좌표/종류/FIRE·SMOKE 적용 여부를 확인하세요.");
+                    }
                 }
             }
         }
 
-        private static bool Finite(double n) => !double.IsNaN(n) && !double.IsInfinity(n);
+        private static bool Finite(double n)
+        {
+            return !double.IsNaN(n) && !double.IsInfinity(n);
+        }
 
         public static FireSmokeZoneFile Load(string path)
         {
             if (!File.Exists(path))
+            {
                 return new FireSmokeZoneFile();
+            }
 
             if (new FileInfo(path).Length > 80000000)
+            {
                 throw new InvalidDataException("구역 설정 파일이 너무 큽니다.");
+            }
 
             using (var reader = XmlReader.Create(path, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null }))
             {
                 var data = (FireSmokeZoneFile)new XmlSerializer(typeof(FireSmokeZoneFile)).Deserialize(reader);
+
                 Validate(data);
+
                 return data;
             }
         }
@@ -437,7 +452,9 @@ namespace OpenCvWpfTracking.Services.Position
         public static void Save(string path, FireSmokeZoneFile data)
         {
             Validate(data);
+
             Directory.CreateDirectory(Path.GetDirectoryName(path));
+
             string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
 
             try
@@ -445,164 +462,169 @@ namespace OpenCvWpfTracking.Services.Position
                 using (var stream = File.Create(temp))
                 {
                     new XmlSerializer(typeof(FireSmokeZoneFile)).Serialize(stream, data);
+
                     stream.Flush(true);
                 }
 
                 if (File.Exists(path))
+                {
                     File.Replace(temp, path, path + ".bak");
+                }
                 else
+                {
                     File.Move(temp, path);
+                }
             }
             finally
             {
                 if (File.Exists(temp))
+                {
                     File.Delete(temp);
+                }
             }
         }
 
         public static FireSmokeZoneFile Clone(FireSmokeZoneFile data)
         {
             var serializer = new XmlSerializer(typeof(FireSmokeZoneFile));
+
             using (var stream = new MemoryStream())
             {
                 serializer.Serialize(stream, data);
+
                 stream.Position = 0;
+
                 return (FireSmokeZoneFile)serializer.Deserialize(stream);
             }
         }
 
-        public static bool ValidPose(PositionSnapshot p, string camera) =>
-            p != null &&
-            p.PtzStatus == PositionDataStatus.Valid &&
-            p.Pan.HasValue &&
-            p.Tilt.HasValue &&
-            (camera == "IR"
-            ? p.IrLensStatus == PositionDataStatus.Valid &&
-            p.IrZoom.HasValue
-            : p.EoLensStatus == PositionDataStatus.Valid &&
-            p.EoZoom.HasValue);
+        public static bool ValidPose(PositionSnapshot p, string camera)
+        {
+            return p != null && p.PtzStatus == PositionDataStatus.Valid && p.Pan.HasValue && p.Tilt.HasValue && (camera == "IR" ? p.IrLensStatus == PositionDataStatus.Valid && p.IrZoom.HasValue : p.EoLensStatus == PositionDataStatus.Valid && p.EoZoom.HasValue);
+        }
 
         public static double PanDistance(double a, double b)
         {
             double d = Math.Abs(a - b) % 360;
+
             return Math.Min(d, 360 - d);
         }
 
         public static string MatchFailure(FireSmokeScene s, ZoneFrameContext f)
         {
             if (s == null || f == null)
+            {
                 return "기준 장면 없음";
+            }
 
             if (s.Invalidated || !s.FixedInstallationConfirmed)
+            {
                 return "재등록 필요";
+            }
 
             if (s.Key != f.Key)
+            {
                 return "장비·영상 소스·원점 불일치";
+            }
 
             if (!ValidPose(f.Position, s.Camera))
+            {
                 return "현재 PTZ/ZOOM 미수신·지연";
+            }
 
             var projected = ForFrame(s, f);
 
             if (projected != null && !ReferenceEquals(projected, s))
-                return projected.Zones.Count > 0 ? null : "등록 구역이 현재 화면 밖에 있음";
+            {
+                if (projected.Zones.Count > 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return "등록 구역이 현재 화면 밖에 있음";
+                }
+            }
 
             int? zoom = s.Camera == "IR" ? f.Position.IrZoom : f.Position.EoZoom;
-            string values = string.Format(
-                System.Globalization.CultureInfo.InvariantCulture,
-                "기준 {0:F2}° / {1:F2}° / Z{2} · 현재 {3:F2}° / {4:F2}° / Z{5}",
-                s.Pan,
-                s.Tilt,
-                s.Zoom,
-                f.Position.Pan,
-                f.Position.Tilt,
-                zoom
-            );
+
+            string values = string.Format(System.Globalization.CultureInfo.InvariantCulture, "기준 {0:F2}° / {1:F2}° / Z{2} · 현재 {3:F2}° / {4:F2}° / Z{5}", s.Pan, s.Tilt, s.Zoom, f.Position.Pan, f.Position.Tilt, zoom);
 
             if (PanDistance(s.Pan, f.Position.Pan.Value) > s.AngleTolerance || Math.Abs(s.Tilt - f.Position.Tilt.Value) > s.AngleTolerance)
+            {
                 return "PAN/TILT 불일치 (허용 " + s.AngleTolerance.ToString("F2") + "°)\n" + values;
+            }
 
             if (!LensWithin(zoom, s.Zoom, ZoomTolerance))
+            {
                 return "ZOOM 불일치\n" + values;
+            }
 
             if (f.Width <= 0 || f.Height <= 0 || Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) >= .005)
+            {
                 return "영상 해상도·화면비 불일치";
+            }
 
             return null;
         }
 
-        public static bool Matches(FireSmokeScene s, ZoneFrameContext f) =>
-            f != null &&
-            !s.Invalidated &&
-            s.FixedInstallationConfirmed &&
-            s.Key == f.Key &&
-            ValidPose(f.Position, s.Camera) &&
-            PanDistance(s.Pan, f.Position.Pan.Value) <= s.AngleTolerance &&
-            Math.Abs(s.Tilt - f.Position.Tilt.Value) <= s.AngleTolerance &&
-            LensWithin(s.Camera == "IR" ? f.Position.IrZoom : f.Position.EoZoom, s.Zoom, ZoomTolerance) &&
-            f.Width > 0 &&
-            f.Height > 0 &&
-            Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) < 0.005;
+        public static bool Matches(FireSmokeScene s, ZoneFrameContext f)
+        {
+            return f != null && !s.Invalidated && s.FixedInstallationConfirmed && s.Key == f.Key && ValidPose(f.Position, s.Camera) && PanDistance(s.Pan, f.Position.Pan.Value) <= s.AngleTolerance && Math.Abs(s.Tilt - f.Position.Tilt.Value) <= s.AngleTolerance && LensWithin(s.Camera == "IR" ? f.Position.IrZoom : f.Position.EoZoom, s.Zoom, ZoomTolerance) && f.Width > 0 && f.Height > 0 && Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) < 0.005;
+        }
 
         public static ZoneAssessment Assess(FireSmokeZoneFile data, ZoneFrameContext f, string type, double left, double top, double right, double bottom)
         {
             bool smoke = (type ?? "").IndexOf("SMOKE", StringComparison.OrdinalIgnoreCase) >= 0;
+
             bool fire = (type ?? "").IndexOf("FIRE", StringComparison.OrdinalIgnoreCase) >= 0;
 
             if (!fire && !smoke)
+            {
                 return ZoneAssessment.Unknown("FIRE/SMOKE 외 객체");
+            }
 
             if (f == null || f.Width <= 0 || f.Height <= 0)
+            {
                 return ZoneAssessment.Unknown("원본 프레임 정보 부족");
+            }
 
-            if (!Finite(left) ||
-                !Finite(top) ||
-                !Finite(right) ||
-                !Finite(bottom) ||
-                left < 0 ||
-                top < 0 ||
-                right > f.Width ||
-                bottom > f.Height ||
-                right <= left ||
-                bottom <= top)
+            if (!Finite(left) || !Finite(top) || !Finite(right) || !Finite(bottom) || left < 0 || top < 0 || right > f.Width || bottom > f.Height || right <= left || bottom <= top)
+            {
                 return ZoneAssessment.Unknown("원본 BBox 좌표/해상도 불일치");
+            }
 
             var scenes = data.Scenes.Select(s => ForFrame(s, f)).Where(s => s != null).ToList();
 
             if (scenes.Count == 0)
+            {
                 return ZoneAssessment.Unknown("등록 시점·Zoom 불일치, 재등록 필요 또는 구역 미등록");
+            }
 
             double x = left / f.Width, y = top / f.Height, r = right / f.Width, b = bottom / f.Height;
+
             var hits = scenes.SelectMany(s => s.Zones.Where(z => (smoke ? z.Smoke : z.Fire) && ZoneViewProjection.Intersects(z, x, y, r, b)).Select(z => new { Scene = s, Zone = z })).ToList();
 
             if (hits.Count == 0)
+            {
                 return ZoneAssessment.Unknown("지정 구역 밖 / 비허용으로 자동 단정하지 않음");
+            }
 
             var hit = hits.OrderByDescending(h => h.Zone.Kind == "위험" ? 3 : h.Zone.Kind == "주의" ? 2 : 1).First();
+
             var zone = hit.Zone;
-            bool contained = x >= zone.X + 0.005 &&
-                y >= zone.Y + 0.005 &&
-                r <= zone.X + zone.Width - 0.005 &&
-                b <= zone.Y + zone.Height - 0.005 &&
-                ZoneViewProjection.Contains(zone, x, y, r, b);
+
+            bool contained = x >= zone.X + 0.005 && y >= zone.Y + 0.005 && r <= zone.X + zone.Width - 0.005 && b <= zone.Y + zone.Height - 0.005 && ZoneViewProjection.Contains(zone, x, y, r, b);
+
             string level = zone.Kind == "위험" ? "이상" : zone.Kind == "주의" || !contained || smoke ? "주의" : "위치 적합";
+
             return new ZoneAssessment
             {
                 Level = level,
                 Zone = hit.Scene.Name + " / " + zone.Name,
                 Revision = hit.Scene.Revision,
-                Reason = zone.Kind == "위험"
-                ? "비허용/위험 구역과 BBox 겹침"
-                : zone.Kind == "주의"
-                    ? "주의 구역과 BBox 겹침"
-                    : !contained ? "허용 구역 경계에 걸침" : smoke ? "허용 구역 안 연기 / BBox만으로 실제 배출원 확정 불가" : "FIRE BBox가 허용 구역 내부 / 안전 판정 아님",
-                Context = f.At.ToString("O") +
-                " / " + f.Position.PositionSummary +
-                " / ZOOM " + hit.Scene.Zoom +
-                " / BBOX " + left +
-                "," + top +
-                "," + right +
-                "," + bottom
+                Reason = zone.Kind == "위험" ? "비허용/위험 구역과 BBox 겹침" : zone.Kind == "주의" ? "주의 구역과 BBox 겹침" : !contained ? "허용 구역 경계에 걸침" : smoke ? "허용 구역 안 연기 / BBox만으로 실제 배출원 확정 불가" : "FIRE BBox가 허용 구역 내부 / 안전 판정 아님",
+                Context = f.At.ToString("O") + " / " + f.Position.PositionSummary + " / ZOOM " + hit.Scene.Zoom + " / BBOX " + left + "," + top + "," + right + "," + bottom
             };
         }
 
@@ -611,18 +633,20 @@ namespace OpenCvWpfTracking.Services.Position
             if (frame?.RequireImageRegistration == true)
             {
                 FireSmokeScene aligned;
-                return scene != null &&
-                    !scene.Invalidated &&
-                    scene.FixedInstallationConfirmed &&
-                    scene.Key == frame.Key &&
-                    frame.RegisteredScenes != null &&
-                    frame.RegisteredScenes.TryGetValue(scene.Id + scene.Revision, out aligned)
-                    ? aligned
-                    : null;
+
+                if (scene != null && !scene.Invalidated && scene.FixedInstallationConfirmed && scene.Key == frame.Key && frame.RegisteredScenes != null && frame.RegisteredScenes.TryGetValue(scene.Id + scene.Revision, out aligned))
+                {
+                    return aligned;
+                }
+                else
+                {
+                    return null;
+                }
             }
 
             // 원래 위치에 가까워도 투영을 적용해 허용 각도 경계의 불연속을 방지한다.
             var projected = ZoneViewProjection.Project(scene, frame);
+
             return projected ?? (scene != null && Matches(scene, frame) ? scene : null);
         }
     }

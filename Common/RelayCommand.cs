@@ -36,6 +36,7 @@ namespace OpenCvWpfTracking.Common
         public RelayCommand(Action executeAction, Func<bool> canExecuteFunc)
         {
             execute = executeAction ?? throw new ArgumentNullException("execute");
+
             canExecute = canExecuteFunc;
         }
 

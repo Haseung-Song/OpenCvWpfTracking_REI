@@ -1,30 +1,15 @@
-﻿using Microsoft.Win32;
-using OpenCvWpfTracking.Common;
-using OpenCvWpfTracking.Models.AI;
+﻿using OpenCvWpfTracking.Models.AI;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace OpenCvWpfTracking.ViewModels.Main
 {
     public partial class MainViewModel
     {
-        private int _nextAiEventId = 1;
 
-        private bool _isAiCsvHistoryLoaded;
-
-        // 2026-09-09: 채널당 한 행이 아니라 화면의 AI 객체별로 ACTIVE 상태를 보존한다.
-        // 이벤트 식별키는 RTSP 채널·객체 식별자·분류 번호의 조합이다.
-        private readonly Dictionary<string, AiEventTrack> _activeAiEvents = new Dictionary<string, AiEventTrack>(StringComparer.Ordinal);
-
-        private sealed class AiEventTrack
+        internal sealed class AiEventTrack
         {
             internal int RtspIndex { get; set; }
 
@@ -37,21 +22,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
             internal FireEventRecord Event { get; set; }
         }
 
-        private DispatcherTimer _testProgramEventTimer;
+        public ObservableCollection<FireEventRecord> AiDetectionEvents
+        {
+            get { return _eventAlertsFeature.AiDetectionEvents; }
+            private set { _eventAlertsFeature.AiDetectionEvents = value; }
+        }
 
-        private int _processedTestProgramEventLineCount;
-
-        private readonly List<FireEventRecord> _activeTestFireEvents = new List<FireEventRecord>();
-
-        private int _activeAiCount;
-
-        private DateTime? _lastAiDetectedTime;
-
-        private int _selectedEventAlertTabIndex;
-
-        public ObservableCollection<FireEventRecord> AiDetectionEvents { get; } = new ObservableCollection<FireEventRecord>();
-
-        public ObservableCollection<FireEventRecord> FireDetectionEvents => FireEvents;
+        public ObservableCollection<FireEventRecord> FireDetectionEvents
+        {
+            get { return _eventAlertsFeature.FireDetectionEvents; }
+        }
 
         /// <summary>
         /// 2026-08-24: 가장 최근에 발생한 이벤트 종류의 하위 탭을 선택한다.
@@ -59,360 +39,68 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public int SelectedEventAlertTabIndex
         {
-            get => _selectedEventAlertTabIndex;
-            set
-            {
-                int normalizedValue = value == 1 ? 1 : 0;
-
-                if (_selectedEventAlertTabIndex == normalizedValue)
-                {
-                    return;
-                }
-
-                _selectedEventAlertTabIndex = normalizedValue;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(EventAlertHeaderText));
-                OnPropertyChanged(nameof(EventAlertHeaderBrush));
-                ConsoleLogHelper.Info("EVENT UI", "Latest event tab selected / INDEX=" + normalizedValue);
-            }
+            get { return _eventAlertsFeature.SelectedEventAlertTabIndex; }
+            set { _eventAlertsFeature.SelectedEventAlertTabIndex = value; }
         }
 
-        public ICommand SaveAiEventsCommand { get; private set; }
+        public ICommand SaveAiEventsCommand
+        {
+            get { return _eventAlertsFeature.SaveAiEventsCommand; }
+            private set { _eventAlertsFeature.SaveAiEventsCommand = value; }
+        }
 
-        public ICommand LoadAiEventsCommand { get; private set; }
+        public ICommand LoadAiEventsCommand
+        {
+            get { return _eventAlertsFeature.LoadAiEventsCommand; }
+            private set { _eventAlertsFeature.LoadAiEventsCommand = value; }
+        }
 
-        public ICommand ClearAiEventsCommand { get; private set; }
+        public ICommand ClearAiEventsCommand
+        {
+            get { return _eventAlertsFeature.ClearAiEventsCommand; }
+            private set { _eventAlertsFeature.ClearAiEventsCommand = value; }
+        }
 
         public int ActiveAiCount
         {
-            get => _activeAiCount;
-            private set
-            {
-                if (_activeAiCount == value)
-                {
-                    return;
-                }
-
-                _activeAiCount = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(AiAlertStatusText));
-                OnPropertyChanged(nameof(AiAlertHeaderBrush));
-                OnPropertyChanged(nameof(EventAlertHeaderText));
-                OnPropertyChanged(nameof(EventAlertHeaderBrush));
-            }
+            get { return _eventAlertsFeature.ActiveAiCount; }
+            private set { _eventAlertsFeature.ActiveAiCount = value; }
         }
 
-        public string LastAiEventTimeText =>
-            _lastAiDetectedTime.HasValue ? _lastAiDetectedTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : "-";
+        public string LastAiEventTimeText
+        {
+            get { return _eventAlertsFeature.LastAiEventTimeText; }
+        }
 
-        public string AiAlertStatusText =>
-            ActiveAiCount > 0 ? "AI OBJECT DETECTED" : AiPowerStatusText == "ON" ? "MONITORING" : "DISCONNECTED";
+        public string AiAlertStatusText
+        {
+            get { return _eventAlertsFeature.AiAlertStatusText; }
+        }
 
         /// <summary>
         /// 2026-08-25: AI 활성 이벤트는 FIRE 빨간색과 구분되는 시안색으로 강조한다.
         /// </summary>
-        public Brush AiAlertHeaderBrush =>
-            ActiveAiCount > 0 ? LegacyVideoIntegration.EventBrush("AI") : new SolidColorBrush(Color.FromRgb(208, 215, 222));
+        public Brush AiAlertHeaderBrush
+        {
+            get { return _eventAlertsFeature.AiAlertHeaderBrush; }
+        }
 
         /// <summary>
         /// 2026-08-26: 가장 최근 탐지로 선택된 하위 탭의 색상을 상위 탭에 즉시 반영한다.
         /// </summary>
-        public Brush EventAlertHeaderBrush =>
-            SelectedEventAlertTabIndex == 1 && ActiveFireCount > 0
-            ? new SolidColorBrush(Color.FromRgb(255, 143, 163))
-            : SelectedEventAlertTabIndex == 0 && ActiveAiCount > 0
-                ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
-                : ActiveFireCount > 0
-                    ? new SolidColorBrush(Color.FromRgb(255, 143, 163))
-                    : ActiveAiCount > 0
-                        ? new SolidColorBrush(Color.FromRgb(94, 231, 247))
-                        : new SolidColorBrush(Color.FromRgb(208, 215, 222));
+        public Brush EventAlertHeaderBrush
+        {
+            get { return _eventAlertsFeature.EventAlertHeaderBrush; }
+        }
 
         public string EventAlertHeaderText
         {
-            get
-            {
-                // 2026-08-26: 상위 탭 숫자는 BBox 객체 수가 아니라 현재 하위 탭의 실제 이벤트 행 수다.
-                int activeCount = SelectedEventAlertTabIndex == 1 ? ActiveFireCount : ActiveAiCount;
-
-                if (activeCount == 0)
-                {
-                    activeCount = ActiveFireCount > 0 ? ActiveFireCount : ActiveAiCount;
-                }
-
-                if (activeCount == 0)
-                {
-                    return "이벤트 알림";
-                }
-
-                return "이벤트 알림 (" + activeCount + ")";
-            }
+            get { return _eventAlertsFeature.EventAlertHeaderText; }
         }
 
-        /// <summary>
-        /// AI 이벤트 명령과 테스트 프로그램 실시간 이벤트 감시를 초기화한다.
-        /// </summary>
-        private void InitializeEventAlertFeatures()
+        internal static string GetAiEventKey(int rtspIndex, AiDetectionBox box)
         {
-            SaveAiEventsCommand = new RelayCommand(SaveAiEvents);
-            LoadAiEventsCommand = new RelayCommand(LoadAiEvents);
-            ClearAiEventsCommand = new RelayCommand(ClearAiEvents);
-            string bridgePath = GetTestProgramEventBridgePath();
-
-            try
-            {
-                _processedTestProgramEventLineCount = File.Exists(bridgePath) ? File.ReadAllLines(bridgePath).Length : 0;
-            }
-            catch (IOException)
-            {
-                _processedTestProgramEventLineCount = 0;
-            }
-
-            _testProgramEventTimer = new DispatcherTimer(DispatcherPriority.Background)
-            {
-                Interval = TimeSpan.FromMilliseconds(500)
-            };
-            _testProgramEventTimer.Tick += (sender, args) => PollTestProgramEvents();
-            _testProgramEventTimer.Start();
-        }
-
-        /// <summary>
-        /// AI Agent의 프레임 결과를 RTSP 채널별 이벤트 생명주기로 변환한다.
-        /// 프레임마다 행을 추가하지 않고 탐지 시작과 해제만 기록한다.
-        /// </summary>
-        private void UpdateAiDetectionEvent(AiDetectionResult result, DateTime receiveTime)
-        {
-            List<AiDetectionBox> boxes = result.Boxes.Where(box => box.NormalizedConfidence >= AiDisplayConfidenceThreshold).ToList();
-            HashSet<string> seenKeys = new HashSet<string>(StringComparer.Ordinal);
-
-            foreach (AiDetectionBox box in boxes)
-            {
-                string key = GetAiEventKey(result.RtspIndex, box);
-                seenKeys.Add(key);
-                string resolvedDetectionType = GetAiEventDetectionType(box);
-
-                if (_activeAiEvents.TryGetValue(key, out AiEventTrack existingTrack))
-                {
-                    existingTrack.LastSeen = receiveTime;
-                    existingTrack.Event.UpdateObjectCount(1);
-                    existingTrack.Event.UpdateDetectionType(resolvedDetectionType);
-                    existingTrack.Event.UpdateAiSnapshot(box.NormalizedConfidence * 100.0, box.Width, box.Height);
-                    box.DetectionEventId = existingTrack.Event.EventId;
-                    existingTrack.Event.UpdateZoneAssessment(AssessAiZone(result, box, resolvedDetectionType));
-                    continue;
-                }
-
-                string camera = result.RtspIndex == 0 ? "EO" : "IR";
-                FireEventRecord aiEvent = new FireEventRecord(
-                    _nextAiEventId++,
-                    receiveTime,
-                    null,
-                    camera,
-                    resolvedDetectionType,
-                    (box.NormalizedConfidence * 100).ToString("F1", CultureInfo.InvariantCulture) + "%",
-                    1,
-                    Math.Max(0, box.Width),
-                    Math.Max(0, box.Height),
-                    Math.Max(0, box.Width) * (double)Math.Max(0, box.Height),
-                    "AI AGENT",
-                    "ACTIVE",
-                    CapturePositionSnapshot("AI_EVENT")
-                );
-                aiEvent.UpdateZoneAssessment(AssessAiZone(result, box, resolvedDetectionType));
-
-                if (_isAiCsvHistoryLoaded)
-                {
-                    aiEvent.MarkLiveAfterCsvLoad();
-                }
-
-                _activeAiEvents[key] = new AiEventTrack
-                {
-                    RtspIndex = result.RtspIndex,
-                    ObjectId = box.ObjectId,
-                    ClassIndex = box.ClassIndex,
-                    LastSeen = receiveTime,
-                    Event = aiEvent
-                };
-                box.DetectionEventId = aiEvent.EventId;
-                AiDetectionEvents.Insert(0, aiEvent);
-                TrimEventCollection(AiDetectionEvents);
-                _lastAiDetectedTime = receiveTime;
-                AppendFireEventAudit(aiEvent, "DETECTED");
-                ConsoleLogHelper.Warning(
-                    "AI EVENT",
-                    "ACTION=CREATE / EVENT_ID=" + aiEvent.EventId +
-                    " / CAMERA=" + camera +
-                    " / OBJECT_ID=" + box.ObjectId +
-                    " / CLASS=" + resolvedDetectionType
-                );
-            }
-
-            foreach (KeyValuePair<string, AiEventTrack> pair in _activeAiEvents.Where(item => item.Value.RtspIndex == result.RtspIndex &&
-                !seenKeys.Contains(item.Key) &&
-                (receiveTime - item.Value.LastSeen).TotalMilliseconds >= AiDisplayHoldMilliseconds).ToList())
-            {
-                pair.Value.Event.MarkCleared(receiveTime);
-                AppendFireEventAudit(pair.Value.Event, "CLEARED");
-                _activeAiEvents.Remove(pair.Key);
-                ConsoleLogHelper.State(
-                    "AI EVENT",
-                    "ACTION=CLEAR / EVENT_ID=" + pair.Value.Event.EventId +
-                    " / OBJECT_ID=" + pair.Value.ObjectId +
-                    " / REASON=HOLD_EXPIRED"
-                );
-            }
-
-            ActiveAiCount = _activeAiEvents.Count;
-            NotifyAiEventSummaryChanged();
-        }
-
-        private static string GetAiEventKey(int rtspIndex, AiDetectionBox box)
-        {
-            return rtspIndex.ToString(CultureInfo.InvariantCulture) +
-                ":" + box.ObjectId.ToString(CultureInfo.InvariantCulture) +
-                ":" + box.ClassIndex.ToString(CultureInfo.InvariantCulture);
-        }
-
-        /// <summary>
-        /// FireCandidateValidator가 기록한 상태 전환을 실시간으로 읽는다.
-        /// </summary>
-        private void PollTestProgramEvents()
-        {
-            string bridgePath = GetTestProgramEventBridgePath();
-
-            if (!File.Exists(bridgePath))
-            {
-                return;
-            }
-
-            try
-            {
-                string[] lines = File.ReadAllLines(bridgePath);
-
-                if (_processedTestProgramEventLineCount > lines.Length)
-                {
-                    _processedTestProgramEventLineCount = 0;
-                }
-
-                for (int index = _processedTestProgramEventLineCount; index < lines.Length; index++)
-                {
-                    ProcessTestProgramEventLine(lines[index]);
-                }
-
-                _processedTestProgramEventLineCount = lines.Length;
-            }
-            catch (IOException)
-            {
-            // 테스트 프로그램이 같은 순간에 기록 중이면 다음 Tick에서 다시 읽는다.
-            }
-        }
-
-        /// <summary>
-        /// 테스트 프로그램의 한 줄 이벤트를 FIRE 목록에 반영한다.
-        /// </summary>
-        private void ProcessTestProgramEventLine(string line)
-        {
-            string[] fields = (line ?? string.Empty).Split('|');
-
-            if (fields.Length < 7 ||
-                !DateTime.TryParse(fields[0], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime eventTime))
-            {
-                return;
-            }
-
-            string transition = fields[1];
-            int.TryParse(fields[2], out int objectCount);
-            int.TryParse(fields[3], out int width);
-            int.TryParse(fields[4], out int height);
-            double.TryParse(fields[5], NumberStyles.Float, CultureInfo.InvariantCulture, out double area);
-            // 2026-08-31: 신규 9필드 형식은 V.SCORE와 FIRE/SMOKE 종류를 포함한다.
-            // 기존 7/8필드 기록도 계속 읽어 이전 테스트 결과와 호환한다.
-            double visionScore = 0.0;
-            bool hasVisionScore = fields.Length >= 9 && double.TryParse(fields[6], NumberStyles.Float, CultureInfo.InvariantCulture, out visionScore);
-            string scoreText = hasVisionScore ? visionScore.ToString("F1", CultureInfo.InvariantCulture) + "%" : "N/A";
-            int detectionTypeIndex = hasVisionScore ? 7 : 6;
-            int sourceNameIndex = hasVisionScore ? 8 : 7;
-            string detectionType = fields.Length > detectionTypeIndex &&
-                string.Equals(fields[detectionTypeIndex], "SMOKE", StringComparison.OrdinalIgnoreCase)
-                ? "SMOKE"
-                : "FIRE";
-            string sourceName = fields.Length > sourceNameIndex ? fields[sourceNameIndex] : fields[Math.Min(6, fields.Length - 1)];
-
-            if (transition == "DETECTED")
-            {
-                FireEventRecord testEvent = new FireEventRecord(
-                    _nextFireEventId++,
-                    eventTime,
-                    null,
-                    "TEST",
-                    detectionType,
-                    scoreText,
-                    Math.Max(1, objectCount),
-                    Math.Max(0, width),
-                    Math.Max(0, height),
-                    Math.Max(0, area),
-                    string.IsNullOrWhiteSpace(sourceName) ? "TEST PROGRAM" : sourceName,
-                    "ACTIVE",
-                    CapturePositionSnapshot("TEST_" + detectionType + "_EVENT")
-                );
-
-                // 2026-08-26: FIRE CSV 복원 이후 테스트 프로그램에서 추가된 신규 행도 청록색으로 구분한다.
-                if (_isFireCsvHistoryLoaded)
-                {
-                    testEvent.MarkLiveAfterCsvLoad();
-                }
-
-                _activeTestFireEvents.Add(testEvent);
-                FireEvents.Insert(0, testEvent);
-                TrimEventCollection(FireEvents);
-                _lastFireDetectedTime = eventTime;
-                AppendFireEventAudit(testEvent, "DETECTED");
-                RefreshActiveFireCount();
-                NotifyFireEventSummaryChanged();
-                ConsoleLogHelper.Warning(
-                    "FIRE/SMOKE EVENT",
-                    "Test program candidate detected / TYPE=" + detectionType +
-                    " / EVENT_ID=" + testEvent.EventId +
-                    " / CSV_LIVE=" + testEvent.IsLiveAfterCsvLoad +
-                    " / OBJECTS=" + testEvent.ObjectCount +
-                    " / BBOX=" + testEvent.PixelSizeText +
-                    " / V.SCORE=" + testEvent.Confidence +
-                    " / PIXEL_AREA=" + testEvent.PixelArea.ToString("F0", CultureInfo.InvariantCulture)
-                );
-                return;
-            }
-
-            if (transition == "CLEARED" && _activeTestFireEvents.Count > 0)
-            {
-                List<FireEventRecord> clearedEvents = _activeTestFireEvents.Where(item => string.Equals(item.DetectionType, detectionType, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                foreach (FireEventRecord clearedEvent in clearedEvents)
-                {
-                    _activeTestFireEvents.Remove(clearedEvent);
-                }
-
-                foreach (FireEventRecord clearedEvent in clearedEvents)
-                {
-                    clearedEvent.MarkCleared(eventTime);
-                    AppendFireEventAudit(clearedEvent, "CLEARED");
-                }
-
-                RefreshActiveFireCount();
-                NotifyFireEventSummaryChanged();
-                ConsoleLogHelper.State(
-                    "FIRE/SMOKE EVENT",
-                    "Test program candidate cleared / TYPE=" + detectionType + " / COUNT=" + clearedEvents.Count
-                );
-            }
-        }
-
-        /// <summary>
-        /// 2026-08-27: BBox 개수가 아닌 현재 ACTIVE FIRE/SMOKE 이벤트 행 개수를 합산한다.
-        /// </summary>
-        private void RefreshActiveFireCount()
-        {
-            ActiveFireCount = _activeTestFireEvents.Count + _activeVisionBBoxEvents.Count;
-            OnPropertyChanged(nameof(EventAlertHeaderText));
+            return EventAlertsFeature.GetAiEventKey(rtspIndex, box);
         }
 
         /// <summary>
@@ -420,29 +108,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void SaveAiEvents()
         {
-            SaveFileDialog dialog = new SaveFileDialog
-            {
-                Title = "AI 이벤트 CSV 저장",
-                Filter = "CSV file|*.csv",
-                FileName = "AiEvent_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv"
-            };
-
-            if (dialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            try
-            {
-                WriteFireEventCsv(dialog.FileName, AiDetectionEvents.OrderBy(item => item.EventId));
-                ConsoleLogHelper.State("AI EVENT", "Event CSV saved / PATH=" + dialog.FileName + " / COUNT=" + AiDetectionEvents.Count);
-                MessageBox.Show("AI 이벤트 CSV 저장이 완료되었습니다.", "CSV 저장 완료", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception exception)
-            {
-                ConsoleLogHelper.Error("AI EVENT", "Event CSV save failed", exception);
-                MessageBox.Show("AI 이벤트 CSV 저장에 실패했습니다.\n" + exception.Message, "CSV 저장 실패", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            _eventAlertsFeature.SaveAiEvents();
         }
 
         /// <summary>
@@ -450,118 +116,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         private void LoadAiEvents()
         {
-            OpenFileDialog dialog = new OpenFileDialog
-            {
-                Title = "AI 이벤트 CSV 불러오기",
-                Filter = "CSV file|*.csv|All files|*.*"
-            };
-
-            if (dialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            try
-            {
-                IList<FireEventRecord> loaded = ReadFireEventCsv(dialog.FileName);
-                ValidateEventCsvKind(loaded, true);
-                AiDetectionEvents.Clear();
-
-                foreach (FireEventRecord item in loaded.Where(item => string.Equals(item.DetectionSource, "AI AGENT", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(item.DetectionType, "AI", StringComparison.OrdinalIgnoreCase)).OrderByDescending(item => item.EventId).Take(MaximumEventHistoryCount))
-                {
-                    item.MarkImportedFromCsv();
-                    AiDetectionEvents.Add(item);
-                }
-
-                _activeAiEvents.Clear();
-                _nextAiEventId = AiDetectionEvents.Count == 0 ? 1 : AiDetectionEvents.Max(item => item.EventId) + 1;
-                _isAiCsvHistoryLoaded = true;
-                ActiveAiCount = 0;
-                _lastAiDetectedTime = AiDetectionEvents.Count == 0 ? (DateTime? )null : AiDetectionEvents.Max(item => item.DetectedTime);
-                NotifyAiEventSummaryChanged();
-                ConsoleLogHelper.State("AI EVENT", "Event CSV loaded / PATH=" + dialog.FileName + " / COUNT=" + AiDetectionEvents.Count);
-                MessageBox.Show(
-                    "AI 이벤트 CSV 불러오기가 완료되었습니다.\n" + "불러온 이벤트: " + AiDetectionEvents.Count + "건",
-                    "CSV 불러오기 완료",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information
-                );
-            }
-            catch (Exception exception)
-            {
-                ConsoleLogHelper.Error("AI EVENT", "Event CSV load failed", exception);
-                MessageBox.Show(
-                    exception is FormatException ? exception.Message : "CSV를 읽지 못했습니다.\n파일을 확인하세요.",
-                    "CSV 불러오기 실패",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error
-                );
-            }
-        }
-
-        /// <summary>
-        /// 2026-08-31: AI 이벤트 TYPE은 Agent 모델의 실제 클래스명을 사용한다.
-        /// 매칭되지 않은 Class Index는 공백 없는 CLASS20 형식으로 유지한다.
-        /// </summary>
-        private static string GetAiEventDetectionType(AiDetectionBox box)
-        {
-            string className = (box?.ClassName ?? string.Empty).Trim();
-
-            if (className.StartsWith("Class ", StringComparison.OrdinalIgnoreCase))
-            {
-                return "CLASS" + className.Substring(6).Trim();
-            }
-
-            return string.IsNullOrWhiteSpace(className) ? "AI" : className.ToUpperInvariant();
+            _eventAlertsFeature.LoadAiEvents();
         }
 
         private void ClearAiEvents()
         {
-            AiDetectionEvents.Clear();
-            _nextAiEventId = 1;
-            _isAiCsvHistoryLoaded = false;
-            _activeAiEvents.Clear();
-            ActiveAiCount = 0;
-            _lastAiDetectedTime = null;
-            NotifyAiEventSummaryChanged();
-            ConsoleLogHelper.State("AI EVENT", "Event list cleared / NEXT_ID=1");
+            _eventAlertsFeature.ClearAiEvents();
         }
 
-        private void NotifyAiEventSummaryChanged()
+        internal static void TrimEventCollection(ObservableCollection<FireEventRecord> events)
         {
-            OnPropertyChanged(nameof(LastAiEventTimeText));
-            OnPropertyChanged(nameof(AiAlertStatusText));
-            OnPropertyChanged(nameof(AiAlertHeaderBrush));
-            OnPropertyChanged(nameof(EventAlertHeaderText));
-            OnPropertyChanged(nameof(EventAlertHeaderBrush));
+            EventAlertsFeature.TrimEventCollection(events);
         }
 
-        private static void TrimEventCollection(ObservableCollection<FireEventRecord> events)
-        {
-            int removedCount = 0;
-
-            while (events.Count > MaximumEventHistoryCount)
-            {
-                events.RemoveAt(events.Count - 1);
-                removedCount++;
-            }
-
-            if (removedCount > 0)
-            {
-                // 2026-08-26: 100페이지 초과 시 신규 이벤트는 유지하고 삭제된 과거 이력을 기록한다.
-                ConsoleLogHelper.State("EVENT RETENTION", "Oldest event removed / REMOVED=" + removedCount + " / RETAINED=" + events.Count);
-            }
-        }
-
-        internal static string GetTestProgramEventBridgePath()
-        {
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "OpenCvWpfTracking",
-                "FireEvents",
-                "TestProgramLiveEvents.txt"
-            );
-        }
     }
 }

@@ -24,7 +24,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// - 본 서비스는 카메라 Protocol 응답 수신만 담당한다.
     /// - 카메라 웹 설정에서 Port가 변경된 경우 ResponsePort 값도 동일하게 변경해야 한다.
     /// </summary>
-    public sealed class CtecCameraResponseService
+    public sealed class CtecCameraResponseService : ICtecCameraResponseServicePort
     {
 
         #region [상수]
@@ -107,7 +107,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// Zoom / Focus Position 응답 대기 작업 보호
         /// </summary>
-        private readonly object _positionWaitLock = new object ();
+        private readonly object _positionWaitLock = new object();
 
         /// <summary>
         /// 다음 Zoom Position 응답 대기 작업
@@ -143,7 +143,13 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// 현재 CTEC Response TCP 연결 여부
         /// </summary>
-        public bool IsConnected => _tcpClient != null && _tcpClient.Connected && _networkStream != null;
+        public bool IsConnected
+        {
+            get
+            {
+                return _tcpClient != null && _tcpClient.Connected && _networkStream != null;
+            }
+        }
 
         #endregion
 
@@ -160,12 +166,14 @@ namespace OpenCvWpfTracking.Services.Communication
             if (string.IsNullOrWhiteSpace(cameraIp))
             {
                 Console.WriteLine("[CTEC RESPONSE] Start Failed : Camera IP is empty");
+
                 return;
             }
 
             if (responsePort < 1 || responsePort > 65535)
             {
                 Console.WriteLine($"[CTEC RESPONSE] Start Failed : Invalid Port {responsePort}");
+
                 return;
             }
 
@@ -175,18 +183,19 @@ namespace OpenCvWpfTracking.Services.Communication
             {
                 string normalizedIp = cameraIp.Trim();
 
-                if (_isConnectionRequested &&
-                    string.Equals(_cameraIp, normalizedIp, StringComparison.OrdinalIgnoreCase) &&
-                    _responsePort == responsePort)
+                if (_isConnectionRequested && string.Equals(_cameraIp, normalizedIp, StringComparison.OrdinalIgnoreCase) && _responsePort == responsePort)
                 {
                     return;
                 }
 
                 StopCore();
+
                 _cameraIp = normalizedIp;
                 _responsePort = responsePort;
                 _isConnectionRequested = true;
+
                 _receiveCts = new CancellationTokenSource();
+
                 /*
                  * 장비 연결 버튼의 UI Thread를 점유하지 않도록
                  * TCP 연결 / 수신 / 재연결 Loop는 별도 Task에서 수행한다.
@@ -232,16 +241,20 @@ namespace OpenCvWpfTracking.Services.Communication
                 try
                 {
                     RaiseConnectionStatus(isFirstAttempt ? "Connecting" : "Reconnecting");
+
                     isFirstAttempt = false;
+
                     bool connectResult = await ConnectCoreAsync(cancellationToken);
 
                     if (!connectResult)
                     {
                         await DelayReconnectAsync(cancellationToken);
+
                         continue;
                     }
 
                     RaiseConnectionStatus("Connected");
+
                     await ReceiveLoopAsync(cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -251,6 +264,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[CTEC RESPONSE] LOOP ERROR : {ex.Message}");
+
                     ConsoleLogHelper.PrintLine();
                 }
                 finally
@@ -261,6 +275,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 if (_isConnectionRequested && !cancellationToken.IsCancellationRequested)
                 {
                     RaiseConnectionStatus("Reconnecting");
+
                     await DelayReconnectAsync(cancellationToken);
                 }
             }
@@ -274,11 +289,13 @@ namespace OpenCvWpfTracking.Services.Communication
         private async Task<bool> ConnectCoreAsync(CancellationToken cancellationToken)
         {
             CloseSocket();
+
             TcpClient tcpClient = new TcpClient();
 
             try
             {
                 Task connectTask = tcpClient.ConnectAsync(_cameraIp, _responsePort);
+
                 Task completedTask = await Task.WhenAny(connectTask, Task.Delay(ConnectTimeoutMs, cancellationToken));
 
                 if (completedTask != connectTask)
@@ -286,25 +303,38 @@ namespace OpenCvWpfTracking.Services.Communication
                     // 2026-09-29: Close 이후 완료되는 ConnectAsync의 예외까지
                     // 관찰하여 반복 재연결 중 UnobservedTaskException을 방지한다.
                     ObserveTimedOutConnectTask(connectTask);
+
                     tcpClient.Close();
+
                     Console.WriteLine($"[CTEC RESPONSE] CONNECT TIMEOUT : " + $"{_cameraIp}:{_responsePort}");
+
                     ConsoleLogHelper.PrintLine();
+
                     return false;
                 }
 
                 await connectTask;
+
                 _tcpClient = tcpClient;
+
                 _networkStream = tcpClient.GetStream();
+
                 Console.WriteLine();
+
                 Console.WriteLine($"[CTEC RESPONSE] CONNECTED : " + $"{_cameraIp}:{_responsePort}");
+
                 ConsoleLogHelper.PrintLine();
+
                 return true;
             }
             catch (Exception ex)
             {
                 tcpClient.Close();
+
                 Console.WriteLine($"[CTEC RESPONSE] CONNECT FAILED : " + $"{_cameraIp}:{_responsePort} / {ex.Message}");
+
                 ConsoleLogHelper.PrintLine();
+
                 return false;
             }
         }
@@ -314,17 +344,12 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private void ObserveTimedOutConnectTask(Task connectTask)
         {
-            _ = connectTask.ContinueWith(
-                faultedTask =>
+            _ = connectTask.ContinueWith(faultedTask =>
             {
                 Exception observedException = faultedTask.Exception;
-                Debug.WriteLine($"[CTEC RESPONSE CONNECT TIMEOUT CLEANUP] " +
-                    $"{_cameraIp}:{_responsePort} / " + observedException?.GetBaseException().Message);
-            },
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default
-            );
+
+                Debug.WriteLine($"[CTEC RESPONSE CONNECT TIMEOUT CLEANUP] " + $"{_cameraIp}:{_responsePort} / " + observedException?.GetBaseException().Message);
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         #endregion
@@ -359,9 +384,11 @@ namespace OpenCvWpfTracking.Services.Communication
         private async Task<int?> WaitForNextPositionAsync(bool isZoom, int timeoutMs, CancellationToken cancellationToken)
         {
             TaskCompletionSource<int> waitSource = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+
             lock (_positionWaitLock)
             {
                 TaskCompletionSource<int> previousSource = isZoom ? _zoomPositionWaitSource : _focusPositionWaitSource;
+
                 previousSource?.TrySetCanceled();
 
                 if (isZoom)
@@ -377,6 +404,7 @@ namespace OpenCvWpfTracking.Services.Communication
             using (CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
                 timeoutCts.CancelAfter(Math.Max(1, timeoutMs));
+
                 using (timeoutCts.Token.Register(() => waitSource.TrySetCanceled()))
                 {
                     try
@@ -411,6 +439,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private void CompletePositionWait(byte commandCode, int position)
         {
             TaskCompletionSource<int> waitSource = null;
+
             lock (_positionWaitLock)
             {
                 if (commandCode == 0x47)
@@ -434,7 +463,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private void CancelPositionWaits()
         {
             TaskCompletionSource<int> zoomSource;
+
             TaskCompletionSource<int> focusSource;
+
             lock (_positionWaitLock)
             {
                 zoomSource = _zoomPositionWaitSource;
@@ -444,6 +475,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             zoomSource?.TrySetCanceled();
+
             focusSource?.TrySetCanceled();
         }
 
@@ -461,6 +493,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
         {
             byte[] receiveBuffer = new byte[1024];
+
             List<byte> packetBuffer = new List<byte>();
 
             while (_isConnectionRequested && !cancellationToken.IsCancellationRequested && IsConnected)
@@ -470,7 +503,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 if (readLength <= 0)
                 {
                     Console.WriteLine("[CTEC RESPONSE] REMOTE CLOSED");
+
                     ConsoleLogHelper.PrintLine();
+
                     break;
                 }
 
@@ -495,6 +530,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 if (headerIndex < 0)
                 {
                     bool keepLastHeaderByte = packetBuffer[packetBuffer.Count - 1] == ResponseHeader1;
+
                     packetBuffer.Clear();
 
                     if (keepLastHeaderByte)
@@ -526,11 +562,14 @@ namespace OpenCvWpfTracking.Services.Communication
                 if (packetBuffer[ResponsePacketLength - 1] != ResponseEnd)
                 {
                     packetBuffer.RemoveAt(0);
+
                     continue;
                 }
 
                 byte[] packet = packetBuffer.GetRange(0, ResponsePacketLength).ToArray();
+
                 packetBuffer.RemoveRange(0, ResponsePacketLength);
+
                 OnPacketReceived(packet);
             }
         }
@@ -557,13 +596,17 @@ namespace OpenCvWpfTracking.Services.Communication
         private void OnPacketReceived(byte[] packet)
         {
             string packetHex = BitConverter.ToString(packet).Replace("-", " ");
+
             Console.WriteLine();
+
             Console.WriteLine($"[CTEC RESPONSE] RX : {packetHex}");
+
             ConsoleLogHelper.PrintLine();
 
             if (packet.Length == ResponsePacketLength && (packet[2] == 0x47 || packet[2] == 0x48))
             {
                 int position = (packet[4] << 8) | packet[5];
+
                 CompletePositionWait(packet[2], position);
             }
 
@@ -585,7 +628,7 @@ namespace OpenCvWpfTracking.Services.Communication
             }
             catch (OperationCanceledException)
             {
-            // Stop/Disconnect에서 취소된 정상 종료 경로이다.
+                // Stop/Disconnect에서 취소된 정상 종료 경로이다.
             }
         }
 
@@ -603,6 +646,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private void StopCore()
         {
             CancelPositionWaits();
+
             _isConnectionRequested = false;
 
             try
@@ -615,10 +659,14 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             _receiveCts?.Dispose();
+
             _receiveCts = null;
+
             CloseSocket();
+
             _cameraIp = null;
             _responsePort = 0;
+
             RaiseConnectionStatus("Disconnected");
         }
 
@@ -648,8 +696,6 @@ namespace OpenCvWpfTracking.Services.Communication
             _networkStream = null;
             _tcpClient = null;
         }
-
         #endregion
-
     }
 }

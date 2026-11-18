@@ -1,4 +1,4 @@
-﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Common;
 using System;
 
 namespace OpenCvWpfTracking.Services.Communication
@@ -15,7 +15,7 @@ namespace OpenCvWpfTracking.Services.Communication
     /// [5] Data 2
     /// [6] CheckSum   : byte[1] ~ byte[5] 합
     /// </summary>
-    public class ControlCommandService
+    public class ControlCommandService : IControlCommandServicePort
     {
         /// <summary>
         /// [WEB AGENT](Local Agent) [TCP] 통신 서비스
@@ -31,7 +31,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private readonly byte _unitId = 0x01;
 
-        private readonly object _irPaletteSync = new object ();
+        private readonly object _irPaletteSync = new object();
 
         private const int IrPaletteCount = 10;
 
@@ -76,7 +76,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SendPrecisionAbsolute(bool tilt, double guiAngle, double speed, double maximum)
         {
             if (tilt ? !UseUnsignedWebAgentTiltCoordinates : !UseUnsignedWebAgentPanCoordinates)
+            {
                 return false;
+            }
 
             return _tcpClientService.Send(WebAgentMotionFocusProtocol.Absolute(_unitId, tilt, guiAngle, speed, maximum));
         }
@@ -85,7 +87,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SendPrecisionJog(byte direction, double panSpeed, double tiltSpeed, double maximum)
         {
             if (!UseUnsignedWebAgentPanCoordinates || !UseUnsignedWebAgentTiltCoordinates)
+            {
                 return false;
+            }
 
             return _tcpClientService.Send(WebAgentMotionFocusProtocol.Jog(_unitId, direction, panSpeed, tiltSpeed, maximum));
         }
@@ -111,7 +115,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 data2,
                 0x00
             };
+
             packet[6] = CheckSum(packet, 1, 5);
+
             return _tcpClientService.Send(packet);
         }
 
@@ -141,6 +147,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool RequestWebAgentTelemetrySetting(byte category)
         {
             ValidateTelemetryQueryCategory(category);
+
             return SendCommand(0x00, WebAgentTelemetrySettingQueryCommand, category, 0x00);
         }
 
@@ -151,6 +158,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool RequestWebAgentTelemetrySnapshot(byte category)
         {
             ValidateTelemetryQueryCategory(category);
+
             return SendCommand(0x00, WebAgentTelemetrySnapshotQueryCommand, category, 0x00);
         }
 
@@ -164,7 +172,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// 2026-10-02: WebAgent에 최신 GPS 상태를 단건 조회한다.
-        /// Packet: FF 01 00 A3 00 00 A4
+        /// 패킷 예시: FF 01 00 A3 00 00 A4
         /// </summary>
         public bool RequestGpsTelemetry()
         {
@@ -211,13 +219,15 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x00,
                 0x00
             };
+
             packet[6] = CheckSum(packet, 1, 5);
+
             return packet;
         }
 
         /// <summary>
         /// 2026-10-02: 현재 GPS 자동 전송률을 조회한다.
-        /// Packet: FF 01 00 F9 00 00 FA
+        /// 패킷 예시: FF 01 00 F9 00 00 FA
         /// </summary>
         public bool RequestGpsAutoTxRate()
         {
@@ -269,7 +279,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x00,
                 0x00
             };
+
             packet[6] = CheckSum(packet, 1, 5);
+
             return packet;
         }
 
@@ -289,7 +301,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// RPY 자동 전송 주파수 7Byte 요청 Packet을 생성한다.
-        /// Sample: 10Hz → FF 01 00 EB 0A 00 F6
+        /// 예시: 10Hz → FF 01 00 EB 0A 00 F6
         /// </summary>
         public static byte[] BuildRpyAutoTxRatePacket(byte frequencyHz)
         {
@@ -308,7 +320,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 0x00,
                 0x00
             };
+
             packet[6] = CheckSum(packet, 1, 5);
+
             return packet;
         }
 
@@ -324,7 +338,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// RPY 오프셋 요청 Packet을 생성한다.
-        /// Sample: 1.00, -2.00, 30.00 →
+        /// 예시: 1.00, -2.00, 30.00 →
         /// FF 01 00 ED 64 00 38 FF B8 0B 4C
         /// </summary>
         public static byte[] BuildRpyOffsetPacket(short rollHundredths, short pitchHundredths, ushort yawHundredths)
@@ -343,14 +357,16 @@ namespace OpenCvWpfTracking.Services.Communication
                 (byte)((yawHundredths >> 8) & 0xFF),
                 0x00
             };
+
             packet[10] = CheckSum(packet, 1, 9);
+
             return packet;
         }
 
         /// <summary>
         /// 2026-10-01: WebAgent Build 93 이상에서 DB에 저장된
         /// Roll/Pitch/Yaw Offset을 직접 조회한다.
-        /// Packet: FF 01 00 F3 00 00 F4
+        /// 패킷 예시: FF 01 00 F3 00 00 F4
         /// </summary>
         public bool RequestStoredRpyOffsets()
         {
@@ -374,7 +390,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// <summary>
         /// 2026-10-01: WebAgent Build 93 이상에서 DB에 저장된
         /// RPY 자동 전송 주파수를 직접 조회한다.
-        /// Packet: FF 01 00 F5 00 00 F6
+        /// 패킷 예시: FF 01 00 F5 00 00 F6
         /// </summary>
         public bool RequestStoredRpyAutoTxRate()
         {
@@ -397,7 +413,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// 2026-10-01: WebAgent 현재 UTC 날짜·시간을 조회한다.
-        /// Packet: FF 01 00 F1 00 00 F2
+        /// 패킷 예시: FF 01 00 F1 00 00 F2
         /// </summary>
         public bool RequestSystemDateTime()
         {
@@ -415,14 +431,12 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// UTC 날짜·시간 설정 12Byte Packet을 생성한다.
-        /// Sample: 2026-10-01 03:04:05 UTC →
+        /// 예시: 2026-10-01 03:04:05 UTC →
         /// FF 01 00 EF EA 07 0A 01 03 04 05 F8
         /// </summary>
         public static byte[] BuildSystemDateTimePacket(DateTime dateTime)
         {
-            DateTime utcDateTime = dateTime.Kind == DateTimeKind.Local
-                ? dateTime.ToUniversalTime()
-                : DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+            DateTime utcDateTime = dateTime.Kind == DateTimeKind.Local ? dateTime.ToUniversalTime() : DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
 
             if (utcDateTime.Year < 1970 || utcDateTime.Year > 9999)
             {
@@ -444,28 +458,57 @@ namespace OpenCvWpfTracking.Services.Communication
                 (byte)utcDateTime.Second,
                 0x00
             };
+
             packet[11] = CheckSum(packet, 1, 10);
+
             return packet;
         }
 
         // WEB AGENT의 추가 상태 조회 명령을 구성한다.
-        public bool RequestWebAgentIdentity() => SendCommand(0x00, 0xE1, 0x00, 0x00);
+        public bool RequestWebAgentIdentity()
+        {
+            return SendCommand(0x00, 0xE1, 0x00, 0x00);
+        }
 
-        public bool RequestLensCapability(byte target) => SendCommand(0x00, 0xE3, target, 0x00);
+        public bool RequestLensCapability(byte target)
+        {
+            return SendCommand(0x00, 0xE3, target, 0x00);
+        }
 
-        public bool RequestLensTelemetry(byte target) => SendCommand(0x00, 0xE3, target, 0x01);
+        public bool RequestLensTelemetry(byte target)
+        {
+            return SendCommand(0x00, 0xE3, target, 0x01);
+        }
 
-        public bool RequestLensCapabilityAndTelemetry(byte target) => SendCommand(0x00, 0xE3, target, 0x02);
+        public bool RequestLensCapabilityAndTelemetry(byte target)
+        {
+            return SendCommand(0x00, 0xE3, target, 0x02);
+        }
 
-        public bool RequestImuTelemetry() => SendCommand(0x00, 0xE5, 0x00, 0x00);
+        public bool RequestImuTelemetry()
+        {
+            return SendCommand(0x00, 0xE5, 0x00, 0x00);
+        }
 
-        public bool RequestCameraFeatureCapability(byte target) => SendCommand(0x00, 0xE7, target, 0xFF);
+        public bool RequestCameraFeatureCapability(byte target)
+        {
+            return SendCommand(0x00, 0xE7, target, 0xFF);
+        }
 
-        public bool RequestCameraFeatureState(byte target, byte featureId) => SendCommand(0x00, 0xE7, target, featureId);
+        public bool RequestCameraFeatureState(byte target, byte featureId)
+        {
+            return SendCommand(0x00, 0xE7, target, featureId);
+        }
 
-        public bool SetCameraFeature(byte featureId, byte target, byte value) => SendCommand(featureId, 0xE9, target, value);
+        public bool SetCameraFeature(byte featureId, byte target, byte value)
+        {
+            return SendCommand(featureId, 0xE9, target, value);
+        }
 
-        public bool MoveHomePosition(byte axis) => SendCommand(0x00, 0xB1, axis, 0x00);
+        public bool MoveHomePosition(byte axis)
+        {
+            return SendCommand(0x00, 0xB1, axis, 0x00);
+        }
 
         /// <summary>
         /// WebAgent에 현재 Encoder 위치를 0으로 재정의하도록 요청한다.
@@ -489,7 +532,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 2026-09-30: TILT Set Zero 이후 변경된 실제 동작 범위를
         /// WebAgent에 조회한다.
         ///
-        /// Packet: FF 01 00 B5 02 00 B8
+        /// 패킷 예시: FF 01 00 B5 02 00 B8
         /// Cmd2  : 0xB5 (TILT 제한값 조회)
         /// Data1 : 0x02 (TILT 축)
         /// </summary>
@@ -566,6 +609,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SetLaPresetId(ushort presetId)
         {
             presetId = NormalizeLaPresetId(presetId);
+
             return SendUnsignedShortCommand(0x19, presetId);
         }
 
@@ -610,6 +654,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SetLaPresetZoom(ushort position)
         {
             position = NormalizePresetPosition(position);
+
             return SendUnsignedShortCommand(0x95, position);
         }
 
@@ -623,6 +668,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SetLaPresetFocusAndCommit(ushort position)
         {
             position = NormalizePresetPosition(position);
+
             return SendUnsignedShortCommand(0x97, position);
         }
 
@@ -639,6 +685,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool MoveToLaPreset(ushort presetId)
         {
             presetId = NormalizeLaPresetId(presetId);
+
             return SendUnsignedShortCommand(0x05, presetId);
         }
 
@@ -677,9 +724,13 @@ namespace OpenCvWpfTracking.Services.Communication
         private bool SendSignedDegreeCommand(byte command2, double degree)
         {
             double safeDegree = Math.Max(-180.0, Math.Min(180.0, degree));
+
             short value = safeDegree < 0.0 ? (short)((safeDegree - 0.005) * 100.0) : (short)((safeDegree + 0.005) * 100.0);
+
             byte data1 = (byte)((value >> 8) & 0xFF);
+
             byte data2 = (byte)(value & 0xFF);
+
             return SendCommand(0x00, command2, data1, data2);
         }
 
@@ -689,7 +740,9 @@ namespace OpenCvWpfTracking.Services.Communication
         private bool SendUnsignedShortCommand(byte command2, ushort value)
         {
             byte data1 = (byte)((value >> 8) & 0xFF);
+
             byte data2 = (byte)(value & 0xFF);
+
             return SendCommand(0x00, command2, data1, data2);
         }
 
@@ -698,7 +751,14 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private static ushort NormalizeLaPresetId(ushort presetId)
         {
-            return presetId > 99 ? (ushort)99 : presetId;
+            if (presetId > 99)
+            {
+                return (ushort)99;
+            }
+            else
+            {
+                return presetId;
+            }
         }
 
         /// <summary>
@@ -706,7 +766,14 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private static ushort NormalizePresetPosition(ushort position)
         {
-            return position > 1000 ? (ushort)1000 : position;
+            if (position > 1000)
+            {
+                return (ushort)1000;
+            }
+            else
+            {
+                return position;
+            }
         }
 
         /// <summary>
@@ -723,6 +790,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool AddPresetPoint(byte presetNumber)
         {
             presetNumber = NormalizePresetNumber(presetNumber);
+
             return SendCommand(0x00, 0x03, 0x00, presetNumber);
         }
 
@@ -737,6 +805,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool RemovePresetPoint(byte presetNumber)
         {
             presetNumber = NormalizePresetNumber(presetNumber);
+
             return SendCommand(0x00, 0x05, 0x00, presetNumber);
         }
 
@@ -751,6 +820,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool MoveToPresetPoint(byte presetNumber)
         {
             presetNumber = NormalizePresetNumber(presetNumber);
+
             return SendCommand(0x00, 0x07, 0x00, presetNumber);
         }
 
@@ -765,7 +835,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartPresetScan(byte speed, byte delay)
         {
             speed = NormalizePresetScanValue(speed);
+
             delay = NormalizePresetScanValue(delay);
+
             return SendCommand(0x00, 0x99, speed, delay);
         }
 
@@ -796,7 +868,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool UpdatePresetScan(byte speed, byte delay)
         {
             speed = NormalizePresetScanValue(speed);
+
             delay = NormalizePresetScanValue(delay);
+
             return SendCommand(0x00, 0x9D, speed, delay);
         }
 
@@ -845,6 +919,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SetPanPositionSpeed(double speedDegreesPerSecond)
         {
             ushort speedValue = ConvertPositionSpeed(speedDegreesPerSecond);
+
             return SendCommand(0x00, 0x49, (byte)((speedValue >> 8) & 0xFF), (byte)(speedValue & 0xFF));
         }
 
@@ -857,6 +932,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool SetTiltPositionSpeed(double speedDegreesPerSecond)
         {
             ushort speedValue = ConvertPositionSpeed(speedDegreesPerSecond);
+
             return SendCommand(0x00, 0x4B, (byte)((speedValue >> 8) & 0xFF), (byte)(speedValue & 0xFF));
         }
 
@@ -866,6 +942,7 @@ namespace OpenCvWpfTracking.Services.Communication
         private static ushort ConvertPositionSpeed(double speedDegreesPerSecond)
         {
             double safeSpeed = Math.Max(0.0, Math.Min(655.35, speedDegreesPerSecond));
+
             return (ushort)Math.Round(safeSpeed * 100.0, MidpointRounding.AwayFromZero);
         }
 
@@ -886,14 +963,21 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             while (pan > 180.0)
+            {
                 pan -= 360.0;
+            }
 
             while (pan < -180.0)
+            {
                 pan += 360.0;
+            }
 
             short value = pan < 0 ? (short)((pan - 0.005) * 100) : (short)((pan + 0.005) * 100);
+
             byte data1 = (byte)((value >> 8) & 0xFF);
+
             byte data2 = (byte)(value & 0xFF);
+
             return SendCommand(0x00, 0x45, data1, data2);
         }
 
@@ -935,7 +1019,14 @@ namespace OpenCvWpfTracking.Services.Communication
         /// </summary>
         private static byte NormalizePanTiltProtocolSpeed(byte speed)
         {
-            return speed > 0x3F ? (byte)0x3F : speed;
+            if (speed > 0x3F)
+            {
+                return (byte)0x3F;
+            }
+            else
+            {
+                return speed;
+            }
         }
 
         /// <summary>
@@ -947,6 +1038,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartPanRight(byte speed = 20)
         {
             byte protocolSpeed = NormalizePanTiltProtocolSpeed(speed);
+
             return SendCommand(0x00, 0x02, protocolSpeed, 0x00);
         }
 
@@ -959,6 +1051,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartPanLeft(byte speed = 20)
         {
             byte protocolSpeed = NormalizePanTiltProtocolSpeed(speed);
+
             return SendCommand(0x00, 0x04, protocolSpeed, 0x00);
         }
 
@@ -973,14 +1066,21 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             while (tilt > 180.0)
+            {
                 tilt -= 360.0;
+            }
 
             while (tilt < -180.0)
+            {
                 tilt += 360.0;
+            }
 
             short value = tilt < 0 ? (short)((tilt - 0.005) * 100) : (short)((tilt + 0.005) * 100);
+
             byte data1 = (byte)((value >> 8) & 0xFF);
+
             byte data2 = (byte)(value & 0xFF);
+
             return SendCommand(0x00, 0x47, data1, data2);
         }
 
@@ -993,6 +1093,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartTiltUp(byte speed = 20)
         {
             byte protocolSpeed = NormalizePanTiltProtocolSpeed(speed);
+
             return SendCommand(0x00, 0x08, 0x00, protocolSpeed);
         }
 
@@ -1005,6 +1106,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartTiltDown(byte speed = 20)
         {
             byte protocolSpeed = NormalizePanTiltProtocolSpeed(speed);
+
             return SendCommand(0x00, 0x10, 0x00, protocolSpeed);
         }
 
@@ -1022,7 +1124,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartPanLeftTiltUp(byte panSpeed = 20, byte tiltSpeed = 20)
         {
             byte protocolPanSpeed = NormalizePanTiltProtocolSpeed(panSpeed);
+
             byte protocolTiltSpeed = NormalizePanTiltProtocolSpeed(tiltSpeed);
+
             return SendCommand(0x00, 0x0C, protocolPanSpeed, protocolTiltSpeed);
         }
 
@@ -1040,7 +1144,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartPanRightTiltUp(byte panSpeed = 20, byte tiltSpeed = 20)
         {
             byte protocolPanSpeed = NormalizePanTiltProtocolSpeed(panSpeed);
+
             byte protocolTiltSpeed = NormalizePanTiltProtocolSpeed(tiltSpeed);
+
             return SendCommand(0x00, 0x0A, protocolPanSpeed, protocolTiltSpeed);
         }
 
@@ -1058,7 +1164,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartPanLeftTiltDown(byte panSpeed = 20, byte tiltSpeed = 20)
         {
             byte protocolPanSpeed = NormalizePanTiltProtocolSpeed(panSpeed);
+
             byte protocolTiltSpeed = NormalizePanTiltProtocolSpeed(tiltSpeed);
+
             return SendCommand(0x00, 0x14, protocolPanSpeed, protocolTiltSpeed);
         }
 
@@ -1076,7 +1184,9 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StartPanRightTiltDown(byte panSpeed = 20, byte tiltSpeed = 20)
         {
             byte protocolPanSpeed = NormalizePanTiltProtocolSpeed(panSpeed);
+
             byte protocolTiltSpeed = NormalizePanTiltProtocolSpeed(tiltSpeed);
+
             return SendCommand(0x00, 0x12, protocolPanSpeed, protocolTiltSpeed);
         }
 
@@ -1113,8 +1223,11 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StopPanTiltPositionMove()
         {
             bool panResult = StopPanPositionMove();
+
             bool tiltResult = StopTiltPositionMove();
+
             ConsoleLogHelper.Command("POSITION STOP", $"PAN={panResult} / TILT={tiltResult} / CMD2=0x4F");
+
             return panResult && tiltResult;
         }
 
@@ -1124,11 +1237,17 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool StopMove()
         {
             Console.WriteLine();
+
             Console.WriteLine("[CONTROL] STOP MOVE");
+
             Console.WriteLine("[CONTROL] STOP COMMAND PARAMETER : " + "CMD1=0x00, CMD2=0x00, DATA1=0x00, DATA2=0x00");
+
             bool result = SendCommand(0x00, 0x00, 0x00, 0x00);
+
             Console.WriteLine($"[CONTROL] STOP SEND RESULT : {result}");
+
             ConsoleLogHelper.PrintLine();
+
             return result;
         }
 
@@ -1139,12 +1258,18 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool EoZoomGoPosition(short zoom)
         {
             if (zoom > 1000)
+            {
                 zoom = 1000;
+            }
             else if (zoom < 0)
+            {
                 zoom = 0;
+            }
 
             byte data1 = (byte)((zoom >> 8) & 0xFF);
+
             byte data2 = (byte)(zoom & 0xFF);
+
             return SendCommand(0x00, 0x37, data1, data2);
         }
 
@@ -1172,7 +1297,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 2026-09-17: Web Agent EO Zoom 연속제어 전용 정지.
         /// v1.8 추가 프로토콜의 축별 STOP을 사용하여 EO Zoom 정지가
         /// 이후 PAN/TILT 제어 상태까지 초기화하지 않도록 한다.
-        /// Packet: FF 01 00 51 01 00 53
+        /// 패킷 예시: FF 01 00 51 01 00 53
         /// </summary>
         public bool StopEoZoom()
         {
@@ -1195,7 +1320,9 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             byte data1 = (byte)((focus >> 8) & 0xFF);
+
             byte data2 = (byte)(focus & 0xFF);
+
             return SendCommand(0x00, 0x39, data1, data2);
         }
 
@@ -1216,7 +1343,9 @@ namespace OpenCvWpfTracking.Services.Communication
             }
 
             Console.WriteLine();
+
             Console.WriteLine($"[CONTROL] EO FOCUS SPEED SET : {speed}");
+
             return SendCommand(0x00, 0x27, 0x00, speed);
         }
 
@@ -1244,7 +1373,7 @@ namespace OpenCvWpfTracking.Services.Communication
         /// 2026-09-17: Web Agent EO Focus 연속제어 전용 정지.
         /// v1.8 추가 프로토콜의 축별 STOP을 사용하여 EO Focus 정지가
         /// 이후 PAN/TILT 제어 상태까지 초기화하지 않도록 한다.
-        /// Packet: FF 01 00 51 02 00 54
+        /// 패킷 예시: FF 01 00 51 02 00 54
         /// </summary>
         public bool StopEoFocus()
         {
@@ -1282,17 +1411,11 @@ namespace OpenCvWpfTracking.Services.Communication
             return SendUnsignedShortCommand(0x29, (ushort)standardPosition);
         }
 
-        /// <summary>
-        /// LA의 0x2B 포커스 목표는 Function 0x07 수신 위치와 같은 좌표로 송신한다.
-        /// GUI의 1000-position 반전은 호출부에서 한 번만 적용한다.
-        /// 2026-11-17 실장비 로그: 전송 300에서 수신값이 494에서 감소했다.
-        /// WEB의 표준 좌표 0x2B 경로와 분리하고 실제 도착은 호출부에서 확인한다.
-        /// </summary>
+        /// <summary>LA 0x2B는 이미 변환한 수신 Raw 목표를 그대로 송신한다. GUI 반전은 호출부에서 한 번만 적용한다.</summary>
         public bool LaIrFocusGoPosition(int rawPosition)
         {
             if (rawPosition < 0 || rawPosition > 1000)
                 return false;
-
             return SendUnsignedShortCommand(0x2B, (ushort)rawPosition);
         }
 
@@ -1307,11 +1430,14 @@ namespace OpenCvWpfTracking.Services.Communication
             if (zoom < 0 || zoom > 1000)
             {
                 ConsoleLogHelper.Warning("WEB AGENT IR ZOOM", $"RESULT=INVALID_POSITION / CMD2=0xB7 / POSITION={zoom} / RANGE=0~1000");
+
                 return false;
             }
 
             bool sent = _tcpClientService.Send(BuildWebAgentIrZoomPositionPacket(zoom));
+
             ConsoleLogHelper.Command("WEB AGENT IR ZOOM", $"CMD2=0xB7 / POSITION={zoom} / SENT={sent}");
+
             return sent;
         }
 
@@ -1337,7 +1463,9 @@ namespace OpenCvWpfTracking.Services.Communication
                 (byte)(position & 0xFF),
                 0x00
             };
+
             packet[6] = CheckSum(packet, 1, 5);
+
             return packet;
         }
 
@@ -1388,11 +1516,14 @@ namespace OpenCvWpfTracking.Services.Communication
             if (focus < 0 || focus > 1000)
             {
                 ConsoleLogHelper.Warning("WEB AGENT IR FOCUS", $"RESULT=INVALID_POSITION / CMD2=0x2B / POSITION={focus} / RANGE=0~1000");
+
                 return false;
             }
 
             byte data1 = (byte)((focus >> 8) & 0xFF);
+
             byte data2 = (byte)(focus & 0xFF);
+
             return SendCommand(0x00, 0x2B, data1, data2);
         }
 
@@ -1502,11 +1633,13 @@ namespace OpenCvWpfTracking.Services.Communication
                 if (!SendIrImageControlCommand(0xF4))
                 {
                     _isIrPaletteSynchronized = false;
+
                     return false;
                 }
 
                 _currentIrPaletteIndex = 0;
                 _isIrPaletteSynchronized = true;
+
                 return true;
             }
         }
@@ -1538,8 +1671,11 @@ namespace OpenCvWpfTracking.Services.Communication
                 }
 
                 int nextCount = (targetIndex - _currentIrPaletteIndex + IrPaletteCount) % IrPaletteCount;
+
                 int previousCount = (_currentIrPaletteIndex - targetIndex + IrPaletteCount) % IrPaletteCount;
+
                 byte operation;
+
                 int moveCount;
 
                 if (nextCount <= previousCount)
@@ -1559,6 +1695,7 @@ namespace OpenCvWpfTracking.Services.Communication
                     {
                         // 일부 명령만 적용됐을 수 있으므로 추적값을 폐기한다.
                         _isIrPaletteSynchronized = false;
+
                         return false;
                     }
 
@@ -1569,6 +1706,7 @@ namespace OpenCvWpfTracking.Services.Communication
                 }
 
                 _currentIrPaletteIndex = targetIndex;
+
                 return true;
             }
         }
@@ -1624,9 +1762,11 @@ namespace OpenCvWpfTracking.Services.Communication
             lock (_irPaletteSync)
             {
                 bool result = SendIrImageControlCommand(operation);
+
                 // ENVIRONMENT 상대/직접 명령은 ROOFTOP의 10단계 추적값과
                 // 독립적이므로 다음 ROOFTOP 진입 시 반드시 재동기화한다.
                 _isIrPaletteSynchronized = false;
+
                 return result;
             }
         }

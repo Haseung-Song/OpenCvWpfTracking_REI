@@ -62,6 +62,7 @@ namespace OpenCvWpfTracking.Services.Control
         public bool Update(double currentPan, double currentTilt)
         {
             IsNearTarget = Math.Abs(currentPan) <= _targetTolerance && Math.Abs(currentTilt) <= _targetTolerance;
+
             IsStableSample = Math.Abs(currentPan - _previousPan) <= _stableTolerance && Math.Abs(currentTilt - _previousTilt) <= _stableTolerance;
 
             if (IsNearTarget && IsStableSample)
@@ -75,6 +76,7 @@ namespace OpenCvWpfTracking.Services.Control
 
             _previousPan = currentPan;
             _previousTilt = currentTilt;
+
             return StableCount >= _requiredStableSamples;
         }
     }
