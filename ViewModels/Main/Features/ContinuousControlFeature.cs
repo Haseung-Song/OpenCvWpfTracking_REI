@@ -170,14 +170,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
-        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// ->; Standard 0(Far) Raw 0(Near) ->; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
         /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
-        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// ->; Standard 0(Wide) Raw 0(Tele) ->; Standard 1000(Tele) ENVIRONMENT / WEB
         /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         int GetCurrentIrZoomStandardPosition();
@@ -1158,7 +1158,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// [EO] 주간 카메라 Focus Near 연속 이동 시작 옥상 MR300 EO 선택 시: Focus Manual -&gt; Focus Near
+        /// [EO] 주간 카메라 Focus Near 연속 이동 시작 옥상 MR300 EO 선택 시: Focus Manual ->; Focus Near
         /// 순서로 CTEC CGI 직접 송신한다. 그 외 EO 선택 시: 기존 Control Agent Focus Near 명령을 유지한다.
         /// </summary>
         internal async void StartEoFocusNearMove()
@@ -1236,7 +1236,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// [EO] 주간 카메라 Focus Far 연속 이동 시작 옥상 MR300 EO 선택 시: Focus Manual -&gt; Focus Far 순서로
+        /// [EO] 주간 카메라 Focus Far 연속 이동 시작 옥상 MR300 EO 선택 시: Focus Manual ->; Focus Far 순서로
         /// CTEC CGI 직접 송신한다. 그 외 EO 선택 시: 기존 Control Agent Focus Far 명령을 유지한다.
         /// </summary>
         internal async void StartEoFocusFarMove()

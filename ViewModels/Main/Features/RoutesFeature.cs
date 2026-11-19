@@ -28,14 +28,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
-        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// ->; Standard 0(Far) Raw 0(Near) ->; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
         /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
-        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// ->; Standard 0(Wide) Raw 0(Tele) ->; Standard 1000(Tele) ENVIRONMENT / WEB
         /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         int GetCurrentIrZoomStandardPosition();

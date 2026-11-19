@@ -218,14 +218,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
-        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// ->; Standard 0(Far) Raw 0(Near) ->; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
         /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
-        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// ->; Standard 0(Wide) Raw 0(Tele) ->; Standard 1000(Tele) ENVIRONMENT / WEB
         /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         int GetCurrentIrZoomStandardPosition();
@@ -2723,9 +2723,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 영상 화면 상태 문자열을 통신 설정 화면용 RTSP 연결 상태 문자열로 변환 실제 영상 상태 문자열에는 재연결 횟수 또는 부가 문구가 포함될
-        /// 수 있으므로 완전 일치가 아닌 상태 키워드 포함 여부를 기준으로 판단한다. 예시: "[EO] Connected" -&gt; "Connected"
-        /// "[EO] Connecting..." -&gt; "Connecting" "[EO] Reconnecting... (4)" -&gt;
-        /// "Reconnecting" "[IR] Disconnected" -&gt; "Disconnected"
+        /// 수 있으므로 완전 일치가 아닌 상태 키워드 포함 여부를 기준으로 판단한다. 예시: "[EO] Connected" ->; "Connected"
+        /// "[EO] Connecting..." ->; "Connecting" "[EO] Reconnecting... (4)" ->;
+        /// "Reconnecting" "[IR] Disconnected" ->; "Disconnected"
         /// </summary>
         internal static string GetRtspConnectionStatusText(string statusText, string cameraPrefix)
         {

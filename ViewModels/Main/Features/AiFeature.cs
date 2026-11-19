@@ -617,8 +617,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// [AI Detector] 탐지 결과 처리 함수 [AI Detector Agent]에서 파싱된 탐지 결과를 [RTSP Index] 기준으로
-        /// 화면 [Bounding Box] 컬렉션에 반영한다. 현재 기준: [RTSP Index 0] =&gt; [EO] 화면 표시 [RTSP Index
-        /// 1] =&gt; 수신은 하지만 [IR] 화면에는 표시하지 않음 현재 [AI Detector Agent]에서 [RTSP Index 0] / [1]
+        /// 화면 [Bounding Box] 컬렉션에 반영한다. 현재 기준: [RTSP Index 0] =>; [EO] 화면 표시 [RTSP Index
+        /// 1] =>; 수신은 하지만 [IR] 화면에는 표시하지 않음 현재 [AI Detector Agent]에서 [RTSP Index 0] / [1]
         /// 데이터가 모두 수신되므로, 데모 화면 기준상 [EO]에만 [Bounding Box]를 표시하고 [IR] [Bounding Box]는 항상
         /// 제거한다.
         /// </summary>
@@ -1721,7 +1721,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// [AI Detector] 탐지 로그 출력 여부 확인 현재 시간과 마지막 출력 시간을 비교하여 일정 시간 이내면 =&gt; [Console] 출력
+        /// [AI Detector] 탐지 로그 출력 여부 확인 현재 시간과 마지막 출력 시간을 비교하여 일정 시간 이내면 =>; [Console] 출력
         /// 생략
         /// </summary>
         internal bool CanPrintAiDetectorLog()

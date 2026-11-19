@@ -183,7 +183,7 @@ namespace OpenCvWpfTracking.Services.Communication
         bool SetLaPresetZoom(ushort position);
 
         /// <summary>
-        /// LA 실제 구현 기준 스캔 프리셋 Focus 위치를 설정하고, LA 내부 scan-&gt;AddPreset()을 완료한다. Command2 =
+        /// LA 실제 구현 기준 스캔 프리셋 Focus 위치를 설정하고, LA 내부 scan->;AddPreset()을 완료한다. Command2 =
         /// 0x97 Data1/Data2 = Position (0 ~ 1000, Big Endian)
         /// </summary>
         bool SetLaPresetFocusAndCommit(ushort position);

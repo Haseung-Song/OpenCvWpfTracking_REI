@@ -546,7 +546,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// LA 실제 구현 기준 Pan / Tilt Home Position 실행. UICommandParser: Command2 = 0xB1
-        /// pm-&gt;StartHoming(); tm-&gt;StartHoming();
+        /// pm->;StartHoming(); tm->;StartHoming();
         /// </summary>
         public bool MoveHomePosition(byte axis)
         {
@@ -605,8 +605,8 @@ namespace OpenCvWpfTracking.Services.Communication
         ///
         /// UICommandParser:
         /// Command2 = 0xB1
-        /// pm-&gt;StartHoming();
-        /// tm-&gt;StartHoming();
+        /// pm->;StartHoming();
+        /// tm->;StartHoming();
         /// </summary>
         public bool MoveHomePosition()
         {
@@ -703,7 +703,7 @@ namespace OpenCvWpfTracking.Services.Communication
 
         /// <summary>
         /// LA 실제 구현 기준 스캔 프리셋 Focus 위치를 설정하고,
-        /// LA 내부 scan-&gt;AddPreset()을 완료한다.
+        /// LA 내부 scan->;AddPreset()을 완료한다.
         ///
         /// Command2 = 0x97
         /// Data1/Data2 = Position (0 ~ 1000, Big Endian)
@@ -720,7 +720,7 @@ namespace OpenCvWpfTracking.Services.Communication
         ///
         /// 실제 LA UICommandParser 구현:
         /// case 0x05:
-        ///     scan-&gt;GotoPreset(GetInteger(data1, data2));
+        ///     scan->;GotoPreset(GetInteger(data1, data2));
         ///
         /// Command2 = 0x05
         /// Data1/Data2 = ID (0 ~ 99, Big Endian)

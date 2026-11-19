@@ -1018,8 +1018,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// PRESET 1 (LA TEST) 등록. LA 실제 구현 순서: 0x19 ID -&gt; 0x91 Pan -&gt; 0x93 Tilt -&gt; 0x95
-        /// Zoom -&gt; 0x97 Focus + AddPreset
+        /// PRESET 1 (LA TEST) 등록. LA 실제 구현 순서: 0x19 ID ->; 0x91 Pan ->; 0x93 Tilt ->; 0x95
+        /// Zoom ->; 0x97 Focus + AddPreset
         /// </summary>
         internal void AddOrUpdateLaPresetPoint()
         {
@@ -1732,7 +1732,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
-        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// ->; Standard 0(Wide) Raw 0(Tele) ->; Standard 1000(Tele) ENVIRONMENT / WEB
         /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         internal int GetCurrentIrZoomStandardPosition()
@@ -1744,7 +1744,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
-        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// ->; Standard 0(Far) Raw 0(Near) ->; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
         /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
         /// </summary>
         internal int GetCurrentIrFocusStandardPosition()
@@ -1869,7 +1869,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// PRESET 1 저장 목록을 WPF가 직접 P01 -&gt; P02 -&gt; ... 순회한다. 각 지점마다 PTZF 전체 직접 복원 루틴을 사용한다.
+        /// PRESET 1 저장 목록을 WPF가 직접 P01 ->; P02 ->; ... 순회한다. 각 지점마다 PTZF 전체 직접 복원 루틴을 사용한다.
         /// </summary>
         internal async Task StartLaPresetScanAsync()
         {
@@ -2665,8 +2665,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         /// <summary>
         /// Zoom Ratio 입력값 적용 입력값은 EO 광학 배율 1.0 ~ 90.0배 기준이다. EO 배율을 공통 Position 0 ~
-        /// 1000으로 변환한 뒤 EO와 IR에 동일한 진행률을 적용한다. EO 1.0배 -&gt; Position 0 -&gt; IR 1.0배 EO 90.0배
-        /// -&gt; Position 1000 -&gt; IR 9.0배
+        /// 1000으로 변환한 뒤 EO와 IR에 동일한 진행률을 적용한다. EO 1.0배 ->; Position 0 ->; IR 1.0배 EO 90.0배
+        /// ->; Position 1000 ->; IR 9.0배
         /// </summary>
         internal async Task SetZoomRatioFromInputAsync()
         {
