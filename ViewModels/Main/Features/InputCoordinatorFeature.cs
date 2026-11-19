@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -15,6 +15,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>입력 허용과 정지 조정에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IInputCoordinatorFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>추적 중에는 사용자 PTZF 입력과 다른 이동 시작을 차단한다.</summary>
+        bool IsAutoTrackingActive { get; }
+
         ref global::OpenCvWpfTracking.Models.Main.RtspSourceOption ActiveEoCtecSource { get; }
 
         ref double? ActivePanAbsoluteTarget { get; }
@@ -545,6 +551,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void AdjustControlSpeed(int delta)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             _context.PanTiltSpeedLevel = (byte)Math.Max(1, Math.Min(60, _context.PanTiltSpeedLevel + delta));
         }
 
@@ -716,6 +727,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ShutdownControlInputMonitor()
         {
+            _context.StopAutoTracking("ShutdownControlInputMonitor");
+
             _context.StopRoute();
 
             _controlStatusTimer?.Stop();
@@ -740,6 +753,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 return false;
+            }
+
+            // 추적 잠금 중에는 키 반복과 Z/C 속도 변경까지 소비하고 장비 명령을 만들지 않는다.
+            if (_context.IsAutoTrackingActive && (key == Key.Left || key == Key.Right || key == Key.Up || key == Key.Down ||
+                key == Key.W || key == Key.S || key == Key.A || key == Key.D || key == Key.R || key == Key.T || key == Key.Z || key == Key.C))
+            {
+                return true;
             }
 
             if (key == Key.Z || key == Key.C)

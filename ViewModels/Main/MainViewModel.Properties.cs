@@ -1419,6 +1419,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             private set { _propertiesFeature.AiPowerStatusText = value; }
         }
 
+        /// <summary>추적 상태와 중단 사유를 기존 체크박스 툴팁에 표시한다.</summary>
+        public string AutoTrackingStatusText => _autoTrackingFeature.StatusText;
+
         /// <summary>
         /// [AI Tracking] 자동 추적 사용 여부
         /// </summary>

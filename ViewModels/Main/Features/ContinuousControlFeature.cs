@@ -11,6 +11,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>수동 연속 제어에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IContinuousControlFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>추적 중에는 사용자 PTZF 입력과 다른 이동 시작을 차단한다.</summary>
+        bool IsAutoTrackingActive { get; }
+
         RtspSourceOption ActiveEoCtecSource { get; set; }
 
         KeyboardPanTiltDirection ActivePanTiltMoveDirection { get; set; }
@@ -741,6 +747,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartPanLeftMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -766,6 +777,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartPanRightMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -791,6 +807,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartTiltUpMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -816,6 +837,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartTiltDownMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -840,6 +866,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartPanLeftTiltUpMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -864,6 +895,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartPanRightTiltUpMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -888,6 +924,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartPanLeftTiltDownMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -912,6 +953,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartPanRightTiltDownMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
             {
                 return;
@@ -1012,6 +1058,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task StartEoZoomInMoveAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             // 2026-10-01: 사용자가 조작한 Lens 채널을 PT 감쇄 기준과 UI 표시에 즉시 반영한다.
             SetActivePanTiltZoomSource(false);
 
@@ -1092,6 +1143,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task StartEoZoomOutMoveAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             SetActivePanTiltZoomSource(false);
 
             _context.PtzPerformanceScenario = "ZOOM_OUT";
@@ -1171,6 +1227,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task StartEoFocusNearMoveAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (_context.IsAutoFocusBlockingManualFocus(false))
             {
                 return;
@@ -1249,6 +1310,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task StartEoFocusFarMoveAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (_context.IsAutoFocusBlockingManualFocus(false))
             {
                 return;
@@ -1542,6 +1608,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrZoomInMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             // 2026-10-01: IR Zoom 조작 중에는 IR 실제 줌값으로 감쇄하고 ACTIVE(IR)로 표시한다.
             SetActivePanTiltZoomSource(true);
 
@@ -1569,6 +1640,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrZoomOutMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             SetActivePanTiltZoomSource(true);
 
             _context.PtzPerformanceScenario = "ZOOM_OUT";
@@ -1619,6 +1695,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrFocusNearMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (_context.IsAutoFocusBlockingManualFocus(true))
             {
                 return;
@@ -1646,6 +1727,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrFocusFarMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (_context.IsAutoFocusBlockingManualFocus(true))
             {
                 return;
@@ -1737,6 +1823,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrDigitalZoomInMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             _context.CurrentMoveType = ContinuousMoveType.IrDigitalZoom;
 
             Console.WriteLine();
@@ -1755,6 +1846,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrDigitalZoomOutMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             _context.CurrentMoveType = ContinuousMoveType.IrDigitalZoom;
 
             Console.WriteLine();
@@ -1773,6 +1869,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrAutoFocusMove()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             // 기존 LENS 단발 자동 초점은 LA/WEB 공통으로 유지하고 새 AF 영역의 지원 조건과 분리한다.
             if (_context.IsWebAgentFocusControlReady)
             {
@@ -1982,6 +2083,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StopPanTiltContinuousMove()
         {
+            // 일반 MouseUp 정리 경로가 자동 추적을 취소하지 않게 한다. 명시적 STOP은 별도 진입점에서 처리한다.
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!_context.IsPanTiltMoveActive)
             {
                 return;
@@ -2004,6 +2111,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async void StopAllPtzfMove()
         {
+            _context.StopAutoTracking("StopAllPtzfMove");
+
             _context.CancelPanoramaPresets();
 
             _context.StopPrecisionMotion("전체 수동 STOP", _context.PrecisionStopUncertain);

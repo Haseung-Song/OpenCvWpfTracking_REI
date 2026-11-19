@@ -15,6 +15,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>정밀 이동과 자동 초점에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IWebAgentMotionFocusFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 자동 추적을 종료한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>추적 중에는 사용자 PTZF 입력과 다른 이동 시작을 차단한다.</summary>
+        bool IsAutoTrackingActive { get; }
+
         IControlCommandServicePort ControlCommandService { get; }
 
         System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> ControlInputs { get; }
@@ -364,6 +370,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async void StartPrecisionAbsolute(string axis)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!CanStartPrecisionMotion || (axis != "PAN" && axis != "TILT"))
             {
                 return;
@@ -455,6 +466,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool StartPrecisionJog(byte direction)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return false;
+            }
+
             if (!CanStartPrecisionMotion || direction == 0)
             {
                 return false;

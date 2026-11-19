@@ -13,6 +13,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>제어 연결과 재연결에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IControlAgentFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
         ref double? ActivePanAbsoluteTarget { get; }
 
         ref double? ActiveTiltAbsoluteTarget { get; }
@@ -621,6 +624,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void OnControlAgentConnectionClosed()
         {
+            _context.StopAutoTracking("OnControlAgentConnectionClosed");
+
             // 재연결된 세션에 이전에 누른 키 입력을 재전송하지 않는다.
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
             {

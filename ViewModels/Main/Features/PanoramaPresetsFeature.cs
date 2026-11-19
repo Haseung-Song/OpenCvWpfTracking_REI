@@ -10,6 +10,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>파노라마 프리셋 연동에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IPanoramaPresetsFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 자동 추적을 종료한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>추적 중에는 사용자 PTZF 입력과 다른 이동 시작을 차단한다.</summary>
+        bool IsAutoTrackingActive { get; }
+
         System.Collections.Generic.Dictionary<string, RtspSourceOption> AxisCtecSources { get; }
 
         Services.Communication.IControlCommandServicePort ControlCommandService { get; }
@@ -230,6 +236,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<bool> MovePanoramaPresetAsync(PresetPointOption point)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return false;
+            }
+
             if (!CanStartPanoramaPresets || point == null || !GetPanoramaPresets().Contains(point) || point.Number < 1 || point.Number > 100)
             {
                 throw new InvalidOperationException("장비 연결·위치·운용 잠금·번호를 확인하세요.");

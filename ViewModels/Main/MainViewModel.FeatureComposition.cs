@@ -24,6 +24,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         private readonly RoutesFeature _routesFeature;
         private readonly ZonesFeature _zonesFeature;
         private readonly AiFeature _aiFeature;
+        private readonly AutoTrackingFeature _autoTrackingFeature;
         private readonly ContinuousControlFeature _continuousControlFeature;
         private readonly ControlAgentFeature _controlAgentFeature;
         private readonly WebAgentProtocolFeature _webAgentProtocolFeature;

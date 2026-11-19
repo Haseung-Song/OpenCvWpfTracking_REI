@@ -63,6 +63,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Services\Control\AutoTrackingController.cs" />
+    <Compile Include="ViewModels\Main\Features\AutoTrackingFeature.cs" />
+    <Compile Include="ViewModels\Main\FeatureAdapters\AutoTrackingFeatureContext.cs" />
     <Compile Include="Services\Communication\WebAgent\WebAgentMotionFocusProtocol.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.WebAgentMotionFocus.cs" />
     <Compile Include="Views\Main\MainWindow.PrecisionMotion.cs" />
@@ -76,7 +79,7 @@
     <Compile Include="Views\Video\PanoramaPresetOverlay.cs" />
     <Compile Include="ViewModels\Main\MainViewModel.PanoramaPresets.cs" />
     <Compile Include="Views\Main\MainWindow.PanoramaPresets.cs" />
-    <Content Include="V34_변경안내.txt">
+    <Content Include="V35_통합안내.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Compile Include="Services\Communication\WebAgent\TelemetryClock.cs" />
@@ -465,10 +468,5 @@
     <Compile Include="Services\Contracts\IAiDetectorPacketBuilderPort.cs" />
     <Compile Include="Services\Contracts\IFieldOfViewSyncServicePort.cs" />
     <Compile Include="Services\Contracts\ILAPacketParserPort.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="리팩터링_통합안내_261119.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 </Project>

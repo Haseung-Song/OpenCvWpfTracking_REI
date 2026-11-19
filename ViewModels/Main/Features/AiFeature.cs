@@ -17,6 +17,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>AI 연결과 탐지 결과에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IAiFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>표시 Hold 전의 실제 탐지 결과를 최신 표적 입력으로 전달한다.</summary>
+        void QueueAutoTracking(AiDetectionResult result, DateTime receiveTime);
+
         Dictionary<string, AiEventTrack> ActiveAiEvents { get; }
 
         string AiControlAgentIpState { get; set; }
@@ -397,6 +403,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void DisconnectAiAgent()
         {
+            _context.StopAutoTracking("DisconnectAiAgent");
+
             Interlocked.Increment(ref _aiManualConnectionGeneration);
 
             // 전체 해제는 단순 통신 상태 변경이 아니라 사용자의 기능 해제 요청이다.
@@ -568,6 +576,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ResetAiRtspVideoSizes()
         {
+            _context.StopAutoTracking("ResetAiRtspVideoSizes");
+
             lock (_aiRtspVideoSizeSync)
             {
                 _aiRtspVideoSizes.Clear();
@@ -632,6 +642,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool containsDisplayDetection = result.Boxes.Any(box => box.NormalizedConfidence >= _context.AiDisplayConfidenceThreshold);
 
             int generation = Volatile.Read(ref _aiDetectionGeneration);
+
+            // 추적은 표시용 검출 유지 정책과 분리하여 빈 프레임까지 최신값으로 전달한다.
+            _context.QueueAutoTracking(result, receiveTime);
 
             QueueAiDetectionUiUpdate(result.RtspIndex, () =>
             {
@@ -994,6 +1007,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ShutdownForApplicationExit()
         {
+            _context.StopAutoTracking("ShutdownForApplicationExit");
+
             lock (_aiUiUpdateSync)
             {
                 if (_isApplicationShutdownRequested)
@@ -1339,6 +1354,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<bool> RequestAiDetectorMappingSetAsync()
         {
+            _context.StopAutoTracking("RequestAiDetectorMappingSetAsync");
+
             byte[] packet = _context.AiPacketBuilder.BuildRtspOnnxMappingSetRequest(_context.AiRtsp0OnnxIndex, _context.AiRtsp1OnnxIndex, _context.AiMappingConfidence, _context.AiMappingIou);
 
             return await _context.AiDetectorClientService.SendAsync(packet);

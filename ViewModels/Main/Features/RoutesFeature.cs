@@ -10,6 +10,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>감시 경로 편집과 실행에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IRoutesFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>추적 중에는 사용자 PTZF 입력과 다른 이동 시작을 차단한다.</summary>
+        bool IsAutoTrackingActive { get; }
+
         Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
         bool IsDeviceConnectionRequested { get; set; }
@@ -418,6 +424,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task RunRouteAsync(bool single)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (IsRouteRunning || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked || !_context.IsDeviceConnectionRequested || !_context.LaTcpService.IsConnected || !_context.PanoramaPoseFresh)
             {
                 throw new InvalidOperationException("장비 연결·수신 위치·운용 잠금 상태를 확인하세요.");

@@ -14,6 +14,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private readonly FeatureComposition _features;
 
+        /// <summary>체크 요청을 추적 기능의 시작·정지 검증에 전달한다.</summary>
+        void IPropertiesFeatureContext.SetAutoTrackingEnabled(bool enabled)
+        {
+            _features.AutoTrackingFeature.SetEnabled(enabled);
+        }
+
         // 협력 대상만 보관한다. 생성자에서 통신·타이머 시작이나 다른 기능 실행은 하지 않는다.
         internal PropertiesFeatureContext(FeatureComposition features)
         {

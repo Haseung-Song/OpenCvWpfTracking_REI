@@ -17,6 +17,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     internal interface IVideoFeatureContext
 : IVideoPerformanceContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
         Models.Main.RtspSourceOption ActiveEoCtecSource { get; set; }
 
         Models.Main.RtspSourceOption ConnectedEoCtecSource { get; set; }
@@ -410,6 +413,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async void Connect()
         {
+            _context.StopAutoTracking("Connect");
+
             if (Volatile.Read(ref _deviceDisconnectRequested) != 0 || _context.IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _context.DeviceConnectRequested, 1, 0) != 0)
             {
                 _context.ShowAlreadyConnected();
@@ -730,6 +735,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async void Disconnect()
         {
+            _context.StopAutoTracking("Disconnect");
+
             // 중복 종료 요청을 무시하고 이전 비동기 콜백은 즉시 무효화한다.
             if (Interlocked.CompareExchange(ref _deviceDisconnectRequested, 1, 0) != 0)
             {

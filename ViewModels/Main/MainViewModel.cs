@@ -374,6 +374,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _routesFeature = _features.RoutesFeature;
             _zonesFeature = _features.ZonesFeature;
             _aiFeature = _features.AiFeature;
+            _autoTrackingFeature = _features.AutoTrackingFeature;
             _continuousControlFeature = _features.ContinuousControlFeature;
             _controlAgentFeature = _features.ControlAgentFeature;
             _webAgentProtocolFeature = _features.WebAgentProtocolFeature;

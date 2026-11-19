@@ -15,6 +15,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private readonly FeatureComposition _features;
 
+        bool IWebAgentMotionFocusFeatureContext.IsAutoTrackingActive
+        {
+            get { return _features.PropertiesFeature.IsAutoTrackingEnabled; }
+        }
+
+        /// <summary>제어 소유권을 넘기기 전에 추적을 중단한다.</summary>
+        void IWebAgentMotionFocusFeatureContext.StopAutoTracking(string reason)
+        {
+            _features.AutoTrackingFeature.Stop(reason);
+        }
+
         // 협력 대상만 보관한다. 생성자에서 통신·타이머 시작이나 다른 기능 실행은 하지 않는다.
         internal WebAgentMotionFocusFeatureContext(FeatureComposition features)
         {

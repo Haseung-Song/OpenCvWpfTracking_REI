@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Models.Main;
+﻿using OpenCvWpfTracking.Models.Main;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +14,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
     internal sealed class MoveControlFeatureContext : IMoveControlFeatureContext
     {
         private readonly FeatureComposition _features;
+
+        bool IMoveControlFeatureContext.IsAutoTrackingActive
+        {
+            get { return _features.PropertiesFeature.IsAutoTrackingEnabled; }
+        }
+
+        /// <summary>현재 제어 작업의 진입 사유를 전달하고 자동 추적을 종료한다.</summary>
+        void IMoveControlFeatureContext.StopAutoTracking(string reason)
+        {
+            _features.AutoTrackingFeature.Stop(reason);
+        }
 
         // 협력 대상만 보관한다. 생성자에서 통신·타이머 시작이나 다른 기능 실행은 하지 않는다.
         internal MoveControlFeatureContext(FeatureComposition features)

@@ -110,7 +110,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _aiAgentPort = 5055;
             _aiSettingStatusText = "AI Setting Ready";
             _aiPowerStatusText = "OFF";
-            _isAutoTrackingEnabled = true;
+            _isAutoTrackingEnabled = false;
             _isCrosshairVisible = false;
 
             _crosshairBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0x3B, 0x30));

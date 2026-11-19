@@ -17,6 +17,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private readonly FeatureComposition _features;
 
+        /// <summary>UI 갱신에 사용하는 원본 탐지 결과를 추적 기능에 전달한다.</summary>
+        void IAiFeatureContext.QueueAutoTracking(AiDetectionResult result, DateTime receiveTime)
+        {
+            _features.AutoTrackingFeature.Enqueue(result, receiveTime);
+        }
+
+        /// <summary>현재 제어 작업의 진입 사유를 전달하고 자동 추적을 종료한다.</summary>
+        void IAiFeatureContext.StopAutoTracking(string reason)
+        {
+            _features.AutoTrackingFeature.Stop(reason);
+        }
+
         // 협력 대상만 보관한다. 생성자에서 통신·타이머 시작이나 다른 기능 실행은 하지 않는다.
         internal AiFeatureContext(FeatureComposition features)
         {

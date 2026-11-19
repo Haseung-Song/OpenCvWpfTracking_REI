@@ -11,6 +11,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>카메라 특수 기능 제어에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface ICameraFeatureControlFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>추적 중에는 사용자 PTZF 입력과 다른 이동 시작을 차단한다.</summary>
+        bool IsAutoTrackingActive { get; }
+
+        bool IsOtherControlInputLocked { get; }
+
+        bool IsOtherOperationCommandEnabled { get; }
+
         ref double? ActivePanAbsoluteTarget { get; }
 
         ref double? ActiveTiltAbsoluteTarget { get; }
@@ -685,8 +695,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// <summary>
         /// 영상·렌즈·자세의 신선도와 제어 잠금을 검증한 뒤 줌 보정 PT 절대 이동을 요청한다.
         /// </summary>
-        internal async Task<bool> CenterVideoPointAsync(bool ir, double nx, double ny, double aspect, int sourceWidth = 0, int sourceHeight = 0)
+        internal async Task<bool> CenterVideoPointAsync(bool ir, double nx, double ny, double aspect, int sourceWidth = 0, int sourceHeight = 0, Services.Control.TrackingMotionLease tracking = null)
         {
+            if (tracking == null && _context.IsAutoTrackingActive)
+            {
+                return false;
+            }
+
+            if (tracking != null && !tracking.CanContinue())
+            {
+                return false;
+            }
+
             var pose = Volatile.Read(ref _videoCenterPose);
 
             long now = DateTime.UtcNow.Ticks;
@@ -695,7 +715,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool approximateIr = ir && !_context.IsLensFresh(true);
 
-            if (_videoCenterBusy || _context.ActivePanAbsoluteTarget.HasValue || _context.ActiveTiltAbsoluteTarget.HasValue || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context.ControlInputs.Count > 0 || pose == null || now - pose.Item3 > TimeSpan.FromSeconds(2).Ticks || (!ir && !_context.IsLensFresh(false)) || now - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]) > TimeSpan.FromSeconds(1).Ticks || status == null || !status.EndsWith("] Connected", StringComparison.Ordinal) || now - _lastCenterClickTicks < TimeSpan.FromMilliseconds(300).Ticks)
+            if (_videoCenterBusy || _context.ActivePanAbsoluteTarget.HasValue || _context.ActiveTiltAbsoluteTarget.HasValue || !CameraFeatureTransportReady || (tracking == null ? _context.IsControlInputLocked : _context.IsOtherControlInputLocked) || !(tracking == null ? _context.IsOperationCommandEnabled : _context.IsOtherOperationCommandEnabled) || _context.ControlInputs.Count > 0 || pose == null || now - pose.Item3 > TimeSpan.FromSeconds(2).Ticks || (!ir && !_context.IsLensFresh(false)) || now - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]) > TimeSpan.FromSeconds(1).Ticks || status == null || !status.EndsWith("] Connected", StringComparison.Ordinal) || now - _lastCenterClickTicks < TimeSpan.FromMilliseconds(300).Ticks)
             {
                 ConsoleLogHelper.Warning("VIDEO CENTER", "Rejected / stale video, pose/lens, lock, connection or active input / CAMERA=" + (ir ? "IR" : "EO"));
 
@@ -776,6 +796,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 target = Tuple.Create((pose.Item1 + Clamp(deltaPan, -3.0, 3.0) + 540) % 360 - 180, pose.Item2 + Clamp(target.Item2 - pose.Item2, -3.0, 3.0));
             }
 
+            if (tracking != null)
+            {
+                double panError = (target.Item1 - pose.Item1 + 540) % 360 - 180;
+                var correction = tracking.Filter(panError, target.Item2 - pose.Item2, effectiveRatio);
+
+                if (correction == null)
+                {
+                    return false;
+                }
+
+                if (correction.Item1 == 0 && correction.Item2 == 0)
+                {
+                    return true;
+                }
+
+                target = Tuple.Create((pose.Item1 + correction.Item1 + 540) % 360 - 180, pose.Item2 + correction.Item2);
+            }
+
             double tilt = Clamp(target.Item2, _context.CurrentMoveControlTiltMinimum, _context.CurrentMoveControlTiltMaximum);
 
             if (Math.Abs(nx) < .005 && Math.Abs(ny) < .005)
@@ -806,18 +844,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 await Task.Delay(_context.IsEnvironmentStatusSelected ? 100 : 80);
 
-                if (epoch != _context.InputEpoch || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context.ControlInputs.Count > 0)
+                if (epoch != _context.InputEpoch || !CameraFeatureTransportReady || (tracking == null ? _context.IsControlInputLocked : _context.IsOtherControlInputLocked) || !(tracking == null ? _context.IsOperationCommandEnabled : _context.IsOtherOperationCommandEnabled) || _context.ControlInputs.Count > 0 || (tracking != null && !tracking.CanContinue()))
                 {
                     return false;
                 }
 
                 bool panSent = _context.ControlCommandService.PanGoPosition(target.Item1);
 
+                if (tracking != null)
+                {
+                    tracking.MotionSent = panSent;
+                }
+
                 await Task.Delay(_context.IsEnvironmentStatusSelected ? 60 : 0);
 
-                if (epoch != _context.InputEpoch || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context.ControlInputs.Count > 0)
+                if (epoch != _context.InputEpoch || !CameraFeatureTransportReady || (tracking == null ? _context.IsControlInputLocked : _context.IsOtherControlInputLocked) || !(tracking == null ? _context.IsOperationCommandEnabled : _context.IsOtherOperationCommandEnabled) || _context.ControlInputs.Count > 0 || (tracking != null && !tracking.CanContinue()))
                 {
-                    _context.ControlCommandService.StopPanTiltPositionMove();
+                    if (tracking == null || tracking.CanContinue())
+                    {
+                        _context.ControlCommandService.StopPanTiltPositionMove();
+                    }
 
                     return false;
                 }
@@ -840,15 +886,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _centerMoveEpoch = epoch;
                 _centerDeadlineTicks = DateTime.UtcNow.AddSeconds(Math.Min(120, Math.Max(5, 2 * Math.Max(panDistance, tiltDistance) / Math.Max(1, speed) + 3))).Ticks;
 
-                ConsoleLogHelper.Command("VIDEO CENTER", "클릭 이동 요청 송신 / 실제 영상 중앙 도달은 별도 확인\n" + "DEVICE_ID=" + deviceId + " / DEVICE=" + profile?.DisplayName + " / AGENT=" + profile?.AgentType + " / CAMERA=" + (ir ? "IR" : "EO") + " / SOURCE=VIDEO_CLICK" + " / APPROXIMATE_IR=" + approximateIr + " / MODEL=" + (tuning.Calibration != null ? "SHARED_MEASURED_TABLE" : tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") + " / RAW_ZOOM=" + zoom + " / OPTICAL_RATIO=" + opticalRatio + " / DIGITAL_ESTIMATE=" + digitalFactor + " / EFFECTIVE_RATIO=" + effectiveRatio + " / SOURCE_XY=" + sourceX.ToString("F6", CultureInfo.InvariantCulture) + "," + sourceY.ToString("F6", CultureInfo.InvariantCulture) + " / SOURCE_SIZE=" + sourceWidth + "x" + sourceHeight + " / SOURCE_ASPECT=" + sourceAspect.ToString("F6", CultureInfo.InvariantCulture) + " / ACTIVE_RECT=" + string.Join(",", new[] { geometry.Left, geometry.Top, geometry.Width, geometry.Height }) + " / ACTIVE_ASPECT=" + aspect.ToString("F6", CultureInfo.InvariantCulture) + " / OPTICAL_CENTER=" + opticalCenter.X.ToString("F6", CultureInfo.InvariantCulture) + "," + opticalCenter.Y.ToString("F6", CultureInfo.InvariantCulture) + " / CORRECTED_XY=" + nx.ToString("F6", CultureInfo.InvariantCulture) + "," + ny.ToString("F6", CultureInfo.InvariantCulture) + " / GEOMETRY_BASIS=" + geometry.Basis + " / WIDE_HFOV=" + wideFov + " / HFOV_SOURCE=" + (geometry.WideHorizontalFov.HasValue ? "DEVICE_CLICK_CONFIG" : "CONTROL_TUNING") + " / ESTIMATED_HFOV=" + hfov + " / CURRENT_PT=" + pose.Item1 + "," + pose.Item2 + " / SPEED=" + speed + " / TARGET=" + target.Item1 + "," + tilt + " / TX_ONLY, arrival not confirmed");
+                if (tracking == null)
+                {
+                    ConsoleLogHelper.Command("VIDEO CENTER", "클릭 이동 요청 송신 / 실제 영상 중앙 도달은 별도 확인\n" + "DEVICE_ID=" + deviceId + " / DEVICE=" + profile?.DisplayName + " / AGENT=" + profile?.AgentType + " / CAMERA=" + (ir ? "IR" : "EO") + " / SOURCE=VIDEO_CLICK" + " / APPROXIMATE_IR=" + approximateIr + " / MODEL=" + (tuning.Calibration != null ? "SHARED_MEASURED_TABLE" : tuning.UseMeasuredSyncAnchors ? "SYNC_ANCHOR_OPTICAL" : "LINEAR_OPTICAL") + " / RAW_ZOOM=" + zoom + " / OPTICAL_RATIO=" + opticalRatio + " / DIGITAL_ESTIMATE=" + digitalFactor + " / EFFECTIVE_RATIO=" + effectiveRatio + " / SOURCE_XY=" + sourceX.ToString("F6", CultureInfo.InvariantCulture) + "," + sourceY.ToString("F6", CultureInfo.InvariantCulture) + " / SOURCE_SIZE=" + sourceWidth + "x" + sourceHeight + " / SOURCE_ASPECT=" + sourceAspect.ToString("F6", CultureInfo.InvariantCulture) + " / ACTIVE_RECT=" + string.Join(",", new[] { geometry.Left, geometry.Top, geometry.Width, geometry.Height }) + " / ACTIVE_ASPECT=" + aspect.ToString("F6", CultureInfo.InvariantCulture) + " / OPTICAL_CENTER=" + opticalCenter.X.ToString("F6", CultureInfo.InvariantCulture) + "," + opticalCenter.Y.ToString("F6", CultureInfo.InvariantCulture) + " / CORRECTED_XY=" + nx.ToString("F6", CultureInfo.InvariantCulture) + "," + ny.ToString("F6", CultureInfo.InvariantCulture) + " / GEOMETRY_BASIS=" + geometry.Basis + " / WIDE_HFOV=" + wideFov + " / HFOV_SOURCE=" + (geometry.WideHorizontalFov.HasValue ? "DEVICE_CLICK_CONFIG" : "CONTROL_TUNING") + " / ESTIMATED_HFOV=" + hfov + " / CURRENT_PT=" + pose.Item1 + "," + pose.Item2 + " / SPEED=" + speed + " / TARGET=" + target.Item1 + "," + tilt + " / TX_ONLY, arrival not confirmed");
+                }
 
                 return true;
             }
             catch (Exception ex)
             {
-                _context.ControlCommandService.StopPanTiltPositionMove();
+                if (tracking == null || tracking.CanContinue())
+                {
+                    _context.ControlCommandService.StopPanTiltPositionMove();
+                }
 
-                ConsoleLogHelper.Warning("VIDEO CENTER", ex.GetType().Name);
+                ConsoleLogHelper.Warning(tracking == null ? "VIDEO CENTER" : "AUTO TRACKING", ex.GetType().Name);
 
                 return false;
             }

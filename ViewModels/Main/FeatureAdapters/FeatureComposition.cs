@@ -45,6 +45,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         internal VideoFeature VideoFeature { get; }
         internal ScreenStateFeature ScreenStateFeature { get; }
 
+        internal AutoTrackingFeature AutoTrackingFeature { get; }
+
         // 기능 객체를 만드는 순서는 이 구성 지점에서 관리한다.
         internal FeatureComposition(FeatureCallbacks callbacks)
         {
@@ -85,6 +87,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ThermalFeature = new ThermalFeature(new ThermalFeatureContext(this));
             VideoFeature = new VideoFeature(new VideoFeatureContext(this));
             ScreenStateFeature = new ScreenStateFeature(new ScreenStateFeatureContext(this));
+            AutoTrackingFeature = new AutoTrackingFeature(new AutoTrackingFeatureContext(this));
         }
     }
 }

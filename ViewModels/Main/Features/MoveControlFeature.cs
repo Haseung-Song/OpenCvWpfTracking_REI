@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.Main;
 using OpenCvWpfTracking.Services.Control;
 using System;
@@ -13,6 +13,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>절대 이동과 정지에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IMoveControlFeatureContext
     {
+        /// <summary>다른 제어 작업 전에 추적을 종료하고 보류 이동을 취소한다.</summary>
+        void StopAutoTracking(string reason);
+
+        /// <summary>추적 중에는 사용자 PTZF 입력과 다른 이동 시작을 차단한다.</summary>
+        bool IsAutoTrackingActive { get; }
+
         ref double? ActivePanAbsoluteTarget { get; }
 
         KeyboardPanTiltDirection ActivePanTiltMoveDirection { get; set; }
@@ -396,6 +402,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task MoveHomePositionAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             // HOME은 같은 좌표계의 위치 이동이므로 파노라마 연동을 유지한다.
             ConsoleLogHelper.Command("HOME / ZERO", "HOME POSITION requested");
 
@@ -827,6 +838,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StopAbsoluteMove()
         {
+            _context.StopAutoTracking("StopAbsoluteMove");
+
             _context.StopPrecisionMotion("절대 이동 STOP", _context.PrecisionStopUncertain);
 
             bool stopResult = _context.ControlCommandService.StopPanTiltPositionMove();
@@ -842,6 +855,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ReapplyActivePanTiltAbsoluteTarget(double positionSpeed)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             double? panTarget = _context.ActivePanAbsoluteTarget;
 
             double? tiltTarget = _context.ActiveTiltAbsoluteTarget;
@@ -867,6 +885,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task MovePanAbsoluteFromInputAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!_context.PanAbsoluteValue.HasValue)
             {
                 Console.WriteLine("[MOVE CONTROL] PAN ABSOLUTE FAILED : EMPTY VALUE");
@@ -956,6 +979,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async void MoveTiltAbsoluteFromInput()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!_context.TiltAbsoluteValue.HasValue)
             {
                 Console.WriteLine("[MOVE CONTROL] TILT ABSOLUTE FAILED : EMPTY VALUE");
@@ -1078,6 +1106,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task MoveToSelectedLaPresetPointAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!EnsurePresetAgent(false))
             {
                 return;
@@ -1873,6 +1906,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task StartLaPresetScanAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!EnsurePresetAgent(false))
             {
                 return;
@@ -2238,6 +2276,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task MoveToSelectedPresetPointAsync()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!EnsurePresetAgent(true))
             {
                 return;
@@ -2357,6 +2400,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartPresetScan()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             if (!EnsurePresetAgent(true))
             {
                 return;
@@ -2609,6 +2657,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StopActivePresetScan()
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                _context.StopAutoTracking("STOP AUTO TRACKING");
+                return;
+            }
+
             _context.CancelPanoramaPresets();
 
             if (_context.IsLaPresetScanRunning)
@@ -2690,6 +2744,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task ApplyMoveControlZoomPositionAsync(int standardPosition, string requestType)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             int safePosition = Clamp(standardPosition, MoveControlPositionMinimum, MoveControlPositionMaximum);
             await _context.StopZoomSyncAsync();
             Console.WriteLine();
@@ -2821,6 +2880,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task ApplyMoveControlFocusPositionAsync(int standardPosition)
         {
+            if (_context.IsAutoTrackingActive)
+            {
+                return;
+            }
+
             int safePosition = Clamp(standardPosition, MoveControlPositionMinimum, MoveControlPositionMaximum);
 
             await _context.StopFocusSyncAsync();

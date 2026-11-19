@@ -15,6 +15,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>화면 바인딩 상태에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IPropertiesFeatureContext
     {
+        /// <summary>추적 활성화 조건을 검증하거나 진행 중인 추적을 종료한다.</summary>
+        void SetAutoTrackingEnabled(bool enabled);
+
         int ActivePanTiltZoomSource { get; set; }
 
         int AiAgentPort { get; set; }
@@ -744,7 +747,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return true; }
         }
 
-        internal bool IsOperationCommandEnabled
+        internal bool IsOperationCommandEnabled => !IsAutoTrackingEnabled && IsOtherOperationCommandEnabled;
+
+        /// <summary>자동 추적 자체를 제외한 기존 운용 작업의 실행 허용 상태다.</summary>
+        internal bool IsOtherOperationCommandEnabled
         {
             get
             {
@@ -836,7 +842,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
-        internal bool IsControlInputLocked
+        internal bool IsControlInputLocked => IsAutoTrackingEnabled || IsOtherControlInputLocked;
+
+        /// <summary>추적 엔진이 확인할 다른 작업의 제어 잠금 상태다.</summary>
+        internal bool IsOtherControlInputLocked
         {
             get
             {
@@ -848,6 +857,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
+                if (IsAutoTrackingEnabled)
+                {
+                    return "AUTO TRACKING";
+                }
+
                 if (_context.IsPanoramaPresetRunning)
                 {
                     return "PANORAMA PRESET MOVING";
@@ -863,6 +877,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
+                if (IsAutoTrackingEnabled)
+                {
+                    return "PTZF·키보드 잠금 / STOP으로 해제";
+                }
+
                 if (_context.IsPanoramaPresetRunning)
                 {
                     return "STOP TO CANCEL PRESET MOVE";
@@ -2167,12 +2186,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             set
             {
-                if (_context.IsAutoTrackingEnabled != value)
-                {
-                    _context.IsAutoTrackingEnabled = value;
-
-                    _context.OnPropertyChanged();
-                }
+                _context.SetAutoTrackingEnabled(value);
             }
         }
 

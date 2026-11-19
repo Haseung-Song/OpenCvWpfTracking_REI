@@ -40,5 +40,5 @@ ResourceDictionaryLocation.SourceAssembly //제네릭 리소스 사전의 위치
 //      수정 버전
 //
 [assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("34.3.0.0")]
-[assembly: AssemblyInformationalVersion("TORUSS V34_3 2026-11-17")]
+[assembly: AssemblyFileVersion("35.0.0.0")]
+[assembly: AssemblyInformationalVersion("TORUSS V35 2026-11-19 AUTO TRACKING")]
