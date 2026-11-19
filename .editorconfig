@@ -1,0 +1,30 @@
+# 현재 Visual Studio 명명 규칙을 프로젝트와 배포본에 함께 적용한다.
+# 실제 필드의 기존 _camelCase 표기는 유지하며, 속성·메서드·이벤트는 PascalCase를 사용한다.
+root = true
+
+[*.cs]
+dotnet_naming_rule.interfaces_use_i.symbols = interfaces
+dotnet_naming_rule.interfaces_use_i.style = interface_pascal
+dotnet_naming_rule.interfaces_use_i.severity = warning
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+dotnet_naming_style.interface_pascal.required_prefix = I
+dotnet_naming_style.interface_pascal.required_suffix =
+dotnet_naming_style.interface_pascal.word_separator =
+dotnet_naming_style.interface_pascal.capitalization = pascal_case
+
+dotnet_naming_rule.types_use_pascal.symbols = types
+dotnet_naming_rule.types_use_pascal.style = pascal
+dotnet_naming_rule.types_use_pascal.severity = warning
+dotnet_naming_symbols.types.applicable_kinds = class, struct, enum, delegate
+dotnet_naming_symbols.types.applicable_accessibilities = *
+
+dotnet_naming_rule.members_use_pascal.symbols = non_field_members
+dotnet_naming_rule.members_use_pascal.style = pascal
+dotnet_naming_rule.members_use_pascal.severity = warning
+dotnet_naming_symbols.non_field_members.applicable_kinds = property, event, method
+dotnet_naming_symbols.non_field_members.applicable_accessibilities = *
+dotnet_naming_style.pascal.required_prefix =
+dotnet_naming_style.pascal.required_suffix =
+dotnet_naming_style.pascal.word_separator =
+dotnet_naming_style.pascal.capitalization = pascal_case

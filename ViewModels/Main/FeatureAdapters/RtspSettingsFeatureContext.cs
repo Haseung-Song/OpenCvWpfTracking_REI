@@ -19,243 +19,243 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        bool IRtspSettingsFeatureContext._applyingPresetProfile
+        bool IRtspSettingsFeatureContext.ApplyingPresetProfile
         {
-            get { return _features._presetStorageFeature._applyingPresetProfile; }
-            set { _features._presetStorageFeature._applyingPresetProfile = value; }
+            get { return _features.PresetStorageFeature._applyingPresetProfile; }
+            set { _features.PresetStorageFeature._applyingPresetProfile = value; }
         }
 
-        System.Threading.CancellationTokenSource IRtspSettingsFeatureContext._controlAgentReconnectCts
+        System.Threading.CancellationTokenSource IRtspSettingsFeatureContext.ControlAgentReconnectCts
         {
-            get { return _features._screenStateFeature._controlAgentReconnectCts; }
-            set { _features._screenStateFeature._controlAgentReconnectCts = value; }
+            get { return _features.ScreenStateFeature._controlAgentReconnectCts; }
+            set { _features.ScreenStateFeature._controlAgentReconnectCts = value; }
         }
 
-        Services.Communication.IControlCommandServicePort IRtspSettingsFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IRtspSettingsFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        System.Threading.CancellationTokenSource IRtspSettingsFeatureContext._cts
+        System.Threading.CancellationTokenSource IRtspSettingsFeatureContext.Cts
         {
-            get { return _features._screenStateFeature._cts; }
-            set { _features._screenStateFeature._cts = value; }
+            get { return _features.ScreenStateFeature._cts; }
+            set { _features.ScreenStateFeature._cts = value; }
         }
 
-        Services.Video.IFFmpegDecoderServicePort IRtspSettingsFeatureContext._eoDecoder
+        Services.Video.IFFmpegDecoderServicePort IRtspSettingsFeatureContext.EoDecoder
         {
             get { return _features.Runtime._eoDecoder; }
         }
 
-        Services.Video.IFFmpegDecoderServicePort IRtspSettingsFeatureContext._irDecoder
+        Services.Video.IFFmpegDecoderServicePort IRtspSettingsFeatureContext.IrDecoder
         {
             get { return _features.Runtime._irDecoder; }
         }
 
-        bool IRtspSettingsFeatureContext._isEoFrameDisplayed
+        bool IRtspSettingsFeatureContext.IsEoFrameDisplayed
         {
-            get { return _features._screenStateFeature._isEoFrameDisplayed; }
-            set { _features._screenStateFeature._isEoFrameDisplayed = value; }
+            get { return _features.ScreenStateFeature._isEoFrameDisplayed; }
+            set { _features.ScreenStateFeature._isEoFrameDisplayed = value; }
         }
 
-        bool IRtspSettingsFeatureContext._isIrFrameDisplayed
+        bool IRtspSettingsFeatureContext.IsIrFrameDisplayed
         {
-            get { return _features._screenStateFeature._isIrFrameDisplayed; }
-            set { _features._screenStateFeature._isIrFrameDisplayed = value; }
+            get { return _features.ScreenStateFeature._isIrFrameDisplayed; }
+            set { _features.ScreenStateFeature._isIrFrameDisplayed = value; }
         }
 
-        bool IRtspSettingsFeatureContext._isVideoConnecting
+        bool IRtspSettingsFeatureContext.IsVideoConnecting
         {
-            get { return _features._screenStateFeature._isVideoConnecting; }
-            set { _features._screenStateFeature._isVideoConnecting = value; }
+            get { return _features.ScreenStateFeature._isVideoConnecting; }
+            set { _features.ScreenStateFeature._isVideoConnecting = value; }
         }
 
-        Services.Communication.ITcpClientServicePort IRtspSettingsFeatureContext._laTcpService
+        Services.Communication.ITcpClientServicePort IRtspSettingsFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        RtspSourceOption IRtspSettingsFeatureContext._selectedAiEoRtspSource
+        RtspSourceOption IRtspSettingsFeatureContext.SelectedAiEoRtspSourceState
         {
-            get { return _features._propertiesFeature._selectedAiEoRtspSource; }
-            set { _features._propertiesFeature._selectedAiEoRtspSource = value; }
+            get { return _features.PropertiesFeature._selectedAiEoRtspSource; }
+            set { _features.PropertiesFeature._selectedAiEoRtspSource = value; }
         }
 
-        RtspSourceOption IRtspSettingsFeatureContext._selectedAiIrRtspSource
+        RtspSourceOption IRtspSettingsFeatureContext.SelectedAiIrRtspSourceState
         {
-            get { return _features._propertiesFeature._selectedAiIrRtspSource; }
-            set { _features._propertiesFeature._selectedAiIrRtspSource = value; }
+            get { return _features.PropertiesFeature._selectedAiIrRtspSource; }
+            set { _features.PropertiesFeature._selectedAiIrRtspSource = value; }
         }
 
-        RtspSourceOption IRtspSettingsFeatureContext._selectedEoRtspSource
+        RtspSourceOption IRtspSettingsFeatureContext.SelectedEoRtspSourceState
         {
-            get { return _features._propertiesFeature._selectedEoRtspSource; }
-            set { _features._propertiesFeature._selectedEoRtspSource = value; }
+            get { return _features.PropertiesFeature._selectedEoRtspSource; }
+            set { _features.PropertiesFeature._selectedEoRtspSource = value; }
         }
 
-        RtspSourceOption IRtspSettingsFeatureContext._selectedIrRtspSource
+        RtspSourceOption IRtspSettingsFeatureContext.SelectedIrRtspSourceState
         {
-            get { return _features._propertiesFeature._selectedIrRtspSource; }
-            set { _features._propertiesFeature._selectedIrRtspSource = value; }
+            get { return _features.PropertiesFeature._selectedIrRtspSource; }
+            set { _features.PropertiesFeature._selectedIrRtspSource = value; }
         }
 
         string IRtspSettingsFeatureContext.AiRtsp0Address
         {
-            get { return _features._propertiesFeature.AiRtsp0Address; }
-            set { _features._propertiesFeature.AiRtsp0Address = value; }
+            get { return _features.PropertiesFeature.AiRtsp0Address; }
+            set { _features.PropertiesFeature.AiRtsp0Address = value; }
         }
 
         string IRtspSettingsFeatureContext.AiRtsp1Address
         {
-            get { return _features._propertiesFeature.AiRtsp1Address; }
-            set { _features._propertiesFeature.AiRtsp1Address = value; }
+            get { return _features.PropertiesFeature.AiRtsp1Address; }
+            set { _features.PropertiesFeature.AiRtsp1Address = value; }
         }
 
         string IRtspSettingsFeatureContext.ControlAgentConnectionStatusText
         {
-            get { return _features._propertiesFeature.ControlAgentConnectionStatusText; }
-            set { _features._propertiesFeature.ControlAgentConnectionStatusText = value; }
+            get { return _features.PropertiesFeature.ControlAgentConnectionStatusText; }
+            set { _features.PropertiesFeature.ControlAgentConnectionStatusText = value; }
         }
 
         string IRtspSettingsFeatureContext.ControlAgentIp
         {
-            get { return _features._propertiesFeature.ControlAgentIp; }
-            set { _features._propertiesFeature.ControlAgentIp = value; }
+            get { return _features.PropertiesFeature.ControlAgentIp; }
+            set { _features.PropertiesFeature.ControlAgentIp = value; }
         }
 
         string IRtspSettingsFeatureContext.ControlAgentPortText
         {
-            get { return _features._propertiesFeature.ControlAgentPortText; }
-            set { _features._propertiesFeature.ControlAgentPortText = value; }
+            get { return _features.PropertiesFeature.ControlAgentPortText; }
+            set { _features.PropertiesFeature.ControlAgentPortText = value; }
         }
 
         string IRtspSettingsFeatureContext.CurrentControlPowerText
         {
-            get { return _features._propertiesFeature.CurrentControlPowerText; }
+            get { return _features.PropertiesFeature.CurrentControlPowerText; }
         }
 
         string IRtspSettingsFeatureContext.CurrentEoPowerText
         {
-            get { return _features._propertiesFeature.CurrentEoPowerText; }
+            get { return _features.PropertiesFeature.CurrentEoPowerText; }
         }
 
         string IRtspSettingsFeatureContext.CurrentIrPowerText
         {
-            get { return _features._propertiesFeature.CurrentIrPowerText; }
+            get { return _features.PropertiesFeature.CurrentIrPowerText; }
         }
 
         string IRtspSettingsFeatureContext.DevicePowerFreshnessText
         {
-            get { return _features._devicePowerFeature.DevicePowerFreshnessText; }
+            get { return _features.DevicePowerFeature.DevicePowerFreshnessText; }
         }
 
         int IRtspSettingsFeatureContext.EoMinimumSpeed
         {
-            get { return _features._inputCoordinatorFeature.EoMinimumSpeed; }
-            set { _features._inputCoordinatorFeature.EoMinimumSpeed = value; }
+            get { return _features.InputCoordinatorFeature.EoMinimumSpeed; }
+            set { _features.InputCoordinatorFeature.EoMinimumSpeed = value; }
         }
 
         ObservableCollection<RtspSourceOption> IRtspSettingsFeatureContext.EoRtspSourceOptions
         {
-            get { return _features._propertiesFeature.EoRtspSourceOptions; }
+            get { return _features.PropertiesFeature.EoRtspSourceOptions; }
         }
 
         string IRtspSettingsFeatureContext.EoSourceAddress
         {
-            get { return _features._propertiesFeature.EoSourceAddress; }
-            set { _features._propertiesFeature.EoSourceAddress = value; }
+            get { return _features.PropertiesFeature.EoSourceAddress; }
+            set { _features.PropertiesFeature.EoSourceAddress = value; }
         }
 
         double IRtspSettingsFeatureContext.EoSpeedExponent
         {
-            get { return _features._inputCoordinatorFeature.EoSpeedExponent; }
-            set { _features._inputCoordinatorFeature.EoSpeedExponent = value; }
+            get { return _features.InputCoordinatorFeature.EoSpeedExponent; }
+            set { _features.InputCoordinatorFeature.EoSpeedExponent = value; }
         }
 
         string IRtspSettingsFeatureContext.EoStatusText
         {
-            get { return _features._propertiesFeature.EoStatusText; }
-            set { _features._propertiesFeature.EoStatusText = value; }
+            get { return _features.PropertiesFeature.EoStatusText; }
+            set { _features.PropertiesFeature.EoStatusText = value; }
         }
 
         string IRtspSettingsFeatureContext.EoZoomRatioOverlayText
         {
-            get { return _features._inputCoordinatorFeature.EoZoomRatioOverlayText; }
+            get { return _features.InputCoordinatorFeature.EoZoomRatioOverlayText; }
         }
 
         int IRtspSettingsFeatureContext.IrMinimumSpeed
         {
-            get { return _features._inputCoordinatorFeature.IrMinimumSpeed; }
-            set { _features._inputCoordinatorFeature.IrMinimumSpeed = value; }
+            get { return _features.InputCoordinatorFeature.IrMinimumSpeed; }
+            set { _features.InputCoordinatorFeature.IrMinimumSpeed = value; }
         }
 
         ObservableCollection<RtspSourceOption> IRtspSettingsFeatureContext.IrRtspSourceOptions
         {
-            get { return _features._propertiesFeature.IrRtspSourceOptions; }
+            get { return _features.PropertiesFeature.IrRtspSourceOptions; }
         }
 
         string IRtspSettingsFeatureContext.IrSourceAddress
         {
-            get { return _features._propertiesFeature.IrSourceAddress; }
-            set { _features._propertiesFeature.IrSourceAddress = value; }
+            get { return _features.PropertiesFeature.IrSourceAddress; }
+            set { _features.PropertiesFeature.IrSourceAddress = value; }
         }
 
         double IRtspSettingsFeatureContext.IrSpeedExponent
         {
-            get { return _features._inputCoordinatorFeature.IrSpeedExponent; }
-            set { _features._inputCoordinatorFeature.IrSpeedExponent = value; }
+            get { return _features.InputCoordinatorFeature.IrSpeedExponent; }
+            set { _features.InputCoordinatorFeature.IrSpeedExponent = value; }
         }
 
         string IRtspSettingsFeatureContext.IrStatusText
         {
-            get { return _features._propertiesFeature.IrStatusText; }
-            set { _features._propertiesFeature.IrStatusText = value; }
+            get { return _features.PropertiesFeature.IrStatusText; }
+            set { _features.PropertiesFeature.IrStatusText = value; }
         }
 
         string IRtspSettingsFeatureContext.IrZoomRatioOverlayText
         {
-            get { return _features._inputCoordinatorFeature.IrZoomRatioOverlayText; }
+            get { return _features.InputCoordinatorFeature.IrZoomRatioOverlayText; }
         }
 
         bool IRtspSettingsFeatureContext.IsAiEoRtspDirectInput
         {
-            get { return _features._propertiesFeature.IsAiEoRtspDirectInput; }
+            get { return _features.PropertiesFeature.IsAiEoRtspDirectInput; }
         }
 
         bool IRtspSettingsFeatureContext.IsAiIrRtspDirectInput
         {
-            get { return _features._propertiesFeature.IsAiIrRtspDirectInput; }
+            get { return _features.PropertiesFeature.IsAiIrRtspDirectInput; }
         }
 
         bool IRtspSettingsFeatureContext.IsAutoFocusPanelVisible
         {
-            get { return _features._webAgentMotionFocusFeature.IsAutoFocusPanelVisible; }
+            get { return _features.WebAgentMotionFocusFeature.IsAutoFocusPanelVisible; }
         }
 
         bool IRtspSettingsFeatureContext.IsContextPanelsVisible
         {
-            get { return _features._propertiesFeature.IsContextPanelsVisible; }
+            get { return _features.PropertiesFeature.IsContextPanelsVisible; }
         }
 
         bool IRtspSettingsFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         bool IRtspSettingsFeatureContext.IsEoRtspDirectInput
         {
-            get { return _features._propertiesFeature.IsEoRtspDirectInput; }
+            get { return _features.PropertiesFeature.IsEoRtspDirectInput; }
         }
 
         bool IRtspSettingsFeatureContext.IsIrRtspDirectInput
         {
-            get { return _features._propertiesFeature.IsIrRtspDirectInput; }
+            get { return _features.PropertiesFeature.IsIrRtspDirectInput; }
         }
 
         bool IRtspSettingsFeatureContext.IsWebAgentFocusControlEnabled
         {
-            get { return _features._webAgentMotionFocusFeature.IsWebAgentFocusControlEnabled; }
-            set { _features._webAgentMotionFocusFeature.IsWebAgentFocusControlEnabled = value; }
+            get { return _features.WebAgentMotionFocusFeature.IsWebAgentFocusControlEnabled; }
+            set { _features.WebAgentMotionFocusFeature.IsWebAgentFocusControlEnabled = value; }
         }
 
         /// <summary>
@@ -268,13 +268,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         byte IRtspSettingsFeatureContext.PanTiltSpeedLevel
         {
-            get { return _features._propertiesFeature.PanTiltSpeedLevel; }
-            set { _features._propertiesFeature.PanTiltSpeedLevel = value; }
+            get { return _features.PropertiesFeature.PanTiltSpeedLevel; }
+            set { _features.PropertiesFeature.PanTiltSpeedLevel = value; }
         }
 
         string IRtspSettingsFeatureContext.PanTiltZeroRouteText
         {
-            get { return _features._propertiesFeature.PanTiltZeroRouteText; }
+            get { return _features.PropertiesFeature.PanTiltZeroRouteText; }
         }
 
         /// <summary>
@@ -282,7 +282,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IRtspSettingsFeatureContext.ResetThermalPaletteButtonVisuals()
         {
-            _features._thermalFeature.ResetThermalPaletteButtonVisuals();
+            _features.ThermalFeature.ResetThermalPaletteButtonVisuals();
         }
 
         /// <summary>
@@ -290,37 +290,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IRtspSettingsFeatureContext.ResetWebAgentControlSession()
         {
-            _features._webAgentMotionFocusFeature.ResetWebAgentControlSession();
+            _features.WebAgentMotionFocusFeature.ResetWebAgentControlSession();
         }
 
         RtspSourceOption IRtspSettingsFeatureContext.SelectedAiEoRtspSource
         {
-            get { return _features._propertiesFeature.SelectedAiEoRtspSource; }
-            set { _features._propertiesFeature.SelectedAiEoRtspSource = value; }
+            get { return _features.PropertiesFeature.SelectedAiEoRtspSource; }
+            set { _features.PropertiesFeature.SelectedAiEoRtspSource = value; }
         }
 
         RtspSourceOption IRtspSettingsFeatureContext.SelectedAiIrRtspSource
         {
-            get { return _features._propertiesFeature.SelectedAiIrRtspSource; }
-            set { _features._propertiesFeature.SelectedAiIrRtspSource = value; }
+            get { return _features.PropertiesFeature.SelectedAiIrRtspSource; }
+            set { _features.PropertiesFeature.SelectedAiIrRtspSource = value; }
         }
 
         RtspSourceOption IRtspSettingsFeatureContext.SelectedEoRtspSource
         {
-            get { return _features._propertiesFeature.SelectedEoRtspSource; }
-            set { _features._propertiesFeature.SelectedEoRtspSource = value; }
+            get { return _features.PropertiesFeature.SelectedEoRtspSource; }
+            set { _features.PropertiesFeature.SelectedEoRtspSource = value; }
         }
 
         EquipmentStatusMode IRtspSettingsFeatureContext.SelectedEquipmentStatusMode
         {
-            get { return _features._propertiesFeature.SelectedEquipmentStatusMode; }
-            set { _features._propertiesFeature.SelectedEquipmentStatusMode = value; }
+            get { return _features.PropertiesFeature.SelectedEquipmentStatusMode; }
+            set { _features.PropertiesFeature.SelectedEquipmentStatusMode = value; }
         }
 
         RtspSourceOption IRtspSettingsFeatureContext.SelectedIrRtspSource
         {
-            get { return _features._propertiesFeature.SelectedIrRtspSource; }
-            set { _features._propertiesFeature.SelectedIrRtspSource = value; }
+            get { return _features.PropertiesFeature.SelectedIrRtspSource; }
+            set { _features.PropertiesFeature.SelectedIrRtspSource = value; }
         }
 
         /// <summary>
@@ -328,12 +328,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IRtspSettingsFeatureContext.SwitchEquipmentPresets()
         {
-            _features._presetStorageFeature.SwitchEquipmentPresets();
+            _features.PresetStorageFeature.SwitchEquipmentPresets();
         }
 
         string IRtspSettingsFeatureContext.ThermalColorPaletteButtonText
         {
-            get { return _features._webAgentEquipmentFeature.ThermalColorPaletteButtonText; }
+            get { return _features.WebAgentEquipmentFeature.ThermalColorPaletteButtonText; }
         }
 
         /// <summary>
@@ -341,17 +341,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IRtspSettingsFeatureContext.UpdateSystemTimePollingState()
         {
-            _features._systemDateTimeFeature.UpdateSystemTimePollingState();
+            _features.SystemDateTimeFeature.UpdateSystemTimePollingState();
         }
 
         string IRtspSettingsFeatureContext.ZoomOpticalRangeText
         {
-            get { return _features._inputCoordinatorFeature.ZoomOpticalRangeText; }
+            get { return _features.InputCoordinatorFeature.ZoomOpticalRangeText; }
         }
 
         string IRtspSettingsFeatureContext.ZoomOpticalStandardText
         {
-            get { return _features._inputCoordinatorFeature.ZoomOpticalStandardText; }
+            get { return _features.InputCoordinatorFeature.ZoomOpticalStandardText; }
         }
     }
 }

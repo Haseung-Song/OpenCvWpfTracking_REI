@@ -18,97 +18,97 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        IControlCommandServicePort IDevicePowerFeatureContext._controlCommandService
+        IControlCommandServicePort IDevicePowerFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        string IDevicePowerFeatureContext._eoStatusText
+        string IDevicePowerFeatureContext.EoStatusText
         {
-            get { return _features._screenStateFeature._eoStatusText; }
-            set { _features._screenStateFeature._eoStatusText = value; }
+            get { return _features.ScreenStateFeature._eoStatusText; }
+            set { _features.ScreenStateFeature._eoStatusText = value; }
         }
 
-        string IDevicePowerFeatureContext._irStatusText
+        string IDevicePowerFeatureContext.IrStatusText
         {
-            get { return _features._screenStateFeature._irStatusText; }
-            set { _features._screenStateFeature._irStatusText = value; }
+            get { return _features.ScreenStateFeature._irStatusText; }
+            set { _features.ScreenStateFeature._irStatusText = value; }
         }
 
-        ITcpClientServicePort IDevicePowerFeatureContext._laTcpService
+        ITcpClientServicePort IDevicePowerFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        ControlAgentProfileOption IDevicePowerFeatureContext._requestedControlProfile
+        ControlAgentProfileOption IDevicePowerFeatureContext.RequestedControlProfile
         {
-            get { return _features._rtspSettingsFeature._requestedControlProfile; }
-            set { _features._rtspSettingsFeature._requestedControlProfile = value; }
+            get { return _features.RtspSettingsFeature._requestedControlProfile; }
+            set { _features.RtspSettingsFeature._requestedControlProfile = value; }
         }
 
         string IDevicePowerFeatureContext.ControlAgentConnectionStatusText
         {
-            get { return _features._propertiesFeature.ControlAgentConnectionStatusText; }
-            set { _features._propertiesFeature.ControlAgentConnectionStatusText = value; }
+            get { return _features.PropertiesFeature.ControlAgentConnectionStatusText; }
+            set { _features.PropertiesFeature.ControlAgentConnectionStatusText = value; }
         }
 
         string IDevicePowerFeatureContext.ControlAgentIp
         {
-            get { return _features._propertiesFeature.ControlAgentIp; }
-            set { _features._propertiesFeature.ControlAgentIp = value; }
+            get { return _features.PropertiesFeature.ControlAgentIp; }
+            set { _features.PropertiesFeature.ControlAgentIp = value; }
         }
 
         string IDevicePowerFeatureContext.ControlAgentPortText
         {
-            get { return _features._propertiesFeature.ControlAgentPortText; }
-            set { _features._propertiesFeature.ControlAgentPortText = value; }
+            get { return _features.PropertiesFeature.ControlAgentPortText; }
+            set { _features.PropertiesFeature.ControlAgentPortText = value; }
         }
 
         string IDevicePowerFeatureContext.CurrentControlPowerText
         {
-            get { return _features._propertiesFeature.CurrentControlPowerText; }
+            get { return _features.PropertiesFeature.CurrentControlPowerText; }
         }
 
         string IDevicePowerFeatureContext.CurrentEoPowerText
         {
-            get { return _features._propertiesFeature.CurrentEoPowerText; }
+            get { return _features.PropertiesFeature.CurrentEoPowerText; }
         }
 
         string IDevicePowerFeatureContext.CurrentIrPowerText
         {
-            get { return _features._propertiesFeature.CurrentIrPowerText; }
+            get { return _features.PropertiesFeature.CurrentIrPowerText; }
         }
 
         string IDevicePowerFeatureContext.CurrentPowerText
         {
-            get { return _features._propertiesFeature.CurrentPowerText; }
+            get { return _features.PropertiesFeature.CurrentPowerText; }
         }
 
         string IDevicePowerFeatureContext.EoSourceAddress
         {
-            get { return _features._propertiesFeature.EoSourceAddress; }
-            set { _features._propertiesFeature.EoSourceAddress = value; }
+            get { return _features.PropertiesFeature.EoSourceAddress; }
+            set { _features.PropertiesFeature.EoSourceAddress = value; }
         }
 
         string IDevicePowerFeatureContext.IrSourceAddress
         {
-            get { return _features._propertiesFeature.IrSourceAddress; }
-            set { _features._propertiesFeature.IrSourceAddress = value; }
+            get { return _features.PropertiesFeature.IrSourceAddress; }
+            set { _features.PropertiesFeature.IrSourceAddress = value; }
         }
 
         bool IDevicePowerFeatureContext.IsGpsTabVisible
         {
-            get { return _features._rtspSettingsFeature.IsGpsTabVisible; }
+            get { return _features.RtspSettingsFeature.IsGpsTabVisible; }
         }
 
         bool IDevicePowerFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IDevicePowerFeatureContext.IsSelectedConnectionTarget
         {
-            get { return _features._rtspSettingsFeature.IsSelectedConnectionTarget; }
+            get { return _features.RtspSettingsFeature.IsSelectedConnectionTarget; }
         }
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IDevicePowerFeatureContext.RefreshWebAgentEquipmentState()
         {
-            _features._webAgentEquipmentFeature.RefreshWebAgentEquipmentState();
+            _features.WebAgentEquipmentFeature.RefreshWebAgentEquipmentState();
         }
 
         /// <summary>
@@ -132,23 +132,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IDevicePowerFeatureContext.ResetWebAgentTelemetrySession()
         {
-            _features._webAgentProtocolFeature.ResetWebAgentTelemetrySession();
+            _features.WebAgentProtocolFeature.ResetWebAgentTelemetrySession();
         }
 
         ControlAgentProfileOption IDevicePowerFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
         string IDevicePowerFeatureContext.SessionControlIp
         {
-            get { return _features._rtspSettingsFeature.SessionControlIp; }
+            get { return _features.RtspSettingsFeature.SessionControlIp; }
         }
 
         string IDevicePowerFeatureContext.SessionControlPort
         {
-            get { return _features._rtspSettingsFeature.SessionControlPort; }
+            get { return _features.RtspSettingsFeature.SessionControlPort; }
         }
 
         EventHandler IDevicePowerFeatureContext.HandleDevicePowerFreshnessTickCallback

@@ -21,15 +21,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void Notify(string propertyName);
 
-        ref long _propertyChangedCount { get; }
+        ref long PropertyChangedCount { get; }
 
-        ref long _panPropertyChangedCount { get; }
+        ref long PanPropertyChangedCount { get; }
 
-        ref long _tiltPropertyChangedCount { get; }
+        ref long TiltPropertyChangedCount { get; }
 
-        ref long _zoomPropertyChangedCount { get; }
+        ref long ZoomPropertyChangedCount { get; }
 
-        ref long _focusPropertyChangedCount { get; }
+        ref long FocusPropertyChangedCount { get; }
     }
 
     /// <summary>
@@ -52,29 +52,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _publish = publish ?? throw new ArgumentNullException(nameof(publish));
         }
 
-        public ref long _propertyChangedCount
+        public ref long PropertyChangedCount
         {
-            get { return ref _features._screenStateFeature._propertyChangedCount; }
+            get { return ref _features.ScreenStateFeature._propertyChangedCount; }
         }
 
-        public ref long _panPropertyChangedCount
+        public ref long PanPropertyChangedCount
         {
-            get { return ref _features._screenStateFeature._panPropertyChangedCount; }
+            get { return ref _features.ScreenStateFeature._panPropertyChangedCount; }
         }
 
-        public ref long _tiltPropertyChangedCount
+        public ref long TiltPropertyChangedCount
         {
-            get { return ref _features._screenStateFeature._tiltPropertyChangedCount; }
+            get { return ref _features.ScreenStateFeature._tiltPropertyChangedCount; }
         }
 
-        public ref long _zoomPropertyChangedCount
+        public ref long ZoomPropertyChangedCount
         {
-            get { return ref _features._screenStateFeature._zoomPropertyChangedCount; }
+            get { return ref _features.ScreenStateFeature._zoomPropertyChangedCount; }
         }
 
-        public ref long _focusPropertyChangedCount
+        public ref long FocusPropertyChangedCount
         {
-            get { return ref _features._screenStateFeature._focusPropertyChangedCount; }
+            get { return ref _features.ScreenStateFeature._focusPropertyChangedCount; }
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         public void SwitchEquipmentPresets()
         {
-            _features._presetStorageFeature.SwitchEquipmentPresets();
+            _features.PresetStorageFeature.SwitchEquipmentPresets();
         }
 
         /// <summary>
@@ -126,23 +126,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _context.SwitchEquipmentPresets();
             }
 
-            Interlocked.Increment(ref _context._propertyChangedCount);
+            Interlocked.Increment(ref _context.PropertyChangedCount);
 
             switch (propertyName)
             {
                 case nameof(MainViewModel.CurrentPanText):
-                    Interlocked.Increment(ref _context._panPropertyChangedCount);
+                    Interlocked.Increment(ref _context.PanPropertyChangedCount);
                     break;
                 case nameof(MainViewModel.CurrentTiltText):
-                    Interlocked.Increment(ref _context._tiltPropertyChangedCount);
+                    Interlocked.Increment(ref _context.TiltPropertyChangedCount);
                     break;
                 case nameof(MainViewModel.CurrentEoZoomText):
                 case nameof(MainViewModel.CurrentIrZoomText):
-                    Interlocked.Increment(ref _context._zoomPropertyChangedCount);
+                    Interlocked.Increment(ref _context.ZoomPropertyChangedCount);
                     break;
                 case nameof(MainViewModel.CurrentEoFocusText):
                 case nameof(MainViewModel.CurrentIrFocusText):
-                    Interlocked.Increment(ref _context._focusPropertyChangedCount);
+                    Interlocked.Increment(ref _context.FocusPropertyChangedCount);
                     break;
             }
 

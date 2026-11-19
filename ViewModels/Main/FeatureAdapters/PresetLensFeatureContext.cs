@@ -13,9 +13,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private readonly FeatureComposition _features;
 
-        string IPresetLensFeatureContext._connectionSessionId
+        string IPresetLensFeatureContext.ConnectionSessionId
         {
-            get { return _features._devicePowerFeature._connectionSessionId; }
+            get { return _features.DevicePowerFeature._connectionSessionId; }
         }
 
         // 협력 대상만 보관한다. 생성자에서 통신·타이머 시작이나 다른 기능 실행은 하지 않는다.
@@ -24,62 +24,62 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        Services.Communication.AutoFocusSnapshot[] IPresetLensFeatureContext._autoFocus
+        Services.Communication.AutoFocusSnapshot[] IPresetLensFeatureContext.AutoFocus
         {
-            get { return _features._webAgentMotionFocusFeature._autoFocus; }
+            get { return _features.WebAgentMotionFocusFeature._autoFocus; }
         }
 
-        bool IPresetLensFeatureContext._autoFocusActivatedForSession
+        bool IPresetLensFeatureContext.AutoFocusActivatedForSession
         {
-            get { return _features._webAgentMotionFocusFeature._autoFocusActivatedForSession; }
-            set { _features._webAgentMotionFocusFeature._autoFocusActivatedForSession = value; }
+            get { return _features.WebAgentMotionFocusFeature._autoFocusActivatedForSession; }
+            set { _features.WebAgentMotionFocusFeature._autoFocusActivatedForSession = value; }
         }
 
-        Services.Communication.IControlCommandServicePort IPresetLensFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IPresetLensFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        short IPresetLensFeatureContext._currentEoFocus
+        short IPresetLensFeatureContext.CurrentEoFocus
         {
-            get { return _features._screenStateFeature._currentEoFocus; }
-            set { _features._screenStateFeature._currentEoFocus = value; }
+            get { return _features.ScreenStateFeature._currentEoFocus; }
+            set { _features.ScreenStateFeature._currentEoFocus = value; }
         }
 
-        short IPresetLensFeatureContext._currentEoZoom
+        short IPresetLensFeatureContext.CurrentEoZoom
         {
-            get { return _features._screenStateFeature._currentEoZoom; }
-            set { _features._screenStateFeature._currentEoZoom = value; }
+            get { return _features.ScreenStateFeature._currentEoZoom; }
+            set { _features.ScreenStateFeature._currentEoZoom = value; }
         }
 
-        ushort IPresetLensFeatureContext._currentIrZoom
+        ushort IPresetLensFeatureContext.CurrentIrZoom
         {
-            get { return _features._screenStateFeature._currentIrZoom; }
-            set { _features._screenStateFeature._currentIrZoom = value; }
+            get { return _features.ScreenStateFeature._currentIrZoom; }
+            set { _features.ScreenStateFeature._currentIrZoom = value; }
         }
 
-        CancellationTokenSource IPresetLensFeatureContext._laPresetDirectScanCts
+        CancellationTokenSource IPresetLensFeatureContext.LaPresetDirectScanCts
         {
-            get { return _features._screenStateFeature._laPresetDirectScanCts; }
-            set { _features._screenStateFeature._laPresetDirectScanCts = value; }
+            get { return _features.ScreenStateFeature._laPresetDirectScanCts; }
+            set { _features.ScreenStateFeature._laPresetDirectScanCts = value; }
         }
 
-        CancellationTokenSource IPresetLensFeatureContext._laPresetSingleMoveCts
+        CancellationTokenSource IPresetLensFeatureContext.LaPresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._laPresetSingleMoveCts; }
-            set { _features._screenStateFeature._laPresetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._laPresetSingleMoveCts; }
+            set { _features.ScreenStateFeature._laPresetSingleMoveCts = value; }
         }
 
-        CancellationTokenSource IPresetLensFeatureContext._presetDirectScanCts
+        CancellationTokenSource IPresetLensFeatureContext.PresetDirectScanCts
         {
-            get { return _features._screenStateFeature._presetDirectScanCts; }
-            set { _features._screenStateFeature._presetDirectScanCts = value; }
+            get { return _features.ScreenStateFeature._presetDirectScanCts; }
+            set { _features.ScreenStateFeature._presetDirectScanCts = value; }
         }
 
-        CancellationTokenSource IPresetLensFeatureContext._presetSingleMoveCts
+        CancellationTokenSource IPresetLensFeatureContext.PresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._presetSingleMoveCts; }
-            set { _features._screenStateFeature._presetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._presetSingleMoveCts; }
+            set { _features.ScreenStateFeature._presetSingleMoveCts = value; }
         }
 
         /// <summary>
@@ -87,12 +87,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IPresetLensFeatureContext.AutoFocusTargetUsesAgent(int target)
         {
-            return _features._webAgentMotionFocusFeature.AutoFocusTargetUsesAgent(target);
+            return _features.WebAgentMotionFocusFeature.AutoFocusTargetUsesAgent(target);
         }
 
         bool IPresetLensFeatureContext.CameraFeatureTransportReady
         {
-            get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
+            get { return _features.CameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IPresetLensFeatureContext.GetCurrentIrFocusStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrFocusStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrFocusStandardPosition();
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IPresetLensFeatureContext.GetCurrentIrZoomStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IPresetLensFeatureContext.GetCurrentPresetStandardFocus()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardFocus();
+            return _features.MoveControlFeature.GetCurrentPresetStandardFocus();
         }
 
         /// <summary>
@@ -128,7 +128,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IPresetLensFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         /// <summary>
@@ -136,17 +136,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IPresetLensFeatureContext.IsAutoFocusBlockingManualFocus(bool ir, bool logWarning)
         {
-            return _features._webAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
+            return _features.WebAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
         }
 
         bool IPresetLensFeatureContext.IsAutoFocusPanelVisible
         {
-            get { return _features._webAgentMotionFocusFeature.IsAutoFocusPanelVisible; }
+            get { return _features.WebAgentMotionFocusFeature.IsAutoFocusPanelVisible; }
         }
 
         bool IPresetLensFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         /// <summary>
@@ -155,12 +155,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IPresetLensFeatureContext.IsIrZoomTargetReached(int target, int actual, int standardTarget, int tolerance, bool syncCalibration)
         {
-            return _features._syncFeature.IsIrZoomTargetReached(target, actual, standardTarget, tolerance, syncCalibration);
+            return _features.SyncFeature.IsIrZoomTargetReached(target, actual, standardTarget, tolerance, syncCalibration);
         }
 
         bool IPresetLensFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         /// <summary>
@@ -169,7 +169,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task<bool> IPresetLensFeatureContext.MoveIrZoomToPositionAsync(int targetPosition, CancellationToken cancellationToken, int standardTarget, int tolerance, bool syncCalibration, bool explicitAbsolute)
         {
-            return _features._syncFeature.MoveIrZoomToPositionAsync(targetPosition, cancellationToken, standardTarget, tolerance, syncCalibration, explicitAbsolute);
+            return _features.SyncFeature.MoveIrZoomToPositionAsync(targetPosition, cancellationToken, standardTarget, tolerance, syncCalibration, explicitAbsolute);
         }
 
         /// <summary>
@@ -177,7 +177,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task<bool> IPresetLensFeatureContext.MoveLaPresetFocusDirectAsync(int eoStandardPosition, int irStandardPosition, CancellationToken cancellationToken, int eoTolerance, int irTolerance, bool? onlyIr)
         {
-            return _features._moveControlFeature.MoveLaPresetFocusDirectAsync(eoStandardPosition, irStandardPosition, cancellationToken, eoTolerance, irTolerance, onlyIr);
+            return _features.MoveControlFeature.MoveLaPresetFocusDirectAsync(eoStandardPosition, irStandardPosition, cancellationToken, eoTolerance, irTolerance, onlyIr);
         }
 
         /// <summary>
@@ -185,18 +185,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task<bool> IPresetLensFeatureContext.MoveLaPresetZoomDirectAsync(int eoStandardPosition, int irPosition, CancellationToken cancellationToken, int eoTolerance, int irTolerance, bool? onlyIr)
         {
-            return _features._moveControlFeature.MoveLaPresetZoomDirectAsync(eoStandardPosition, irPosition, cancellationToken, eoTolerance, irTolerance, onlyIr);
+            return _features.MoveControlFeature.MoveLaPresetZoomDirectAsync(eoStandardPosition, irPosition, cancellationToken, eoTolerance, irTolerance, onlyIr);
         }
 
         Services.Video.PanoramaReferenceState IPresetLensFeatureContext.PanoramaReference
         {
-            get { return _features._panoramaReferenceFeature.PanoramaReference; }
+            get { return _features.PanoramaReferenceFeature.PanoramaReference; }
         }
 
         int IPresetLensFeatureContext.PresetScanDelay
         {
-            get { return _features._propertiesFeature.PresetScanDelay; }
-            set { _features._propertiesFeature.PresetScanDelay = value; }
+            get { return _features.PropertiesFeature.PresetScanDelay; }
+            set { _features.PropertiesFeature.PresetScanDelay = value; }
         }
 
         /// <summary>
@@ -204,7 +204,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task<int> IPresetLensFeatureContext.WaitForIrLensSettledPositionAsync(bool zoom, CancellationToken cancellationToken)
         {
-            return _features._syncFeature.WaitForIrLensSettledPositionAsync(zoom, cancellationToken);
+            return _features.SyncFeature.WaitForIrLensSettledPositionAsync(zoom, cancellationToken);
         }
     }
 }

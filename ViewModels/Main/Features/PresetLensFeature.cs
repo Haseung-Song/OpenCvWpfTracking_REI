@@ -13,27 +13,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
     internal interface IPresetLensFeatureContext
     {
         // 연결을 다시 맺은 뒤 이전 이동 작업이 새 세션에 정지 명령을 보내지 않게 한다.
-        string _connectionSessionId { get; }
+        string ConnectionSessionId { get; }
 
-        Services.Communication.AutoFocusSnapshot[] _autoFocus { get; }
+        Services.Communication.AutoFocusSnapshot[] AutoFocus { get; }
 
-        bool _autoFocusActivatedForSession { get; set; }
+        bool AutoFocusActivatedForSession { get; set; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        short _currentEoFocus { get; set; }
+        short CurrentEoFocus { get; set; }
 
-        short _currentEoZoom { get; set; }
+        short CurrentEoZoom { get; set; }
 
-        ushort _currentIrZoom { get; set; }
+        ushort CurrentIrZoom { get; set; }
 
-        CancellationTokenSource _laPresetDirectScanCts { get; set; }
+        CancellationTokenSource LaPresetDirectScanCts { get; set; }
 
-        CancellationTokenSource _laPresetSingleMoveCts { get; set; }
+        CancellationTokenSource LaPresetSingleMoveCts { get; set; }
 
-        CancellationTokenSource _presetDirectScanCts { get; set; }
+        CancellationTokenSource PresetDirectScanCts { get; set; }
 
-        CancellationTokenSource _presetSingleMoveCts { get; set; }
+        CancellationTokenSource PresetSingleMoveCts { get; set; }
 
         /// <summary>
         /// EO 직접 제어 구성을 구분해 WEB AGENT AF 명령을 적용할 대상인지 확인한다.
@@ -207,7 +207,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            return _context.IsAutoFocusBlockingManualFocus(ir, false) || (!_context._autoFocusActivatedForSession && _context._autoFocus[ir ? 1 : 0] == null);
+            return _context.IsAutoFocusBlockingManualFocus(ir, false) || (!_context.AutoFocusActivatedForSession && _context.AutoFocus[ir ? 1 : 0] == null);
         }
 
         /// <summary>
@@ -349,24 +349,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         {
                             if (onlyIr != false)
                             {
-                                _context._controlCommandService.StopIrZoom();
+                                _context.ControlCommandService.StopIrZoom();
                             }
 
                             if (onlyIr != true)
                             {
-                                _context._controlCommandService.StopEoZoom();
+                                _context.ControlCommandService.StopEoZoom();
                             }
                         }
                         else
                         {
                             if (onlyIr != false && !IsPresetFocusProtected(true))
                             {
-                                _context._controlCommandService.StopIrFocus();
+                                _context.ControlCommandService.StopIrFocus();
                             }
 
                             if (onlyIr != true && !IsPresetFocusProtected(false))
                             {
-                                _context._controlCommandService.StopEoFocus();
+                                _context.ControlCommandService.StopEoFocus();
                             }
                         }
                     }
@@ -386,7 +386,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             // LA는 화각 절대 이동을 사용한다. WEB 절대 위치와 기존 SYNC 보정은 변경하지 않는다.
             bool moved = _context.IsSelectedControlAgentWebAgent ? await _context.MoveIrZoomToPositionAsync(rawTarget, token, standardTarget, tolerance) : await MoveLaIrZoomAbsoluteAsync(rawTarget, standardTarget, tolerance, token);
-            return moved && HasFreshPresetLens(true, true) && _context.IsIrZoomTargetReached(rawTarget, _context._currentIrZoom, standardTarget, tolerance);
+            return moved && HasFreshPresetLens(true, true) && _context.IsIrZoomTargetReached(rawTarget, _context.CurrentIrZoom, standardTarget, tolerance);
         }
 
         /// <summary>
@@ -400,8 +400,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            int start = _context._currentIrZoom;
-            string session = _context._connectionSessionId;
+            int start = _context.CurrentIrZoom;
+            string session = _context.ConnectionSessionId;
             if (HasFreshPresetLens(true, true) && _context.IsIrZoomTargetReached(rawTarget, start, standardTarget, tolerance))
             {
                 return true;
@@ -418,7 +418,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool reached = false;
             try
             {
-                started = _context._controlCommandService.LaIrZoomGoPosition(standardTarget);
+                started = _context.ControlCommandService.LaIrZoomGoPosition(standardTarget);
                 if (!started)
                 {
                     return false;
@@ -428,14 +428,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 while (timer.ElapsedMilliseconds < IrZoomSyncTimeoutMs)
                 {
                     token.ThrowIfCancellationRequested();
-                    if (session != _context._connectionSessionId)
+                    if (session != _context.ConnectionSessionId)
                         throw new OperationCanceledException("LA IR Zoom 이동 중 연결 세션이 변경되었습니다.");
                     long next = PresetLensTicks(true, true);
                     if (next > sequence)
                     {
                         sequence = next;
                         lastFeedbackMs = timer.ElapsedMilliseconds;
-                        int actual = _context._currentIrZoom;
+                        int actual = _context.CurrentIrZoom;
                         if ((actual - start) * rawDirection < -tolerance)
                         {
                             ConsoleLogHelper.Warning("LA IR ZOOM ABSOLUTE", "RESULT=DIRECTION_MISMATCH / EXPECTED_RAW=" + rawTarget + " / ACTUAL_RAW=" + actual);
@@ -465,7 +465,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
 
                 int settled = await _context.WaitForIrLensSettledPositionAsync(true, token);
-                bool confirmed = session == _context._connectionSessionId && HasFreshPresetLens(true, true) && _context.IsIrZoomTargetReached(rawTarget, settled, standardTarget, tolerance);
+                bool confirmed = session == _context.ConnectionSessionId && HasFreshPresetLens(true, true) && _context.IsIrZoomTargetReached(rawTarget, settled, standardTarget, tolerance);
                 ConsoleLogHelper.State("LA IR ZOOM ABSOLUTE", "REQUEST=" + requestType + " / RESULT=" + (confirmed ? "COMPLETED" : "UNCONFIRMED") + " / TARGET=" + standardTarget + " / ACTUAL=" + _context.GetCurrentIrZoomStandardPosition() + " / CONFIRMED=" + confirmed);
                 completed = confirmed;
                 return confirmed;
@@ -473,9 +473,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             finally
             {
                 // 정상 절대 이동에는 STOP을 끼워 넣지 않는다. 취소·미도달·통신 단절 시에만 안전 정지한다.
-                if (started && !completed && session == _context._connectionSessionId)
+                if (started && !completed && session == _context.ConnectionSessionId)
                 {
-                    _context._controlCommandService.StopIrZoom();
+                    _context.ControlCommandService.StopIrZoom();
                 }
             }
         }
@@ -554,10 +554,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 연결 세션 종료 시 이전 프리셋의 지연된 렌즈 명령이 새 세션으로 넘어가지 않도록 취소한다.
             foreach (var cts in new[]
             {
-                _context._laPresetSingleMoveCts,
-                _context._presetSingleMoveCts,
-                _context._laPresetDirectScanCts,
-                _context._presetDirectScanCts
+                _context.LaPresetSingleMoveCts,
+                _context.PresetSingleMoveCts,
+                _context.LaPresetDirectScanCts,
+                _context.PresetDirectScanCts
             }
 
             )
@@ -587,7 +587,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (_context.IsEnvironmentStatusSelected)
             {
-                _context._controlCommandService.RequestLensCapabilityAndTelemetry(1);
+                _context.ControlCommandService.RequestLensCapabilityAndTelemetry(1);
             }
 
             var watch = Stopwatch.StartNew();
@@ -628,7 +628,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     afterTicks = ticks;
 
-                    int actual = zoom ? _context._currentEoZoom : _context._currentEoFocus;
+                    int actual = zoom ? _context.CurrentEoZoom : _context.CurrentEoFocus;
 
                     stable = Math.Abs(actual - target) <= tolerance ? stable + 1 : 0;
 
@@ -641,7 +641,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 await Task.Delay(25, token);
             }
 
-            ConsoleLogHelper.Warning("PRESET LENS", "EO " + (zoom ? "ZOOM" : "FOCUS") + " target unconfirmed / TARGET=" + target + " / ACTUAL=" + (zoom ? _context._currentEoZoom : _context._currentEoFocus));
+            ConsoleLogHelper.Warning("PRESET LENS", "EO " + (zoom ? "ZOOM" : "FOCUS") + " target unconfirmed / TARGET=" + target + " / ACTUAL=" + (zoom ? _context.CurrentEoZoom : _context.CurrentEoFocus));
 
             return false;
         }

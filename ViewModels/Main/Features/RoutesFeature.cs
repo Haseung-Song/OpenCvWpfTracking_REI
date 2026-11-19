@@ -10,15 +10,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>감시 경로 편집과 실행에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IRoutesFeatureContext
     {
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        CancellationTokenSource _laPresetSingleMoveCts { get; set; }
+        CancellationTokenSource LaPresetSingleMoveCts { get; set; }
 
-        Services.Communication.ITcpClientServicePort _laTcpService { get; }
+        Services.Communication.ITcpClientServicePort LaTcpService { get; }
 
-        CancellationTokenSource _presetSingleMoveCts { get; set; }
+        CancellationTokenSource PresetSingleMoveCts { get; set; }
 
         string ControlLockTitle { get; }
 
@@ -367,11 +367,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             foreach (Action stop in new Action[]
             {
-                () => _context._controlCommandService.StopPanTiltPositionMove(),
-                () => _context._controlCommandService.StopEoZoom(),
-                () => _context._controlCommandService.StopIrZoom(),
-                () => _context._controlCommandService.StopEoFocus(),
-                () => _context._controlCommandService.StopIrFocus()
+                () => _context.ControlCommandService.StopPanTiltPositionMove(),
+                () => _context.ControlCommandService.StopEoZoom(),
+                () => _context.ControlCommandService.StopIrZoom(),
+                () => _context.ControlCommandService.StopEoFocus(),
+                () => _context.ControlCommandService.StopIrFocus()
             }
 
             )
@@ -418,12 +418,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task RunRouteAsync(bool single)
         {
-            if (IsRouteRunning || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked || !_context._isDeviceConnectionRequested || !_context._laTcpService.IsConnected || !_context.PanoramaPoseFresh)
+            if (IsRouteRunning || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked || !_context.IsDeviceConnectionRequested || !_context.LaTcpService.IsConnected || !_context.PanoramaPoseFresh)
             {
                 throw new InvalidOperationException("장비 연결·수신 위치·운용 잠금 상태를 확인하세요.");
             }
 
-            if (_context._laPresetSingleMoveCts != null || _context._presetSingleMoveCts != null)
+            if (_context.LaPresetSingleMoveCts != null || _context.PresetSingleMoveCts != null)
             {
                 throw new InvalidOperationException("기존 프리셋 이동이 끝난 후 실행하세요.");
             }
@@ -483,7 +483,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         cts.Token.ThrowIfCancellationRequested();
 
-                        if (device != _context.PanoramaDeviceKey || !_context._laTcpService.IsConnected || !_context.PanoramaPoseFresh)
+                        if (device != _context.PanoramaDeviceKey || !_context.LaTcpService.IsConnected || !_context.PanoramaPoseFresh)
                         {
                             throw new InvalidOperationException("장비/통신/수신 위치 변경으로 중지");
                         }

@@ -11,25 +11,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>카메라 특수 기능 제어에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface ICameraFeatureControlFeatureContext
     {
-        ref double? _activePanAbsoluteTarget { get; }
+        ref double? ActivePanAbsoluteTarget { get; }
 
-        ref double? _activeTiltAbsoluteTarget { get; }
+        ref double? ActiveTiltAbsoluteTarget { get; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> _controlInputs { get; }
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> ControlInputs { get; }
 
-        int _inputEpoch { get; set; }
+        int InputEpoch { get; set; }
 
-        ref long _irLensReceivedTicks { get; }
+        ref long IrLensReceivedTicks { get; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        ref double? _lastPanAbsoluteTarget { get; }
+        ref double? LastPanAbsoluteTarget { get; }
 
-        Services.Communication.ITcpClientServicePort _laTcpService { get; }
+        Services.Communication.ITcpClientServicePort LaTcpService { get; }
 
-        ControlAgentProfileOption _requestedControlProfile { get; set; }
+        ControlAgentProfileOption RequestedControlProfile { get; set; }
 
         /// <summary>
         /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다.
@@ -209,7 +209,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._isDeviceConnectionRequested && _context._laTcpService.IsConnected;
+                return _context.IsDeviceConnectionRequested && _context.LaTcpService.IsConnected;
             }
         }
 
@@ -249,7 +249,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _videoCenterBusy || _context._activePanAbsoluteTarget.HasValue || _context._activeTiltAbsoluteTarget.HasValue;
+                return _videoCenterBusy || _context.ActivePanAbsoluteTarget.HasValue || _context.ActiveTiltAbsoluteTarget.HasValue;
             }
         }
 
@@ -423,7 +423,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             for (byte i = 0; i < 2; i++)
             {
-                _context._controlCommandService.RequestCameraFeatureCapability(i);
+                _context.ControlCommandService.RequestCameraFeatureCapability(i);
             }
 
             ConsoleLogHelper.Command("DIGITAL ZOOM", "EO/IR support query / E7");
@@ -478,7 +478,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if ((flags & 3) == 3)
             {
-                _context._controlCommandService.RequestCameraFeatureState((byte)i, 0x1D);
+                _context.ControlCommandService.RequestCameraFeatureState((byte)i, 0x1D);
             }
 
             _digitalNextQueryTicks[i] = DateTime.UtcNow.AddSeconds(5).Ticks;
@@ -538,7 +538,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            bool sent = _context._controlCommandService.SetCameraFeature(0x1D, (byte)i, (byte)(on ? 1 : 0));
+            bool sent = _context.ControlCommandService.SetCameraFeature(0x1D, (byte)i, (byte)(on ? 1 : 0));
 
             _digitalTxFailed[i] = !sent;
 
@@ -596,7 +596,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (_centerDeadlineTicks != 0)
             {
-                if (_centerMoveEpoch != _context._inputEpoch || (!_context._activePanAbsoluteTarget.HasValue && !_context._activeTiltAbsoluteTarget.HasValue))
+                if (_centerMoveEpoch != _context.InputEpoch || (!_context.ActivePanAbsoluteTarget.HasValue && !_context.ActiveTiltAbsoluteTarget.HasValue))
                 {
                     _centerDeadlineTicks = 0;
                 }
@@ -626,7 +626,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     if ((_digitalCaps[i] & 2) != 0)
                     {
-                        _context._controlCommandService.RequestCameraFeatureState(i, 0x1D);
+                        _context.ControlCommandService.RequestCameraFeatureState(i, 0x1D);
                     }
 
                     NotifyDigitalZoom();
@@ -639,7 +639,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _digitalNextQueryTicks[i] = DateTime.UtcNow.AddSeconds(5).Ticks;
 
-                    _context._controlCommandService.RequestCameraFeatureState(i, 0x1D);
+                    _context.ControlCommandService.RequestCameraFeatureState(i, 0x1D);
                 }
             }
 
@@ -695,14 +695,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool approximateIr = ir && !_context.IsLensFresh(true);
 
-            if (_videoCenterBusy || _context._activePanAbsoluteTarget.HasValue || _context._activeTiltAbsoluteTarget.HasValue || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context._controlInputs.Count > 0 || pose == null || now - pose.Item3 > TimeSpan.FromSeconds(2).Ticks || (!ir && !_context.IsLensFresh(false)) || now - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]) > TimeSpan.FromSeconds(1).Ticks || status == null || !status.EndsWith("] Connected", StringComparison.Ordinal) || now - _lastCenterClickTicks < TimeSpan.FromMilliseconds(300).Ticks)
+            if (_videoCenterBusy || _context.ActivePanAbsoluteTarget.HasValue || _context.ActiveTiltAbsoluteTarget.HasValue || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context.ControlInputs.Count > 0 || pose == null || now - pose.Item3 > TimeSpan.FromSeconds(2).Ticks || (!ir && !_context.IsLensFresh(false)) || now - Interlocked.Read(ref _videoCenterFrameTicks[ir ? 1 : 0]) > TimeSpan.FromSeconds(1).Ticks || status == null || !status.EndsWith("] Connected", StringComparison.Ordinal) || now - _lastCenterClickTicks < TimeSpan.FromMilliseconds(300).Ticks)
             {
                 ConsoleLogHelper.Warning("VIDEO CENTER", "Rejected / stale video, pose/lens, lock, connection or active input / CAMERA=" + (ir ? "IR" : "EO"));
 
                 return false;
             }
 
-            var profile = _context._requestedControlProfile ?? _context.SelectedControlAgentProfile;
+            var profile = _context.RequestedControlProfile ?? _context.SelectedControlAgentProfile;
 
             string deviceId = Services.Configuration.DeviceCatalog.CanonicalDeviceId(profile?.DeviceId);
 
@@ -727,7 +727,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             int zoom = ir ? _context.GetCurrentIrZoomStandardPosition() : _context.GetCurrentPresetStandardZoom();
 
-            if (approximateIr && Interlocked.Read(ref _context._irLensReceivedTicks) == 0)
+            if (approximateIr && Interlocked.Read(ref _context.IrLensReceivedTicks) == 0)
             {
                 zoom = 0; // 이번 세션에 줌 응답이 없으면 초기 Raw 값을 실제 Tele 배율로 해석하지 않는다.
             }
@@ -786,7 +786,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _videoCenterBusy = true;
             _lastCenterClickTicks = now;
 
-            int epoch = _context._inputEpoch;
+            int epoch = _context.InputEpoch;
 
             try
             {
@@ -799,41 +799,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     speed = Math.Min(speed, 10);
                 }
 
-                if (!_context._controlCommandService.SetPanPositionSpeed(speed) || !_context._controlCommandService.SetTiltPositionSpeed(speed) || !_context._controlCommandService.SetPanShortestPathMode())
+                if (!_context.ControlCommandService.SetPanPositionSpeed(speed) || !_context.ControlCommandService.SetTiltPositionSpeed(speed) || !_context.ControlCommandService.SetPanShortestPathMode())
                 {
                     return false;
                 }
 
                 await Task.Delay(_context.IsEnvironmentStatusSelected ? 100 : 80);
 
-                if (epoch != _context._inputEpoch || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context._controlInputs.Count > 0)
+                if (epoch != _context.InputEpoch || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context.ControlInputs.Count > 0)
                 {
                     return false;
                 }
 
-                bool panSent = _context._controlCommandService.PanGoPosition(target.Item1);
+                bool panSent = _context.ControlCommandService.PanGoPosition(target.Item1);
 
                 await Task.Delay(_context.IsEnvironmentStatusSelected ? 60 : 0);
 
-                if (epoch != _context._inputEpoch || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context._controlInputs.Count > 0)
+                if (epoch != _context.InputEpoch || !CameraFeatureTransportReady || _context.IsControlInputLocked || !_context.IsOperationCommandEnabled || _context.ControlInputs.Count > 0)
                 {
-                    _context._controlCommandService.StopPanTiltPositionMove();
+                    _context.ControlCommandService.StopPanTiltPositionMove();
 
                     return false;
                 }
 
-                bool tiltSent = panSent && _context._controlCommandService.TiltGoPosition(tilt);
+                bool tiltSent = panSent && _context.ControlCommandService.TiltGoPosition(tilt);
 
                 if (!tiltSent)
                 {
-                    _context._controlCommandService.StopPanTiltPositionMove();
+                    _context.ControlCommandService.StopPanTiltPositionMove();
 
                     return false;
                 }
 
-                _context._activePanAbsoluteTarget = target.Item1;
-                _context._activeTiltAbsoluteTarget = tilt;
-                _context._lastPanAbsoluteTarget = target.Item1;
+                _context.ActivePanAbsoluteTarget = target.Item1;
+                _context.ActiveTiltAbsoluteTarget = tilt;
+                _context.LastPanAbsoluteTarget = target.Item1;
 
                 double panDistance = Math.Abs((target.Item1 - pose.Item1 + 540) % 360 - 180), tiltDistance = Math.Abs(tilt - pose.Item2);
 
@@ -846,7 +846,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             catch (Exception ex)
             {
-                _context._controlCommandService.StopPanTiltPositionMove();
+                _context.ControlCommandService.StopPanTiltPositionMove();
 
                 ConsoleLogHelper.Warning("VIDEO CENTER", ex.GetType().Name);
 

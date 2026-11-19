@@ -22,19 +22,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>화재·연기 이벤트에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IFireEventsFeatureContext
     {
-        List<FireEventRecord> _activeTestFireEvents { get; }
+        List<FireEventRecord> ActiveTestFireEvents { get; }
 
-        bool _hasEoLocalFireDetection { get; set; }
+        bool HasEoLocalFireDetection { get; set; }
 
-        bool _hasEoLocalSmokeDetection { get; set; }
+        bool HasEoLocalSmokeDetection { get; set; }
 
-        bool _hasIrLocalFireDetection { get; set; }
+        bool HasIrLocalFireDetection { get; set; }
 
-        bool _hasIrLocalSmokeDetection { get; set; }
+        bool HasIrLocalSmokeDetection { get; set; }
 
-        bool _isEoFireCandidateDetected { get; set; }
+        bool IsEoFireCandidateDetected { get; set; }
 
-        bool _isIrFireCandidateDetected { get; set; }
+        bool IsIrFireCandidateDetected { get; set; }
 
         /// <summary>
         /// 영상 탐지 사각형과 현재 위치를 이용해 구역 판정 결과를 구한다.
@@ -339,7 +339,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _activeVisionBBoxEvents.Remove(track);
             }
 
-            foreach (var record in _context._activeTestFireEvents.Where(x => x.DetectionType.IndexOf(kind, StringComparison.OrdinalIgnoreCase) >= 0).ToList())
+            foreach (var record in _context.ActiveTestFireEvents.Where(x => x.DetectionType.IndexOf(kind, StringComparison.OrdinalIgnoreCase) >= 0).ToList())
             {
                 record.MarkCleared(now);
 
@@ -348,7 +348,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     AppendFireEventAudit(record, "CLEARED");
                 }
 
-                _context._activeTestFireEvents.Remove(record);
+                _context.ActiveTestFireEvents.Remove(record);
             }
 
             foreach (var boxes in new[]
@@ -370,13 +370,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (fire)
             {
-                _context._isEoFireCandidateDetected = false;
-                _context._isIrFireCandidateDetected = false;
+                _context.IsEoFireCandidateDetected = false;
+                _context.IsIrFireCandidateDetected = false;
             }
 
-            _context.SetLocalFireSmokeDetectionState(0, fire ? false : _context._hasEoLocalFireDetection, fire ? _context._hasEoLocalSmokeDetection : false);
+            _context.SetLocalFireSmokeDetectionState(0, fire ? false : _context.HasEoLocalFireDetection, fire ? _context.HasEoLocalSmokeDetection : false);
 
-            _context.SetLocalFireSmokeDetectionState(1, fire ? false : _context._hasIrLocalFireDetection, fire ? _context._hasIrLocalSmokeDetection : false);
+            _context.SetLocalFireSmokeDetectionState(1, fire ? false : _context.HasIrLocalFireDetection, fire ? _context.HasIrLocalSmokeDetection : false);
 
             _context.RefreshActiveFireCount();
 
@@ -727,7 +727,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _isFireCsvHistoryLoaded = true;
 
-                _context._activeTestFireEvents.Clear();
+                _context.ActiveTestFireEvents.Clear();
 
                 _activeVisionBBoxEvents.Clear();
 
@@ -760,7 +760,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _nextFireEventId = 1;
             _isFireCsvHistoryLoaded = false;
 
-            _context._activeTestFireEvents.Clear();
+            _context.ActiveTestFireEvents.Clear();
 
             _activeVisionBBoxEvents.Clear();
 

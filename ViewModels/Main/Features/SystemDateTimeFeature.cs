@@ -11,11 +11,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>장비 시간 조회에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface ISystemDateTimeFeatureContext
     {
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
-        ITcpClientServicePort _laTcpService { get; }
+        ITcpClientServicePort LaTcpService { get; }
 
-        TelemetryClock _webAgentTelemetryClock { get; }
+        TelemetryClock WebAgentTelemetryClock { get; }
 
         bool IsEnvironmentStatusSelected { get; }
 
@@ -255,7 +255,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _systemTimeQuerySentAt = DateTime.Now;
             _systemTimeQueryInFlight = true;
 
-            bool sent = _context._controlCommandService.RequestSystemDateTime();
+            bool sent = _context.ControlCommandService.RequestSystemDateTime();
 
             if (!isAutomatic)
             {
@@ -294,7 +294,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             SystemDateTimeStatusText = "설정 응답 대기";
 
-            bool sent = _context._controlCommandService.SetSystemDateTimeUtc(pcUtc);
+            bool sent = _context.ControlCommandService.SetSystemDateTimeUtc(pcUtc);
 
             ConsoleLogHelper.Command("SYSTEM TIME SET TX", "PC_LOCAL=" + FormatDateTime(pcLocal) + " / UTC=" + FormatDateTime(pcUtc) + " / PACKET=" + ToHex(packet) + " / SENT=" + sent);
 
@@ -325,7 +325,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            if (_context._laTcpService == null || !_context._laTcpService.IsConnected)
+            if (_context.LaTcpService == null || !_context.LaTcpService.IsConnected)
             {
                 reason = "Failed: WebAgent 미연결";
 
@@ -391,7 +391,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 bool clockChanged;
 
-                if (_context._webAgentTelemetryClock.Observe(new DateTimeOffset(utcDateTime).ToUnixTimeMilliseconds(), querySentAt, receivedAt, out clockChanged) && clockChanged)
+                if (_context.WebAgentTelemetryClock.Observe(new DateTimeOffset(utcDateTime).ToUnixTimeMilliseconds(), querySentAt, receivedAt, out clockChanged) && clockChanged)
                 {
                     ConsoleLogHelper.State("WEB AGENT CLOCK", "F1 clock reference established/reset; no EF time write / PC_MINUS_SBC_SECONDS=" + (DateTime.UtcNow - utcDateTime).TotalSeconds.ToString("F1", CultureInfo.InvariantCulture));
                 }
@@ -399,7 +399,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (success && operation == 0x01)
             {
-                _context._webAgentTelemetryClock.Reset();
+                _context.WebAgentTelemetryClock.Reset();
             }
 
             RunOnUiThread(() =>
@@ -452,7 +452,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (_context._laTcpService != null && _context._laTcpService.IsConnected && _context.IsSelectedControlAgentWebAgent)
+            if (_context.LaTcpService != null && _context.LaTcpService.IsConnected && _context.IsSelectedControlAgentWebAgent)
             {
                 _systemTimePollTimer.Start();
             }

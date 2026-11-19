@@ -10,27 +10,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>광학 중심 보정에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IOpticalCenterFeatureContext
     {
-        int _activePanTiltZoomSource { get; set; }
+        int ActivePanTiltZoomSource { get; set; }
 
-        double _currentPan { get; set; }
+        double CurrentPan { get; set; }
 
-        double _currentTilt { get; set; }
+        double CurrentTilt { get; set; }
 
-        byte[] _digitalCaps { get; }
+        byte[] DigitalCaps { get; }
 
-        bool[] _digitalCapsKnown { get; }
+        bool[] DigitalCapsKnown { get; }
 
-        int[] _digitalState { get; }
+        int[] DigitalState { get; }
 
-        Services.Configuration.DigitalZoomEstimate _eoDigitalEstimate { get; }
+        Services.Configuration.DigitalZoomEstimate EoDigitalEstimate { get; }
 
-        Services.Configuration.DigitalZoomEstimate _irDigitalEstimate { get; }
+        Services.Configuration.DigitalZoomEstimate IrDigitalEstimate { get; }
 
-        ControlAgentProfileOption _requestedControlProfile { get; set; }
+        ControlAgentProfileOption RequestedControlProfile { get; set; }
 
-        long[] _videoCenterFrameTicks { get; }
+        long[] VideoCenterFrameTicks { get; }
 
-        ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
+        ref global::System.Tuple<double, double, long> VideoCenterPose { get; }
 
         string ControlAgentIp { get; set; }
 
@@ -111,7 +111,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return new Point(_context._currentPan, _context._currentTilt);
+                return new Point(_context.CurrentPan, _context.CurrentTilt);
             }
         }
 
@@ -119,20 +119,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return NormalizeToSignedAngle(_context._currentPan);
+                return NormalizeToSignedAngle(_context.CurrentPan);
             }
         }
 
         internal double CurrentPanoramaTilt
         {
-            get { return _context._currentTilt; }
+            get { return _context.CurrentTilt; }
         }
 
         internal bool PanoramaPoseFresh
         {
             get
             {
-                var pose = Volatile.Read(ref _context._videoCenterPose);
+                var pose = Volatile.Read(ref _context.VideoCenterPose);
 
                 if (pose == null)
                 {
@@ -157,7 +157,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._activePanTiltZoomSource == 1;
+                return _context.ActivePanTiltZoomSource == 1;
             }
         }
 
@@ -189,7 +189,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal string LegacyOpticalCenterKey(bool ir)
         {
-            return OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName((_context._requestedControlProfile ?? _context.SelectedControlAgentProfile)?.DisplayName ?? "DIRECT") + "|" + _context.ControlAgentIp + ":" + _context.ControlAgentPortText + "|" + CameraIdentity(ir ? _context.IrSourceAddress : _context.EoSourceAddress) + "|" + (ir ? "IR" : "EO");
+            return OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName((_context.RequestedControlProfile ?? _context.SelectedControlAgentProfile)?.DisplayName ?? "DIRECT") + "|" + _context.ControlAgentIp + ":" + _context.ControlAgentPortText + "|" + CameraIdentity(ir ? _context.IrSourceAddress : _context.EoSourceAddress) + "|" + (ir ? "IR" : "EO");
         }
 
         /// <summary>
@@ -205,7 +205,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal string OpticalCenterKey(bool ir)
         {
-            var profile = _context._requestedControlProfile ?? _context.SelectedControlAgentProfile;
+            var profile = _context.RequestedControlProfile ?? _context.SelectedControlAgentProfile;
 
             string stable = OpticalDeviceIdentity.Key(profile?.DeviceId, profile?.AgentType.ToString(), ir, null);
 
@@ -242,12 +242,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             int channel = ir ? 1 : 0;
 
-            if (ir && _context._digitalCapsKnown[channel] && (_context._digitalCaps[channel] & 5) != 5)
+            if (ir && _context.DigitalCapsKnown[channel] && (_context.DigitalCaps[channel] & 5) != 5)
             {
                 return false;
             }
 
-            return (ir ? _context._irDigitalEstimate : _context._eoDigitalEstimate).Enabled || _context._digitalState[channel] == 1;
+            return (ir ? _context.IrDigitalEstimate : _context.EoDigitalEstimate).Enabled || _context.DigitalState[channel] == 1;
         }
 
         /// <summary>
@@ -263,7 +263,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool OpticalFeedbackFresh(bool ir)
         {
-            var pose = Volatile.Read(ref _context._videoCenterPose);
+            var pose = Volatile.Read(ref _context.VideoCenterPose);
 
             long age = pose == null ? long.MaxValue : DateTime.UtcNow.Ticks - pose.Item3;
 
@@ -275,7 +275,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool SnapshotFrameFresh(bool ir)
         {
-            long age = DateTime.UtcNow.Ticks - Interlocked.Read(ref _context._videoCenterFrameTicks[ir ? 1 : 0]);
+            long age = DateTime.UtcNow.Ticks - Interlocked.Read(ref _context.VideoCenterFrameTicks[ir ? 1 : 0]);
 
             return age >= 0 && age < TimeSpan.FromSeconds(1).Ticks && (ir ? _context.IrConnectionStatusText : _context.EoConnectionStatusText) == "Connected";
         }

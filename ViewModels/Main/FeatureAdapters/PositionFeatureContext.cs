@@ -17,9 +17,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        ref int IPositionFeatureContext._zoneEpoch
+        ref int IPositionFeatureContext.ZoneEpoch
         {
-            get { return ref _features._zonesFeature._zoneEpoch; }
+            get { return ref _features.ZonesFeature._zoneEpoch; }
         }
 
         /// <summary>

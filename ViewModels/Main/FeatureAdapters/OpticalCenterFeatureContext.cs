@@ -17,75 +17,75 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        int IOpticalCenterFeatureContext._activePanTiltZoomSource
+        int IOpticalCenterFeatureContext.ActivePanTiltZoomSource
         {
-            get { return _features._continuousControlFeature._activePanTiltZoomSource; }
-            set { _features._continuousControlFeature._activePanTiltZoomSource = value; }
+            get { return _features.ContinuousControlFeature._activePanTiltZoomSource; }
+            set { _features.ContinuousControlFeature._activePanTiltZoomSource = value; }
         }
 
-        double IOpticalCenterFeatureContext._currentPan
+        double IOpticalCenterFeatureContext.CurrentPan
         {
-            get { return _features._screenStateFeature._currentPan; }
-            set { _features._screenStateFeature._currentPan = value; }
+            get { return _features.ScreenStateFeature._currentPan; }
+            set { _features.ScreenStateFeature._currentPan = value; }
         }
 
-        double IOpticalCenterFeatureContext._currentTilt
+        double IOpticalCenterFeatureContext.CurrentTilt
         {
-            get { return _features._screenStateFeature._currentTilt; }
-            set { _features._screenStateFeature._currentTilt = value; }
+            get { return _features.ScreenStateFeature._currentTilt; }
+            set { _features.ScreenStateFeature._currentTilt = value; }
         }
 
-        byte[] IOpticalCenterFeatureContext._digitalCaps
+        byte[] IOpticalCenterFeatureContext.DigitalCaps
         {
-            get { return _features._cameraFeatureControlFeature._digitalCaps; }
+            get { return _features.CameraFeatureControlFeature._digitalCaps; }
         }
 
-        bool[] IOpticalCenterFeatureContext._digitalCapsKnown
+        bool[] IOpticalCenterFeatureContext.DigitalCapsKnown
         {
-            get { return _features._cameraFeatureControlFeature._digitalCapsKnown; }
+            get { return _features.CameraFeatureControlFeature._digitalCapsKnown; }
         }
 
-        int[] IOpticalCenterFeatureContext._digitalState
+        int[] IOpticalCenterFeatureContext.DigitalState
         {
-            get { return _features._cameraFeatureControlFeature._digitalState; }
+            get { return _features.CameraFeatureControlFeature._digitalState; }
         }
 
-        Services.Configuration.DigitalZoomEstimate IOpticalCenterFeatureContext._eoDigitalEstimate
+        Services.Configuration.DigitalZoomEstimate IOpticalCenterFeatureContext.EoDigitalEstimate
         {
-            get { return _features._cameraFeatureControlFeature._eoDigitalEstimate; }
+            get { return _features.CameraFeatureControlFeature._eoDigitalEstimate; }
         }
 
-        Services.Configuration.DigitalZoomEstimate IOpticalCenterFeatureContext._irDigitalEstimate
+        Services.Configuration.DigitalZoomEstimate IOpticalCenterFeatureContext.IrDigitalEstimate
         {
-            get { return _features._cameraFeatureControlFeature._irDigitalEstimate; }
+            get { return _features.CameraFeatureControlFeature._irDigitalEstimate; }
         }
 
-        ControlAgentProfileOption IOpticalCenterFeatureContext._requestedControlProfile
+        ControlAgentProfileOption IOpticalCenterFeatureContext.RequestedControlProfile
         {
-            get { return _features._rtspSettingsFeature._requestedControlProfile; }
-            set { _features._rtspSettingsFeature._requestedControlProfile = value; }
+            get { return _features.RtspSettingsFeature._requestedControlProfile; }
+            set { _features.RtspSettingsFeature._requestedControlProfile = value; }
         }
 
-        long[] IOpticalCenterFeatureContext._videoCenterFrameTicks
+        long[] IOpticalCenterFeatureContext.VideoCenterFrameTicks
         {
-            get { return _features._cameraFeatureControlFeature._videoCenterFrameTicks; }
+            get { return _features.CameraFeatureControlFeature._videoCenterFrameTicks; }
         }
 
-        ref global::System.Tuple<double, double, long> IOpticalCenterFeatureContext._videoCenterPose
+        ref global::System.Tuple<double, double, long> IOpticalCenterFeatureContext.VideoCenterPose
         {
-            get { return ref _features._cameraFeatureControlFeature._videoCenterPose; }
+            get { return ref _features.CameraFeatureControlFeature._videoCenterPose; }
         }
 
         string IOpticalCenterFeatureContext.ControlAgentIp
         {
-            get { return _features._propertiesFeature.ControlAgentIp; }
-            set { _features._propertiesFeature.ControlAgentIp = value; }
+            get { return _features.PropertiesFeature.ControlAgentIp; }
+            set { _features.PropertiesFeature.ControlAgentIp = value; }
         }
 
         string IOpticalCenterFeatureContext.ControlAgentPortText
         {
-            get { return _features._propertiesFeature.ControlAgentPortText; }
-            set { _features._propertiesFeature.ControlAgentPortText = value; }
+            get { return _features.PropertiesFeature.ControlAgentPortText; }
+            set { _features.PropertiesFeature.ControlAgentPortText = value; }
         }
 
         /// <summary>
@@ -93,18 +93,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Services.Configuration.LensControlTuning IOpticalCenterFeatureContext.ControlTuningFor(bool ir)
         {
-            return _features._inputCoordinatorFeature.ControlTuningFor(ir);
+            return _features.InputCoordinatorFeature.ControlTuningFor(ir);
         }
 
         string IOpticalCenterFeatureContext.EoConnectionStatusText
         {
-            get { return _features._propertiesFeature.EoConnectionStatusText; }
+            get { return _features.PropertiesFeature.EoConnectionStatusText; }
         }
 
         string IOpticalCenterFeatureContext.EoSourceAddress
         {
-            get { return _features._propertiesFeature.EoSourceAddress; }
-            set { _features._propertiesFeature.EoSourceAddress = value; }
+            get { return _features.PropertiesFeature.EoSourceAddress; }
+            set { _features.PropertiesFeature.EoSourceAddress = value; }
         }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IOpticalCenterFeatureContext.GetCurrentIrZoomStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
         /// <summary>
@@ -122,18 +122,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IOpticalCenterFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         string IOpticalCenterFeatureContext.IrConnectionStatusText
         {
-            get { return _features._propertiesFeature.IrConnectionStatusText; }
+            get { return _features.PropertiesFeature.IrConnectionStatusText; }
         }
 
         string IOpticalCenterFeatureContext.IrSourceAddress
         {
-            get { return _features._propertiesFeature.IrSourceAddress; }
-            set { _features._propertiesFeature.IrSourceAddress = value; }
+            get { return _features.PropertiesFeature.IrSourceAddress; }
+            set { _features.PropertiesFeature.IrSourceAddress = value; }
         }
 
         /// <summary>
@@ -141,13 +141,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IOpticalCenterFeatureContext.IsLensFresh(bool ir)
         {
-            return _features._inputCoordinatorFeature.IsLensFresh(ir);
+            return _features.InputCoordinatorFeature.IsLensFresh(ir);
         }
 
         ControlAgentProfileOption IOpticalCenterFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
     }
 }

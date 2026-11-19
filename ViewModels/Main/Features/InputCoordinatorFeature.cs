@@ -15,25 +15,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>입력 허용과 정지 조정에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IInputCoordinatorFeatureContext
     {
-        ref global::OpenCvWpfTracking.Models.Main.RtspSourceOption _activeEoCtecSource { get; }
+        ref global::OpenCvWpfTracking.Models.Main.RtspSourceOption ActiveEoCtecSource { get; }
 
-        ref double? _activePanAbsoluteTarget { get; }
+        ref double? ActivePanAbsoluteTarget { get; }
 
-        ref double? _activeTiltAbsoluteTarget { get; }
+        ref double? ActiveTiltAbsoluteTarget { get; }
 
-        Services.Communication.AI.IAiDetectorClientServicePort _aiDetectorClientService { get; }
+        Services.Communication.AI.IAiDetectorClientServicePort AiDetectorClientService { get; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        ContinuousMoveType _currentMoveType { get; set; }
+        ContinuousMoveType CurrentMoveType { get; set; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        Services.Communication.ITcpClientServicePort _laTcpService { get; }
+        Services.Communication.ITcpClientServicePort LaTcpService { get; }
 
-        ControlAgentProfileOption _requestedControlProfile { get; set; }
+        ControlAgentProfileOption RequestedControlProfile { get; set; }
 
-        bool _videoCenterBusy { get; set; }
+        bool VideoCenterBusy { get; set; }
 
         string AiPowerStatusText { get; set; }
 
@@ -501,7 +501,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal LensControlTuning ControlTuningFor(bool ir)
         {
-            var profile = _context._requestedControlProfile ?? _context.SelectedControlAgentProfile;
+            var profile = _context.RequestedControlProfile ?? _context.SelectedControlAgentProfile;
 
             return ControlTuning.Get(profile?.DeviceId, ir);
         }
@@ -570,7 +570,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool IsLensFresh(bool ir)
         {
-            return _context._isDeviceConnectionRequested && DateTime.UtcNow.Ticks - (ir ? Interlocked.Read(ref _irLensReceivedTicks) : Interlocked.Read(ref _eoLensReceivedTicks)) < TimeSpan.FromSeconds(3).Ticks;
+            return _context.IsDeviceConnectionRequested && DateTime.UtcNow.Ticks - (ir ? Interlocked.Read(ref _irLensReceivedTicks) : Interlocked.Read(ref _eoLensReceivedTicks)) < TimeSpan.FromSeconds(3).Ticks;
         }
 
         /// <summary>
@@ -653,7 +653,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _context.TickSpecialFeatures();
 
-                if (_context.AiPowerStatusText == "ON" && !_context._aiDetectorClientService.IsConnected)
+                if (_context.AiPowerStatusText == "ON" && !_context.AiDetectorClientService.IsConnected)
                 {
                     _context.AiPowerStatusText = "OFF";
 
@@ -702,7 +702,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     ConsoleLogHelper.State("POWER EVIDENCE", power + " / RTSP loss is not proof of OFF");
                 }
 
-                if ((!_context._isDeviceConnectionRequested || !_context._laTcpService.IsConnected) && _controlInputs.Count != 0)
+                if ((!_context.IsDeviceConnectionRequested || !_context.LaTcpService.IsConnected) && _controlInputs.Count != 0)
                 {
                     ReleaseAllControlInputs("Disconnected");
                 }
@@ -798,7 +798,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             // 2026-10-12: 거절한 화면 입력은 원인을 진단할 수 있도록 기록한다.
-            string blocked = _context.IsControlInputLocked ? "CONTROL_LOCK" : !_context.IsOperationCommandEnabled ? "OPERATION_LOCK" : !_context._isDeviceConnectionRequested ? "NO_REQUESTED_CONNECTION" : !_context._laTcpService.IsConnected ? "TCP_DISCONNECTED" : null;
+            string blocked = _context.IsControlInputLocked ? "CONTROL_LOCK" : !_context.IsOperationCommandEnabled ? "OPERATION_LOCK" : !_context.IsDeviceConnectionRequested ? "NO_REQUESTED_CONNECTION" : !_context.LaTcpService.IsConnected ? "TCP_DISCONNECTED" : null;
 
             if (blocked != null)
             {
@@ -813,11 +813,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
 
             // 2026-10-12: 수동 입력은 대기 중이거나 실행 중인 클릭 중심 이동보다 우선한다.
-            if (_context._videoCenterBusy || _context._activePanAbsoluteTarget.HasValue || _context._activeTiltAbsoluteTarget.HasValue)
+            if (_context.VideoCenterBusy || _context.ActivePanAbsoluteTarget.HasValue || _context.ActiveTiltAbsoluteTarget.HasValue)
             {
                 ++_inputEpoch;
 
-                _context._controlCommandService.StopPanTiltPositionMove();
+                _context.ControlCommandService.StopPanTiltPositionMove();
 
                 _context.ClearActivePanTiltAbsoluteMove();
             }
@@ -866,7 +866,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             ++_inputEpoch;
 
-            bool active = _controlInputs.Count != 0 || _issuedControlAxes.Count != 0 || _context._videoCenterBusy || _context._activePanAbsoluteTarget.HasValue || _context._activeTiltAbsoluteTarget.HasValue;
+            bool active = _controlInputs.Count != 0 || _issuedControlAxes.Count != 0 || _context.VideoCenterBusy || _context.ActivePanAbsoluteTarget.HasValue || _context.ActiveTiltAbsoluteTarget.HasValue;
 
             _controlInputs.Clear();
 
@@ -920,7 +920,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
-                if (_context.IsControlInputLocked || !_context._isDeviceConnectionRequested)
+                if (_context.IsControlInputLocked || !_context.IsDeviceConnectionRequested)
                 {
                     ReleaseAllControlInputs("Input not available");
 
@@ -963,7 +963,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         continue;
                     }
 
-                    if (epoch != _inputEpoch || _context.IsControlInputLocked || !_context._isDeviceConnectionRequested)
+                    if (epoch != _inputEpoch || _context.IsControlInputLocked || !_context.IsDeviceConnectionRequested)
                     {
                         return;
                     }
@@ -1064,10 +1064,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         await _context.StartEoZoomOutMoveAsync();
                     }
 
-                    _axisCtecSources[axis] = _context._activeEoCtecSource;
+                    _axisCtecSources[axis] = _context.ActiveEoCtecSource;
                     break;
                 case "EF":
-                    _context._currentMoveType = ContinuousMoveType.None;
+                    _context.CurrentMoveType = ContinuousMoveType.None;
                     if (x > 0)
                     {
                         await _context.StartEoFocusNearMoveAsync();
@@ -1077,7 +1077,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         await _context.StartEoFocusFarMoveAsync();
                     }
 
-                    _axisCtecSources[axis] = _context._activeEoCtecSource;
+                    _axisCtecSources[axis] = _context.ActiveEoCtecSource;
                     break;
                 case "IZ":
                     if (x > 0)
@@ -1122,8 +1122,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     break;
                 case "EZ":
                 case "EF":
-                    _axisCtecSources.TryGetValue(axis, out _context._activeEoCtecSource);
-                    _context._currentMoveType = axis == "EZ" ? ContinuousMoveType.EoZoom : ContinuousMoveType.EoFocus;
+                    _axisCtecSources.TryGetValue(axis, out _context.ActiveEoCtecSource);
+                    _context.CurrentMoveType = axis == "EZ" ? ContinuousMoveType.EoZoom : ContinuousMoveType.EoFocus;
 
                     // 2026-10-08: 상태 응답 안정화를 기다리기 전에 현재 누름 축을 복원한다.
                     await _context.StopContinuousMoveAsync(false);

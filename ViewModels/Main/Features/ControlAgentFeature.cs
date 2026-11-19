@@ -13,69 +13,69 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>제어 연결과 재연결에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IControlAgentFeatureContext
     {
-        ref double? _activePanAbsoluteTarget { get; }
+        ref double? ActivePanAbsoluteTarget { get; }
 
-        ref double? _activeTiltAbsoluteTarget { get; }
+        ref double? ActiveTiltAbsoluteTarget { get; }
 
-        string _connectionSessionId { get; set; }
+        string ConnectionSessionId { get; set; }
 
-        ref global::System.Threading.CancellationTokenSource _controlAgentReconnectCts { get; }
+        ref global::System.Threading.CancellationTokenSource ControlAgentReconnectCts { get; }
 
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
-        short _currentEoFocus { get; set; }
+        short CurrentEoFocus { get; set; }
 
-        short _currentEoZoom { get; set; }
+        short CurrentEoZoom { get; set; }
 
-        ushort _currentIrFocus { get; set; }
+        ushort CurrentIrFocus { get; set; }
 
-        ushort _currentIrZoom { get; set; }
+        ushort CurrentIrZoom { get; set; }
 
-        double _currentPan { get; set; }
+        double CurrentPan { get; set; }
 
-        byte _currentPowerStatus { get; set; }
+        byte CurrentPowerStatus { get; set; }
 
-        double _currentTilt { get; set; }
+        double CurrentTilt { get; set; }
 
-        ref int _eoFocusReceiveSequence { get; }
+        ref int EoFocusReceiveSequence { get; }
 
-        ref long _eoLensStatusVersion { get; }
+        ref long EoLensStatusVersion { get; }
 
-        Stopwatch _focusLogStopwatch { get; }
+        Stopwatch FocusLogStopwatch { get; }
 
-        ref long _function01ReceiveCount { get; }
+        ref long Function01ReceiveCount { get; }
 
-        bool _hasWebAgentTiltLimits { get; set; }
+        bool HasWebAgentTiltLimits { get; set; }
 
-        ref long _irLensStatusVersion { get; }
+        ref long IrLensStatusVersion { get; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        ILAPacketParserPort _laPacketParser { get; }
+        ILAPacketParserPort LaPacketParser { get; }
 
-        long _lastEoFocusCommandElapsedMs { get; set; }
+        long LastEoFocusCommandElapsedMs { get; set; }
 
-        string _lastEoFocusCommandName { get; set; }
+        string LastEoFocusCommandName { get; set; }
 
-        ref global::System.DateTime _lastLaExtendedStatusLogTime { get; }
+        ref global::System.DateTime LastLaExtendedStatusLogTime { get; }
 
-        ref global::System.DateTime _lastLaStatusLogTime { get; }
+        ref global::System.DateTime LastLaStatusLogTime { get; }
 
-        ref double? _lastPanAbsoluteTarget { get; }
+        ref double? LastPanAbsoluteTarget { get; }
 
-        ITcpClientServicePort _laTcpService { get; }
+        ITcpClientServicePort LaTcpService { get; }
 
-        ref long _panTiltStatusVersion { get; }
+        ref long PanTiltStatusVersion { get; }
 
-        ref long _ptzfStatusUpdateCount { get; }
+        ref long PtzfStatusUpdateCount { get; }
 
-        ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
+        ref global::System.Tuple<double, double, long> VideoCenterPose { get; }
 
-        ref int _webAgentTiltLimitQueryRequested { get; }
+        ref int WebAgentTiltLimitQueryRequested { get; }
 
-        double _webAgentTiltMaximum { get; set; }
+        double WebAgentTiltMaximum { get; set; }
 
-        double _webAgentTiltMinimum { get; set; }
+        double WebAgentTiltMinimum { get; set; }
 
         /// <summary>
         /// 2026-10-06: 0x31의 MCB/SCB 원본 상태를 보존한다. 요청 송신 여부로 상태를 추정하지 않고 이 수신값만 표시 기준으로
@@ -408,15 +408,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 이전 입력값으로 실행 중인 자동 재연결 Loop가 있다면
              * 새 연결 시도 전에 정리한다.
              */
-            _context._controlAgentReconnectCts?.Cancel();
+            _context.ControlAgentReconnectCts?.Cancel();
 
-            _context._controlAgentReconnectCts?.Dispose();
+            _context.ControlAgentReconnectCts?.Dispose();
 
-            _context._controlAgentReconnectCts = null;
+            _context.ControlAgentReconnectCts = null;
 
             try
             {
-                bool result = await _context._laTcpService.ConnectAsync(targetIp, targetPort);
+                bool result = await _context.LaTcpService.ConnectAsync(targetIp, targetPort);
 
                 /*
                 * 실제 TCP 연결에 걸린 시간을 제외하고
@@ -440,7 +440,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 else
                 {
-                    if (_context._isDeviceConnectionRequested)
+                    if (_context.IsDeviceConnectionRequested)
                     {
                         SetControlAgentConnectionStatus("Reconnecting", "#FFD166");
                     }
@@ -457,7 +457,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 사용자가 장비 연결 유지를 요청한 경우
                  * 자동 재연결을 시작한다.
                  */
-                if (!result && _context._isDeviceConnectionRequested)
+                if (!result && _context.IsDeviceConnectionRequested)
                 {
                     StartControlAgentReconnect(targetIp, targetPort);
                 }
@@ -470,7 +470,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  * 연결 예외 발생 시에도
                  * 앱이 종료되지 않도록 상태만 갱신한다.
                  */
-                if (_context._isDeviceConnectionRequested)
+                if (_context.IsDeviceConnectionRequested)
                 {
                     SetControlAgentConnectionStatus("Reconnecting", "#FFD166");
                 }
@@ -487,7 +487,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 ConsoleLogHelper.PrintLine();
 
-                if (_context._isDeviceConnectionRequested)
+                if (_context.IsDeviceConnectionRequested)
                 {
                     StartControlAgentReconnect(targetIp, targetPort);
                 }
@@ -629,7 +629,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _context.ResetDigitalZoomSession();
             }));
 
-            if (!_context._isDeviceConnectionRequested)
+            if (!_context.IsDeviceConnectionRequested)
             {
                 SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
 
@@ -663,16 +663,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartControlAgentReconnect(string ipAddress, int port)
         {
-            if (_context._controlAgentReconnectCts != null && !_context._controlAgentReconnectCts.IsCancellationRequested)
+            if (_context.ControlAgentReconnectCts != null && !_context.ControlAgentReconnectCts.IsCancellationRequested)
             {
                 return;
             }
 
-            _context._controlAgentReconnectCts?.Dispose();
+            _context.ControlAgentReconnectCts?.Dispose();
 
-            _context._controlAgentReconnectCts = new CancellationTokenSource();
+            _context.ControlAgentReconnectCts = new CancellationTokenSource();
 
-            CancellationTokenSource reconnectCts = _context._controlAgentReconnectCts;
+            CancellationTokenSource reconnectCts = _context.ControlAgentReconnectCts;
 
             CancellationToken token = reconnectCts.Token;
 
@@ -684,7 +684,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 try
                 {
-                    while (_context._isDeviceConnectionRequested && !token.IsCancellationRequested && !_context._laTcpService.IsConnected)
+                    while (_context.IsDeviceConnectionRequested && !token.IsCancellationRequested && !_context.LaTcpService.IsConnected)
                     {
                         retryCount++;
 
@@ -692,10 +692,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         Console.WriteLine($"[CONTROL AGENT] Reconnect Try " + $"({retryCount}) : " + $"{ipAddress}:{port}");
 
-                        bool connected = await _context._laTcpService.ConnectAsync(ipAddress, port);
+                        bool connected = await _context.LaTcpService.ConnectAsync(ipAddress, port);
 
                         // 취소된 재연결이 연결 상태를 복원하거나 새 세션 상태를 지우지 못하게 한다.
-                        if (token.IsCancellationRequested || !_context._isDeviceConnectionRequested)
+                        if (token.IsCancellationRequested || !_context.IsDeviceConnectionRequested)
                         {
                             return;
                         }
@@ -705,7 +705,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             SetControlAgentConnectionStatus("Connected", "#55D187", token);
 
                             // 재접속한 TCP 연결은 호환 모드에서 시작하므로 지원 조회부터 다시 수행한다.
-                            string reconnectedSession = _context._connectionSessionId;
+                            string reconnectedSession = _context.ConnectionSessionId;
 
                             var reconnectDispatcher = App.Current?.Dispatcher;
 
@@ -713,7 +713,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             {
                                 _ = reconnectDispatcher.BeginInvoke(new Action(() =>
                                 {
-                                    if (!token.IsCancellationRequested && reconnectedSession == _context._connectionSessionId && _context._laTcpService.IsConnected)
+                                    if (!token.IsCancellationRequested && reconnectedSession == _context.ConnectionSessionId && _context.LaTcpService.IsConnected)
                                     {
                                         _context.InitializeWebAgentSession();
                                     }
@@ -745,7 +745,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 finally
                 {
-                    if (ReferenceEquals(Interlocked.CompareExchange(ref _context._controlAgentReconnectCts, null, reconnectCts), reconnectCts))
+                    if (ReferenceEquals(Interlocked.CompareExchange(ref _context.ControlAgentReconnectCts, null, reconnectCts), reconnectCts))
                     {
                         reconnectCts.Dispose();
                     }
@@ -761,7 +761,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             // 수신된 [byte[] 데이터]를 [CONTROL AGENT] 응답 [Packet] 목록으로 변환.
             //
-            List<LaResponsePacket> packets = _context._laPacketParser.Parse(data);
+            List<LaResponsePacket> packets = _context.LaPacketParser.Parse(data);
 
             // 분리된 [Packet]을 하나씩 처리
             // <summary></summary>
@@ -938,18 +938,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void RequestWebAgentTiltLimitsAfterConnection()
         {
-            if (_context._controlCommandService == null || !_context._controlCommandService.UseUnsignedWebAgentTiltCoordinates || Interlocked.Exchange(ref _context._webAgentTiltLimitQueryRequested, 1) != 0)
+            if (_context.ControlCommandService == null || !_context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates || Interlocked.Exchange(ref _context.WebAgentTiltLimitQueryRequested, 1) != 0)
             {
                 return;
             }
 
-            bool sent = _context._controlCommandService.RequestWebAgentTiltLimits();
+            bool sent = _context.ControlCommandService.RequestWebAgentTiltLimits();
 
             ConsoleLogHelper.Command("WEB AGENT TILT LIMIT", "Query requested / " + "PACKET=FF 01 00 B5 02 00 B8 / " + "RESULT=" + sent);
 
             if (!sent)
             {
-                Interlocked.Exchange(ref _context._webAgentTiltLimitQueryRequested, 0);
+                Interlocked.Exchange(ref _context.WebAgentTiltLimitQueryRequested, 0);
             }
         }
 
@@ -959,7 +959,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ParseWebAgentTiltLimitPacket(byte[] packet)
         {
-            if (_context._controlCommandService == null || !_context._controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            if (_context.ControlCommandService == null || !_context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates)
             {
                 ConsoleLogHelper.Warning("WEB AGENT TILT LIMIT", "Function 0x02 ignored outside WebAgent mode");
 
@@ -992,9 +992,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Action applyLimits = () =>
             {
-                _context._webAgentTiltMinimum = negativeLimit;
-                _context._webAgentTiltMaximum = positiveLimit;
-                _context._hasWebAgentTiltLimits = true;
+                _context.WebAgentTiltMinimum = negativeLimit;
+                _context.WebAgentTiltMaximum = positiveLimit;
+                _context.HasWebAgentTiltLimits = true;
 
                 if (_context.TiltAbsoluteValue.HasValue)
                 {
@@ -1023,18 +1023,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ResetWebAgentTiltLimits()
         {
-            Interlocked.Exchange(ref _context._webAgentTiltLimitQueryRequested, 0);
+            Interlocked.Exchange(ref _context.WebAgentTiltLimitQueryRequested, 0);
 
-            if (!_context._hasWebAgentTiltLimits)
+            if (!_context.HasWebAgentTiltLimits)
             {
                 return;
             }
 
             Action resetLimits = () =>
             {
-                _context._webAgentTiltMinimum = MoveControlTiltMinimum;
-                _context._webAgentTiltMaximum = MoveControlTiltMaximum;
-                _context._hasWebAgentTiltLimits = false;
+                _context.WebAgentTiltMinimum = MoveControlTiltMinimum;
+                _context.WebAgentTiltMaximum = MoveControlTiltMaximum;
+                _context.HasWebAgentTiltLimits = false;
 
                 _context.OnPropertyChanged(nameof(_context.PanTiltCoordinateRangeText));
 
@@ -1057,12 +1057,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool CanPrintLaLog()
         {
-            if ((DateTime.Now - _context._lastLaStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
+            if ((DateTime.Now - _context.LastLaStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
             {
                 return false;
             }
 
-            _context._lastLaStatusLogTime = DateTime.Now;
+            _context.LastLaStatusLogTime = DateTime.Now;
 
             return true;
         }
@@ -1073,12 +1073,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool CanPrintLaExtendedStatusLog()
         {
-            if ((DateTime.Now - _context._lastLaExtendedStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
+            if ((DateTime.Now - _context.LastLaExtendedStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
             {
                 return false;
             }
 
-            _context._lastLaExtendedStatusLogTime = DateTime.Now;
+            _context.LastLaExtendedStatusLogTime = DateTime.Now;
 
             return true;
         }
@@ -1103,10 +1103,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (countFunction01)
             {
-                Interlocked.Increment(ref _context._function01ReceiveCount);
+                Interlocked.Increment(ref _context.Function01ReceiveCount);
             }
 
-            Interlocked.Increment(ref _context._ptzfStatusUpdateCount);
+            Interlocked.Increment(ref _context.PtzfStatusUpdateCount);
 
             ushort panUnsignedRaw = BitConverter.ToUInt16(packet, 2);
 
@@ -1132,19 +1132,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             * _currentEoFocus를 갱신하기 전에
             * 반드시 기존 값을 먼저 보관한다.
             */
-            short previousFocus = _context._currentEoFocus;
+            short previousFocus = _context.CurrentEoFocus;
 
-            double previousPan = _context._currentPan;
+            double previousPan = _context.CurrentPan;
 
-            double previousTilt = _context._currentTilt;
+            double previousTilt = _context.CurrentTilt;
 
-            short previousZoom = _context._currentEoZoom;
+            short previousZoom = _context.CurrentEoZoom;
 
-            byte previousPower = _context._currentPowerStatus;
+            byte previousPower = _context.CurrentPowerStatus;
 
-            double panDegree = _context._controlCommandService.UseUnsignedWebAgentPanCoordinates ? ConvertWebAgentPanToGuiAngle(panUnsignedRaw / 100.0) : panSignedRaw / 100.0;
+            double panDegree = _context.ControlCommandService.UseUnsignedWebAgentPanCoordinates ? ConvertWebAgentPanToGuiAngle(panUnsignedRaw / 100.0) : panSignedRaw / 100.0;
 
-            double tiltDegree = _context._controlCommandService.UseUnsignedWebAgentTiltCoordinates ? NormalizeUnsignedWebAgentTilt(tiltUnsignedRaw / 100.0, _context._currentTilt) : tiltSignedRaw / 100.0;
+            double tiltDegree = _context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates ? NormalizeUnsignedWebAgentTilt(tiltUnsignedRaw / 100.0, _context.CurrentTilt) : tiltSignedRaw / 100.0;
 
             // -180도와 +180도는 동일한 물리 위치다.
             //
@@ -1154,49 +1154,49 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             // 일반 위치에서는 수신 상태값을 그대로 사용한다.
             //
-            if (Math.Abs(Math.Abs(panDegree) - 180.0) <= 0.05 && _context._lastPanAbsoluteTarget.HasValue && Math.Abs(Math.Abs(_context._lastPanAbsoluteTarget.Value) - 180.0) <= 0.05)
+            if (Math.Abs(Math.Abs(panDegree) - 180.0) <= 0.05 && _context.LastPanAbsoluteTarget.HasValue && Math.Abs(Math.Abs(_context.LastPanAbsoluteTarget.Value) - 180.0) <= 0.05)
             {
-                panDegree = _context._lastPanAbsoluteTarget.Value < 0.0 ? -180.0 : 180.0;
+                panDegree = _context.LastPanAbsoluteTarget.Value < 0.0 ? -180.0 : 180.0;
             }
 
             /*
              * 모든 0x01 패킷에서 상태값 갱신
              */
-            _context._currentPan = panDegree;
-            _context._currentTilt = tiltDegree;
+            _context.CurrentPan = panDegree;
+            _context.CurrentTilt = tiltDegree;
 
             // 클릭 이동 보호에 사용할 수신 위치를 불변 스냅샷으로 보관한다.
-            Interlocked.Exchange(ref _context._videoCenterPose, Tuple.Create(panDegree, tiltDegree, DateTime.UtcNow.Ticks));
+            Interlocked.Exchange(ref _context.VideoCenterPose, Tuple.Create(panDegree, tiltDegree, DateTime.UtcNow.Ticks));
 
             // 이동이 완료된 축은 더 이상 Slider 변경 시 목표를 재송신하지 않는다.
-            double? activePanTarget = _context._activePanAbsoluteTarget;
+            double? activePanTarget = _context.ActivePanAbsoluteTarget;
 
-            double? activeTiltTarget = _context._activeTiltAbsoluteTarget;
+            double? activeTiltTarget = _context.ActiveTiltAbsoluteTarget;
 
-            if (activePanTarget.HasValue && Math.Abs(_context._currentPan - activePanTarget.Value) <= 0.03)
+            if (activePanTarget.HasValue && Math.Abs(_context.CurrentPan - activePanTarget.Value) <= 0.03)
             {
-                _context._activePanAbsoluteTarget = null;
+                _context.ActivePanAbsoluteTarget = null;
             }
 
-            if (activeTiltTarget.HasValue && Math.Abs(_context.GetTiltDifference(_context._currentTilt, activeTiltTarget.Value)) <= 0.03)
+            if (activeTiltTarget.HasValue && Math.Abs(_context.GetTiltDifference(_context.CurrentTilt, activeTiltTarget.Value)) <= 0.03)
             {
-                _context._activeTiltAbsoluteTarget = null;
+                _context.ActiveTiltAbsoluteTarget = null;
             }
 
-            Interlocked.Increment(ref _context._panTiltStatusVersion);
+            Interlocked.Increment(ref _context.PanTiltStatusVersion);
 
-            _context._currentEoZoom = zoomRaw;
-            _context._currentEoFocus = focusRaw;
+            _context.CurrentEoZoom = zoomRaw;
+            _context.CurrentEoFocus = focusRaw;
 
-            _context.UpdatePositionPtzAndEoLens(_context._currentPan, _context._currentTilt, _context._currentEoZoom, _context._currentEoFocus);
+            _context.UpdatePositionPtzAndEoLens(_context.CurrentPan, _context.CurrentTilt, _context.CurrentEoZoom, _context.CurrentEoFocus);
 
             _context.MarkLensEvidence(false);
 
             _context.MarkPresetLensEvidence(false, zoomRaw >= 0 && zoomRaw <= 1000, focusRaw >= 0 && focusRaw <= 1000);
 
-            Interlocked.Increment(ref _context._eoLensStatusVersion);
+            Interlocked.Increment(ref _context.EoLensStatusVersion);
 
-            _context._currentPowerStatus = powerStatus;
+            _context.CurrentPowerStatus = powerStatus;
 
             /*
              * Focus 상태값 변화 상세 로그
@@ -1206,17 +1206,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
              */
             if (focusRaw != previousFocus)
             {
-                int receiveSequence = Interlocked.Increment(ref _context._eoFocusReceiveSequence);
+                int receiveSequence = Interlocked.Increment(ref _context.EoFocusReceiveSequence);
 
-                long receiveElapsedMs = _context._focusLogStopwatch.ElapsedMilliseconds;
+                long receiveElapsedMs = _context.FocusLogStopwatch.ElapsedMilliseconds;
 
-                long afterCommandMs = _context._lastEoFocusCommandElapsedMs > 0 ? receiveElapsedMs - _context._lastEoFocusCommandElapsedMs : -1;
+                long afterCommandMs = _context.LastEoFocusCommandElapsedMs > 0 ? receiveElapsedMs - _context.LastEoFocusCommandElapsedMs : -1;
 
                 int difference = focusRaw - previousFocus;
 
                 Console.WriteLine();
 
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS RECEIVE #{receiveSequence}] " + $"RAW={packet[8]:X2} {packet[9]:X2} / " + $"PREV={previousFocus} / " + $"CURRENT={focusRaw} / " + $"DELTA={difference:+#;-#;0} / " + $"LAST_CMD={_context._lastEoFocusCommandName} / " + $"AFTER_CMD=" + $"{(afterCommandMs >= 0 ? afterCommandMs + "ms" : "N/A")}");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS RECEIVE #{receiveSequence}] " + $"RAW={packet[8]:X2} {packet[9]:X2} / " + $"PREV={previousFocus} / " + $"CURRENT={focusRaw} / " + $"DELTA={difference:+#;-#;0} / " + $"LAST_CMD={_context.LastEoFocusCommandName} / " + $"AFTER_CMD=" + $"{(afterCommandMs >= 0 ? afterCommandMs + "ms" : "N/A")}");
 
                 ConsoleLogHelper.PrintLine();
             }
@@ -1225,7 +1225,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * UI Binding 갱신
              * 반드시 printLog 검사 전에 호출
              */
-            NotifyEoCurrentStatusChanged(Math.Abs(previousPan - _context._currentPan) > 0.0001, Math.Abs(previousTilt - _context._currentTilt) > 0.0001, previousZoom != _context._currentEoZoom, previousFocus != _context._currentEoFocus, previousPower != _context._currentPowerStatus);
+            NotifyEoCurrentStatusChanged(Math.Abs(previousPan - _context.CurrentPan) > 0.0001, Math.Abs(previousTilt - _context.CurrentTilt) > 0.0001, previousZoom != _context.CurrentEoZoom, previousFocus != _context.CurrentEoFocus, previousPower != _context.CurrentPowerStatus);
 
             /*
              * 아래부터 Console 로그만 1초 간격으로 제한
@@ -1235,7 +1235,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            ConsoleLogHelper.State("WEB AGENT PAN/TILT POSITION", $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " + $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " + $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " + $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " + $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " + $"MODE={(_context._controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}");
+            ConsoleLogHelper.State("WEB AGENT PAN/TILT POSITION", $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " + $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " + $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " + $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " + $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " + $"MODE={(_context.ControlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}");
         }
 
         /// <summary>
@@ -1536,24 +1536,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         internal void ApplyEnvironmentIrCommandedPosition(int? zoomPosition, int? focusPosition, string reason)
         {
             // 2026-11-03 정비: 실제 상태가 이미 수신되는 장비의 현재값을 명령값으로 덮어쓰지 않는다.
-            if (Interlocked.Read(ref _context._irLensStatusVersion) > 0)
+            if (Interlocked.Read(ref _context.IrLensStatusVersion) > 0)
             {
                 return;
             }
 
             if (zoomPosition.HasValue)
             {
-                _context._currentIrZoom = (ushort)Math.Max(0, Math.Min(1000, zoomPosition.Value));
+                _context.CurrentIrZoom = (ushort)Math.Max(0, Math.Min(1000, zoomPosition.Value));
             }
 
             if (focusPosition.HasValue)
             {
-                _context._currentIrFocus = (ushort)Math.Max(0, Math.Min(1000, focusPosition.Value));
+                _context.CurrentIrFocus = (ushort)Math.Max(0, Math.Min(1000, focusPosition.Value));
             }
 
             NotifyIrCurrentStatusChanged();
 
-            ConsoleLogHelper.State("IR LENS STATUS", "Commanded-position fallback applied" + $" / ZOOM={_context._currentIrZoom}" + $" / FOCUS={_context._currentIrFocus}" + $" / REASON={reason}");
+            ConsoleLogHelper.State("IR LENS STATUS", "Commanded-position fallback applied" + $" / ZOOM={_context.CurrentIrZoom}" + $" / FOCUS={_context.CurrentIrFocus}" + $" / REASON={reason}");
         }
 
         /// <summary>
@@ -1600,20 +1600,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            ushort previousIrZoom = _context._currentIrZoom;
+            ushort previousIrZoom = _context.CurrentIrZoom;
 
-            ushort previousIrFocus = _context._currentIrFocus;
+            ushort previousIrFocus = _context.CurrentIrFocus;
 
-            _context._currentIrZoom = irZoomPosition;
-            _context._currentIrFocus = irFocusPosition;
+            _context.CurrentIrZoom = irZoomPosition;
+            _context.CurrentIrFocus = irFocusPosition;
 
-            _context.UpdatePositionIrLens(_context._currentIrZoom, _context._currentIrFocus);
+            _context.UpdatePositionIrLens(_context.CurrentIrZoom, _context.CurrentIrFocus);
 
             _context.MarkLensEvidence(true);
 
             _context.MarkPresetLensEvidence(true, true, true);
 
-            Interlocked.Increment(ref _context._irLensStatusVersion);
+            Interlocked.Increment(ref _context.IrLensStatusVersion);
 
             // IR 상태값은 CONTROL AGENT TCP 수신 Thread에서 갱신된다.
             //
@@ -1627,11 +1627,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 장비 시험 시 어떤 값이 Zoom이고 Focus인지
             // 조작 방향과 함께 바로 확인할 수 있다.
             //
-            if (previousIrZoom != _context._currentIrZoom || previousIrFocus != _context._currentIrFocus)
+            if (previousIrZoom != _context.CurrentIrZoom || previousIrFocus != _context.CurrentIrFocus)
             {
                 Console.WriteLine();
 
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + "[IR STATUS CHANGED] " + $"ZOOM_RAW={previousIrZoom}→{_context._currentIrZoom} / " + $"ZOOM_STD={_context.GetCurrentIrZoomStandardPosition()} / " + $"FOCUS_RAW={previousIrFocus}→{_context._currentIrFocus} / " + $"FOCUS_STD={_context.GetCurrentIrFocusStandardPosition()}");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + "[IR STATUS CHANGED] " + $"ZOOM_RAW={previousIrZoom}→{_context.CurrentIrZoom} / " + $"ZOOM_STD={_context.GetCurrentIrZoomStandardPosition()} / " + $"FOCUS_RAW={previousIrFocus}→{_context.CurrentIrFocus} / " + $"FOCUS_STD={_context.GetCurrentIrFocusStandardPosition()}");
 
                 ConsoleLogHelper.PrintLine();
             }
@@ -1647,9 +1647,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine();
 
-            Console.WriteLine($"[LA IR STATUS] [Zoom]  : {_context._currentIrZoom} / 1000");
+            Console.WriteLine($"[LA IR STATUS] [Zoom]  : {_context.CurrentIrZoom} / 1000");
 
-            Console.WriteLine($"[LA IR STATUS] [Focus] : {_context._currentIrFocus} / 1000");
+            Console.WriteLine($"[LA IR STATUS] [Focus] : {_context.CurrentIrFocus} / 1000");
 
             Console.WriteLine();
 

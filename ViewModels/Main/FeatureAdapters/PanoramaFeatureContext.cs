@@ -18,70 +18,70 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        Services.Communication.IControlCommandServicePort IPanoramaFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IPanoramaFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        double IPanoramaFeatureContext._currentPan
+        double IPanoramaFeatureContext.CurrentPan
         {
-            get { return _features._screenStateFeature._currentPan; }
-            set { _features._screenStateFeature._currentPan = value; }
+            get { return _features.ScreenStateFeature._currentPan; }
+            set { _features.ScreenStateFeature._currentPan = value; }
         }
 
-        double IPanoramaFeatureContext._currentTilt
+        double IPanoramaFeatureContext.CurrentTilt
         {
-            get { return _features._screenStateFeature._currentTilt; }
-            set { _features._screenStateFeature._currentTilt = value; }
+            get { return _features.ScreenStateFeature._currentTilt; }
+            set { _features.ScreenStateFeature._currentTilt = value; }
         }
 
-        bool IPanoramaFeatureContext._isEoFrameDisplayed
+        bool IPanoramaFeatureContext.IsEoFrameDisplayed
         {
-            get { return _features._screenStateFeature._isEoFrameDisplayed; }
-            set { _features._screenStateFeature._isEoFrameDisplayed = value; }
+            get { return _features.ScreenStateFeature._isEoFrameDisplayed; }
+            set { _features.ScreenStateFeature._isEoFrameDisplayed = value; }
         }
 
-        bool IPanoramaFeatureContext._isHomePositionMoving
+        bool IPanoramaFeatureContext.IsHomePositionMoving
         {
-            get { return _features._screenStateFeature._isHomePositionMoving; }
-            set { _features._screenStateFeature._isHomePositionMoving = value; }
+            get { return _features.ScreenStateFeature._isHomePositionMoving; }
+            set { _features.ScreenStateFeature._isHomePositionMoving = value; }
         }
 
-        bool IPanoramaFeatureContext._isLaPresetScanRunning
+        bool IPanoramaFeatureContext.IsLaPresetScanRunning
         {
-            get { return _features._screenStateFeature._isLaPresetScanRunning; }
-            set { _features._screenStateFeature._isLaPresetScanRunning = value; }
+            get { return _features.ScreenStateFeature._isLaPresetScanRunning; }
+            set { _features.ScreenStateFeature._isLaPresetScanRunning = value; }
         }
 
-        bool IPanoramaFeatureContext._isPresetScanRunning
+        bool IPanoramaFeatureContext.IsPresetScanRunning
         {
-            get { return _features._screenStateFeature._isPresetScanRunning; }
-            set { _features._screenStateFeature._isPresetScanRunning = value; }
+            get { return _features.ScreenStateFeature._isPresetScanRunning; }
+            set { _features.ScreenStateFeature._isPresetScanRunning = value; }
         }
 
-        ref double? IPanoramaFeatureContext._lastPanAbsoluteTarget
+        ref double? IPanoramaFeatureContext.LastPanAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._lastPanAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._lastPanAbsoluteTarget; }
         }
 
-        Services.Communication.ITcpClientServicePort IPanoramaFeatureContext._laTcpService
+        Services.Communication.ITcpClientServicePort IPanoramaFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        ref long IPanoramaFeatureContext._panTiltStatusVersion
+        ref long IPanoramaFeatureContext.PanTiltStatusVersion
         {
-            get { return ref _features._screenStateFeature._panTiltStatusVersion; }
+            get { return ref _features.ScreenStateFeature._panTiltStatusVersion; }
         }
 
         string IPanoramaFeatureContext.ControlLockMessage
         {
-            get { return _features._propertiesFeature.ControlLockMessage; }
+            get { return _features.PropertiesFeature.ControlLockMessage; }
         }
 
         string IPanoramaFeatureContext.ControlLockTitle
         {
-            get { return _features._propertiesFeature.ControlLockTitle; }
+            get { return _features.PropertiesFeature.ControlLockTitle; }
         }
 
         /// <summary>
@@ -89,19 +89,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Tuple<double, double> IPanoramaFeatureContext.ControlTuningForPanorama(bool ir)
         {
-            return _features._opticalCenterFeature.ControlTuningForPanorama(ir);
+            return _features.OpticalCenterFeature.ControlTuningForPanorama(ir);
         }
 
         BitmapSource IPanoramaFeatureContext.EOCameraImage
         {
-            get { return _features._propertiesFeature.EOCameraImage; }
-            set { _features._propertiesFeature.EOCameraImage = value; }
+            get { return _features.PropertiesFeature.EOCameraImage; }
+            set { _features.PropertiesFeature.EOCameraImage = value; }
         }
 
         string IPanoramaFeatureContext.EoStatusText
         {
-            get { return _features._propertiesFeature.EoStatusText; }
-            set { _features._propertiesFeature.EoStatusText = value; }
+            get { return _features.PropertiesFeature.EoStatusText; }
+            set { _features.PropertiesFeature.EoStatusText = value; }
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IPanoramaFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         /// <summary>
@@ -117,7 +117,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         System.Windows.Point IPanoramaFeatureContext.GetOpticalCenter(bool ir)
         {
-            return _features._opticalCenterFeature.GetOpticalCenter(ir);
+            return _features.OpticalCenterFeature.GetOpticalCenter(ir);
         }
 
         /// <summary>
@@ -126,42 +126,42 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         double IPanoramaFeatureContext.GetTiltDifference(double currentTilt, double targetTilt)
         {
-            return _features._moveControlFeature.GetTiltDifference(currentTilt, targetTilt);
+            return _features.MoveControlFeature.GetTiltDifference(currentTilt, targetTilt);
         }
 
         bool IPanoramaFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IPanoramaFeatureContext.IsEventAlertControlEnabled
         {
-            get { return _features._propertiesFeature.IsEventAlertControlEnabled; }
+            get { return _features.PropertiesFeature.IsEventAlertControlEnabled; }
         }
 
         bool IPanoramaFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IPanoramaFeatureContext.IsOperationLockOverlayVisible
         {
-            get { return _features._propertiesFeature.IsOperationLockOverlayVisible; }
+            get { return _features.PropertiesFeature.IsOperationLockOverlayVisible; }
         }
 
         bool IPanoramaFeatureContext.IsOperationTabNavigationEnabled
         {
-            get { return _features._propertiesFeature.IsOperationTabNavigationEnabled; }
+            get { return _features.PropertiesFeature.IsOperationTabNavigationEnabled; }
         }
 
         bool IPanoramaFeatureContext.IsPanTiltSpeedControlEnabled
         {
-            get { return _features._propertiesFeature.IsPanTiltSpeedControlEnabled; }
+            get { return _features.PropertiesFeature.IsPanTiltSpeedControlEnabled; }
         }
 
         bool IPanoramaFeatureContext.IsRooftopStatusSelected
         {
-            get { return _features._propertiesFeature.IsRooftopStatusSelected; }
+            get { return _features.PropertiesFeature.IsRooftopStatusSelected; }
         }
 
         /// <summary>
@@ -174,18 +174,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string IPanoramaFeatureContext.PanoramaPresetContextHash
         {
-            get { return _features._panoramaPresetsFeature.PanoramaPresetContextHash; }
+            get { return _features.PanoramaPresetsFeature.PanoramaPresetContextHash; }
         }
 
         Services.Video.PanoramaReferenceState IPanoramaFeatureContext.PanoramaReference
         {
-            get { return _features._panoramaReferenceFeature.PanoramaReference; }
+            get { return _features.PanoramaReferenceFeature.PanoramaReference; }
         }
 
         byte IPanoramaFeatureContext.PanTiltSpeedLevel
         {
-            get { return _features._propertiesFeature.PanTiltSpeedLevel; }
-            set { _features._propertiesFeature.PanTiltSpeedLevel = value; }
+            get { return _features.PropertiesFeature.PanTiltSpeedLevel; }
+            set { _features.PropertiesFeature.PanTiltSpeedLevel = value; }
         }
     }
 }

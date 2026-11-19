@@ -13,7 +13,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>수신 위치 상태에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IPositionFeatureContext
     {
-        ref int _zoneEpoch { get; }
+        ref int ZoneEpoch { get; }
 
         /// <summary>
         /// 바인딩 속성 변경 알림
@@ -87,7 +87,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void SetPositionConnectionState(bool connected)
         {
-            System.Threading.Interlocked.Increment(ref _context._zoneEpoch);
+            System.Threading.Interlocked.Increment(ref _context.ZoneEpoch);
 
             _positionSnapshotService.SetConnected(connected);
 

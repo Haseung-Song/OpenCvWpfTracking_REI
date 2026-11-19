@@ -22,131 +22,131 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        RtspSourceOption ISyncFeatureContext._connectedEoCtecSource
+        RtspSourceOption ISyncFeatureContext.ConnectedEoCtecSource
         {
-            get { return _features._screenStateFeature._connectedEoCtecSource; }
-            set { _features._screenStateFeature._connectedEoCtecSource = value; }
+            get { return _features.ScreenStateFeature._connectedEoCtecSource; }
+            set { _features.ScreenStateFeature._connectedEoCtecSource = value; }
         }
 
-        string ISyncFeatureContext._connectionSessionId
+        string ISyncFeatureContext.ConnectionSessionId
         {
-            get { return _features._devicePowerFeature._connectionSessionId; }
-            set { _features._devicePowerFeature._connectionSessionId = value; }
+            get { return _features.DevicePowerFeature._connectionSessionId; }
+            set { _features.DevicePowerFeature._connectionSessionId = value; }
         }
 
-        Services.Communication.IControlCommandServicePort ISyncFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort ISyncFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        Services.Communication.ICtecCameraCommandServicePort ISyncFeatureContext._ctecCameraCommandService
+        Services.Communication.ICtecCameraCommandServicePort ISyncFeatureContext.CtecCameraCommandService
         {
             get { return _features.Runtime._ctecCameraCommandService; }
         }
 
-        short ISyncFeatureContext._currentEoFocus
+        short ISyncFeatureContext.CurrentEoFocus
         {
-            get { return _features._screenStateFeature._currentEoFocus; }
-            set { _features._screenStateFeature._currentEoFocus = value; }
+            get { return _features.ScreenStateFeature._currentEoFocus; }
+            set { _features.ScreenStateFeature._currentEoFocus = value; }
         }
 
-        short ISyncFeatureContext._currentEoZoom
+        short ISyncFeatureContext.CurrentEoZoom
         {
-            get { return _features._screenStateFeature._currentEoZoom; }
-            set { _features._screenStateFeature._currentEoZoom = value; }
+            get { return _features.ScreenStateFeature._currentEoZoom; }
+            set { _features.ScreenStateFeature._currentEoZoom = value; }
         }
 
-        ushort ISyncFeatureContext._currentIrFocus
+        ushort ISyncFeatureContext.CurrentIrFocus
         {
-            get { return _features._screenStateFeature._currentIrFocus; }
-            set { _features._screenStateFeature._currentIrFocus = value; }
+            get { return _features.ScreenStateFeature._currentIrFocus; }
+            set { _features.ScreenStateFeature._currentIrFocus = value; }
         }
 
-        ushort ISyncFeatureContext._currentIrZoom
+        ushort ISyncFeatureContext.CurrentIrZoom
         {
-            get { return _features._screenStateFeature._currentIrZoom; }
-            set { _features._screenStateFeature._currentIrZoom = value; }
+            get { return _features.ScreenStateFeature._currentIrZoom; }
+            set { _features.ScreenStateFeature._currentIrZoom = value; }
         }
 
-        int ISyncFeatureContext._environmentIrZoomPhysicalTeleRaw
+        int ISyncFeatureContext.EnvironmentIrZoomPhysicalTeleRaw
         {
-            get { return _features._screenStateFeature._environmentIrZoomPhysicalTeleRaw; }
-            set { _features._screenStateFeature._environmentIrZoomPhysicalTeleRaw = value; }
+            get { return _features.ScreenStateFeature._environmentIrZoomPhysicalTeleRaw; }
+            set { _features.ScreenStateFeature._environmentIrZoomPhysicalTeleRaw = value; }
         }
 
-        int ISyncFeatureContext._environmentIrZoomPhysicalWideRaw
+        int ISyncFeatureContext.EnvironmentIrZoomPhysicalWideRaw
         {
-            get { return _features._screenStateFeature._environmentIrZoomPhysicalWideRaw; }
-            set { _features._screenStateFeature._environmentIrZoomPhysicalWideRaw = value; }
+            get { return _features.ScreenStateFeature._environmentIrZoomPhysicalWideRaw; }
+            set { _features.ScreenStateFeature._environmentIrZoomPhysicalWideRaw = value; }
         }
 
-        Services.Video.IFFmpegDecoderServicePort ISyncFeatureContext._eoDecoder
+        Services.Video.IFFmpegDecoderServicePort ISyncFeatureContext.EoDecoder
         {
             get { return _features.Runtime._eoDecoder; }
         }
 
-        ref long ISyncFeatureContext._eoLensStatusVersion
+        ref long ISyncFeatureContext.EoLensStatusVersion
         {
-            get { return ref _features._screenStateFeature._eoLensStatusVersion; }
+            get { return ref _features.ScreenStateFeature._eoLensStatusVersion; }
         }
 
-        IFieldOfViewSyncServicePort ISyncFeatureContext._fieldOfViewSyncService
+        IFieldOfViewSyncServicePort ISyncFeatureContext.FieldOfViewSyncService
         {
             get { return _features.Runtime._fieldOfViewSyncService; }
         }
 
-        Services.Video.IFFmpegDecoderServicePort ISyncFeatureContext._irDecoder
+        Services.Video.IFFmpegDecoderServicePort ISyncFeatureContext.IrDecoder
         {
             get { return _features.Runtime._irDecoder; }
         }
 
-        ref long ISyncFeatureContext._irLensStatusVersion
+        ref long ISyncFeatureContext.IrLensStatusVersion
         {
-            get { return ref _features._screenStateFeature._irLensStatusVersion; }
+            get { return ref _features.ScreenStateFeature._irLensStatusVersion; }
         }
 
-        double ISyncFeatureContext._irZoomObservedStopLag
+        double ISyncFeatureContext.IrZoomObservedStopLag
         {
-            get { return _features._screenStateFeature._irZoomObservedStopLag; }
-            set { _features._screenStateFeature._irZoomObservedStopLag = value; }
+            get { return _features.ScreenStateFeature._irZoomObservedStopLag; }
+            set { _features.ScreenStateFeature._irZoomObservedStopLag = value; }
         }
 
-        bool ISyncFeatureContext._isEoFrameDisplayed
+        bool ISyncFeatureContext.IsEoFrameDisplayed
         {
-            get { return _features._screenStateFeature._isEoFrameDisplayed; }
-            set { _features._screenStateFeature._isEoFrameDisplayed = value; }
+            get { return _features.ScreenStateFeature._isEoFrameDisplayed; }
+            set { _features.ScreenStateFeature._isEoFrameDisplayed = value; }
         }
 
-        bool ISyncFeatureContext._isIrFrameDisplayed
+        bool ISyncFeatureContext.IsIrFrameDisplayed
         {
-            get { return _features._screenStateFeature._isIrFrameDisplayed; }
-            set { _features._screenStateFeature._isIrFrameDisplayed = value; }
+            get { return _features.ScreenStateFeature._isIrFrameDisplayed; }
+            set { _features.ScreenStateFeature._isIrFrameDisplayed = value; }
         }
 
-        SemaphoreSlim ISyncFeatureContext._lensSyncOperationLock
+        SemaphoreSlim ISyncFeatureContext.LensSyncOperationLock
         {
             get { return _features.Runtime._lensSyncOperationLock; }
         }
 
-        string ISyncFeatureContext._ptzPerformanceScenario
+        string ISyncFeatureContext.PtzPerformanceScenario
         {
-            get { return _features._screenStateFeature._ptzPerformanceScenario; }
-            set { _features._screenStateFeature._ptzPerformanceScenario = value; }
+            get { return _features.ScreenStateFeature._ptzPerformanceScenario; }
+            set { _features.ScreenStateFeature._ptzPerformanceScenario = value; }
         }
 
-        CancellationTokenSource ISyncFeatureContext._rooftopFocusSyncCts
+        CancellationTokenSource ISyncFeatureContext.RooftopFocusSyncCts
         {
-            get { return _features._screenStateFeature._rooftopFocusSyncCts; }
-            set { _features._screenStateFeature._rooftopFocusSyncCts = value; }
+            get { return _features.ScreenStateFeature._rooftopFocusSyncCts; }
+            set { _features.ScreenStateFeature._rooftopFocusSyncCts = value; }
         }
 
-        CancellationTokenSource ISyncFeatureContext._rooftopZoomSyncCts
+        CancellationTokenSource ISyncFeatureContext.RooftopZoomSyncCts
         {
-            get { return _features._screenStateFeature._rooftopZoomSyncCts; }
-            set { _features._screenStateFeature._rooftopZoomSyncCts = value; }
+            get { return _features.ScreenStateFeature._rooftopZoomSyncCts; }
+            set { _features.ScreenStateFeature._rooftopZoomSyncCts = value; }
         }
 
-        Services.Communication.WebAgent.IWebAgentZoomControlServicePort ISyncFeatureContext._webAgentZoomControlService
+        Services.Communication.WebAgent.IWebAgentZoomControlServicePort ISyncFeatureContext.WebAgentZoomControlService
         {
             get { return _features.Runtime._webAgentZoomControlService; }
         }
@@ -157,7 +157,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int ISyncFeatureContext.ConvertIrFocusStandardToStatusPosition(int standardPosition)
         {
-            return _features._moveControlFeature.ConvertIrFocusStandardToStatusPosition(standardPosition);
+            return _features.MoveControlFeature.ConvertIrFocusStandardToStatusPosition(standardPosition);
         }
 
         /// <summary>
@@ -165,18 +165,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task<bool> ISyncFeatureContext.EnsurePresetIrLensFeedbackAsync(bool zoom, CancellationToken token)
         {
-            return _features._presetLensFeature.EnsurePresetIrLensFeedbackAsync(zoom, token);
+            return _features.PresetLensFeature.EnsurePresetIrLensFeedbackAsync(zoom, token);
         }
 
         System.Collections.ObjectModel.ObservableCollection<ZoomSyncLevelOption> ISyncFeatureContext.FocusSyncLevelOptions
         {
-            get { return _features._propertiesFeature.FocusSyncLevelOptions; }
+            get { return _features.PropertiesFeature.FocusSyncLevelOptions; }
         }
 
         string ISyncFeatureContext.FocusSyncStatusText
         {
-            get { return _features._propertiesFeature.FocusSyncStatusText; }
-            set { _features._propertiesFeature.FocusSyncStatusText = value; }
+            get { return _features.PropertiesFeature.FocusSyncStatusText; }
+            set { _features.PropertiesFeature.FocusSyncStatusText = value; }
         }
 
         /// <summary>
@@ -184,7 +184,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool ISyncFeatureContext.HasFreshPresetLens(bool ir, bool zoom)
         {
-            return _features._presetLensFeature.HasFreshPresetLens(ir, zoom);
+            return _features.PresetLensFeature.HasFreshPresetLens(ir, zoom);
         }
 
         /// <summary>
@@ -192,17 +192,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool ISyncFeatureContext.IsAutoFocusBlockingManualFocus(bool ir, bool logWarning)
         {
-            return _features._webAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
+            return _features.WebAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
         }
 
         bool ISyncFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         bool ISyncFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         /// <summary>
@@ -210,7 +210,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         long ISyncFeatureContext.PresetLensTicks(bool ir, bool zoom)
         {
-            return _features._presetLensFeature.PresetLensTicks(ir, zoom);
+            return _features.PresetLensFeature.PresetLensTicks(ir, zoom);
         }
 
         /// <summary>
@@ -220,36 +220,36 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task<int?> ISyncFeatureContext.RequestAndWaitCtecEoPositionAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, CancellationToken cancellationToken)
         {
-            return _features._continuousControlFeature.RequestAndWaitCtecEoPositionAsync(moveType, sourceOption, cancellationToken);
+            return _features.ContinuousControlFeature.RequestAndWaitCtecEoPositionAsync(moveType, sourceOption, cancellationToken);
         }
 
         EquipmentStatusMode ISyncFeatureContext.SelectedEquipmentStatusMode
         {
-            get { return _features._propertiesFeature.SelectedEquipmentStatusMode; }
-            set { _features._propertiesFeature.SelectedEquipmentStatusMode = value; }
+            get { return _features.PropertiesFeature.SelectedEquipmentStatusMode; }
+            set { _features.PropertiesFeature.SelectedEquipmentStatusMode = value; }
         }
 
         ZoomSyncLevelOption ISyncFeatureContext.SelectedFocusSyncLevel
         {
-            get { return _features._propertiesFeature.SelectedFocusSyncLevel; }
-            set { _features._propertiesFeature.SelectedFocusSyncLevel = value; }
+            get { return _features.PropertiesFeature.SelectedFocusSyncLevel; }
+            set { _features.PropertiesFeature.SelectedFocusSyncLevel = value; }
         }
 
         ZoomSyncLevelOption ISyncFeatureContext.SelectedZoomSyncLevel
         {
-            get { return _features._propertiesFeature.SelectedZoomSyncLevel; }
-            set { _features._propertiesFeature.SelectedZoomSyncLevel = value; }
+            get { return _features.PropertiesFeature.SelectedZoomSyncLevel; }
+            set { _features.PropertiesFeature.SelectedZoomSyncLevel = value; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<ZoomSyncLevelOption> ISyncFeatureContext.ZoomSyncLevelOptions
         {
-            get { return _features._propertiesFeature.ZoomSyncLevelOptions; }
+            get { return _features.PropertiesFeature.ZoomSyncLevelOptions; }
         }
 
         string ISyncFeatureContext.ZoomSyncStatusText
         {
-            get { return _features._propertiesFeature.ZoomSyncStatusText; }
-            set { _features._propertiesFeature.ZoomSyncStatusText = value; }
+            get { return _features.PropertiesFeature.ZoomSyncStatusText; }
+            set { _features.PropertiesFeature.ZoomSyncStatusText = value; }
         }
     }
 }

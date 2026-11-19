@@ -19,64 +19,64 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        ref global::OpenCvWpfTracking.Models.Main.RtspSourceOption IInputCoordinatorFeatureContext._activeEoCtecSource
+        ref global::OpenCvWpfTracking.Models.Main.RtspSourceOption IInputCoordinatorFeatureContext.ActiveEoCtecSource
         {
-            get { return ref _features._screenStateFeature._activeEoCtecSource; }
+            get { return ref _features.ScreenStateFeature._activeEoCtecSource; }
         }
 
-        ref double? IInputCoordinatorFeatureContext._activePanAbsoluteTarget
+        ref double? IInputCoordinatorFeatureContext.ActivePanAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._activePanAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._activePanAbsoluteTarget; }
         }
 
-        ref double? IInputCoordinatorFeatureContext._activeTiltAbsoluteTarget
+        ref double? IInputCoordinatorFeatureContext.ActiveTiltAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._activeTiltAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._activeTiltAbsoluteTarget; }
         }
 
-        Services.Communication.AI.IAiDetectorClientServicePort IInputCoordinatorFeatureContext._aiDetectorClientService
+        Services.Communication.AI.IAiDetectorClientServicePort IInputCoordinatorFeatureContext.AiDetectorClientService
         {
             get { return _features.Runtime._aiDetectorClientService; }
         }
 
-        Services.Communication.IControlCommandServicePort IInputCoordinatorFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IInputCoordinatorFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        ContinuousMoveType IInputCoordinatorFeatureContext._currentMoveType
+        ContinuousMoveType IInputCoordinatorFeatureContext.CurrentMoveType
         {
-            get { return _features._screenStateFeature._currentMoveType; }
-            set { _features._screenStateFeature._currentMoveType = value; }
+            get { return _features.ScreenStateFeature._currentMoveType; }
+            set { _features.ScreenStateFeature._currentMoveType = value; }
         }
 
-        bool IInputCoordinatorFeatureContext._isDeviceConnectionRequested
+        bool IInputCoordinatorFeatureContext.IsDeviceConnectionRequested
         {
-            get { return _features._screenStateFeature._isDeviceConnectionRequested; }
-            set { _features._screenStateFeature._isDeviceConnectionRequested = value; }
+            get { return _features.ScreenStateFeature._isDeviceConnectionRequested; }
+            set { _features.ScreenStateFeature._isDeviceConnectionRequested = value; }
         }
 
-        Services.Communication.ITcpClientServicePort IInputCoordinatorFeatureContext._laTcpService
+        Services.Communication.ITcpClientServicePort IInputCoordinatorFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        ControlAgentProfileOption IInputCoordinatorFeatureContext._requestedControlProfile
+        ControlAgentProfileOption IInputCoordinatorFeatureContext.RequestedControlProfile
         {
-            get { return _features._rtspSettingsFeature._requestedControlProfile; }
-            set { _features._rtspSettingsFeature._requestedControlProfile = value; }
+            get { return _features.RtspSettingsFeature._requestedControlProfile; }
+            set { _features.RtspSettingsFeature._requestedControlProfile = value; }
         }
 
-        bool IInputCoordinatorFeatureContext._videoCenterBusy
+        bool IInputCoordinatorFeatureContext.VideoCenterBusy
         {
-            get { return _features._cameraFeatureControlFeature._videoCenterBusy; }
-            set { _features._cameraFeatureControlFeature._videoCenterBusy = value; }
+            get { return _features.CameraFeatureControlFeature._videoCenterBusy; }
+            set { _features.CameraFeatureControlFeature._videoCenterBusy = value; }
         }
 
         string IInputCoordinatorFeatureContext.AiPowerStatusText
         {
-            get { return _features._propertiesFeature.AiPowerStatusText; }
-            set { _features._propertiesFeature.AiPowerStatusText = value; }
+            get { return _features.PropertiesFeature.AiPowerStatusText; }
+            set { _features.PropertiesFeature.AiPowerStatusText = value; }
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.ClearActivePanTiltAbsoluteMove()
         {
-            _features._moveControlFeature.ClearActivePanTiltAbsoluteMove();
+            _features.MoveControlFeature.ClearActivePanTiltAbsoluteMove();
         }
 
         /// <summary>
@@ -93,22 +93,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.ClearAiDetectionState(string reason, bool writeAudit)
         {
-            _features._aiFeature.ClearAiDetectionState(reason, writeAudit);
+            _features.AiFeature.ClearAiDetectionState(reason, writeAudit);
         }
 
         byte IInputCoordinatorFeatureContext.EffectivePanTiltSpeedLevel
         {
-            get { return _features._propertiesFeature.EffectivePanTiltSpeedLevel; }
+            get { return _features.PropertiesFeature.EffectivePanTiltSpeedLevel; }
         }
 
         double IInputCoordinatorFeatureContext.EoDisplayZoomRatio
         {
-            get { return _features._cameraFeatureControlFeature.EoDisplayZoomRatio; }
+            get { return _features.CameraFeatureControlFeature.EoDisplayZoomRatio; }
         }
 
         string IInputCoordinatorFeatureContext.EoPowerControlStatusText
         {
-            get { return _features._devicePowerFeature.EoPowerControlStatusText; }
+            get { return _features.DevicePowerFeature.EoPowerControlStatusText; }
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IInputCoordinatorFeatureContext.GetCurrentIrZoomStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
         /// <summary>
@@ -126,17 +126,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IInputCoordinatorFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         double IInputCoordinatorFeatureContext.IrDisplayZoomRatio
         {
-            get { return _features._cameraFeatureControlFeature.IrDisplayZoomRatio; }
+            get { return _features.CameraFeatureControlFeature.IrDisplayZoomRatio; }
         }
 
         string IInputCoordinatorFeatureContext.IrPowerControlStatusText
         {
-            get { return _features._devicePowerFeature.IrPowerControlStatusText; }
+            get { return _features.DevicePowerFeature.IrPowerControlStatusText; }
         }
 
         /// <summary>
@@ -144,17 +144,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IInputCoordinatorFeatureContext.IsAutoFocusBlockingManualFocus(bool ir, bool logWarning)
         {
-            return _features._webAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
+            return _features.WebAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
         }
 
         bool IInputCoordinatorFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IInputCoordinatorFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         /// <summary>
@@ -167,13 +167,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string IInputCoordinatorFeatureContext.PanTiltSpeedDisplayText
         {
-            get { return _features._propertiesFeature.PanTiltSpeedDisplayText; }
+            get { return _features.PropertiesFeature.PanTiltSpeedDisplayText; }
         }
 
         byte IInputCoordinatorFeatureContext.PanTiltSpeedLevel
         {
-            get { return _features._propertiesFeature.PanTiltSpeedLevel; }
-            set { _features._propertiesFeature.PanTiltSpeedLevel = value; }
+            get { return _features.PropertiesFeature.PanTiltSpeedLevel; }
+            set { _features.PropertiesFeature.PanTiltSpeedLevel = value; }
         }
 
         /// <summary>
@@ -181,13 +181,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.ResetAiRtspVideoSizes()
         {
-            _features._aiFeature.ResetAiRtspVideoSizes();
+            _features.AiFeature.ResetAiRtspVideoSizes();
         }
 
         ControlAgentProfileOption IInputCoordinatorFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
         /// <summary>
@@ -196,7 +196,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.SetActivePanTiltZoomSource(bool isInfrared)
         {
-            _features._continuousControlFeature.SetActivePanTiltZoomSource(isInfrared);
+            _features.ContinuousControlFeature.SetActivePanTiltZoomSource(isInfrared);
         }
 
         /// <summary>
@@ -204,7 +204,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.SetFireSmokeDetectorsForAiConnection(bool enabled, string reason)
         {
-            _features._smokeFeature.SetFireSmokeDetectorsForAiConnection(enabled, reason);
+            _features.SmokeFeature.SetFireSmokeDetectorsForAiConnection(enabled, reason);
         }
 
         /// <summary>
@@ -212,7 +212,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task IInputCoordinatorFeatureContext.StartEoFocusFarMoveAsync()
         {
-            return _features._continuousControlFeature.StartEoFocusFarMoveAsync();
+            return _features.ContinuousControlFeature.StartEoFocusFarMoveAsync();
         }
 
         /// <summary>
@@ -220,7 +220,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task IInputCoordinatorFeatureContext.StartEoFocusNearMoveAsync()
         {
-            return _features._continuousControlFeature.StartEoFocusNearMoveAsync();
+            return _features.ContinuousControlFeature.StartEoFocusNearMoveAsync();
         }
 
         /// <summary>
@@ -228,7 +228,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task IInputCoordinatorFeatureContext.StartEoZoomInMoveAsync()
         {
-            return _features._continuousControlFeature.StartEoZoomInMoveAsync();
+            return _features.ContinuousControlFeature.StartEoZoomInMoveAsync();
         }
 
         /// <summary>
@@ -236,7 +236,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task IInputCoordinatorFeatureContext.StartEoZoomOutMoveAsync()
         {
-            return _features._continuousControlFeature.StartEoZoomOutMoveAsync();
+            return _features.ContinuousControlFeature.StartEoZoomOutMoveAsync();
         }
 
         /// <summary>
@@ -244,7 +244,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartIrFocusFarMove()
         {
-            _features._continuousControlFeature.StartIrFocusFarMove();
+            _features.ContinuousControlFeature.StartIrFocusFarMove();
         }
 
         /// <summary>
@@ -252,7 +252,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartIrFocusNearMove()
         {
-            _features._continuousControlFeature.StartIrFocusNearMove();
+            _features.ContinuousControlFeature.StartIrFocusNearMove();
         }
 
         /// <summary>
@@ -260,7 +260,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartIrZoomInMove()
         {
-            _features._continuousControlFeature.StartIrZoomInMove();
+            _features.ContinuousControlFeature.StartIrZoomInMove();
         }
 
         /// <summary>
@@ -268,7 +268,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartIrZoomOutMove()
         {
-            _features._continuousControlFeature.StartIrZoomOutMove();
+            _features.ContinuousControlFeature.StartIrZoomOutMove();
         }
 
         /// <summary>
@@ -277,7 +277,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartPanLeftMove()
         {
-            _features._continuousControlFeature.StartPanLeftMove();
+            _features.ContinuousControlFeature.StartPanLeftMove();
         }
 
         /// <summary>
@@ -285,7 +285,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartPanLeftTiltDownMove()
         {
-            _features._continuousControlFeature.StartPanLeftTiltDownMove();
+            _features.ContinuousControlFeature.StartPanLeftTiltDownMove();
         }
 
         /// <summary>
@@ -293,7 +293,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartPanLeftTiltUpMove()
         {
-            _features._continuousControlFeature.StartPanLeftTiltUpMove();
+            _features.ContinuousControlFeature.StartPanLeftTiltUpMove();
         }
 
         /// <summary>
@@ -302,7 +302,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartPanRightMove()
         {
-            _features._continuousControlFeature.StartPanRightMove();
+            _features.ContinuousControlFeature.StartPanRightMove();
         }
 
         /// <summary>
@@ -310,7 +310,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartPanRightTiltDownMove()
         {
-            _features._continuousControlFeature.StartPanRightTiltDownMove();
+            _features.ContinuousControlFeature.StartPanRightTiltDownMove();
         }
 
         /// <summary>
@@ -318,7 +318,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartPanRightTiltUpMove()
         {
-            _features._continuousControlFeature.StartPanRightTiltUpMove();
+            _features.ContinuousControlFeature.StartPanRightTiltUpMove();
         }
 
         /// <summary>
@@ -327,7 +327,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartTiltDownMove()
         {
-            _features._continuousControlFeature.StartTiltDownMove();
+            _features.ContinuousControlFeature.StartTiltDownMove();
         }
 
         /// <summary>
@@ -336,7 +336,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StartTiltUpMove()
         {
-            _features._continuousControlFeature.StartTiltUpMove();
+            _features.ContinuousControlFeature.StartTiltUpMove();
         }
 
         /// <summary>
@@ -346,7 +346,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StopAllPtzfMove()
         {
-            _features._continuousControlFeature.StopAllPtzfMove();
+            _features.ContinuousControlFeature.StopAllPtzfMove();
         }
 
         /// <summary>
@@ -354,7 +354,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task IInputCoordinatorFeatureContext.StopContinuousMoveAsync(bool waitForStatus)
         {
-            return _features._continuousControlFeature.StopContinuousMoveAsync(waitForStatus);
+            return _features.ContinuousControlFeature.StopContinuousMoveAsync(waitForStatus);
         }
 
         /// <summary>
@@ -362,7 +362,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StopIrFocusMove()
         {
-            _features._continuousControlFeature.StopIrFocusMove();
+            _features.ContinuousControlFeature.StopIrFocusMove();
         }
 
         /// <summary>
@@ -370,7 +370,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StopIrZoomMove()
         {
-            _features._continuousControlFeature.StopIrZoomMove();
+            _features.ContinuousControlFeature.StopIrZoomMove();
         }
 
         /// <summary>
@@ -378,7 +378,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StopPanTiltContinuousMove()
         {
-            _features._continuousControlFeature.StopPanTiltContinuousMove();
+            _features.ContinuousControlFeature.StopPanTiltContinuousMove();
         }
 
         /// <summary>
@@ -386,7 +386,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.StopRoute()
         {
-            _features._routesFeature.StopRoute();
+            _features.RoutesFeature.StopRoute();
         }
 
         /// <summary>
@@ -394,7 +394,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.TickDigitalEstimate()
         {
-            _features._cameraFeatureControlFeature.TickDigitalEstimate();
+            _features.CameraFeatureControlFeature.TickDigitalEstimate();
         }
 
         /// <summary>
@@ -402,7 +402,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.TickDigitalZoom()
         {
-            _features._cameraFeatureControlFeature.TickDigitalZoom();
+            _features.CameraFeatureControlFeature.TickDigitalZoom();
         }
 
         /// <summary>
@@ -410,7 +410,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IInputCoordinatorFeatureContext.TickSpecialFeatures()
         {
-            _features._specialFeaturesFeature.TickSpecialFeatures();
+            _features.SpecialFeaturesFeature.TickSpecialFeatures();
         }
     }
 }

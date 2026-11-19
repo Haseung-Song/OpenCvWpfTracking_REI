@@ -11,7 +11,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>공통 화면 상태에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IScreenStateFeatureContext
     {
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
         double AiDisplayConfidenceThreshold { get; set; }
 
@@ -449,7 +449,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._controlCommandService != null && _context._controlCommandService.UseUnsignedWebAgentTiltCoordinates && _hasWebAgentTiltLimits)
+                if (_context.ControlCommandService != null && _context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates && _hasWebAgentTiltLimits)
                 {
                     return _webAgentTiltMinimum;
                 }
@@ -464,7 +464,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._controlCommandService != null && _context._controlCommandService.UseUnsignedWebAgentTiltCoordinates && _hasWebAgentTiltLimits)
+                if (_context.ControlCommandService != null && _context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates && _hasWebAgentTiltLimits)
                 {
                     return _webAgentTiltMaximum;
                 }

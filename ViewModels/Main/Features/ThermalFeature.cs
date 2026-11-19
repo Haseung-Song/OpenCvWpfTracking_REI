@@ -10,11 +10,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>열상 영상 표시 기능에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IThermalFeatureContext
     {
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        ref int _visionSettingsGeneration { get; }
+        ref int VisionSettingsGeneration { get; }
 
-        Services.Communication.WebAgent.IWebAgentThermalPaletteServicePort _webAgentThermalPaletteService { get; }
+        Services.Communication.WebAgent.IWebAgentThermalPaletteServicePort WebAgentThermalPaletteService { get; }
 
         bool CameraFeatureTransportReady { get; }
 
@@ -414,7 +414,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _isThermalFireDetectionEnabled = value;
 
-                System.Threading.Interlocked.Increment(ref _context._visionSettingsGeneration);
+                System.Threading.Interlocked.Increment(ref _context.VisionSettingsGeneration);
 
                 if (!value)
                 {
@@ -549,7 +549,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            bool result = _context.IsSelectedControlAgentWebAgent ? (paletteType == 0 ? _context._webAgentThermalPaletteService.SelectBlackHot() : paletteType == 1 ? _context._webAgentThermalPaletteService.SelectWhiteHot() : _context._webAgentThermalPaletteService.SelectRainbow()) : (paletteType == 0 ? _context._controlCommandService.SelectIrBlackHot() : paletteType == 1 ? _context._controlCommandService.SelectIrWhiteHot() : _context._controlCommandService.SelectIrRainbow());
+            bool result = _context.IsSelectedControlAgentWebAgent ? (paletteType == 0 ? _context.WebAgentThermalPaletteService.SelectBlackHot() : paletteType == 1 ? _context.WebAgentThermalPaletteService.SelectWhiteHot() : _context.WebAgentThermalPaletteService.SelectRainbow()) : (paletteType == 0 ? _context.ControlCommandService.SelectIrBlackHot() : paletteType == 1 ? _context.ControlCommandService.SelectIrWhiteHot() : _context.ControlCommandService.SelectIrRainbow());
 
             LogThermalControlCommandResult("PALETTE " + paletteName, result);
 
@@ -576,11 +576,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (_context.IsSelectedControlAgentWebAgent)
             {
-                sendCommand = _context._webAgentThermalPaletteService.RequestNuc;
+                sendCommand = _context.WebAgentThermalPaletteService.RequestNuc;
             }
             else
             {
-                sendCommand = _context._controlCommandService.RequestIrNuc;
+                sendCommand = _context.ControlCommandService.RequestIrNuc;
             }
 
             SendThermalCommand("NUC", sendCommand);
@@ -617,7 +617,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                bool environmentResult = offset < 0 ? _context._webAgentThermalPaletteService.SelectPrevious() : _context._webAgentThermalPaletteService.SelectNext();
+                bool environmentResult = offset < 0 ? _context.WebAgentThermalPaletteService.SelectPrevious() : _context.WebAgentThermalPaletteService.SelectNext();
 
                 LogThermalControlCommandResult(offset < 0 ? "ENVIRONMENT PALETTE PREV" : "ENVIRONMENT PALETTE NEXT", environmentResult);
 
@@ -631,7 +631,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            bool result = offset < 0 ? _context._controlCommandService.SelectPreviousIrPalette() : _context._controlCommandService.SelectNextIrPalette();
+            bool result = offset < 0 ? _context.ControlCommandService.SelectPreviousIrPalette() : _context.ControlCommandService.SelectNextIrPalette();
 
             LogThermalControlCommandResult(offset < 0 ? "PALETTE PREV" : "PALETTE NEXT", result);
 

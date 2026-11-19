@@ -10,33 +10,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>장비 선택과 연결 설정에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IRtspSettingsFeatureContext
     {
-        bool _applyingPresetProfile { get; set; }
+        bool ApplyingPresetProfile { get; set; }
 
-        System.Threading.CancellationTokenSource _controlAgentReconnectCts { get; set; }
+        System.Threading.CancellationTokenSource ControlAgentReconnectCts { get; set; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        System.Threading.CancellationTokenSource _cts { get; set; }
+        System.Threading.CancellationTokenSource Cts { get; set; }
 
-        Services.Video.IFFmpegDecoderServicePort _eoDecoder { get; }
+        Services.Video.IFFmpegDecoderServicePort EoDecoder { get; }
 
-        Services.Video.IFFmpegDecoderServicePort _irDecoder { get; }
+        Services.Video.IFFmpegDecoderServicePort IrDecoder { get; }
 
-        bool _isEoFrameDisplayed { get; set; }
+        bool IsEoFrameDisplayed { get; set; }
 
-        bool _isIrFrameDisplayed { get; set; }
+        bool IsIrFrameDisplayed { get; set; }
 
-        bool _isVideoConnecting { get; set; }
+        bool IsVideoConnecting { get; set; }
 
-        Services.Communication.ITcpClientServicePort _laTcpService { get; }
+        Services.Communication.ITcpClientServicePort LaTcpService { get; }
 
-        RtspSourceOption _selectedAiEoRtspSource { get; set; }
+        RtspSourceOption SelectedAiEoRtspSourceState { get; set; }
 
-        RtspSourceOption _selectedAiIrRtspSource { get; set; }
+        RtspSourceOption SelectedAiIrRtspSourceState { get; set; }
 
-        RtspSourceOption _selectedEoRtspSource { get; set; }
+        RtspSourceOption SelectedEoRtspSourceState { get; set; }
 
-        RtspSourceOption _selectedIrRtspSource { get; set; }
+        RtspSourceOption SelectedIrRtspSourceState { get; set; }
 
         string AiRtsp0Address { get; set; }
 
@@ -240,7 +240,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._isVideoConnecting || _context._isEoFrameDisplayed || _context._isIrFrameDisplayed || _context._eoDecoder?.IsOpened == true || _context._irDecoder?.IsOpened == true || _context._laTcpService?.IsConnected == true || _context.ControlAgentConnectionStatusText == "Connected" || _context.ControlAgentConnectionStatusText == "Connecting" || (_context._controlAgentReconnectCts != null && !_context._controlAgentReconnectCts.IsCancellationRequested) || (_context._cts != null && !_context._cts.IsCancellationRequested);
+                return _context.IsVideoConnecting || _context.IsEoFrameDisplayed || _context.IsIrFrameDisplayed || _context.EoDecoder?.IsOpened == true || _context.IrDecoder?.IsOpened == true || _context.LaTcpService?.IsConnected == true || _context.ControlAgentConnectionStatusText == "Connected" || _context.ControlAgentConnectionStatusText == "Connecting" || (_context.ControlAgentReconnectCts != null && !_context.ControlAgentReconnectCts.IsCancellationRequested) || (_context.Cts != null && !_context.Cts.IsCancellationRequested);
             }
         }
 
@@ -300,7 +300,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _context.OnPropertyChanged(nameof(_context.PanTiltZeroRouteText));
 
-                _context._applyingPresetProfile = true;
+                _context.ApplyingPresetProfile = true;
 
                 try
                 {
@@ -308,7 +308,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 finally
                 {
-                    _context._applyingPresetProfile = false;
+                    _context.ApplyingPresetProfile = false;
                 }
 
                 _context.SwitchEquipmentPresets();
@@ -388,9 +388,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         internal void ShowAlreadyConnected()
         {
             // 중복 연결 안내만 표시하며 실제 연결 상태나 활성 세션을 변경하지 않는다.
-            _eoAlreadyConnectedNotice = _context._isEoFrameDisplayed || _context._eoDecoder?.IsOpened == true;
+            _eoAlreadyConnectedNotice = _context.IsEoFrameDisplayed || _context.EoDecoder?.IsOpened == true;
 
-            _irAlreadyConnectedNotice = _context._isIrFrameDisplayed || _context._irDecoder?.IsOpened == true;
+            _irAlreadyConnectedNotice = _context.IsIrFrameDisplayed || _context.IrDecoder?.IsOpened == true;
 
             _context.OnPropertyChanged(nameof(_context.EoStatusText));
 
@@ -484,13 +484,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _context.AiRtsp0Address = aiEoAddress;
                 _context.AiRtsp1Address = aiIrAddress;
 
-                _context._selectedEoRtspSource = ResolveRtspSource(_context.EoRtspSourceOptions, settings.SavedEoRtspPreset, eoAddress);
+                _context.SelectedEoRtspSourceState = ResolveRtspSource(_context.EoRtspSourceOptions, settings.SavedEoRtspPreset, eoAddress);
 
-                _context._selectedIrRtspSource = ResolveRtspSource(_context.IrRtspSourceOptions, settings.SavedIrRtspPreset, irAddress);
+                _context.SelectedIrRtspSourceState = ResolveRtspSource(_context.IrRtspSourceOptions, settings.SavedIrRtspPreset, irAddress);
 
-                _context._selectedAiEoRtspSource = ResolveRtspSource(_context.EoRtspSourceOptions, settings.SavedAiEoRtspPreset, aiEoAddress);
+                _context.SelectedAiEoRtspSourceState = ResolveRtspSource(_context.EoRtspSourceOptions, settings.SavedAiEoRtspPreset, aiEoAddress);
 
-                _context._selectedAiIrRtspSource = ResolveRtspSource(_context.IrRtspSourceOptions, settings.SavedAiIrRtspPreset, aiIrAddress);
+                _context.SelectedAiIrRtspSourceState = ResolveRtspSource(_context.IrRtspSourceOptions, settings.SavedAiIrRtspPreset, aiIrAddress);
 
                 _context.OnPropertyChanged(nameof(_context.SelectedEoRtspSource));
 
@@ -536,7 +536,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _context.OnPropertyChanged(nameof(_context.IsAiIrRtspDirectInput));
 
-                ConsoleLogHelper.StateSection("RTSP CONFIG", "Saved camera settings loaded", string.Empty, "EO_PRESET=" + _context._selectedEoRtspSource?.DisplayName, "EO=" + ConsoleLogHelper.MaskRtspPassword(eoAddress), "IR_PRESET=" + _context._selectedIrRtspSource?.DisplayName, "IR=" + ConsoleLogHelper.MaskRtspPassword(irAddress), "AI_EO_PRESET=" + _context._selectedAiEoRtspSource?.DisplayName, "AI_IR_PRESET=" + _context._selectedAiIrRtspSource?.DisplayName, "CONTROL_PROFILE=" + _selectedControlAgentProfile?.DisplayName);
+                ConsoleLogHelper.StateSection("RTSP CONFIG", "Saved camera settings loaded", string.Empty, "EO_PRESET=" + _context.SelectedEoRtspSourceState?.DisplayName, "EO=" + ConsoleLogHelper.MaskRtspPassword(eoAddress), "IR_PRESET=" + _context.SelectedIrRtspSourceState?.DisplayName, "IR=" + ConsoleLogHelper.MaskRtspPassword(irAddress), "AI_EO_PRESET=" + _context.SelectedAiEoRtspSourceState?.DisplayName, "AI_IR_PRESET=" + _context.SelectedAiIrRtspSourceState?.DisplayName, "CONTROL_PROFILE=" + _selectedControlAgentProfile?.DisplayName);
             }
             catch (Exception ex)
             {
@@ -703,18 +703,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             profile = _requestedControlProfile ?? profile;
 
-            bool previousPanMode = _context._controlCommandService.UseUnsignedWebAgentPanCoordinates;
+            bool previousPanMode = _context.ControlCommandService.UseUnsignedWebAgentPanCoordinates;
 
-            bool previousTiltMode = _context._controlCommandService.UseUnsignedWebAgentTiltCoordinates;
+            bool previousTiltMode = _context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates;
 
             // 프로토콜 변환만 Agent 좌표계에 맞추고 GUI는 항상 signed 좌표로 표시한다.
-            _context._controlCommandService.UseUnsignedWebAgentPanCoordinates = profile?.AgentType == ControlAgentType.WebAgent;
+            _context.ControlCommandService.UseUnsignedWebAgentPanCoordinates = profile?.AgentType == ControlAgentType.WebAgent;
 
-            _context._controlCommandService.UseUnsignedWebAgentTiltCoordinates = _context._controlCommandService.UseUnsignedWebAgentPanCoordinates;
+            _context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates = _context.ControlCommandService.UseUnsignedWebAgentPanCoordinates;
 
-            if (previousPanMode != _context._controlCommandService.UseUnsignedWebAgentPanCoordinates || previousTiltMode != _context._controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            if (previousPanMode != _context.ControlCommandService.UseUnsignedWebAgentPanCoordinates || previousTiltMode != _context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates)
             {
-                ConsoleLogHelper.State("CONTROL COORDINATE MODE", "PROFILE=" + (profile?.DisplayName ?? "UNKNOWN") + " / MODE=" + (_context._controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED") + " / SOURCE=CONTROL_AGENT_PROFILE");
+                ConsoleLogHelper.State("CONTROL COORDINATE MODE", "PROFILE=" + (profile?.DisplayName ?? "UNKNOWN") + " / MODE=" + (_context.ControlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED") + " / SOURCE=CONTROL_AGENT_PROFILE");
             }
         }
 

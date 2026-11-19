@@ -17,33 +17,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>AI 연결과 탐지 결과에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IAiFeatureContext
     {
-        Dictionary<string, AiEventTrack> _activeAiEvents { get; }
+        Dictionary<string, AiEventTrack> ActiveAiEvents { get; }
 
-        string _aiControlAgentIp { get; set; }
+        string AiControlAgentIpState { get; set; }
 
-        Services.Communication.AI.IAiDetectorClientServicePort _aiDetectorClientService { get; }
+        Services.Communication.AI.IAiDetectorClientServicePort AiDetectorClientService { get; }
 
-        Services.Communication.AI.IAiDetectorPacketParserPort _aiDetectorPacketParser { get; }
+        Services.Communication.AI.IAiDetectorPacketParserPort AiDetectorPacketParser { get; }
 
-        Services.Communication.AI.IAiDetectorPacketBuilderPort _aiPacketBuilder { get; }
+        Services.Communication.AI.IAiDetectorPacketBuilderPort AiPacketBuilder { get; }
 
-        CancellationTokenSource _controlAgentReconnectCts { get; set; }
+        CancellationTokenSource ControlAgentReconnectCts { get; set; }
 
-        CancellationTokenSource _cts { get; set; }
+        CancellationTokenSource Cts { get; set; }
 
-        bool _isEoFrameDisplayed { get; set; }
+        bool IsEoFrameDisplayed { get; set; }
 
-        bool _isIrFrameDisplayed { get; set; }
+        bool IsIrFrameDisplayed { get; set; }
 
-        ref global::System.DateTime _lastAiDetectorLogTime { get; }
+        ref global::System.DateTime LastAiDetectorLogTime { get; }
 
-        Models.Main.RtspSourceOption _selectedEoRtspSource { get; set; }
+        Models.Main.RtspSourceOption SelectedEoRtspSourceState { get; set; }
 
-        Models.Main.RtspSourceOption _selectedIrRtspSource { get; set; }
+        Models.Main.RtspSourceOption SelectedIrRtspSourceState { get; set; }
 
-        DispatcherTimer _testProgramEventTimer { get; set; }
+        DispatcherTimer TestProgramEventTimer { get; set; }
 
-        CancellationTokenSource _videoReconnectCts { get; set; }
+        CancellationTokenSource VideoReconnectCts { get; set; }
 
         int ActiveAiCount { get; set; }
 
@@ -262,16 +262,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 재연결 취소가 실패해도 소켓 정리는 계속 시도한다.
                 try
                 {
-                    _context._aiDetectorClientService.StopAutoReconnect();
+                    _context.AiDetectorClientService.StopAutoReconnect();
                 }
                 finally
                 {
-                    _context._aiDetectorClientService.Disconnect();
+                    _context.AiDetectorClientService.Disconnect();
                 }
 
                 ResetAiRtspVideoSizes();
 
-                bool connected = await _context._aiDetectorClientService.ConnectAsync(_context.AiControlAgentIp, _context.AiAgentPort);
+                bool connected = await _context.AiDetectorClientService.ConnectAsync(_context.AiControlAgentIp, _context.AiAgentPort);
 
                 if (generation != Volatile.Read(ref _aiManualConnectionGeneration))
                 {
@@ -419,9 +419,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
-                _context._aiDetectorClientService.StopAutoReconnect();
+                _context.AiDetectorClientService.StopAutoReconnect();
 
-                _context._aiDetectorClientService.Disconnect();
+                _context.AiDetectorClientService.Disconnect();
 
                 ResetAiRtspVideoSizes();
 
@@ -457,7 +457,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // [STX] / [CMD] / [SIZE] / [Payload] / [Checksum] / [ETX] 검증 후,
             // [CMD]와 [Payload]를 추출한다.
             //
-            if (!_context._aiDetectorPacketParser.TryParseCommonPacket(packet, out string command, out string payload))
+            if (!_context.AiDetectorPacketParser.TryParseCommonPacket(packet, out string command, out string payload))
             {
                 return;
             }
@@ -546,14 +546,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (!_context._aiDetectorPacketParser.TryParseDetectionPacket(packet, out AiDetectionResult result))
+            if (!_context.AiDetectorPacketParser.TryParseDetectionPacket(packet, out AiDetectionResult result))
             {
                 return;
             }
 
             // 2026-10-01: 장비 전원 차단 뒤 지연 수신된 AI Packet이
             // 이미 Blackout된 화면 위에 BBox를 다시 생성하지 못하게 한다.
-            bool isTargetFrameAvailable = result.RtspIndex == 0 ? _context._isEoFrameDisplayed : result.RtspIndex == 1 && _context._isIrFrameDisplayed;
+            bool isTargetFrameAvailable = result.RtspIndex == 0 ? _context.IsEoFrameDisplayed : result.RtspIndex == 1 && _context.IsIrFrameDisplayed;
 
             if (!isTargetFrameAvailable)
             {
@@ -582,7 +582,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void HandleAiDetectorRtspVideoSizeResponse(string payload, DateTime receiveTime)
         {
-            if (!_context._aiDetectorPacketParser.TryParseRtspVideoSizePayload(payload, out int rtspIndex, out int width, out int height))
+            if (!_context.AiDetectorPacketParser.TryParseRtspVideoSizePayload(payload, out int rtspIndex, out int width, out int height))
             {
                 if (!_aiRtspVideoSizeErrorActive)
                 {
@@ -636,7 +636,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueueAiDetectionUiUpdate(result.RtspIndex, () =>
             {
                 // 연결 해제·재연결 후 대기 중이던 결과로 경보를 되살리지 않는다.
-                if (generation != Volatile.Read(ref _aiDetectionGeneration) || _context.AiPowerStatusText != "ON" || !(result.RtspIndex == 0 ? _context._isEoFrameDisplayed : _context._isIrFrameDisplayed))
+                if (generation != Volatile.Read(ref _aiDetectionGeneration) || _context.AiPowerStatusText != "ON" || !(result.RtspIndex == 0 ? _context.IsEoFrameDisplayed : _context.IsIrFrameDisplayed))
                 {
                     return;
                 }
@@ -647,7 +647,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     _context.ClearAiSmokeCandidateSnapshots();
 
-                    List<AiEventTrack> motionClearedEvents = _context._activeAiEvents.Where(item => item.Value.RtspIndex == result.RtspIndex).Select(item => item.Value).ToList();
+                    List<AiEventTrack> motionClearedEvents = _context.ActiveAiEvents.Where(item => item.Value.RtspIndex == result.RtspIndex).Select(item => item.Value).ToList();
 
                     foreach (AiEventTrack motionClearedTrack in motionClearedEvents)
                     {
@@ -660,12 +660,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         ConsoleLogHelper.State("AI EVENT", "AI event cleared for panorama motion / EVENT_ID=" + motionClearedEvent.EventId + " / CAMERA=" + motionClearedEvent.Camera);
                     }
 
-                    foreach (string motionKey in _context._activeAiEvents.Where(item => item.Value.RtspIndex == result.RtspIndex).Select(item => item.Key).ToList())
+                    foreach (string motionKey in _context.ActiveAiEvents.Where(item => item.Value.RtspIndex == result.RtspIndex).Select(item => item.Key).ToList())
                     {
-                        _context._activeAiEvents.Remove(motionKey);
+                        _context.ActiveAiEvents.Remove(motionKey);
                     }
 
-                    _context.ActiveAiCount = _context._activeAiEvents.Count;
+                    _context.ActiveAiCount = _context.ActiveAiEvents.Count;
 
                     _context.NotifyAiEventSummaryChanged();
 
@@ -691,7 +691,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 switch (result.RtspIndex)
                 {
                     case 0:
-                        if (!_context._isEoFrameDisplayed)
+                        if (!_context.IsEoFrameDisplayed)
                         {
                             return;
                         }
@@ -724,7 +724,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         UpdateDetectionBoxes(_context.EoDetectionBoxes, rtspIndex0DisplayBoxes, 0, receiveTime);
                         break;
                     case 1:
-                        if (!_context._isIrFrameDisplayed)
+                        if (!_context.IsIrFrameDisplayed)
                         {
                             return;
                         }
@@ -1015,7 +1015,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
-                _context._testProgramEventTimer?.Stop();
+                _context.TestProgramEventTimer?.Stop();
             }
             catch (Exception ex)
             {
@@ -1024,11 +1024,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
-                _context._aiDetectorClientService.PacketReceived -= _context.OnAiDetectorPacketReceivedCallback;
+                _context.AiDetectorClientService.PacketReceived -= _context.OnAiDetectorPacketReceivedCallback;
 
-                _context._aiDetectorClientService.StopAutoReconnect();
+                _context.AiDetectorClientService.StopAutoReconnect();
 
-                _context._aiDetectorClientService.Disconnect();
+                _context.AiDetectorClientService.Disconnect();
             }
             catch (Exception ex)
             {
@@ -1043,11 +1043,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ConsoleLogHelper.Error("APPLICATION / SHUTDOWN", "Device/video cleanup failed", ex);
 
-                _context._cts?.Cancel();
+                _context.Cts?.Cancel();
 
-                _context._controlAgentReconnectCts?.Cancel();
+                _context.ControlAgentReconnectCts?.Cancel();
 
-                _context._videoReconnectCts?.Cancel();
+                _context.VideoReconnectCts?.Cancel();
             }
 
             ConsoleLogHelper.State("APPLICATION / SHUTDOWN", "ViewModel resource cleanup completed");
@@ -1080,7 +1080,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine();
 
-            List<AiRtspInfo> rtspList = _context._aiDetectorPacketParser.ParseRtspListPayload(payload);
+            List<AiRtspInfo> rtspList = _context.AiDetectorPacketParser.ParseRtspListPayload(payload);
 
             foreach (AiRtspInfo rtsp in rtspList)
             {
@@ -1103,7 +1103,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine("[AI DETECTOR RESPONSE] [CMD 53] ONNX List");
 
-            List<AiOnnxInfo> onnxList = _context._aiDetectorPacketParser.ParseOnnxListPayload(payload);
+            List<AiOnnxInfo> onnxList = _context.AiDetectorPacketParser.ParseOnnxListPayload(payload);
 
             foreach (AiOnnxInfo onnx in onnxList)
             {
@@ -1128,7 +1128,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine();
 
-            List<AiMappingInfo> mappingList = _context._aiDetectorPacketParser.ParseMappingPayload(payload);
+            List<AiMappingInfo> mappingList = _context.AiDetectorPacketParser.ParseMappingPayload(payload);
 
             foreach (AiMappingInfo mapping in mappingList)
             {
@@ -1146,9 +1146,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<bool> RequestAiDetectorInfoAsync()
         {
-            byte[] packet = _context._aiPacketBuilder.BuildAiDetectorInfoRequest();
+            byte[] packet = _context.AiPacketBuilder.BuildAiDetectorInfoRequest();
 
-            return await _context._aiDetectorClientService.SendAsync(packet);
+            return await _context.AiDetectorClientService.SendAsync(packet);
         }
 
         /// <summary>
@@ -1177,8 +1177,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             _context.EoSourceAddress = eoAddress;
             _context.IrSourceAddress = irAddress;
-            _context._selectedEoRtspSource = _context.SelectedAiEoRtspSource;
-            _context._selectedIrRtspSource = _context.SelectedAiIrRtspSource;
+            _context.SelectedEoRtspSourceState = _context.SelectedAiEoRtspSource;
+            _context.SelectedIrRtspSourceState = _context.SelectedAiIrRtspSource;
 
             _context.SaveRtspCommunicationSettings();
 
@@ -1186,11 +1186,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.OnPropertyChanged(nameof(_context.IrSourceAddress));
 
-            byte[] packet = _context._aiPacketBuilder.BuildRtspAddressSetRequest(_context.AiRtsp0Address, _context.AiRtsp1Address);
+            byte[] packet = _context.AiPacketBuilder.BuildRtspAddressSetRequest(_context.AiRtsp0Address, _context.AiRtsp1Address);
 
             ResetAiRtspVideoSizes();
 
-            return await _context._aiDetectorClientService.SendAsync(packet);
+            return await _context.AiDetectorClientService.SendAsync(packet);
         }
 
         /// <summary>
@@ -1198,9 +1198,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<bool> RequestAiDetectorRtspAddressAsync()
         {
-            byte[] packet = _context._aiPacketBuilder.BuildRtspAddressRequest();
+            byte[] packet = _context.AiPacketBuilder.BuildRtspAddressRequest();
 
-            return await _context._aiDetectorClientService.SendAsync(packet);
+            return await _context.AiDetectorClientService.SendAsync(packet);
         }
 
         /// <summary>
@@ -1214,11 +1214,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return true;
             }
 
-            byte[] packet = _context._aiPacketBuilder.BuildOnnxListRequest();
+            byte[] packet = _context.AiPacketBuilder.BuildOnnxListRequest();
 
             ConsoleLogHelper.Warning("AI MODEL / HTTP", "HTTP model list unavailable; TCP CMD 04 fallback requested");
 
-            return await _context._aiDetectorClientService.SendAsync(packet);
+            return await _context.AiDetectorClientService.SendAsync(packet);
         }
 
         /// <summary>
@@ -1229,12 +1229,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(_context._aiControlAgentIp))
+                if (string.IsNullOrWhiteSpace(_context.AiControlAgentIpState))
                 {
                     return false;
                 }
 
-                Uri configUri = new UriBuilder(Uri.UriSchemeHttp, _context._aiControlAgentIp.Trim(), 5101, "api/config").Uri;
+                Uri configUri = new UriBuilder(Uri.UriSchemeHttp, _context.AiControlAgentIpState.Trim(), 5101, "api/config").Uri;
 
                 using (HttpClientHandler handler = new HttpClientHandler
                 {
@@ -1259,7 +1259,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                     UpdateAiOnnxList(models);
 
-                    ConsoleLogHelper.State("AI MODEL / HTTP", "Model and class list loaded / HOST=" + _context._aiControlAgentIp + " / PORT=5101 / COUNT=" + models.Count + " / CLASS_COUNT=" + models.Sum(model => model.Classes.Count));
+                    ConsoleLogHelper.State("AI MODEL / HTTP", "Model and class list loaded / HOST=" + _context.AiControlAgentIpState + " / PORT=5101 / COUNT=" + models.Count + " / CLASS_COUNT=" + models.Sum(model => model.Classes.Count));
 
                     return true;
                 }
@@ -1339,9 +1339,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<bool> RequestAiDetectorMappingSetAsync()
         {
-            byte[] packet = _context._aiPacketBuilder.BuildRtspOnnxMappingSetRequest(_context.AiRtsp0OnnxIndex, _context.AiRtsp1OnnxIndex, _context.AiMappingConfidence, _context.AiMappingIou);
+            byte[] packet = _context.AiPacketBuilder.BuildRtspOnnxMappingSetRequest(_context.AiRtsp0OnnxIndex, _context.AiRtsp1OnnxIndex, _context.AiMappingConfidence, _context.AiMappingIou);
 
-            return await _context._aiDetectorClientService.SendAsync(packet);
+            return await _context.AiDetectorClientService.SendAsync(packet);
         }
 
         /// <summary>
@@ -1349,9 +1349,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<bool> RequestAiDetectorMappingAsync()
         {
-            byte[] packet = _context._aiPacketBuilder.BuildRtspOnnxMappingRequest();
+            byte[] packet = _context.AiPacketBuilder.BuildRtspOnnxMappingRequest();
 
-            return await _context._aiDetectorClientService.SendAsync(packet);
+            return await _context.AiDetectorClientService.SendAsync(packet);
         }
 
         /// <summary>
@@ -1359,9 +1359,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<bool> RequestAiDetectorRtspVideoSizeAsync(int rtspIndex)
         {
-            byte[] packet = _context._aiPacketBuilder.BuildRtspVideoSizeRequest(rtspIndex);
+            byte[] packet = _context.AiPacketBuilder.BuildRtspVideoSizeRequest(rtspIndex);
 
-            bool sent = await _context._aiDetectorClientService.SendAsync(packet);
+            bool sent = await _context.AiDetectorClientService.SendAsync(packet);
 
             ConsoleLogHelper.Command("AI RTSP VIDEO SIZE", $"CMD=07 / INDEX={rtspIndex} / SENT={sent}");
 
@@ -1434,7 +1434,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 string key = GetAiEventKey(rtspIndex, previousBox);
 
-                if (!merged.ContainsKey(key) && _context._activeAiEvents.ContainsKey(key))
+                if (!merged.ContainsKey(key) && _context.ActiveAiEvents.ContainsKey(key))
                 {
                     merged[key] = previousBox;
                 }
@@ -1466,7 +1466,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.NotifyFireSmokeWarningStateChanged(rtspIndex);
 
 #if DEBUG
-            int channelEventCount = _context._activeAiEvents.Count(item => item.Value.RtspIndex == rtspIndex);
+            int channelEventCount = _context.ActiveAiEvents.Count(item => item.Value.RtspIndex == rtspIndex);
 
             if (targetBoxes.Count != channelEventCount)
             {
@@ -1575,7 +1575,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 eoBoxCount = _context.EoDetectionBoxes.Count;
                 irBoxCount = _context.IrDetectionBoxes.Count;
-                activeEventCount = _context._activeAiEvents.Count;
+                activeEventCount = _context.ActiveAiEvents.Count;
 
                 _context.EoDetectionBoxes.Clear();
 
@@ -1592,7 +1592,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 DateTime clearedTime = DateTime.Now;
 
-                foreach (AiEventTrack activeTrack in _context._activeAiEvents.Values.ToList())
+                foreach (AiEventTrack activeTrack in _context.ActiveAiEvents.Values.ToList())
                 {
                     FireEventRecord activeEvent = activeTrack.Event;
 
@@ -1611,7 +1611,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                 }
 
-                _context._activeAiEvents.Clear();
+                _context.ActiveAiEvents.Clear();
 
                 _context.ActiveAiCount = 0;
 
@@ -1726,12 +1726,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool CanPrintAiDetectorLog()
         {
-            if ((DateTime.Now - _context._lastAiDetectorLogTime).TotalSeconds < AiDetectorLogIntervalSeconds)
+            if ((DateTime.Now - _context.LastAiDetectorLogTime).TotalSeconds < AiDetectorLogIntervalSeconds)
             {
                 return false;
             }
 
-            _context._lastAiDetectorLogTime = DateTime.Now;
+            _context.LastAiDetectorLogTime = DateTime.Now;
 
             return true;
         }

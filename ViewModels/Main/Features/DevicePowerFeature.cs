@@ -13,15 +13,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>장비 전원 상태에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IDevicePowerFeatureContext
     {
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
-        string _eoStatusText { get; set; }
+        string EoStatusText { get; set; }
 
-        string _irStatusText { get; set; }
+        string IrStatusText { get; set; }
 
-        ITcpClientServicePort _laTcpService { get; }
+        ITcpClientServicePort LaTcpService { get; }
 
-        ControlAgentProfileOption _requestedControlProfile { get; set; }
+        ControlAgentProfileOption RequestedControlProfile { get; set; }
 
         string ControlAgentConnectionStatusText { get; set; }
 
@@ -357,7 +357,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return "UNKNOWN";
             }
 
-            if (!_context.IsGpsTabVisible && (camera == "IR" ? _context._irStatusText : _context._eoStatusText) == "[" + camera + "] Connected")
+            if (!_context.IsGpsTabVisible && (camera == "IR" ? _context.IrStatusText : _context.EoStatusText) == "[" + camera + "] Connected")
             {
                 return "ON";
             }
@@ -523,14 +523,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (_context._laTcpService == null || !_context._laTcpService.IsConnected)
+            if (_context.LaTcpService == null || !_context.LaTcpService.IsConnected)
             {
                 ConsoleLogHelper.Warning("DEVICE POWER", deviceName + " " + (turnOn ? "ON" : "OFF") + " rejected / Control Agent is not connected");
 
                 return;
             }
 
-            if (_context._controlCommandService == null)
+            if (_context.ControlCommandService == null)
             {
                 ConsoleLogHelper.Warning("DEVICE POWER", "EO/IR power control service is not initialized");
 
@@ -539,7 +539,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             try
             {
-                bool sent = _context._controlCommandService.SetDevicePower(deviceCode, turnOn);
+                bool sent = _context.ControlCommandService.SetDevicePower(deviceCode, turnOn);
 
                 if (!sent)
                 {
@@ -706,7 +706,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _connectedControlAgentProfile = _context._requestedControlProfile ?? _context.SelectedControlAgentProfile;
+            _connectedControlAgentProfile = _context.RequestedControlProfile ?? _context.SelectedControlAgentProfile;
 
             _connectedControlAgentEndpoint = _context.SessionControlIp + ":" + _context.SessionControlPort;
 
@@ -746,7 +746,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool pendingChanged = false;
 
-            if (_eoPowerCommandPending && ((!_context.IsGpsTabVisible && _context.IsSelectedConnectionTarget && _eoPowerCommandTargetOn && _context._eoStatusText == "[EO] Connected") || DateTime.Now - _eoPowerCommandSentAt >= DevicePowerCommandTimeout))
+            if (_eoPowerCommandPending && ((!_context.IsGpsTabVisible && _context.IsSelectedConnectionTarget && _eoPowerCommandTargetOn && _context.EoStatusText == "[EO] Connected") || DateTime.Now - _eoPowerCommandSentAt >= DevicePowerCommandTimeout))
             {
                 if (!_context.IsGpsTabVisible && _context.IsSelectedConnectionTarget && _eoPowerCommandTargetOn && _context.CurrentEoPowerText == "ON")
                 {
@@ -762,7 +762,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 pendingChanged = true;
             }
 
-            if (_irPowerCommandPending && ((!_context.IsGpsTabVisible && _context.IsSelectedConnectionTarget && _irPowerCommandTargetOn && _context._irStatusText == "[IR] Connected") || DateTime.Now - _irPowerCommandSentAt >= DevicePowerCommandTimeout))
+            if (_irPowerCommandPending && ((!_context.IsGpsTabVisible && _context.IsSelectedConnectionTarget && _irPowerCommandTargetOn && _context.IrStatusText == "[IR] Connected") || DateTime.Now - _irPowerCommandSentAt >= DevicePowerCommandTimeout))
             {
                 if (!_context.IsGpsTabVisible && _context.IsSelectedConnectionTarget && _irPowerCommandTargetOn && _context.CurrentIrPowerText == "ON")
                 {

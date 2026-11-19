@@ -11,33 +11,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>영상 계측에 필요한 누적 카운터와 시나리오만 읽는다. 연결·프레임 출력·장비 제어는 요청할 수 없다.</summary>
     internal interface IVideoPerformanceContext
     {
-        ref long _focusPropertyChangedCount { get; }
+        ref long FocusPropertyChangedCount { get; }
 
-        ref long _function01ReceiveCount { get; }
+        ref long Function01ReceiveCount { get; }
 
-        ref long _panPropertyChangedCount { get; }
+        ref long PanPropertyChangedCount { get; }
 
-        ref long _panStartTxCount { get; }
+        ref long PanStartTxCount { get; }
 
-        ref long _panStopTxCount { get; }
+        ref long PanStopTxCount { get; }
 
-        ref long _propertyChangedCount { get; }
+        ref long PropertyChangedCount { get; }
 
-        ref long _ptzfStatusUpdateCount { get; }
+        ref long PtzfStatusUpdateCount { get; }
 
-        string _ptzPerformanceScenario { get; set; }
+        string PtzPerformanceScenario { get; set; }
 
-        ref long _tiltPropertyChangedCount { get; }
+        ref long TiltPropertyChangedCount { get; }
 
-        ref long _tiltStartTxCount { get; }
+        ref long TiltStartTxCount { get; }
 
-        ref long _tiltStopTxCount { get; }
+        ref long TiltStopTxCount { get; }
 
-        ref long _zoomPropertyChangedCount { get; }
+        ref long ZoomPropertyChangedCount { get; }
 
-        ref long _zoomStartTxCount { get; }
+        ref long ZoomStartTxCount { get; }
 
-        ref long _zoomStopTxCount { get; }
+        ref long ZoomStopTxCount { get; }
     }
 
     /// <summary>채널별 수신·출력 계측 상태와 진단 로그 집계를 보관한다. 기존 주기·계산식·로그 항목을 유지한다.</summary>
@@ -284,39 +284,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 double scaleMaxMs = d.ScaleMaxTicks * 1000.0 / Stopwatch.Frequency;
 
-                long function01 = Interlocked.Read(ref _context._function01ReceiveCount);
+                long function01 = Interlocked.Read(ref _context.Function01ReceiveCount);
 
-                long ptzfStatus = Interlocked.Read(ref _context._ptzfStatusUpdateCount);
+                long ptzfStatus = Interlocked.Read(ref _context.PtzfStatusUpdateCount);
 
-                long propertyChanged = Interlocked.Read(ref _context._propertyChangedCount);
+                long propertyChanged = Interlocked.Read(ref _context.PropertyChangedCount);
 
-                long panChanged = Interlocked.Read(ref _context._panPropertyChangedCount);
+                long panChanged = Interlocked.Read(ref _context.PanPropertyChangedCount);
 
-                long tiltChanged = Interlocked.Read(ref _context._tiltPropertyChangedCount);
+                long tiltChanged = Interlocked.Read(ref _context.TiltPropertyChangedCount);
 
-                long zoomChanged = Interlocked.Read(ref _context._zoomPropertyChangedCount);
+                long zoomChanged = Interlocked.Read(ref _context.ZoomPropertyChangedCount);
 
-                long focusChanged = Interlocked.Read(ref _context._focusPropertyChangedCount);
+                long focusChanged = Interlocked.Read(ref _context.FocusPropertyChangedCount);
 
                 long logWrites = ConsoleLogHelper.TotalWriteCount;
 
-                long panStartTx = Interlocked.Read(ref _context._panStartTxCount);
+                long panStartTx = Interlocked.Read(ref _context.PanStartTxCount);
 
-                long panStopTx = Interlocked.Read(ref _context._panStopTxCount);
+                long panStopTx = Interlocked.Read(ref _context.PanStopTxCount);
 
-                long tiltStartTx = Interlocked.Read(ref _context._tiltStartTxCount);
+                long tiltStartTx = Interlocked.Read(ref _context.TiltStartTxCount);
 
-                long tiltStopTx = Interlocked.Read(ref _context._tiltStopTxCount);
+                long tiltStopTx = Interlocked.Read(ref _context.TiltStopTxCount);
 
-                long zoomStartTx = Interlocked.Read(ref _context._zoomStartTxCount);
+                long zoomStartTx = Interlocked.Read(ref _context.ZoomStartTxCount);
 
-                long zoomStopTx = Interlocked.Read(ref _context._zoomStopTxCount);
+                long zoomStopTx = Interlocked.Read(ref _context.ZoomStopTxCount);
 
                 // 2026-09-18: Capture Thread에서 동기 파일 로그를 쓰면 다음 Frame
                 // 표시 예약이 늦어진다. 문자열을 확정한 뒤 실제 I/O만 ThreadPool로 넘긴다.
                 string performanceCategory = "RTSP PERF " + streamName;
 
-                string performanceMessage = $"SCENARIO={_context._ptzPerformanceScenario} / RTSP_BITRATE_MBPS={d.PacketBytes * 8.0 / seconds / 1000000.0:F2} / PACKET_RATE={d.PacketCount / seconds:F1} / " + $"READ_FRAME_AVG_MS={readAvgMs:F1} / READ_FRAME_MAX_MS={readMaxMs:F1} / RX_FPS={performance.Received / seconds:F1} / DECODE_FPS={performance.Received / seconds:F1} / " + $"DECODE_AVG_MS={decodeAvgMs:F1} / DECODE_MAX_MS={decodeMaxMs:F1} / SWS_SCALE_AVG_MS={scaleAvgMs:F1} / SWS_SCALE_MAX_MS={scaleMaxMs:F1} / " + $"DISPLAY_FPS={performance.Displayed / seconds:F1} / DISPLAY_DROP={performance.DisplayDropped} / " + $"DISPLAY_QUEUE_REPLACE={performance.DisplayQueueReplaced} / UI_DISPATCH_WAIT_AVG_MS={dispatchMs:F1} / UI_DISPATCH_WAIT_MAX_MS={dispatchMaxMs:F1} / " + $"JITTER_BUFFER_DEPTH={performance.JitterBufferCurrentDepth} / JITTER_BUFFER_MAX={performance.JitterBufferMaximumDepth} / " + $"JITTER_BUFFER_UNDERRUN={performance.JitterBufferUnderrun} / JITTER_BUFFER_DROP={performance.JitterBufferDropped} / " + $"FRAME_COPY_AVG_MS={frameCopyMs:F1} / FRAME_COPY_MAX_MS={frameCopyMaxMs:F1} / DISPLAY_INTERVAL_AVG_MS={intervalAverageMs:F1} / " + $"DISPLAY_INTERVAL_MAX_MS={intervalMaximumMs:F1} / FRAME_AGE_AVG_MS={frameAgeMs:F1} / FRAME_AGE_MAX_MS={frameAgeMaxMs:F1} / " + $"DECODE_INTERVAL_AVG_MS={decodeIntervalAverageMs:F1} / DECODE_INTERVAL_MAX_MS={decodeIntervalMaximumMs:F1} / " + $"INPUT_STALL_70MS_COUNT={performance.InputStall70MillisecondsCount} / INPUT_STALL_80MS_COUNT={performance.InputStall80MillisecondsCount} / " + $"INPUT_STALL_100MS_COUNT={performance.InputStall100MillisecondsCount} / DISPLAY_STALL_50MS_COUNT={performance.DisplayStall50MillisecondsCount} / " + $"DISPLAY_STALL_60MS_COUNT={performance.DisplayStall60MillisecondsCount} / DISPLAY_STALL_70MS_COUNT={performance.DisplayStall70MillisecondsCount} / " + $"SOURCE_PTS={performance.LastFramePts} / SOURCE_DTS={performance.LastFrameDts} / PTS_DELTA_AVG_MS={timestampDeltaAverageMs:F2} / " + $"PTS_DELTA_MAX_MS={performance.TimestampDeltaMaximumMilliseconds:F2} / PTS_MISSING={performance.TimestampMissingCount} / " + $"PTS_NON_MONOTONIC={performance.TimestampNonMonotonicCount} / SAMPLE_DIFF_AVG={sampleDifferenceAverage:F2} / " + $"EXACT_DUPLICATE_FRAMES={performance.ExactDuplicateFrameCount} / MAX_CONSECUTIVE_DUPLICATE_FRAMES={performance.MaximumConsecutiveDuplicateFrameCount} / " + $"NEAR_STATIC_FRAMES={performance.NearStaticFrameCount} / " + $"FUNCTION_01_RX_COUNT={function01 - performance.LastFunction01Count} / PTZF_STATUS_UPDATE_COUNT={ptzfStatus - performance.LastPtzfStatusCount} / " + $"PROPERTY_CHANGED_COUNT={propertyChanged - performance.LastPropertyChangedCount} / PAN_PROPERTY_CHANGED_COUNT={panChanged - performance.LastPanPropertyChangedCount} / " + $"TILT_PROPERTY_CHANGED_COUNT={tiltChanged - performance.LastTiltPropertyChangedCount} / ZOOM_PROPERTY_CHANGED_COUNT={zoomChanged - performance.LastZoomPropertyChangedCount} / " + $"FOCUS_PROPERTY_CHANGED_COUNT={focusChanged - performance.LastFocusPropertyChangedCount} / LOG_WRITE_COUNT={logWrites - performance.LastLogWriteCount} / " + $"PAN_START_TX_COUNT={panStartTx - performance.LastPanStartTxCount} / PAN_STOP_TX_COUNT={panStopTx - performance.LastPanStopTxCount} / " + $"TILT_START_TX_COUNT={tiltStartTx - performance.LastTiltStartTxCount} / TILT_STOP_TX_COUNT={tiltStopTx - performance.LastTiltStopTxCount} / " + $"ZOOM_START_TX_COUNT={zoomStartTx - performance.LastZoomStartTxCount} / ZOOM_STOP_TX_COUNT={zoomStopTx - performance.LastZoomStopTxCount} / " + $"DETECT_MS={detectionMs:F1} / CONVERT_MS={convertMs:F1} / " + $"LAST_FRAME_MS={performance.LastFrame.ElapsedMilliseconds} / " + $"GC={gen0 - performance.LastGen0},{gen1 - performance.LastGen1},{gen2 - performance.LastGen2}";
+                string performanceMessage = $"SCENARIO={_context.PtzPerformanceScenario} / RTSP_BITRATE_MBPS={d.PacketBytes * 8.0 / seconds / 1000000.0:F2} / PACKET_RATE={d.PacketCount / seconds:F1} / " + $"READ_FRAME_AVG_MS={readAvgMs:F1} / READ_FRAME_MAX_MS={readMaxMs:F1} / RX_FPS={performance.Received / seconds:F1} / DECODE_FPS={performance.Received / seconds:F1} / " + $"DECODE_AVG_MS={decodeAvgMs:F1} / DECODE_MAX_MS={decodeMaxMs:F1} / SWS_SCALE_AVG_MS={scaleAvgMs:F1} / SWS_SCALE_MAX_MS={scaleMaxMs:F1} / " + $"DISPLAY_FPS={performance.Displayed / seconds:F1} / DISPLAY_DROP={performance.DisplayDropped} / " + $"DISPLAY_QUEUE_REPLACE={performance.DisplayQueueReplaced} / UI_DISPATCH_WAIT_AVG_MS={dispatchMs:F1} / UI_DISPATCH_WAIT_MAX_MS={dispatchMaxMs:F1} / " + $"JITTER_BUFFER_DEPTH={performance.JitterBufferCurrentDepth} / JITTER_BUFFER_MAX={performance.JitterBufferMaximumDepth} / " + $"JITTER_BUFFER_UNDERRUN={performance.JitterBufferUnderrun} / JITTER_BUFFER_DROP={performance.JitterBufferDropped} / " + $"FRAME_COPY_AVG_MS={frameCopyMs:F1} / FRAME_COPY_MAX_MS={frameCopyMaxMs:F1} / DISPLAY_INTERVAL_AVG_MS={intervalAverageMs:F1} / " + $"DISPLAY_INTERVAL_MAX_MS={intervalMaximumMs:F1} / FRAME_AGE_AVG_MS={frameAgeMs:F1} / FRAME_AGE_MAX_MS={frameAgeMaxMs:F1} / " + $"DECODE_INTERVAL_AVG_MS={decodeIntervalAverageMs:F1} / DECODE_INTERVAL_MAX_MS={decodeIntervalMaximumMs:F1} / " + $"INPUT_STALL_70MS_COUNT={performance.InputStall70MillisecondsCount} / INPUT_STALL_80MS_COUNT={performance.InputStall80MillisecondsCount} / " + $"INPUT_STALL_100MS_COUNT={performance.InputStall100MillisecondsCount} / DISPLAY_STALL_50MS_COUNT={performance.DisplayStall50MillisecondsCount} / " + $"DISPLAY_STALL_60MS_COUNT={performance.DisplayStall60MillisecondsCount} / DISPLAY_STALL_70MS_COUNT={performance.DisplayStall70MillisecondsCount} / " + $"SOURCE_PTS={performance.LastFramePts} / SOURCE_DTS={performance.LastFrameDts} / PTS_DELTA_AVG_MS={timestampDeltaAverageMs:F2} / " + $"PTS_DELTA_MAX_MS={performance.TimestampDeltaMaximumMilliseconds:F2} / PTS_MISSING={performance.TimestampMissingCount} / " + $"PTS_NON_MONOTONIC={performance.TimestampNonMonotonicCount} / SAMPLE_DIFF_AVG={sampleDifferenceAverage:F2} / " + $"EXACT_DUPLICATE_FRAMES={performance.ExactDuplicateFrameCount} / MAX_CONSECUTIVE_DUPLICATE_FRAMES={performance.MaximumConsecutiveDuplicateFrameCount} / " + $"NEAR_STATIC_FRAMES={performance.NearStaticFrameCount} / " + $"FUNCTION_01_RX_COUNT={function01 - performance.LastFunction01Count} / PTZF_STATUS_UPDATE_COUNT={ptzfStatus - performance.LastPtzfStatusCount} / " + $"PROPERTY_CHANGED_COUNT={propertyChanged - performance.LastPropertyChangedCount} / PAN_PROPERTY_CHANGED_COUNT={panChanged - performance.LastPanPropertyChangedCount} / " + $"TILT_PROPERTY_CHANGED_COUNT={tiltChanged - performance.LastTiltPropertyChangedCount} / ZOOM_PROPERTY_CHANGED_COUNT={zoomChanged - performance.LastZoomPropertyChangedCount} / " + $"FOCUS_PROPERTY_CHANGED_COUNT={focusChanged - performance.LastFocusPropertyChangedCount} / LOG_WRITE_COUNT={logWrites - performance.LastLogWriteCount} / " + $"PAN_START_TX_COUNT={panStartTx - performance.LastPanStartTxCount} / PAN_STOP_TX_COUNT={panStopTx - performance.LastPanStopTxCount} / " + $"TILT_START_TX_COUNT={tiltStartTx - performance.LastTiltStartTxCount} / TILT_STOP_TX_COUNT={tiltStopTx - performance.LastTiltStopTxCount} / " + $"ZOOM_START_TX_COUNT={zoomStartTx - performance.LastZoomStartTxCount} / ZOOM_STOP_TX_COUNT={zoomStopTx - performance.LastZoomStopTxCount} / " + $"DETECT_MS={detectionMs:F1} / CONVERT_MS={convertMs:F1} / " + $"LAST_FRAME_MS={performance.LastFrame.ElapsedMilliseconds} / " + $"GC={gen0 - performance.LastGen0},{gen1 - performance.LastGen1},{gen2 - performance.LastGen2}";
 
                 ThreadPool.QueueUserWorkItem(_ =>
                 {

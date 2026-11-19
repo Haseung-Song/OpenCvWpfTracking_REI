@@ -13,11 +13,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>카메라 특수 기능 표시에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface ISpecialFeaturesFeatureContext
     {
-        string _connectionSessionId { get; set; }
+        string ConnectionSessionId { get; set; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        IWebAgentThermalPaletteServicePort _webAgentThermalPaletteService { get; }
+        IWebAgentThermalPaletteServicePort WebAgentThermalPaletteService { get; }
 
         bool CameraFeatureTransportReady { get; }
 
@@ -156,7 +156,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._connectionSessionId + "|" + _context.SelectedControlAgentProfile.DisplayName + "|" + _context.ControlAgentIp + "|" + _context.ControlAgentPortText;
+                return _context.ConnectionSessionId + "|" + _context.SelectedControlAgentProfile.DisplayName + "|" + _context.ControlAgentIp + "|" + _context.ControlAgentPortText;
             }
         }
 
@@ -267,7 +267,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _specialCapabilityReceived = 0;
             _specialCapabilityDeadline = DateTime.UtcNow.AddSeconds(3).Ticks;
 
-            bool eo = _context._controlCommandService.RequestCameraFeatureCapability(0), ir = _context._controlCommandService.RequestCameraFeatureCapability(1);
+            bool eo = _context.ControlCommandService.RequestCameraFeatureCapability(0), ir = _context.ControlCommandService.RequestCameraFeatureCapability(1);
 
             _specialFeatureSummary = eo && ir ? "EO / IR 지원 조회 전송 · 응답 대기" : "지원 조회 전송 실패 · 연결 확인";
 
@@ -283,13 +283,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             int epoch = _specialFeatureEpoch;
 
-            string session = _context._connectionSessionId, target = SpecialFeatureTargetKey;
+            string session = _context.ConnectionSessionId, target = SpecialFeatureTargetKey;
 
             var copy = (byte[])p.Clone();
 
             Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (epoch == _specialFeatureEpoch && session == _context._connectionSessionId && target == SpecialFeatureTargetKey && SpecialFeatureReady)
+                if (epoch == _specialFeatureEpoch && session == _context.ConnectionSessionId && target == SpecialFeatureTargetKey && SpecialFeatureReady)
                 {
                     apply(copy);
                 }
@@ -315,7 +315,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (target == 1 && paletteCapability != null)
             {
-                _context._webAgentThermalPaletteService.ApplyPaletteCapability(paletteCapability.OptionMask);
+                _context.WebAgentThermalPaletteService.ApplyPaletteCapability(paletteCapability.OptionMask);
             }
 
             EnsureSpecialFeatures();
@@ -363,7 +363,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (target == 1 && id == 0x05 && supported && valid)
             {
-                _context._webAgentThermalPaletteService.ApplyReportedPalette(value);
+                _context.WebAgentThermalPaletteService.ApplyReportedPalette(value);
             }
 
             CommandManager.InvalidateRequerySuggested();
@@ -412,7 +412,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (row.IsSemanticPalette)
             {
-                bool result = value == 0 ? _context._webAgentThermalPaletteService.SelectWhiteHot() : value == 1 ? _context._webAgentThermalPaletteService.SelectBlackHot() : _context._webAgentThermalPaletteService.SelectRainbow();
+                bool result = value == 0 ? _context.WebAgentThermalPaletteService.SelectWhiteHot() : value == 1 ? _context.WebAgentThermalPaletteService.SelectBlackHot() : _context.WebAgentThermalPaletteService.SelectRainbow();
 
                 row.MarkSent(value, result);
 
@@ -428,7 +428,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            bool sent = row.Id == 0x1D ? _context.SetDigitalZoom(row.Target == 1, value == 1) : _context._controlCommandService.SetCameraFeature(row.Id, row.Target, (byte)value);
+            bool sent = row.Id == 0x1D ? _context.SetDigitalZoom(row.Target == 1, value == 1) : _context.ControlCommandService.SetCameraFeature(row.Id, row.Target, (byte)value);
 
             row.MarkSent(value, sent);
 
@@ -461,7 +461,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            row.QuerySent(_context._controlCommandService.RequestCameraFeatureState(row.Target, row.Id));
+            row.QuerySent(_context.ControlCommandService.RequestCameraFeatureState(row.Target, row.Id));
         }
 
         /// <summary>

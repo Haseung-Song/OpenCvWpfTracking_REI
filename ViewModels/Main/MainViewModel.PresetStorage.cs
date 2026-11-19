@@ -3,7 +3,7 @@
     public partial class MainViewModel
     {
 
-        internal bool _presetStorageReady
+        internal bool PresetStorageReady
         {
             get { return _presetStorageFeature._presetStorageReady; }
             set { _presetStorageFeature._presetStorageReady = value; }

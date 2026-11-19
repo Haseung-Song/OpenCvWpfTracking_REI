@@ -18,13 +18,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>이벤트 알림 표시에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IEventAlertsFeatureContext
     {
-        List<VisionBBoxEventTrack> _activeVisionBBoxEvents { get; }
+        List<VisionBBoxEventTrack> ActiveVisionBBoxEvents { get; }
 
-        bool _isFireCsvHistoryLoaded { get; set; }
+        bool IsFireCsvHistoryLoaded { get; set; }
 
-        ref global::System.DateTime? _lastFireDetectedTime { get; }
+        ref global::System.DateTime? LastFireDetectedTime { get; }
 
-        int _nextFireEventId { get; set; }
+        int NextFireEventId { get; set; }
 
         int ActiveFireCount { get; set; }
 
@@ -451,10 +451,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (transition == "DETECTED")
             {
-                FireEventRecord testEvent = new FireEventRecord(_context._nextFireEventId++, eventTime, null, "TEST", detectionType, scoreText, Math.Max(1, objectCount), Math.Max(0, width), Math.Max(0, height), Math.Max(0, area), string.IsNullOrWhiteSpace(sourceName) ? "TEST PROGRAM" : sourceName, "ACTIVE", _context.CapturePositionSnapshot("TEST_" + detectionType + "_EVENT"));
+                FireEventRecord testEvent = new FireEventRecord(_context.NextFireEventId++, eventTime, null, "TEST", detectionType, scoreText, Math.Max(1, objectCount), Math.Max(0, width), Math.Max(0, height), Math.Max(0, area), string.IsNullOrWhiteSpace(sourceName) ? "TEST PROGRAM" : sourceName, "ACTIVE", _context.CapturePositionSnapshot("TEST_" + detectionType + "_EVENT"));
 
                 // 2026-08-26: FIRE CSV 복원 이후 테스트 프로그램에서 추가된 신규 행도 청록색으로 구분한다.
-                if (_context._isFireCsvHistoryLoaded)
+                if (_context.IsFireCsvHistoryLoaded)
                 {
                     testEvent.MarkLiveAfterCsvLoad();
                 }
@@ -465,7 +465,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 TrimEventCollection(_context.FireEvents);
 
-                _context._lastFireDetectedTime = eventTime;
+                _context.LastFireDetectedTime = eventTime;
 
                 AppendFireEventAudit(testEvent, "DETECTED");
 
@@ -507,7 +507,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void RefreshActiveFireCount()
         {
-            _context.ActiveFireCount = _activeTestFireEvents.Count + _context._activeVisionBBoxEvents.Count;
+            _context.ActiveFireCount = _activeTestFireEvents.Count + _context.ActiveVisionBBoxEvents.Count;
 
             _context.OnPropertyChanged(nameof(EventAlertHeaderText));
         }

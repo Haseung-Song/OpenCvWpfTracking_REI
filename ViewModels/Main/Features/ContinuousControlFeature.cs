@@ -11,105 +11,105 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>수동 연속 제어에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IContinuousControlFeatureContext
     {
-        RtspSourceOption _activeEoCtecSource { get; set; }
+        RtspSourceOption ActiveEoCtecSource { get; set; }
 
-        KeyboardPanTiltDirection _activePanTiltMoveDirection { get; set; }
+        KeyboardPanTiltDirection ActivePanTiltMoveDirection { get; set; }
 
-        System.Collections.Generic.Dictionary<string, RtspSourceOption> _axisCtecSources { get; }
+        System.Collections.Generic.Dictionary<string, RtspSourceOption> AxisCtecSources { get; }
 
-        long _centerDeadlineTicks { get; set; }
+        long CenterDeadlineTicks { get; set; }
 
-        RtspSourceOption _connectedEoCtecSource { get; set; }
+        RtspSourceOption ConnectedEoCtecSource { get; set; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> _controlInputs { get; }
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> ControlInputs { get; }
 
-        Services.Communication.ICtecCameraCommandServicePort _ctecCameraCommandService { get; }
+        Services.Communication.ICtecCameraCommandServicePort CtecCameraCommandService { get; }
 
-        Services.Communication.ICtecCameraResponseServicePort _ctecCameraResponseService { get; }
+        Services.Communication.ICtecCameraResponseServicePort CtecCameraResponseService { get; }
 
-        ref long _ctecEoPositionOperationGeneration { get; }
+        ref long CtecEoPositionOperationGeneration { get; }
 
-        ref global::System.Threading.CancellationTokenSource _ctecEoPositionPollingCts { get; }
+        ref global::System.Threading.CancellationTokenSource CtecEoPositionPollingCts { get; }
 
-        SemaphoreSlim _ctecEoPositionQueryLock { get; }
+        SemaphoreSlim CtecEoPositionQueryLock { get; }
 
-        byte _currentCtecEoFocusMode { get; set; }
+        byte CurrentCtecEoFocusMode { get; set; }
 
-        ushort _currentCtecEoFocusPosition { get; set; }
+        ushort CurrentCtecEoFocusPosition { get; set; }
 
-        ushort _currentCtecEoZoomPosition { get; set; }
+        ushort CurrentCtecEoZoomPosition { get; set; }
 
-        short _currentEoFocus { get; set; }
+        short CurrentEoFocus { get; set; }
 
-        short _currentEoZoom { get; set; }
+        short CurrentEoZoom { get; set; }
 
-        ushort _currentIrFocus { get; set; }
+        ushort CurrentIrFocus { get; set; }
 
-        ushort _currentIrZoom { get; set; }
+        ushort CurrentIrZoom { get; set; }
 
-        KeyboardPanTiltDirection _currentKeyboardPanTiltDirection { get; set; }
+        KeyboardPanTiltDirection CurrentKeyboardPanTiltDirection { get; set; }
 
-        ContinuousMoveType _currentMoveType { get; set; }
+        ContinuousMoveType CurrentMoveType { get; set; }
 
-        int _environmentIrManualMoveDirection { get; set; }
+        int EnvironmentIrManualMoveDirection { get; set; }
 
-        ref global::System.DateTime _environmentIrManualMoveStartedUtc { get; }
+        ref global::System.DateTime EnvironmentIrManualMoveStartedUtc { get; }
 
-        ContinuousMoveType _environmentIrManualMoveType { get; set; }
+        ContinuousMoveType EnvironmentIrManualMoveType { get; set; }
 
-        ref int _eoFocusCommandSequence { get; }
+        ref int EoFocusCommandSequence { get; }
 
-        System.Diagnostics.Stopwatch _focusLogStopwatch { get; }
+        System.Diagnostics.Stopwatch FocusLogStopwatch { get; }
 
-        int _inputEpoch { get; set; }
+        int InputEpoch { get; set; }
 
-        ref long _irLensStatusVersion { get; }
+        ref long IrLensStatusVersion { get; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        bool _isKeyboardPanLeftPressed { get; set; }
+        bool IsKeyboardPanLeftPressed { get; set; }
 
-        bool _isKeyboardPanRightPressed { get; set; }
+        bool IsKeyboardPanRightPressed { get; set; }
 
-        bool _isKeyboardTiltDownPressed { get; set; }
+        bool IsKeyboardTiltDownPressed { get; set; }
 
-        bool _isKeyboardTiltUpPressed { get; set; }
+        bool IsKeyboardTiltUpPressed { get; set; }
 
-        bool _isPanTiltMoveActive { get; set; }
+        bool IsPanTiltMoveActive { get; set; }
 
-        System.Collections.Generic.Dictionary<string, Tuple<int, int>> _issuedControlAxes { get; }
+        System.Collections.Generic.Dictionary<string, Tuple<int, int>> IssuedControlAxes { get; }
 
-        long _lastEoFocusCommandElapsedMs { get; set; }
+        long LastEoFocusCommandElapsedMs { get; set; }
 
-        string _lastEoFocusCommandName { get; set; }
+        string LastEoFocusCommandName { get; set; }
 
-        ref global::System.DateTime _lastEoFocusCommandTime { get; }
+        ref global::System.DateTime LastEoFocusCommandTime { get; }
 
-        ref long _panStopTxCount { get; }
+        ref long PanStopTxCount { get; }
 
-        ref long _panTiltStatusVersion { get; }
+        ref long PanTiltStatusVersion { get; }
 
-        bool _precisionStopUncertain { get; set; }
+        bool PrecisionStopUncertain { get; set; }
 
-        string _ptzPerformanceScenario { get; set; }
+        string PtzPerformanceScenario { get; set; }
 
-        ref long _tiltStopTxCount { get; }
+        ref long TiltStopTxCount { get; }
 
-        bool _videoCenterBusy { get; set; }
+        bool VideoCenterBusy { get; set; }
 
-        ref global::System.DateTimeOffset _zoneCtecZoomAt { get; }
+        ref global::System.DateTimeOffset ZoneCtecZoomAt { get; }
 
-        int _zoneCtecZoomEpoch { get; set; }
+        int ZoneCtecZoomEpoch { get; set; }
 
-        string _zoneCtecZoomKey { get; set; }
+        string ZoneCtecZoomKey { get; set; }
 
-        int _zoneEpoch { get; set; }
+        int ZoneEpoch { get; set; }
 
-        ref long _zoomStartTxCount { get; }
+        ref long ZoomStartTxCount { get; }
 
-        ref long _zoomStopTxCount { get; }
+        ref long ZoomStopTxCount { get; }
 
         /// <summary>
         /// 환경장비 Web Agent가 IR 상태 패킷을 보내지 않는 경우에만 사용하는 성공한 명령값 기반 UI 상태 보완이다. 실제 Function
@@ -332,7 +332,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 ClearKeyboardPanTiltPressedState();
 
-                _context._currentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
+                _context.CurrentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
 
                 return;
             }
@@ -365,13 +365,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ResetKeyboardPanTiltState()
         {
-            bool wasKeyboardMoveActive = _context._currentKeyboardPanTiltDirection != KeyboardPanTiltDirection.None;
+            bool wasKeyboardMoveActive = _context.CurrentKeyboardPanTiltDirection != KeyboardPanTiltDirection.None;
 
-            KeyboardPanTiltDirection stopDirection = _context._activePanTiltMoveDirection;
+            KeyboardPanTiltDirection stopDirection = _context.ActivePanTiltMoveDirection;
 
             ClearKeyboardPanTiltPressedState();
 
-            _context._currentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
+            _context.CurrentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
 
             if (!wasKeyboardMoveActive)
             {
@@ -385,7 +385,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (!_context._isPanTiltMoveActive)
+            if (!_context.IsPanTiltMoveActive)
             {
                 return;
             }
@@ -398,9 +398,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             StopPanTiltMoveByDirection(stopDirection);
 
-            _context._isPanTiltMoveActive = false;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
-            _context._ptzPerformanceScenario = "IDLE";
+            _context.IsPanTiltMoveActive = false;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.None;
+            _context.PtzPerformanceScenario = "IDLE";
         }
 
         /// <summary>
@@ -419,16 +419,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
             switch (key)
             {
                 case Key.Left:
-                    _context._isKeyboardPanLeftPressed = isPressed;
+                    _context.IsKeyboardPanLeftPressed = isPressed;
                     break;
                 case Key.Right:
-                    _context._isKeyboardPanRightPressed = isPressed;
+                    _context.IsKeyboardPanRightPressed = isPressed;
                     break;
                 case Key.Up:
-                    _context._isKeyboardTiltUpPressed = isPressed;
+                    _context.IsKeyboardTiltUpPressed = isPressed;
                     break;
                 case Key.Down:
-                    _context._isKeyboardTiltDownPressed = isPressed;
+                    _context.IsKeyboardTiltDownPressed = isPressed;
                     break;
             }
         }
@@ -438,10 +438,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ClearKeyboardPanTiltPressedState()
         {
-            _context._isKeyboardPanLeftPressed = false;
-            _context._isKeyboardPanRightPressed = false;
-            _context._isKeyboardTiltUpPressed = false;
-            _context._isKeyboardTiltDownPressed = false;
+            _context.IsKeyboardPanLeftPressed = false;
+            _context.IsKeyboardPanRightPressed = false;
+            _context.IsKeyboardTiltUpPressed = false;
+            _context.IsKeyboardTiltDownPressed = false;
         }
 
         /// <summary>
@@ -452,12 +452,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             KeyboardPanTiltDirection targetDirection = GetKeyboardPanTiltDirection();
 
-            if (_context._currentKeyboardPanTiltDirection == targetDirection)
+            if (_context.CurrentKeyboardPanTiltDirection == targetDirection)
             {
                 return;
             }
 
-            _context._currentKeyboardPanTiltDirection = targetDirection;
+            _context.CurrentKeyboardPanTiltDirection = targetDirection;
 
             switch (targetDirection)
             {
@@ -496,13 +496,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal KeyboardPanTiltDirection GetKeyboardPanTiltDirection()
         {
-            bool moveLeft = _context._isKeyboardPanLeftPressed && !_context._isKeyboardPanRightPressed;
+            bool moveLeft = _context.IsKeyboardPanLeftPressed && !_context.IsKeyboardPanRightPressed;
 
-            bool moveRight = _context._isKeyboardPanRightPressed && !_context._isKeyboardPanLeftPressed;
+            bool moveRight = _context.IsKeyboardPanRightPressed && !_context.IsKeyboardPanLeftPressed;
 
-            bool moveUp = _context._isKeyboardTiltUpPressed && !_context._isKeyboardTiltDownPressed;
+            bool moveUp = _context.IsKeyboardTiltUpPressed && !_context.IsKeyboardTiltDownPressed;
 
-            bool moveDown = _context._isKeyboardTiltDownPressed && !_context._isKeyboardTiltUpPressed;
+            bool moveDown = _context.IsKeyboardTiltDownPressed && !_context.IsKeyboardTiltUpPressed;
 
             if (moveLeft && moveUp)
             {
@@ -552,7 +552,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StopKeyboardPanTiltMove()
         {
-            if (!_context._isPanTiltMoveActive)
+            if (!_context.IsPanTiltMoveActive)
             {
                 return;
             }
@@ -563,11 +563,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            StopPanTiltMoveByDirection(_context._activePanTiltMoveDirection);
+            StopPanTiltMoveByDirection(_context.ActivePanTiltMoveDirection);
 
-            _context._isPanTiltMoveActive = false;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
-            _context._ptzPerformanceScenario = "IDLE";
+            _context.IsPanTiltMoveActive = false;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.None;
+            _context.PtzPerformanceScenario = "IDLE";
         }
 
         /// <summary>
@@ -580,24 +580,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 case KeyboardPanTiltDirection.PanLeft:
                 case KeyboardPanTiltDirection.PanRight:
-                    Interlocked.Increment(ref _context._panStopTxCount);
+                    Interlocked.Increment(ref _context.PanStopTxCount);
                     break;
                 case KeyboardPanTiltDirection.TiltUp:
                 case KeyboardPanTiltDirection.TiltDown:
-                    Interlocked.Increment(ref _context._tiltStopTxCount);
+                    Interlocked.Increment(ref _context.TiltStopTxCount);
                     break;
                 default:
-                    Interlocked.Increment(ref _context._panStopTxCount);
+                    Interlocked.Increment(ref _context.PanStopTxCount);
 
-                    Interlocked.Increment(ref _context._tiltStopTxCount);
+                    Interlocked.Increment(ref _context.TiltStopTxCount);
                     break;
             }
 
             // 옥상 LA 프로필은 기존 Pelco-D 전체 STOP을 유지한다.
             // 축별 0x4F 정지는 0~360 좌표계를 사용하는 Web Agent에만 적용한다.
-            if (!_context._controlCommandService.UseUnsignedWebAgentPanCoordinates && !_context._controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            if (!_context.ControlCommandService.UseUnsignedWebAgentPanCoordinates && !_context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates)
             {
-                bool laResult = _context._controlCommandService.StopMove();
+                bool laResult = _context.ControlCommandService.StopMove();
 
                 ConsoleLogHelper.State("PAN / TILT STOP", $"DIRECTION={direction} / TYPE=LA_GLOBAL / RESULT={laResult}");
 
@@ -613,23 +613,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 case KeyboardPanTiltDirection.PanLeft:
                 case KeyboardPanTiltDirection.PanRight:
                     stopType = "PAN";
-                    result = _context._controlCommandService.StopPanPositionMove();
+                    result = _context.ControlCommandService.StopPanPositionMove();
                     break;
                 case KeyboardPanTiltDirection.TiltUp:
                 case KeyboardPanTiltDirection.TiltDown:
                     stopType = "TILT";
-                    result = _context._controlCommandService.StopTiltPositionMove();
+                    result = _context.ControlCommandService.StopTiltPositionMove();
                     break;
                 case KeyboardPanTiltDirection.PanLeftTiltUp:
                 case KeyboardPanTiltDirection.PanRightTiltUp:
                 case KeyboardPanTiltDirection.PanLeftTiltDown:
                 case KeyboardPanTiltDirection.PanRightTiltDown:
                     stopType = "PAN+TILT";
-                    result = _context._controlCommandService.StopPanTiltPositionMove();
+                    result = _context.ControlCommandService.StopPanTiltPositionMove();
                     break;
                 default:
                     stopType = "GLOBAL_FALLBACK";
-                    result = _context._controlCommandService.StopMove();
+                    result = _context.ControlCommandService.StopMove();
                     break;
             }
 
@@ -720,15 +720,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _context.ClearActivePanTiltAbsoluteMove();
 
-                ConsoleLogHelper.State("PAN / TILT SPEED", $"Jog speed / UI_SPEED={_context.PanTiltSpeedLevel} / " + $"BASE_PROTOCOL_SPEED={baseProtocolSpeed} / " + $"ACTIVE_CAMERA={activeCamera} / ZOOM={standardZoom}/1000 / " + $"OPTICAL_ZOOM={opticalZoomRatio:F2}x / " + $"SCALE={speedScale:F3} / EFFECTIVE_PROTOCOL_SPEED={protocolSpeed} / " + $"MODE=GUI_ZOOM_ADAPTIVE / " + $"TRANSPORT={(_context._controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT" : "LA_AGENT")}");
+                ConsoleLogHelper.State("PAN / TILT SPEED", $"Jog speed / UI_SPEED={_context.PanTiltSpeedLevel} / " + $"BASE_PROTOCOL_SPEED={baseProtocolSpeed} / " + $"ACTIVE_CAMERA={activeCamera} / ZOOM={standardZoom}/1000 / " + $"OPTICAL_ZOOM={opticalZoomRatio:F2}x / " + $"SCALE={speedScale:F3} / EFFECTIVE_PROTOCOL_SPEED={protocolSpeed} / " + $"MODE=GUI_ZOOM_ADAPTIVE / " + $"TRANSPORT={(_context.ControlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT" : "LA_AGENT")}");
 
                 return true;
             }
 
-            bool stopResult = StopPanTiltMoveByDirection(_context._activePanTiltMoveDirection);
+            bool stopResult = StopPanTiltMoveByDirection(_context.ActivePanTiltMoveDirection);
 
-            _context._isPanTiltMoveActive = false;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
+            _context.IsPanTiltMoveActive = false;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.None;
 
             ConsoleLogHelper.Warning("PAN / TILT", "Move blocked / UI_SPEED=0 / " + $"STOP_RESULT={stopResult}");
 
@@ -746,8 +746,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.PanLeft;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.PanLeft;
 
             Console.WriteLine();
 
@@ -757,7 +757,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartPanLeft(protocolSpeed);
+            _context.ControlCommandService.StartPanLeft(protocolSpeed);
         }
 
         /// <summary>
@@ -771,8 +771,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.PanRight;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.PanRight;
 
             Console.WriteLine();
 
@@ -782,7 +782,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartPanRight(protocolSpeed);
+            _context.ControlCommandService.StartPanRight(protocolSpeed);
         }
 
         /// <summary>
@@ -796,8 +796,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.TiltUp;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.TiltUp;
 
             Console.WriteLine();
 
@@ -807,7 +807,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartTiltUp(protocolSpeed);
+            _context.ControlCommandService.StartTiltUp(protocolSpeed);
         }
 
         /// <summary>
@@ -821,8 +821,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.TiltDown;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.TiltDown;
 
             Console.WriteLine();
 
@@ -832,7 +832,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartTiltDown(protocolSpeed);
+            _context.ControlCommandService.StartTiltDown(protocolSpeed);
         }
 
         /// <summary>
@@ -845,8 +845,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.PanLeftTiltUp;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.PanLeftTiltUp;
 
             Console.WriteLine();
 
@@ -856,7 +856,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartPanLeftTiltUp(protocolSpeed, protocolSpeed);
+            _context.ControlCommandService.StartPanLeftTiltUp(protocolSpeed, protocolSpeed);
         }
 
         /// <summary>
@@ -869,8 +869,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.PanRightTiltUp;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.PanRightTiltUp;
 
             Console.WriteLine();
 
@@ -880,7 +880,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartPanRightTiltUp(protocolSpeed, protocolSpeed);
+            _context.ControlCommandService.StartPanRightTiltUp(protocolSpeed, protocolSpeed);
         }
 
         /// <summary>
@@ -893,8 +893,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.PanLeftTiltDown;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.PanLeftTiltDown;
 
             Console.WriteLine();
 
@@ -904,7 +904,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartPanLeftTiltDown(protocolSpeed, protocolSpeed);
+            _context.ControlCommandService.StartPanLeftTiltDown(protocolSpeed, protocolSpeed);
         }
 
         /// <summary>
@@ -917,8 +917,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._isPanTiltMoveActive = true;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.PanRightTiltDown;
+            _context.IsPanTiltMoveActive = true;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.PanRightTiltDown;
 
             Console.WriteLine();
 
@@ -928,7 +928,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.MarkPanTiltMoveCommandIssued();
 
-            _context._controlCommandService.StartPanRightTiltDown(protocolSpeed, protocolSpeed);
+            _context.ControlCommandService.StartPanRightTiltDown(protocolSpeed, protocolSpeed);
         }
 
         /// <summary>
@@ -953,7 +953,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 진행 중인 ABSOLUTE 목표(0x45/0x47)를 그대로 재송신한다.
             _context.ReapplyActivePanTiltAbsoluteTarget(positionSpeed);
 
-            if (!_context._isPanTiltMoveActive || _context._activePanTiltMoveDirection == KeyboardPanTiltDirection.None)
+            if (!_context.IsPanTiltMoveActive || _context.ActivePanTiltMoveDirection == KeyboardPanTiltDirection.None)
             {
                 return;
             }
@@ -965,37 +965,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool result;
 
-            switch (_context._activePanTiltMoveDirection)
+            switch (_context.ActivePanTiltMoveDirection)
             {
                 case KeyboardPanTiltDirection.PanLeft:
-                    result = _context._controlCommandService.StartPanLeft(protocolSpeed);
+                    result = _context.ControlCommandService.StartPanLeft(protocolSpeed);
                     break;
                 case KeyboardPanTiltDirection.PanRight:
-                    result = _context._controlCommandService.StartPanRight(protocolSpeed);
+                    result = _context.ControlCommandService.StartPanRight(protocolSpeed);
                     break;
                 case KeyboardPanTiltDirection.TiltUp:
-                    result = _context._controlCommandService.StartTiltUp(protocolSpeed);
+                    result = _context.ControlCommandService.StartTiltUp(protocolSpeed);
                     break;
                 case KeyboardPanTiltDirection.TiltDown:
-                    result = _context._controlCommandService.StartTiltDown(protocolSpeed);
+                    result = _context.ControlCommandService.StartTiltDown(protocolSpeed);
                     break;
                 case KeyboardPanTiltDirection.PanLeftTiltUp:
-                    result = _context._controlCommandService.StartPanLeftTiltUp(protocolSpeed, protocolSpeed);
+                    result = _context.ControlCommandService.StartPanLeftTiltUp(protocolSpeed, protocolSpeed);
                     break;
                 case KeyboardPanTiltDirection.PanRightTiltUp:
-                    result = _context._controlCommandService.StartPanRightTiltUp(protocolSpeed, protocolSpeed);
+                    result = _context.ControlCommandService.StartPanRightTiltUp(protocolSpeed, protocolSpeed);
                     break;
                 case KeyboardPanTiltDirection.PanLeftTiltDown:
-                    result = _context._controlCommandService.StartPanLeftTiltDown(protocolSpeed, protocolSpeed);
+                    result = _context.ControlCommandService.StartPanLeftTiltDown(protocolSpeed, protocolSpeed);
                     break;
                 case KeyboardPanTiltDirection.PanRightTiltDown:
-                    result = _context._controlCommandService.StartPanRightTiltDown(protocolSpeed, protocolSpeed);
+                    result = _context.ControlCommandService.StartPanRightTiltDown(protocolSpeed, protocolSpeed);
                     break;
                 default:
                     return;
             }
 
-            ConsoleLogHelper.Command("PAN / TILT SPEED", $"Updated while moving / UI_SPEED={_context.PanTiltSpeedLevel} / " + $"PROTOCOL_SPEED={protocolSpeed} / " + $"DIRECTION={_context._activePanTiltMoveDirection} / RESULT={result}");
+            ConsoleLogHelper.Command("PAN / TILT SPEED", $"Updated while moving / UI_SPEED={_context.PanTiltSpeedLevel} / " + $"PROTOCOL_SPEED={protocolSpeed} / " + $"DIRECTION={_context.ActivePanTiltMoveDirection} / RESULT={result}");
         }
 
         /// <summary>
@@ -1015,16 +1015,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: 사용자가 조작한 Lens 채널을 PT 감쇄 기준과 UI 표시에 즉시 반영한다.
             SetActivePanTiltZoomSource(false);
 
-            _context._ptzPerformanceScenario = "ZOOM_IN";
+            _context.PtzPerformanceScenario = "ZOOM_IN";
 
-            Interlocked.Increment(ref _context._zoomStartTxCount);
+            Interlocked.Increment(ref _context.ZoomStartTxCount);
 
             /*
              * Zoom 동작 시 카메라가 Focus를 자동 변경할 수 있으므로
              * 다음 Focus 입력은 새 상태값에서 다시 시작하도록 초기화한다.
              */
-            _context._lastEoFocusCommandTime = DateTime.MinValue;
-            _context._currentMoveType = ContinuousMoveType.EoZoom;
+            _context.LastEoFocusCommandTime = DateTime.MinValue;
+            _context.CurrentMoveType = ContinuousMoveType.EoZoom;
 
             Console.WriteLine();
 
@@ -1036,28 +1036,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
             {
-                _context._activeEoCtecSource = ctecSource;
+                _context.ActiveEoCtecSource = ctecSource;
 
                 Console.WriteLine("[CONTROL] EO ZOOM ROUTE : CTEC CGI DIRECT");
 
-                result = await _context._ctecCameraCommandService.StartZoomTeleAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
+                result = await _context.CtecCameraCommandService.StartZoomTeleAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
 
                 if (!result)
                 {
-                    _context._activeEoCtecSource = null;
+                    _context.ActiveEoCtecSource = null;
 
                     Console.WriteLine("[CONTROL] EO ZOOM CTEC FAILED; FALLBACK : CONTROL AGENT");
 
-                    result = _context._controlCommandService.StartEoZoomTele();
+                    result = _context.ControlCommandService.StartEoZoomTele();
                 }
             }
             else
             {
-                _context._activeEoCtecSource = null;
+                _context.ActiveEoCtecSource = null;
 
                 Console.WriteLine("[CONTROL] EO ZOOM ROUTE : CONTROL AGENT");
 
-                result = _context._controlCommandService.StartEoZoomTele();
+                result = _context.ControlCommandService.StartEoZoomTele();
             }
 
             Console.WriteLine($"[CONTROL] EO ZOOM TELE SEND RESULT : {result}");
@@ -1066,15 +1066,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            if (result && _context._activeEoCtecSource != null)
+            if (result && _context.ActiveEoCtecSource != null)
             {
-                StartCtecEoPositionPolling(ContinuousMoveType.EoZoom, _context._activeEoCtecSource);
+                StartCtecEoPositionPolling(ContinuousMoveType.EoZoom, _context.ActiveEoCtecSource);
             }
 
-            if (!result && _context._currentMoveType == ContinuousMoveType.EoZoom)
+            if (!result && _context.CurrentMoveType == ContinuousMoveType.EoZoom)
             {
-                _context._currentMoveType = ContinuousMoveType.None;
-                _context._activeEoCtecSource = null;
+                _context.CurrentMoveType = ContinuousMoveType.None;
+                _context.ActiveEoCtecSource = null;
             }
         }
 
@@ -1094,16 +1094,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             SetActivePanTiltZoomSource(false);
 
-            _context._ptzPerformanceScenario = "ZOOM_OUT";
+            _context.PtzPerformanceScenario = "ZOOM_OUT";
 
-            Interlocked.Increment(ref _context._zoomStartTxCount);
+            Interlocked.Increment(ref _context.ZoomStartTxCount);
 
             /*
              * Zoom 동작 시 카메라가 Focus를 자동 변경할 수 있으므로
              * 다음 Focus 입력은 새 상태값에서 다시 시작하도록 초기화한다.
              */
-            _context._lastEoFocusCommandTime = DateTime.MinValue;
-            _context._currentMoveType = ContinuousMoveType.EoZoom;
+            _context.LastEoFocusCommandTime = DateTime.MinValue;
+            _context.CurrentMoveType = ContinuousMoveType.EoZoom;
 
             Console.WriteLine();
 
@@ -1115,28 +1115,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
             {
-                _context._activeEoCtecSource = ctecSource;
+                _context.ActiveEoCtecSource = ctecSource;
 
                 Console.WriteLine("[CONTROL] EO ZOOM ROUTE : CTEC CGI DIRECT");
 
-                result = await _context._ctecCameraCommandService.StartZoomWideAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
+                result = await _context.CtecCameraCommandService.StartZoomWideAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
 
                 if (!result)
                 {
-                    _context._activeEoCtecSource = null;
+                    _context.ActiveEoCtecSource = null;
 
                     Console.WriteLine("[CONTROL] EO ZOOM CTEC FAILED; FALLBACK : CONTROL AGENT");
 
-                    result = _context._controlCommandService.StartEoZoomWide();
+                    result = _context.ControlCommandService.StartEoZoomWide();
                 }
             }
             else
             {
-                _context._activeEoCtecSource = null;
+                _context.ActiveEoCtecSource = null;
 
                 Console.WriteLine("[CONTROL] EO ZOOM ROUTE : CONTROL AGENT");
 
-                result = _context._controlCommandService.StartEoZoomWide();
+                result = _context.ControlCommandService.StartEoZoomWide();
             }
 
             Console.WriteLine($"[CONTROL] EO ZOOM WIDE SEND RESULT : {result}");
@@ -1145,15 +1145,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            if (result && _context._activeEoCtecSource != null)
+            if (result && _context.ActiveEoCtecSource != null)
             {
-                StartCtecEoPositionPolling(ContinuousMoveType.EoZoom, _context._activeEoCtecSource);
+                StartCtecEoPositionPolling(ContinuousMoveType.EoZoom, _context.ActiveEoCtecSource);
             }
 
-            if (!result && _context._currentMoveType == ContinuousMoveType.EoZoom)
+            if (!result && _context.CurrentMoveType == ContinuousMoveType.EoZoom)
             {
-                _context._currentMoveType = ContinuousMoveType.None;
-                _context._activeEoCtecSource = null;
+                _context.CurrentMoveType = ContinuousMoveType.None;
+                _context.ActiveEoCtecSource = null;
             }
         }
 
@@ -1176,20 +1176,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (_context._currentMoveType != ContinuousMoveType.None)
+            if (_context.CurrentMoveType != ContinuousMoveType.None)
             {
                 return;
             }
 
-            int sequence = Interlocked.Increment(ref _context._eoFocusCommandSequence);
+            int sequence = Interlocked.Increment(ref _context.EoFocusCommandSequence);
 
-            _context._lastEoFocusCommandName = "NEAR";
-            _context._lastEoFocusCommandElapsedMs = _context._focusLogStopwatch.ElapsedMilliseconds;
-            _context._currentMoveType = ContinuousMoveType.EoFocus;
+            _context.LastEoFocusCommandName = "NEAR";
+            _context.LastEoFocusCommandElapsedMs = _context.FocusLogStopwatch.ElapsedMilliseconds;
+            _context.CurrentMoveType = ContinuousMoveType.EoFocus;
 
             Console.WriteLine();
 
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"NEAR START / " + $"ELAPSED={_context._lastEoFocusCommandElapsedMs}ms / " + $"CURRENT={_context._currentEoFocus}");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"NEAR START / " + $"ELAPSED={_context.LastEoFocusCommandElapsedMs}ms / " + $"CURRENT={_context.CurrentEoFocus}");
 
             ConsoleLogHelper.PrintLine();
 
@@ -1197,41 +1197,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
             {
-                _context._activeEoCtecSource = ctecSource;
+                _context.ActiveEoCtecSource = ctecSource;
 
                 Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CTEC CGI DIRECT");
 
-                result = await _context._ctecCameraCommandService.StartFocusNearAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
+                result = await _context.CtecCameraCommandService.StartFocusNearAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
 
                 if (!result)
                 {
-                    _context._activeEoCtecSource = null;
+                    _context.ActiveEoCtecSource = null;
 
                     Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
 
-                    result = _context._controlCommandService.StartEoFocusNear();
+                    result = _context.ControlCommandService.StartEoFocusNear();
                 }
             }
             else
             {
-                _context._activeEoCtecSource = null;
+                _context.ActiveEoCtecSource = null;
 
                 Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CONTROL AGENT");
 
-                result = _context._controlCommandService.StartEoFocusNear();
+                result = _context.ControlCommandService.StartEoFocusNear();
             }
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"SEND RESULT={result}");
 
-            if (result && _context._activeEoCtecSource != null)
+            if (result && _context.ActiveEoCtecSource != null)
             {
-                StartCtecEoPositionPolling(ContinuousMoveType.EoFocus, _context._activeEoCtecSource);
+                StartCtecEoPositionPolling(ContinuousMoveType.EoFocus, _context.ActiveEoCtecSource);
             }
 
-            if (!result && _context._currentMoveType == ContinuousMoveType.EoFocus)
+            if (!result && _context.CurrentMoveType == ContinuousMoveType.EoFocus)
             {
-                _context._currentMoveType = ContinuousMoveType.None;
-                _context._activeEoCtecSource = null;
+                _context.CurrentMoveType = ContinuousMoveType.None;
+                _context.ActiveEoCtecSource = null;
             }
         }
 
@@ -1254,20 +1254,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (_context._currentMoveType != ContinuousMoveType.None)
+            if (_context.CurrentMoveType != ContinuousMoveType.None)
             {
                 return;
             }
 
-            int sequence = Interlocked.Increment(ref _context._eoFocusCommandSequence);
+            int sequence = Interlocked.Increment(ref _context.EoFocusCommandSequence);
 
-            _context._lastEoFocusCommandName = "FAR";
-            _context._lastEoFocusCommandElapsedMs = _context._focusLogStopwatch.ElapsedMilliseconds;
-            _context._currentMoveType = ContinuousMoveType.EoFocus;
+            _context.LastEoFocusCommandName = "FAR";
+            _context.LastEoFocusCommandElapsedMs = _context.FocusLogStopwatch.ElapsedMilliseconds;
+            _context.CurrentMoveType = ContinuousMoveType.EoFocus;
 
             Console.WriteLine();
 
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"FAR START / " + $"ELAPSED={_context._lastEoFocusCommandElapsedMs}ms / " + $"CURRENT={_context._currentEoFocus}");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"FAR START / " + $"ELAPSED={_context.LastEoFocusCommandElapsedMs}ms / " + $"CURRENT={_context.CurrentEoFocus}");
 
             ConsoleLogHelper.PrintLine();
 
@@ -1275,41 +1275,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
             {
-                _context._activeEoCtecSource = ctecSource;
+                _context.ActiveEoCtecSource = ctecSource;
 
                 Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CTEC CGI DIRECT");
 
-                result = await _context._ctecCameraCommandService.StartFocusFarAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
+                result = await _context.CtecCameraCommandService.StartFocusFarAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps, RooftopMr300EoCtecControlSpeed);
 
                 if (!result)
                 {
-                    _context._activeEoCtecSource = null;
+                    _context.ActiveEoCtecSource = null;
 
                     Console.WriteLine("[CONTROL] EO FOCUS CTEC FAILED; FALLBACK : CONTROL AGENT");
 
-                    result = _context._controlCommandService.StartEoFocusFar();
+                    result = _context.ControlCommandService.StartEoFocusFar();
                 }
             }
             else
             {
-                _context._activeEoCtecSource = null;
+                _context.ActiveEoCtecSource = null;
 
                 Console.WriteLine("[CONTROL] EO FOCUS ROUTE : CONTROL AGENT");
 
-                result = _context._controlCommandService.StartEoFocusFar();
+                result = _context.ControlCommandService.StartEoFocusFar();
             }
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND #{sequence}] " + $"SEND RESULT={result}");
 
-            if (result && _context._activeEoCtecSource != null)
+            if (result && _context.ActiveEoCtecSource != null)
             {
-                StartCtecEoPositionPolling(ContinuousMoveType.EoFocus, _context._activeEoCtecSource);
+                StartCtecEoPositionPolling(ContinuousMoveType.EoFocus, _context.ActiveEoCtecSource);
             }
 
-            if (!result && _context._currentMoveType == ContinuousMoveType.EoFocus)
+            if (!result && _context.CurrentMoveType == ContinuousMoveType.EoFocus)
             {
-                _context._currentMoveType = ContinuousMoveType.None;
-                _context._activeEoCtecSource = null;
+                _context.CurrentMoveType = ContinuousMoveType.None;
+                _context.ActiveEoCtecSource = null;
             }
         }
 
@@ -1337,11 +1337,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (TryGetSelectedEoCtecSource(out RtspSourceOption ctecSource))
             {
-                result = await _context._ctecCameraCommandService.OnePushFocusAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps);
+                result = await _context.CtecCameraCommandService.OnePushFocusAsync(ctecSource.ControlIp, ctecSource.ControlUserName, ctecSource.ControlPassword, ctecSource.UseHttps);
             }
             else
             {
-                result = _context._controlCommandService.StartEoAutoFocus();
+                result = _context.ControlCommandService.StartEoAutoFocus();
             }
 
             Console.WriteLine($"[CONTROL] EO ONE PUSH FOCUS RESULT : {result}");
@@ -1368,10 +1368,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (!TryGetSelectedEoCtecSource(out RtspSourceOption sourceOption))
             {
-                _context._connectedEoCtecSource = null;
+                _context.ConnectedEoCtecSource = null;
 
                 // CTEC 수신 지원 여부는 EO 렌즈 경로이며 PT Agent 모드와 무관하다.
-                _context._ctecCameraResponseService.Stop();
+                _context.CtecCameraResponseService.Stop();
 
                 _context.OnPropertyChanged(nameof(_context.CurrentEoZoomText));
 
@@ -1380,12 +1380,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._connectedEoCtecSource = sourceOption;
+            _context.ConnectedEoCtecSource = sourceOption;
 
             // LA/WEB 상태 모드는 Control Agent 프로필에서만 선택한다.
-            _context._currentCtecEoZoomPosition = 0;
-            _context._currentCtecEoFocusPosition = 0;
-            _context._currentCtecEoFocusMode = 0;
+            _context.CurrentCtecEoZoomPosition = 0;
+            _context.CurrentCtecEoFocusPosition = 0;
+            _context.CurrentCtecEoFocusMode = 0;
 
             _context.OnPropertyChanged(nameof(_context.CurrentEoZoomText));
 
@@ -1401,7 +1401,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            await _context._ctecCameraResponseService.StartAsync(sourceOption.ControlIp, RooftopMr300EoCtecResponsePort);
+            await _context.CtecCameraResponseService.StartAsync(sourceOption.ControlIp, RooftopMr300EoCtecResponsePort);
         }
 
         /// <summary>
@@ -1428,22 +1428,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task RequestConnectedEoCtecStatusAsync()
         {
-            RtspSourceOption sourceOption = _context._connectedEoCtecSource;
+            RtspSourceOption sourceOption = _context.ConnectedEoCtecSource;
 
-            if (sourceOption == null || !_context._ctecCameraResponseService.IsConnected)
+            if (sourceOption == null || !_context.CtecCameraResponseService.IsConnected)
             {
                 return;
             }
 
-            await _context._ctecCameraCommandService.RequestZoomPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
+            await _context.CtecCameraCommandService.RequestZoomPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
 
             await Task.Delay(100);
 
-            await _context._ctecCameraCommandService.RequestFocusPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
+            await _context.CtecCameraCommandService.RequestFocusPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
 
             await Task.Delay(100);
 
-            await _context._ctecCameraCommandService.RequestFocusModeAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
+            await _context.CtecCameraCommandService.RequestFocusModeAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
         }
 
         /// <summary>
@@ -1467,7 +1467,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         ushort zoomPosition = (ushort)((packet[4] << 8) | packet[5]);
 
-                        _context._currentCtecEoZoomPosition = zoomPosition;
+                        _context.CurrentCtecEoZoomPosition = zoomPosition;
 
                         if (zoomPosition <= CtecEoZoomPositionMax)
                         {
@@ -1476,12 +1476,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         _context.MarkPresetLensEvidence(false, zoomPosition <= CtecEoZoomPositionMax, false);
 
-                        if (_context._connectedEoCtecSource != null)
+                        if (_context.ConnectedEoCtecSource != null)
                         {
-                            _context._zoneCtecZoomAt = DateTimeOffset.Now;
-                            _context._zoneCtecZoomEpoch = _context._zoneEpoch;
+                            _context.ZoneCtecZoomAt = DateTimeOffset.Now;
+                            _context.ZoneCtecZoomEpoch = _context.ZoneEpoch;
 
-                            _context._zoneCtecZoomKey = _context.ZoneKey("EO");
+                            _context.ZoneCtecZoomKey = _context.ZoneKey("EO");
                         }
 
                         _context.OnPropertyChanged(nameof(_context.CurrentEoZoomText));
@@ -1501,7 +1501,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         ushort focusPosition = (ushort)((packet[4] << 8) | packet[5]);
 
-                        _context._currentCtecEoFocusPosition = focusPosition;
+                        _context.CurrentCtecEoFocusPosition = focusPosition;
 
                         _context.MarkPresetLensEvidence(false, false, focusPosition <= CtecEoFocusPositionMax);
 
@@ -1520,9 +1520,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 case 0x38:
                     {
-                        _context._currentCtecEoFocusMode = packet[5];
+                        _context.CurrentCtecEoFocusMode = packet[5];
 
-                        string focusModeText = _context._currentCtecEoFocusMode == 0x02 ? "AUTO" : _context._currentCtecEoFocusMode == 0x03 ? "MANUAL" : $"UNKNOWN(0x{_context._currentCtecEoFocusMode:X2})";
+                        string focusModeText = _context.CurrentCtecEoFocusMode == 0x02 ? "AUTO" : _context.CurrentCtecEoFocusMode == 0x03 ? "MANUAL" : $"UNKNOWN(0x{_context.CurrentCtecEoFocusMode:X2})";
 
                         Console.WriteLine($"[CTEC RESPONSE] EO FOCUS MODE : " + $"{focusModeText}");
 
@@ -1545,11 +1545,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: IR Zoom 조작 중에는 IR 실제 줌값으로 감쇄하고 ACTIVE(IR)로 표시한다.
             SetActivePanTiltZoomSource(true);
 
-            _context._ptzPerformanceScenario = "ZOOM_IN";
+            _context.PtzPerformanceScenario = "ZOOM_IN";
 
-            Interlocked.Increment(ref _context._zoomStartTxCount);
+            Interlocked.Increment(ref _context.ZoomStartTxCount);
 
-            _context._currentMoveType = ContinuousMoveType.IrZoom;
+            _context.CurrentMoveType = ContinuousMoveType.IrZoom;
 
             Console.WriteLine();
 
@@ -1557,7 +1557,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            bool result = _context._controlCommandService.StartIrZoomTele();
+            bool result = _context.ControlCommandService.StartIrZoomTele();
 
             _context.SetDigitalEstimateDirection(result ? 1 : 0, true);
 
@@ -1571,11 +1571,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             SetActivePanTiltZoomSource(true);
 
-            _context._ptzPerformanceScenario = "ZOOM_OUT";
+            _context.PtzPerformanceScenario = "ZOOM_OUT";
 
-            Interlocked.Increment(ref _context._zoomStartTxCount);
+            Interlocked.Increment(ref _context.ZoomStartTxCount);
 
-            _context._currentMoveType = ContinuousMoveType.IrZoom;
+            _context.CurrentMoveType = ContinuousMoveType.IrZoom;
 
             Console.WriteLine();
 
@@ -1583,7 +1583,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            bool result = _context._controlCommandService.StartIrZoomWide();
+            bool result = _context.ControlCommandService.StartIrZoomWide();
 
             _context.SetDigitalEstimateDirection(result ? -1 : 0, true);
 
@@ -1595,9 +1595,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StopIrZoomMove()
         {
-            _context._ptzPerformanceScenario = "IDLE";
+            _context.PtzPerformanceScenario = "IDLE";
 
-            Interlocked.Increment(ref _context._zoomStopTxCount);
+            Interlocked.Increment(ref _context.ZoomStopTxCount);
 
             Console.WriteLine();
 
@@ -1605,13 +1605,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            bool result = _context._controlCommandService.StopIrZoom();
+            bool result = _context.ControlCommandService.StopIrZoom();
 
             _context.SetDigitalEstimateDirection(0, true);
 
             CompleteEnvironmentIrManualEstimate(ContinuousMoveType.IrZoom, result);
 
-            _context._currentMoveType = ContinuousMoveType.None;
+            _context.CurrentMoveType = ContinuousMoveType.None;
         }
 
         /// <summary>
@@ -1624,7 +1624,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._currentMoveType = ContinuousMoveType.IrFocus;
+            _context.CurrentMoveType = ContinuousMoveType.IrFocus;
 
             Console.WriteLine();
 
@@ -1635,8 +1635,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // IR FOCUS - uses this entry point. LA display position is inverted
             // from raw feedback, so only LA manual controls exchange Near/Far.
             bool result = _context.IsSelectedControlAgentWebAgent
-                ? _context._controlCommandService.StartIrFocusNear()
-                : _context._controlCommandService.StartIrFocusFar();
+                ? _context.ControlCommandService.StartIrFocusNear()
+                : _context.ControlCommandService.StartIrFocusFar();
 
             BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrFocus, +1, result);
         }
@@ -1651,7 +1651,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._currentMoveType = ContinuousMoveType.IrFocus;
+            _context.CurrentMoveType = ContinuousMoveType.IrFocus;
 
             Console.WriteLine();
 
@@ -1661,8 +1661,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             // IR FOCUS +: preserve WEB, reverse LA relative to raw feedback.
             bool result = _context.IsSelectedControlAgentWebAgent
-                ? _context._controlCommandService.StartIrFocusFar()
-                : _context._controlCommandService.StartIrFocusNear();
+                ? _context.ControlCommandService.StartIrFocusFar()
+                : _context.ControlCommandService.StartIrFocusNear();
 
             BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrFocus, -1, result);
         }
@@ -1678,11 +1678,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ConsoleLogHelper.PrintLine();
 
-            bool result = _context._controlCommandService.StopIrFocus();
+            bool result = _context.ControlCommandService.StopIrFocus();
 
             CompleteEnvironmentIrManualEstimate(ContinuousMoveType.IrFocus, result);
 
-            _context._currentMoveType = ContinuousMoveType.None;
+            _context.CurrentMoveType = ContinuousMoveType.None;
         }
 
         /// <summary>
@@ -1690,14 +1690,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void BeginEnvironmentIrManualEstimate(ContinuousMoveType moveType, int direction, bool commandResult)
         {
-            if (!commandResult || _context.SelectedEquipmentStatusMode != EquipmentStatusMode.Environment || Interlocked.Read(ref _context._irLensStatusVersion) > 0)
+            if (!commandResult || _context.SelectedEquipmentStatusMode != EquipmentStatusMode.Environment || Interlocked.Read(ref _context.IrLensStatusVersion) > 0)
             {
                 return;
             }
 
-            _context._environmentIrManualMoveType = moveType;
-            _context._environmentIrManualMoveDirection = direction;
-            _context._environmentIrManualMoveStartedUtc = DateTime.UtcNow;
+            _context.EnvironmentIrManualMoveType = moveType;
+            _context.EnvironmentIrManualMoveDirection = direction;
+            _context.EnvironmentIrManualMoveStartedUtc = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -1705,31 +1705,31 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void CompleteEnvironmentIrManualEstimate(ContinuousMoveType moveType, bool commandResult)
         {
-            if (!commandResult || _context._environmentIrManualMoveType != moveType || _context._environmentIrManualMoveStartedUtc == default(DateTime) || Interlocked.Read(ref _context._irLensStatusVersion) > 0)
+            if (!commandResult || _context.EnvironmentIrManualMoveType != moveType || _context.EnvironmentIrManualMoveStartedUtc == default(DateTime) || Interlocked.Read(ref _context.IrLensStatusVersion) > 0)
             {
                 return;
             }
 
-            double elapsedMs = Math.Max(0.0, (DateTime.UtcNow - _context._environmentIrManualMoveStartedUtc).TotalMilliseconds);
+            double elapsedMs = Math.Max(0.0, (DateTime.UtcNow - _context.EnvironmentIrManualMoveStartedUtc).TotalMilliseconds);
 
             int fullTravelMs = moveType == ContinuousMoveType.IrZoom ? EnvironmentIrZoomFullTravelMs : EnvironmentIrFocusFullTravelMs;
 
-            int delta = (int)Math.Round(elapsedMs * 1000.0 / fullTravelMs) * _context._environmentIrManualMoveDirection;
+            int delta = (int)Math.Round(elapsedMs * 1000.0 / fullTravelMs) * _context.EnvironmentIrManualMoveDirection;
 
             if (moveType == ContinuousMoveType.IrZoom)
             {
-                _context.ApplyEnvironmentIrCommandedPosition(_context._currentIrZoom + delta, null, "ENVIRONMENT MANUAL ZOOM ESTIMATE");
+                _context.ApplyEnvironmentIrCommandedPosition(_context.CurrentIrZoom + delta, null, "ENVIRONMENT MANUAL ZOOM ESTIMATE");
             }
             else
             {
-                _context.ApplyEnvironmentIrCommandedPosition(null, _context._currentIrFocus + delta, "ENVIRONMENT MANUAL FOCUS ESTIMATE");
+                _context.ApplyEnvironmentIrCommandedPosition(null, _context.CurrentIrFocus + delta, "ENVIRONMENT MANUAL FOCUS ESTIMATE");
             }
 
-            _context._environmentIrManualMoveType = ContinuousMoveType.None;
+            _context.EnvironmentIrManualMoveType = ContinuousMoveType.None;
 
-            _context._environmentIrManualMoveStartedUtc = default(DateTime);
+            _context.EnvironmentIrManualMoveStartedUtc = default(DateTime);
 
-            _context._environmentIrManualMoveDirection = 0;
+            _context.EnvironmentIrManualMoveDirection = 0;
         }
 
         /// <summary>
@@ -1737,17 +1737,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrDigitalZoomInMove()
         {
-            _context._currentMoveType = ContinuousMoveType.IrDigitalZoom;
+            _context.CurrentMoveType = ContinuousMoveType.IrDigitalZoom;
 
             Console.WriteLine();
 
             Console.WriteLine("[CONTROL] IR DIGITAL ZOOM IN START");
 
-            Console.WriteLine($"[CONTROL] Current Common Zoom : {_context._currentEoZoom}");
+            Console.WriteLine($"[CONTROL] Current Common Zoom : {_context.CurrentEoZoom}");
 
             ConsoleLogHelper.PrintLine();
 
-            _context._controlCommandService.StartIrDigitalZoomIn();
+            _context.ControlCommandService.StartIrDigitalZoomIn();
         }
 
         /// <summary>
@@ -1755,17 +1755,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartIrDigitalZoomOutMove()
         {
-            _context._currentMoveType = ContinuousMoveType.IrDigitalZoom;
+            _context.CurrentMoveType = ContinuousMoveType.IrDigitalZoom;
 
             Console.WriteLine();
 
             Console.WriteLine("[CONTROL] IR DIGITAL ZOOM OUT START");
 
-            Console.WriteLine($"[CONTROL] Current Common Zoom : {_context._currentEoZoom}");
+            Console.WriteLine($"[CONTROL] Current Common Zoom : {_context.CurrentEoZoom}");
 
             ConsoleLogHelper.PrintLine();
 
-            _context._controlCommandService.StartIrDigitalZoomOut();
+            _context.ControlCommandService.StartIrDigitalZoomOut();
         }
 
         /// <summary>
@@ -1785,11 +1785,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Console.WriteLine("[CONTROL] IR AUTO FOCUS REQUEST");
 
-            Console.WriteLine($"[CONTROL] Current Common Focus : {_context._currentEoFocus}");
+            Console.WriteLine($"[CONTROL] Current Common Focus : {_context.CurrentEoFocus}");
 
             ConsoleLogHelper.PrintLine();
 
-            _context._controlCommandService.StartIrAutoFocus();
+            _context.ControlCommandService.StartIrAutoFocus();
         }
 
         /// <summary>
@@ -1808,9 +1808,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             CancellationTokenSource pollingCts = new CancellationTokenSource();
 
-            _context._ctecEoPositionPollingCts = pollingCts;
+            _context.CtecEoPositionPollingCts = pollingCts;
 
-            long operationGeneration = Interlocked.Increment(ref _context._ctecEoPositionOperationGeneration);
+            long operationGeneration = Interlocked.Increment(ref _context.CtecEoPositionOperationGeneration);
 
             Console.WriteLine($"[CTEC POLLING] START : {moveType} / " + $"INTERVAL={CtecEoPositionPollingIntervalMs}ms");
 
@@ -1828,7 +1828,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (_context._currentMoveType != moveType || !_context._ctecCameraResponseService.IsConnected || operationGeneration != Interlocked.Read(ref _context._ctecEoPositionOperationGeneration))
+                    if (_context.CurrentMoveType != moveType || !_context.CtecCameraResponseService.IsConnected || operationGeneration != Interlocked.Read(ref _context.CtecEoPositionOperationGeneration))
                     {
                         break;
                     }
@@ -1871,7 +1871,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async Task<int?> RequestAndWaitCtecEoPositionAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, CancellationToken cancellationToken)
         {
-            await _context._ctecEoPositionQueryLock.WaitAsync(cancellationToken);
+            await _context.CtecEoPositionQueryLock.WaitAsync(cancellationToken);
 
             try
             {
@@ -1888,15 +1888,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if (moveType == ContinuousMoveType.EoZoom)
                 {
-                    responseTask = _context._ctecCameraResponseService.WaitForNextZoomPositionAsync(CtecEoPositionResponseTimeoutMs, CancellationToken.None);
+                    responseTask = _context.CtecCameraResponseService.WaitForNextZoomPositionAsync(CtecEoPositionResponseTimeoutMs, CancellationToken.None);
 
-                    inquiryResult = await _context._ctecCameraCommandService.RequestZoomPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
+                    inquiryResult = await _context.CtecCameraCommandService.RequestZoomPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
                 }
                 else if (moveType == ContinuousMoveType.EoFocus)
                 {
-                    responseTask = _context._ctecCameraResponseService.WaitForNextFocusPositionAsync(CtecEoPositionResponseTimeoutMs, CancellationToken.None);
+                    responseTask = _context.CtecCameraResponseService.WaitForNextFocusPositionAsync(CtecEoPositionResponseTimeoutMs, CancellationToken.None);
 
-                    inquiryResult = await _context._ctecCameraCommandService.RequestFocusPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
+                    inquiryResult = await _context.CtecCameraCommandService.RequestFocusPositionAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
                 }
                 else
                 {
@@ -1914,7 +1914,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             finally
             {
-                _context._ctecEoPositionQueryLock.Release();
+                _context.CtecEoPositionQueryLock.Release();
             }
         }
 
@@ -1929,7 +1929,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             for (int count = 0; count < CtecEoPositionSettleMaximumCount; count++)
             {
-                if (operationGeneration != Interlocked.Read(ref _context._ctecEoPositionOperationGeneration) || !_context._ctecCameraResponseService.IsConnected)
+                if (operationGeneration != Interlocked.Read(ref _context.CtecEoPositionOperationGeneration) || !_context.CtecCameraResponseService.IsConnected)
                 {
                     return;
                 }
@@ -1960,7 +1960,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StopCtecEoPositionPolling()
         {
-            CancellationTokenSource pollingCts = Interlocked.Exchange(ref _context._ctecEoPositionPollingCts, null);
+            CancellationTokenSource pollingCts = Interlocked.Exchange(ref _context.CtecEoPositionPollingCts, null);
 
             if (pollingCts == null)
             {
@@ -1982,19 +1982,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StopPanTiltContinuousMove()
         {
-            if (!_context._isPanTiltMoveActive)
+            if (!_context.IsPanTiltMoveActive)
             {
                 return;
             }
 
-            StopPanTiltMoveByDirection(_context._activePanTiltMoveDirection);
+            StopPanTiltMoveByDirection(_context.ActivePanTiltMoveDirection);
 
-            _context._isPanTiltMoveActive = false;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
+            _context.IsPanTiltMoveActive = false;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.None;
 
-            if (_context._currentMoveType == ContinuousMoveType.None)
+            if (_context.CurrentMoveType == ContinuousMoveType.None)
             {
-                _context._ptzPerformanceScenario = "IDLE";
+                _context.PtzPerformanceScenario = "IDLE";
             }
         }
 
@@ -2006,95 +2006,95 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             _context.CancelPanoramaPresets();
 
-            _context.StopPrecisionMotion("전체 수동 STOP", _context._precisionStopUncertain);
+            _context.StopPrecisionMotion("전체 수동 STOP", _context.PrecisionStopUncertain);
 
             _context.SetDigitalEstimateDirection(0);
 
             _context.SetDigitalEstimateDirection(0, true);
 
             // LA와 WEB AGENT 모두 절대 팬·틸트로 클릭 이동을 처리한다.
-            if (_context._videoCenterBusy || _context._centerDeadlineTicks != 0)
+            if (_context.VideoCenterBusy || _context.CenterDeadlineTicks != 0)
             {
-                _context._controlCommandService.StopPanTiltPositionMove();
+                _context.ControlCommandService.StopPanTiltPositionMove();
 
-                _context._centerDeadlineTicks = 0;
+                _context.CenterDeadlineTicks = 0;
             }
 
             // 긴급 정지는 대기 중이거나 재실행될 입력까지 무효화한다.
-            _context._axisCtecSources.TryGetValue("EZ", out RtspSourceOption zoomStopSource);
+            _context.AxisCtecSources.TryGetValue("EZ", out RtspSourceOption zoomStopSource);
 
-            _context._axisCtecSources.TryGetValue("EF", out RtspSourceOption focusStopSource);
+            _context.AxisCtecSources.TryGetValue("EF", out RtspSourceOption focusStopSource);
 
-            ++_context._inputEpoch;
+            ++_context.InputEpoch;
 
-            _context._controlInputs.Clear();
+            _context.ControlInputs.Clear();
 
-            _context._issuedControlAxes.Clear();
+            _context.IssuedControlAxes.Clear();
 
-            _context._axisCtecSources.Clear();
+            _context.AxisCtecSources.Clear();
 
-            ContinuousMoveType moveType = _context._currentMoveType;
+            ContinuousMoveType moveType = _context.CurrentMoveType;
 
             // 2026-09-28: WebAgent는 Pan/Tilt 조그 정지에 축별 0x4F를 사용한다.
             // 중앙 STOP은 현재 UI 상태가 유실된 경우에도 두 축 정지를 모두
             // 송신한 다음 기존 전체 STOP을 보내도록 하여 장비 정지를 보장한다.
             bool positionStopResult = true;
 
-            if (_context._controlCommandService.UseUnsignedWebAgentPanCoordinates || _context._controlCommandService.UseUnsignedWebAgentTiltCoordinates)
+            if (_context.ControlCommandService.UseUnsignedWebAgentPanCoordinates || _context.ControlCommandService.UseUnsignedWebAgentTiltCoordinates)
             {
-                positionStopResult = _context._controlCommandService.StopPanTiltPositionMove();
+                positionStopResult = _context.ControlCommandService.StopPanTiltPositionMove();
 
-                Interlocked.Increment(ref _context._panStopTxCount);
+                Interlocked.Increment(ref _context.PanStopTxCount);
 
-                Interlocked.Increment(ref _context._tiltStopTxCount);
+                Interlocked.Increment(ref _context.TiltStopTxCount);
             }
 
             if (moveType == ContinuousMoveType.EoZoom || moveType == ContinuousMoveType.IrZoom)
             {
-                Interlocked.Increment(ref _context._zoomStopTxCount);
+                Interlocked.Increment(ref _context.ZoomStopTxCount);
             }
 
-            RtspSourceOption activeEoCtecSource = _context._activeEoCtecSource;
+            RtspSourceOption activeEoCtecSource = _context.ActiveEoCtecSource;
 
             _context.CancelMoveControlPanOperation();
 
             StopCtecEoPositionPolling();
 
-            Interlocked.Increment(ref _context._ctecEoPositionOperationGeneration);
+            Interlocked.Increment(ref _context.CtecEoPositionOperationGeneration);
 
             ClearKeyboardPanTiltPressedState();
 
-            _context._currentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
-            _context._currentMoveType = ContinuousMoveType.None;
-            _context._isPanTiltMoveActive = false;
-            _context._activePanTiltMoveDirection = KeyboardPanTiltDirection.None;
-            _context._activeEoCtecSource = null;
+            _context.CurrentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
+            _context.CurrentMoveType = ContinuousMoveType.None;
+            _context.IsPanTiltMoveActive = false;
+            _context.ActivePanTiltMoveDirection = KeyboardPanTiltDirection.None;
+            _context.ActiveEoCtecSource = null;
 
             _context.ClearActivePanTiltAbsoluteMove();
 
-            bool tcpStopResult = _context._controlCommandService.StopMove();
+            bool tcpStopResult = _context.ControlCommandService.StopMove();
 
             bool ctecStopResult = true;
 
             if (zoomStopSource != null)
             {
-                ctecStopResult &= await _context._ctecCameraCommandService.StopZoomAsync(zoomStopSource.ControlIp, zoomStopSource.ControlUserName, zoomStopSource.ControlPassword, zoomStopSource.UseHttps);
+                ctecStopResult &= await _context.CtecCameraCommandService.StopZoomAsync(zoomStopSource.ControlIp, zoomStopSource.ControlUserName, zoomStopSource.ControlPassword, zoomStopSource.UseHttps);
             }
 
             if (focusStopSource != null)
             {
-                ctecStopResult &= await _context._ctecCameraCommandService.StopFocusAsync(focusStopSource.ControlIp, focusStopSource.ControlUserName, focusStopSource.ControlPassword, focusStopSource.UseHttps);
+                ctecStopResult &= await _context.CtecCameraCommandService.StopFocusAsync(focusStopSource.ControlIp, focusStopSource.ControlUserName, focusStopSource.ControlPassword, focusStopSource.UseHttps);
             }
 
             if (activeEoCtecSource != null)
             {
                 if (moveType == ContinuousMoveType.EoZoom)
                 {
-                    ctecStopResult = await _context._ctecCameraCommandService.StopZoomAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
+                    ctecStopResult = await _context.CtecCameraCommandService.StopZoomAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
                 }
                 else if (moveType == ContinuousMoveType.EoFocus)
                 {
-                    ctecStopResult = await _context._ctecCameraCommandService.StopFocusAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
+                    ctecStopResult = await _context.CtecCameraCommandService.StopFocusAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
                 }
             }
 
@@ -2123,7 +2123,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            _context._ptzPerformanceScenario = "IDLE";
+            _context.PtzPerformanceScenario = "IDLE";
 
             /*
              * 이동 제어 VIA 0 Pan 작업이 실행 중이면
@@ -2131,9 +2131,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
              */
             _context.CancelMoveControlPanOperation();
 
-            ContinuousMoveType moveType = _context._currentMoveType;
+            ContinuousMoveType moveType = _context.CurrentMoveType;
 
-            KeyboardPanTiltDirection panTiltDirection = _context._activePanTiltMoveDirection;
+            KeyboardPanTiltDirection panTiltDirection = _context.ActivePanTiltMoveDirection;
 
             if (moveType == ContinuousMoveType.None)
             {
@@ -2146,17 +2146,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
              */
             StopCtecEoPositionPolling();
 
-            long stopOperationGeneration = Interlocked.Increment(ref _context._ctecEoPositionOperationGeneration);
+            long stopOperationGeneration = Interlocked.Increment(ref _context.CtecEoPositionOperationGeneration);
 
             /*
              * Stop 중복 호출을 방지하기 위해
              * 실제 비동기 송신 전에 이동 상태를 먼저 초기화한다.
              */
-            _context._currentMoveType = ContinuousMoveType.None;
+            _context.CurrentMoveType = ContinuousMoveType.None;
 
-            RtspSourceOption activeEoCtecSource = _context._activeEoCtecSource;
+            RtspSourceOption activeEoCtecSource = _context.ActiveEoCtecSource;
 
-            _context._activeEoCtecSource = null;
+            _context.ActiveEoCtecSource = null;
 
             Console.WriteLine();
 
@@ -2175,11 +2175,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         if (activeEoCtecSource != null)
                         {
-                            bool stopResult = await _context._ctecCameraCommandService.StopZoomAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
+                            bool stopResult = await _context.CtecCameraCommandService.StopZoomAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
 
                             Console.WriteLine($"[CONTROL] EO CTEC ZOOM STOP RESULT : {stopResult}");
 
-                            if (waitForStatus && stopResult && _context._ctecCameraResponseService.IsConnected)
+                            if (waitForStatus && stopResult && _context.CtecCameraResponseService.IsConnected)
                             {
                                 await WaitForCtecEoPositionStableAsync(ContinuousMoveType.EoZoom, activeEoCtecSource, stopOperationGeneration);
                             }
@@ -2189,7 +2189,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                             // 2026-09-17: 실장비 로그에서 v1.8 EO Zoom 전용 STOP
                             // (00/51/01/00) 송신 후에도 Zoom 값이 계속 변하는 것을 확인했다.
                             // 장비 안전을 위해 Web Agent 구현이 확인될 때까지 검증된 전체 STOP을 사용한다.
-                            bool stopResult = _context._controlCommandService.StopMove();
+                            bool stopResult = _context.ControlCommandService.StopMove();
 
                             ConsoleLogHelper.Command("EO ZOOM STOP", $"TYPE=GLOBAL_COMPAT / PACKET=FF 01 00 00 00 00 01 / " + $"REASON=WEB_AGENT_00_51_01_00_NOT_APPLIED / RESULT={stopResult}");
 
@@ -2204,13 +2204,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 case ContinuousMoveType.EoFocus:
                     {
-                        long elapsedMs = _context._focusLogStopwatch.ElapsedMilliseconds;
+                        long elapsedMs = _context.FocusLogStopwatch.ElapsedMilliseconds;
 
-                        long commandDurationMs = elapsedMs - _context._lastEoFocusCommandElapsedMs;
+                        long commandDurationMs = elapsedMs - _context.LastEoFocusCommandElapsedMs;
 
                         Console.WriteLine();
 
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND] STOP / " + $"DIRECTION={_context._lastEoFocusCommandName} / " + $"HELD={commandDurationMs}ms / " + $"CURRENT={_context._currentEoFocus}");
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND] STOP / " + $"DIRECTION={_context.LastEoFocusCommandName} / " + $"HELD={commandDurationMs}ms / " + $"CURRENT={_context.CurrentEoFocus}");
 
                         ConsoleLogHelper.PrintLine();
 
@@ -2218,20 +2218,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         if (activeEoCtecSource != null)
                         {
-                            stopResult = await _context._ctecCameraCommandService.StopFocusAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
+                            stopResult = await _context.CtecCameraCommandService.StopFocusAsync(activeEoCtecSource.ControlIp, activeEoCtecSource.ControlUserName, activeEoCtecSource.ControlPassword, activeEoCtecSource.UseHttps);
                         }
                         else
                         {
                             // 2026-09-17: EO Zoom 전용 STOP 미적용 실장비와 동일 계열인
                             // EO Focus도 검증 전까지 전체 STOP을 사용하여 연속 구동을 방지한다.
-                            stopResult = _context._controlCommandService.StopMove();
+                            stopResult = _context.ControlCommandService.StopMove();
 
                             ConsoleLogHelper.Command("EO FOCUS STOP", $"TYPE=GLOBAL_COMPAT / PACKET=FF 01 00 00 00 00 01 / " + $"REASON=WEB_AGENT_LENS_STOP_UNVERIFIED / RESULT={stopResult}");
                         }
 
                         Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] " + $"[FOCUS COMMAND] STOP RESULT={stopResult}");
 
-                        if (waitForStatus && stopResult && activeEoCtecSource != null && _context._ctecCameraResponseService.IsConnected)
+                        if (waitForStatus && stopResult && activeEoCtecSource != null && _context.CtecCameraResponseService.IsConnected)
                         {
                             await WaitForCtecEoPositionStableAsync(ContinuousMoveType.EoFocus, activeEoCtecSource, stopOperationGeneration);
                         }
@@ -2245,7 +2245,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 case ContinuousMoveType.IrZoom:
                     {
-                        bool stopResult = _context._controlCommandService.StopIrZoom();
+                        bool stopResult = _context.ControlCommandService.StopIrZoom();
 
                         if (stopResult)
                         {
@@ -2257,7 +2257,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 case ContinuousMoveType.IrFocus:
                     {
-                        bool stopResult = _context._controlCommandService.StopIrFocus();
+                        bool stopResult = _context.ControlCommandService.StopIrFocus();
 
                         if (stopResult)
                         {
@@ -2268,7 +2268,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
 
                 case ContinuousMoveType.IrDigitalZoom:
-                    _context._controlCommandService.StopIrDigitalZoom();
+                    _context.ControlCommandService.StopIrDigitalZoom();
                     break;
             }
         }
@@ -2282,7 +2282,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             bool isIr = moveType == ContinuousMoveType.IrZoom || moveType == ContinuousMoveType.IrFocus;
 
-            long observedVersion = isIr ? Interlocked.Read(ref _context._irLensStatusVersion) : Interlocked.Read(ref _context._panTiltStatusVersion);
+            long observedVersion = isIr ? Interlocked.Read(ref _context.IrLensStatusVersion) : Interlocked.Read(ref _context.PanTiltStatusVersion);
 
             const int maximumAttempts = 6;
 
@@ -2290,12 +2290,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 await Task.Delay(100);
 
-                if (_context._currentMoveType != ContinuousMoveType.None || !_context._isDeviceConnectionRequested)
+                if (_context.CurrentMoveType != ContinuousMoveType.None || !_context.IsDeviceConnectionRequested)
                 {
                     return;
                 }
 
-                long currentVersion = isIr ? Interlocked.Read(ref _context._irLensStatusVersion) : Interlocked.Read(ref _context._panTiltStatusVersion);
+                long currentVersion = isIr ? Interlocked.Read(ref _context.IrLensStatusVersion) : Interlocked.Read(ref _context.PanTiltStatusVersion);
 
                 if (currentVersion == observedVersion)
                 {

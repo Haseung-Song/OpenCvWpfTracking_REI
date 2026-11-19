@@ -19,9 +19,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>화재·연기 구역에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IZonesFeatureContext
     {
-        RtspSourceOption _connectedEoCtecSource { get; set; }
+        RtspSourceOption ConnectedEoCtecSource { get; set; }
 
-        PositionSnapshotService _positionSnapshotService { get; }
+        PositionSnapshotService PositionSnapshotService { get; }
 
         ObservableCollection<FireEventRecord> AiDetectionEvents { get; }
 
@@ -394,9 +394,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal PositionSnapshot CaptureZonePosition()
         {
-            var p = _context._positionSnapshotService.Capture("ZONE_FRAME");
+            var p = _context.PositionSnapshotService.Capture("ZONE_FRAME");
 
-            if (_context._connectedEoCtecSource == null)
+            if (_context.ConnectedEoCtecSource == null)
             {
                 return p;
             }
@@ -415,7 +415,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async void RefreshZoneLensState()
         {
-            var source = _context._connectedEoCtecSource;
+            var source = _context.ConnectedEoCtecSource;
 
             if (source == null || System.Threading.Interlocked.CompareExchange(ref _zoneLensQueryBusy, 1, 0) != 0)
             {

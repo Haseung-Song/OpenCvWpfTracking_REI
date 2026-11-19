@@ -14,9 +14,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>파노라마 좌표 기준에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IPanoramaReferenceFeatureContext
     {
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
+        ref global::System.Tuple<double, double, long> VideoCenterPose { get; }
 
         /// <summary>
         /// 변환과 적용 번호를 같은 XML에 확정해 재시작 시 중복 보정을 방지한다.
@@ -264,16 +264,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 throw new InvalidOperationException("이전 ZERO 좌표 기준 확인 필요");
             }
 
-            bool positionStopped = _context._controlCommandService.StopPanTiltPositionMove();
+            bool positionStopped = _context.ControlCommandService.StopPanTiltPositionMove();
 
-            bool continuousStopped = _context._controlCommandService.StopMove();
+            bool continuousStopped = _context.ControlCommandService.StopMove();
 
             if (!positionStopped || !continuousStopped)
             {
                 throw new InvalidOperationException("ZERO 전 정지 명령 송신 실패");
             }
 
-            var previous = Volatile.Read(ref _context._videoCenterPose);
+            var previous = Volatile.Read(ref _context.VideoCenterPose);
 
             long ticks = previous?.Item3 ?? 0;
 
@@ -288,7 +288,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     throw new InvalidOperationException("ZERO 준비 중 연결 장비 변경");
                 }
 
-                var pose = Volatile.Read(ref _context._videoCenterPose);
+                var pose = Volatile.Read(ref _context.VideoCenterPose);
 
                 if (pose == null || pose.Item3 <= ticks || !_context.PanoramaPoseFresh)
                 {
@@ -337,7 +337,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 throw new InvalidOperationException("이전 ZERO 좌표 기준 확인 필요 / 파노라마 연동 보존");
             }
 
-            var pose = Volatile.Read(ref _context._videoCenterPose);
+            var pose = Volatile.Read(ref _context.VideoCenterPose);
 
             var ticket = new PanoramaZeroTicket
             {
@@ -404,7 +404,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                var pose = Volatile.Read(ref _context._videoCenterPose);
+                var pose = Volatile.Read(ref _context.VideoCenterPose);
 
                 if (pose != null && pose.Item3 > lastTicks && _context.PanoramaPoseFresh)
                 {

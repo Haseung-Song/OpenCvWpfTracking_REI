@@ -19,14 +19,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        Services.Communication.IControlCommandServicePort IPanoramaReferenceFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IPanoramaReferenceFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        ref global::System.Tuple<double, double, long> IPanoramaReferenceFeatureContext._videoCenterPose
+        ref global::System.Tuple<double, double, long> IPanoramaReferenceFeatureContext.VideoCenterPose
         {
-            get { return ref _features._cameraFeatureControlFeature._videoCenterPose; }
+            get { return ref _features.CameraFeatureControlFeature._videoCenterPose; }
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IPanoramaReferenceFeatureContext.ApplyZoneReferenceRebase(PanoramaZoneRebase operation)
         {
-            _features._zonesFeature.ApplyZoneReferenceRebase(operation);
+            _features.ZonesFeature.ApplyZoneReferenceRebase(operation);
         }
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IPanoramaReferenceFeatureContext.BeginZoneReferenceChange()
         {
-            _features._zonesFeature.BeginZoneReferenceChange();
+            _features.ZonesFeature.BeginZoneReferenceChange();
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IPanoramaReferenceFeatureContext.FinishZoneReferenceChange(bool notifyEditor)
         {
-            _features._zonesFeature.FinishZoneReferenceChange(notifyEditor);
+            _features.ZonesFeature.FinishZoneReferenceChange(notifyEditor);
         }
 
         /// <summary>
@@ -58,43 +58,43 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         PresetPointOption[] IPanoramaReferenceFeatureContext.GetPanoramaPresets()
         {
-            return _features._panoramaPresetsFeature.GetPanoramaPresets();
+            return _features.PanoramaPresetsFeature.GetPanoramaPresets();
         }
 
         string IPanoramaReferenceFeatureContext.HomeZeroStatusText
         {
-            get { return _features._propertiesFeature.HomeZeroStatusText; }
-            set { _features._propertiesFeature.HomeZeroStatusText = value; }
+            get { return _features.PropertiesFeature.HomeZeroStatusText; }
+            set { _features.PropertiesFeature.HomeZeroStatusText = value; }
         }
 
         bool IPanoramaReferenceFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> IPanoramaReferenceFeatureContext.LaPresetPoints
         {
-            get { return _features._propertiesFeature.LaPresetPoints; }
+            get { return _features.PropertiesFeature.LaPresetPoints; }
         }
 
         bool IPanoramaReferenceFeatureContext.PanoramaPoseFresh
         {
-            get { return _features._opticalCenterFeature.PanoramaPoseFresh; }
+            get { return _features.OpticalCenterFeature.PanoramaPoseFresh; }
         }
 
         string IPanoramaReferenceFeatureContext.PanoramaPresetContext
         {
-            get { return _features._panoramaPresetsFeature.PanoramaPresetContext; }
+            get { return _features.PanoramaPresetsFeature.PanoramaPresetContext; }
         }
 
         string IPanoramaReferenceFeatureContext.PanoramaPresetContextHash
         {
-            get { return _features._panoramaPresetsFeature.PanoramaPresetContextHash; }
+            get { return _features.PanoramaPresetsFeature.PanoramaPresetContextHash; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> IPanoramaReferenceFeatureContext.PresetPoints
         {
-            get { return _features._propertiesFeature.PresetPoints; }
+            get { return _features.PropertiesFeature.PresetPoints; }
         }
 
         /// <summary>
@@ -102,24 +102,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IPanoramaReferenceFeatureContext.SavePresetStorage()
         {
-            return _features._presetStorageFeature.SavePresetStorage();
+            return _features.PresetStorageFeature.SavePresetStorage();
         }
 
         PresetPointOption IPanoramaReferenceFeatureContext.SelectedLaPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedLaPresetPoint; }
-            set { _features._propertiesFeature.SelectedLaPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedLaPresetPoint; }
+            set { _features.PropertiesFeature.SelectedLaPresetPoint = value; }
         }
 
         PresetPointOption IPanoramaReferenceFeatureContext.SelectedPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedPresetPoint; }
-            set { _features._propertiesFeature.SelectedPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedPresetPoint; }
+            set { _features.PropertiesFeature.SelectedPresetPoint = value; }
         }
 
         string IPanoramaReferenceFeatureContext.ZoneEquipmentKey
         {
-            get { return _features._zonesFeature.ZoneEquipmentKey; }
+            get { return _features.ZonesFeature.ZoneEquipmentKey; }
         }
     }
 }

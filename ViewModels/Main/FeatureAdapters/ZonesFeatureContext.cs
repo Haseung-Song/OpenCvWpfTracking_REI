@@ -23,44 +23,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        RtspSourceOption IZonesFeatureContext._connectedEoCtecSource
+        RtspSourceOption IZonesFeatureContext.ConnectedEoCtecSource
         {
-            get { return _features._screenStateFeature._connectedEoCtecSource; }
-            set { _features._screenStateFeature._connectedEoCtecSource = value; }
+            get { return _features.ScreenStateFeature._connectedEoCtecSource; }
+            set { _features.ScreenStateFeature._connectedEoCtecSource = value; }
         }
 
-        PositionSnapshotService IZonesFeatureContext._positionSnapshotService
+        PositionSnapshotService IZonesFeatureContext.PositionSnapshotService
         {
-            get { return _features._positionFeature._positionSnapshotService; }
+            get { return _features.PositionFeature._positionSnapshotService; }
         }
 
         ObservableCollection<FireEventRecord> IZonesFeatureContext.AiDetectionEvents
         {
-            get { return _features._eventAlertsFeature.AiDetectionEvents; }
+            get { return _features.EventAlertsFeature.AiDetectionEvents; }
         }
 
         string IZonesFeatureContext.AiRtsp0Address
         {
-            get { return _features._propertiesFeature.AiRtsp0Address; }
-            set { _features._propertiesFeature.AiRtsp0Address = value; }
+            get { return _features.PropertiesFeature.AiRtsp0Address; }
+            set { _features.PropertiesFeature.AiRtsp0Address = value; }
         }
 
         string IZonesFeatureContext.AiRtsp1Address
         {
-            get { return _features._propertiesFeature.AiRtsp1Address; }
-            set { _features._propertiesFeature.AiRtsp1Address = value; }
+            get { return _features.PropertiesFeature.AiRtsp1Address; }
+            set { _features.PropertiesFeature.AiRtsp1Address = value; }
         }
 
         string IZonesFeatureContext.ControlAgentIp
         {
-            get { return _features._propertiesFeature.ControlAgentIp; }
-            set { _features._propertiesFeature.ControlAgentIp = value; }
+            get { return _features.PropertiesFeature.ControlAgentIp; }
+            set { _features.PropertiesFeature.ControlAgentIp = value; }
         }
 
         string IZonesFeatureContext.ControlAgentPortText
         {
-            get { return _features._propertiesFeature.ControlAgentPortText; }
-            set { _features._propertiesFeature.ControlAgentPortText = value; }
+            get { return _features.PropertiesFeature.ControlAgentPortText; }
+            set { _features.PropertiesFeature.ControlAgentPortText = value; }
         }
 
         /// <summary>
@@ -68,41 +68,41 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IZonesFeatureContext.ConvertIrZoomStandardToStatusPosition(int standardPosition)
         {
-            return _features._syncFeature.ConvertIrZoomStandardToStatusPosition(standardPosition);
+            return _features.SyncFeature.ConvertIrZoomStandardToStatusPosition(standardPosition);
         }
 
         BitmapSource IZonesFeatureContext.EOCameraImage
         {
-            get { return _features._propertiesFeature.EOCameraImage; }
-            set { _features._propertiesFeature.EOCameraImage = value; }
+            get { return _features.PropertiesFeature.EOCameraImage; }
+            set { _features.PropertiesFeature.EOCameraImage = value; }
         }
 
         string IZonesFeatureContext.EoConnectionStatusText
         {
-            get { return _features._propertiesFeature.EoConnectionStatusText; }
+            get { return _features.PropertiesFeature.EoConnectionStatusText; }
         }
 
         string IZonesFeatureContext.EoSourceAddress
         {
-            get { return _features._propertiesFeature.EoSourceAddress; }
-            set { _features._propertiesFeature.EoSourceAddress = value; }
+            get { return _features.PropertiesFeature.EoSourceAddress; }
+            set { _features.PropertiesFeature.EoSourceAddress = value; }
         }
 
         int IZonesFeatureContext.EoVideoHeight
         {
-            get { return _features._propertiesFeature.EoVideoHeight; }
-            set { _features._propertiesFeature.EoVideoHeight = value; }
+            get { return _features.PropertiesFeature.EoVideoHeight; }
+            set { _features.PropertiesFeature.EoVideoHeight = value; }
         }
 
         int IZonesFeatureContext.EoVideoWidth
         {
-            get { return _features._propertiesFeature.EoVideoWidth; }
-            set { _features._propertiesFeature.EoVideoWidth = value; }
+            get { return _features.PropertiesFeature.EoVideoWidth; }
+            set { _features.PropertiesFeature.EoVideoWidth = value; }
         }
 
         ObservableCollection<FireEventRecord> IZonesFeatureContext.FireEvents
         {
-            get { return _features._fireEventsFeature.FireEvents; }
+            get { return _features.FireEventsFeature.FireEvents; }
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IZonesFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         /// <summary>
@@ -118,71 +118,71 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         RtspChannelPerformance IZonesFeatureContext.GetRtspPerformance(string streamName)
         {
-            return _features._videoFeature.GetRtspPerformance(streamName);
+            return _features.VideoFeature.GetRtspPerformance(streamName);
         }
 
         BitmapSource IZonesFeatureContext.IRCameraImage
         {
-            get { return _features._propertiesFeature.IRCameraImage; }
-            set { _features._propertiesFeature.IRCameraImage = value; }
+            get { return _features.PropertiesFeature.IRCameraImage; }
+            set { _features.PropertiesFeature.IRCameraImage = value; }
         }
 
         string IZonesFeatureContext.IrConnectionStatusText
         {
-            get { return _features._propertiesFeature.IrConnectionStatusText; }
+            get { return _features.PropertiesFeature.IrConnectionStatusText; }
         }
 
         string IZonesFeatureContext.IrSourceAddress
         {
-            get { return _features._propertiesFeature.IrSourceAddress; }
-            set { _features._propertiesFeature.IrSourceAddress = value; }
+            get { return _features.PropertiesFeature.IrSourceAddress; }
+            set { _features.PropertiesFeature.IrSourceAddress = value; }
         }
 
         int IZonesFeatureContext.IrVideoHeight
         {
-            get { return _features._propertiesFeature.IrVideoHeight; }
-            set { _features._propertiesFeature.IrVideoHeight = value; }
+            get { return _features.PropertiesFeature.IrVideoHeight; }
+            set { _features.PropertiesFeature.IrVideoHeight = value; }
         }
 
         int IZonesFeatureContext.IrVideoWidth
         {
-            get { return _features._propertiesFeature.IrVideoWidth; }
-            set { _features._propertiesFeature.IrVideoWidth = value; }
+            get { return _features.PropertiesFeature.IrVideoWidth; }
+            set { _features.PropertiesFeature.IrVideoWidth = value; }
         }
 
         bool IZonesFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IZonesFeatureContext.IsPresetScanControlLocked
         {
-            get { return _features._propertiesFeature.IsPresetScanControlLocked; }
+            get { return _features.PropertiesFeature.IsPresetScanControlLocked; }
         }
 
         bool IZonesFeatureContext.IsSelectedControlAgentLaAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentLaAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentLaAgent; }
         }
 
         bool IZonesFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         ObservableCollection<PresetPointOption> IZonesFeatureContext.LaPresetPoints
         {
-            get { return _features._propertiesFeature.LaPresetPoints; }
+            get { return _features.PropertiesFeature.LaPresetPoints; }
         }
 
         System.Windows.Input.ICommand IZonesFeatureContext.MoveToLaPresetCommand
         {
-            get { return _features._propertiesFeature.MoveToLaPresetCommand; }
+            get { return _features.PropertiesFeature.MoveToLaPresetCommand; }
         }
 
         System.Windows.Input.ICommand IZonesFeatureContext.MoveToPresetCommand
         {
-            get { return _features._propertiesFeature.MoveToPresetCommand; }
+            get { return _features.PropertiesFeature.MoveToPresetCommand; }
         }
 
         /// <summary>
@@ -195,7 +195,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         PanoramaReferenceState IZonesFeatureContext.PanoramaReference
         {
-            get { return _features._panoramaReferenceFeature.PanoramaReference; }
+            get { return _features.PanoramaReferenceFeature.PanoramaReference; }
         }
 
         /// <summary>
@@ -203,12 +203,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IZonesFeatureContext.PresetIrZoomPosition(PresetPointOption preset)
         {
-            return _features._presetLensFeature.PresetIrZoomPosition(preset);
+            return _features.PresetLensFeature.PresetIrZoomPosition(preset);
         }
 
         ObservableCollection<PresetPointOption> IZonesFeatureContext.PresetPoints
         {
-            get { return _features._propertiesFeature.PresetPoints; }
+            get { return _features.PropertiesFeature.PresetPoints; }
         }
 
         /// <summary>
@@ -218,25 +218,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         System.Threading.Tasks.Task<int?> IZonesFeatureContext.RequestAndWaitCtecEoPositionAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, System.Threading.CancellationToken cancellationToken)
         {
-            return _features._continuousControlFeature.RequestAndWaitCtecEoPositionAsync(moveType, sourceOption, cancellationToken);
+            return _features.ContinuousControlFeature.RequestAndWaitCtecEoPositionAsync(moveType, sourceOption, cancellationToken);
         }
 
         ControlAgentProfileOption IZonesFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
         PresetPointOption IZonesFeatureContext.SelectedLaPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedLaPresetPoint; }
-            set { _features._propertiesFeature.SelectedLaPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedLaPresetPoint; }
+            set { _features.PropertiesFeature.SelectedLaPresetPoint = value; }
         }
 
         PresetPointOption IZonesFeatureContext.SelectedPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedPresetPoint; }
-            set { _features._propertiesFeature.SelectedPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedPresetPoint; }
+            set { _features.PropertiesFeature.SelectedPresetPoint = value; }
         }
 
         Func<FireSmokeScene, bool> IZonesFeatureContext.IsZonePresetCurrentForDisplayCallback

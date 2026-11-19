@@ -18,34 +18,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        IControlCommandServicePort ISystemDateTimeFeatureContext._controlCommandService
+        IControlCommandServicePort ISystemDateTimeFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        ITcpClientServicePort ISystemDateTimeFeatureContext._laTcpService
+        ITcpClientServicePort ISystemDateTimeFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        TelemetryClock ISystemDateTimeFeatureContext._webAgentTelemetryClock
+        TelemetryClock ISystemDateTimeFeatureContext.WebAgentTelemetryClock
         {
-            get { return _features._webAgentProtocolFeature._webAgentTelemetryClock; }
+            get { return _features.WebAgentProtocolFeature._webAgentTelemetryClock; }
         }
 
         bool ISystemDateTimeFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         bool ISystemDateTimeFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool ISystemDateTimeFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         /// <summary>
@@ -58,8 +58,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         int ISystemDateTimeFeatureContext.SelectedCommunicationSettingsTabIndex
         {
-            get { return _features._rtspSettingsFeature.SelectedCommunicationSettingsTabIndex; }
-            set { _features._rtspSettingsFeature.SelectedCommunicationSettingsTabIndex = value; }
+            get { return _features.RtspSettingsFeature.SelectedCommunicationSettingsTabIndex; }
+            set { _features.RtspSettingsFeature.SelectedCommunicationSettingsTabIndex = value; }
         }
 
         Action ISystemDateTimeFeatureContext.RequestSystemDateTimeCommandCallback

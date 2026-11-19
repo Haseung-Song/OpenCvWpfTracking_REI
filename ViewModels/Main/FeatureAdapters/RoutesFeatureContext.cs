@@ -20,47 +20,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        Services.Communication.IControlCommandServicePort IRoutesFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IRoutesFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        bool IRoutesFeatureContext._isDeviceConnectionRequested
+        bool IRoutesFeatureContext.IsDeviceConnectionRequested
         {
-            get { return _features._screenStateFeature._isDeviceConnectionRequested; }
-            set { _features._screenStateFeature._isDeviceConnectionRequested = value; }
+            get { return _features.ScreenStateFeature._isDeviceConnectionRequested; }
+            set { _features.ScreenStateFeature._isDeviceConnectionRequested = value; }
         }
 
-        CancellationTokenSource IRoutesFeatureContext._laPresetSingleMoveCts
+        CancellationTokenSource IRoutesFeatureContext.LaPresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._laPresetSingleMoveCts; }
-            set { _features._screenStateFeature._laPresetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._laPresetSingleMoveCts; }
+            set { _features.ScreenStateFeature._laPresetSingleMoveCts = value; }
         }
 
-        Services.Communication.ITcpClientServicePort IRoutesFeatureContext._laTcpService
+        Services.Communication.ITcpClientServicePort IRoutesFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        CancellationTokenSource IRoutesFeatureContext._presetSingleMoveCts
+        CancellationTokenSource IRoutesFeatureContext.PresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._presetSingleMoveCts; }
-            set { _features._screenStateFeature._presetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._presetSingleMoveCts; }
+            set { _features.ScreenStateFeature._presetSingleMoveCts = value; }
         }
 
         string IRoutesFeatureContext.ControlLockTitle
         {
-            get { return _features._propertiesFeature.ControlLockTitle; }
+            get { return _features.PropertiesFeature.ControlLockTitle; }
         }
 
         double IRoutesFeatureContext.CurrentPanoramaPan
         {
-            get { return _features._opticalCenterFeature.CurrentPanoramaPan; }
+            get { return _features.OpticalCenterFeature.CurrentPanoramaPan; }
         }
 
         double IRoutesFeatureContext.CurrentPanoramaTilt
         {
-            get { return _features._opticalCenterFeature.CurrentPanoramaTilt; }
+            get { return _features.OpticalCenterFeature.CurrentPanoramaTilt; }
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IRoutesFeatureContext.GetCurrentIrFocusStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrFocusStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrFocusStandardPosition();
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IRoutesFeatureContext.GetCurrentIrZoomStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IRoutesFeatureContext.GetCurrentPresetStandardFocus()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardFocus();
+            return _features.MoveControlFeature.GetCurrentPresetStandardFocus();
         }
 
         /// <summary>
@@ -96,7 +96,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IRoutesFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         /// <summary>
@@ -104,32 +104,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IRoutesFeatureContext.HasFreshPresetLens(bool ir, bool zoom)
         {
-            return _features._presetLensFeature.HasFreshPresetLens(ir, zoom);
+            return _features.PresetLensFeature.HasFreshPresetLens(ir, zoom);
         }
 
         bool IRoutesFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IRoutesFeatureContext.IsEventAlertControlEnabled
         {
-            get { return _features._propertiesFeature.IsEventAlertControlEnabled; }
+            get { return _features.PropertiesFeature.IsEventAlertControlEnabled; }
         }
 
         bool IRoutesFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IRoutesFeatureContext.IsOperationLockOverlayVisible
         {
-            get { return _features._propertiesFeature.IsOperationLockOverlayVisible; }
+            get { return _features.PropertiesFeature.IsOperationLockOverlayVisible; }
         }
 
         bool IRoutesFeatureContext.IsPresetScanControlLocked
         {
-            get { return _features._propertiesFeature.IsPresetScanControlLocked; }
+            get { return _features.PropertiesFeature.IsPresetScanControlLocked; }
         }
 
         /// <summary>
@@ -137,7 +137,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task<bool> IRoutesFeatureContext.MoveLaPresetPointDirectAsync(PresetPointOption preset, CancellationToken cancellationToken, bool scanTiming, int? routeSpeed, int? routeDelay, bool? onlyIr)
         {
-            return _features._moveControlFeature.MoveLaPresetPointDirectAsync(preset, cancellationToken, scanTiming, routeSpeed, routeDelay, onlyIr);
+            return _features.MoveControlFeature.MoveLaPresetPointDirectAsync(preset, cancellationToken, scanTiming, routeSpeed, routeDelay, onlyIr);
         }
 
         /// <summary>
@@ -153,17 +153,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IRoutesFeatureContext.OpticalFeedbackFresh(bool ir)
         {
-            return _features._opticalCenterFeature.OpticalFeedbackFresh(ir);
+            return _features.OpticalCenterFeature.OpticalFeedbackFresh(ir);
         }
 
         string IRoutesFeatureContext.PanoramaDeviceKey
         {
-            get { return _features._opticalCenterFeature.PanoramaDeviceKey; }
+            get { return _features.OpticalCenterFeature.PanoramaDeviceKey; }
         }
 
         bool IRoutesFeatureContext.PanoramaPoseFresh
         {
-            get { return _features._opticalCenterFeature.PanoramaPoseFresh; }
+            get { return _features.OpticalCenterFeature.PanoramaPoseFresh; }
         }
 
         /// <summary>
@@ -171,7 +171,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IRoutesFeatureContext.ReleaseControlOwner(string owner)
         {
-            _features._inputCoordinatorFeature.ReleaseControlOwner(owner);
+            _features.InputCoordinatorFeature.ReleaseControlOwner(owner);
         }
     }
 }

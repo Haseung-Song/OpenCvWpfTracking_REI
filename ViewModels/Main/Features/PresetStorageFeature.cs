@@ -18,27 +18,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>장비별 프리셋 저장에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IPresetStorageFeatureContext
     {
-        bool _isLoadingPresetStorage { get; set; }
+        bool IsLoadingPresetStorage { get; set; }
 
-        bool _isLoadingRtspCommunicationSettings { get; set; }
+        bool IsLoadingRtspCommunicationSettings { get; set; }
 
-        string _laPresetCommandStatusText { get; set; }
+        string LaPresetCommandStatusTextState { get; set; }
 
-        int _laPresetScanDelay { get; set; }
+        int LaPresetScanDelayState { get; set; }
 
-        int _laPresetScanSpeed { get; set; }
+        int LaPresetScanSpeedState { get; set; }
 
-        int _laPresetSlotNumber { get; set; }
+        int LaPresetSlotNumberState { get; set; }
 
-        string _presetCommandStatusText { get; set; }
+        string PresetCommandStatusTextState { get; set; }
 
-        int _presetScanDelay { get; set; }
+        int PresetScanDelayState { get; set; }
 
-        PresetScanOrderMode _presetScanOrderMode { get; set; }
+        PresetScanOrderMode PresetScanOrderMode { get; set; }
 
-        int _presetScanSpeed { get; set; }
+        int PresetScanSpeedState { get; set; }
 
-        int _presetSlotNumber { get; set; }
+        int PresetSlotNumberState { get; set; }
 
         System.Collections.ObjectModel.ObservableCollection<ControlAgentProfileOption> ControlAgentProfiles { get; }
 
@@ -386,7 +386,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void SwitchEquipmentPresets()
         {
-            if (!_presetStorageReady || _applyingPresetProfile || _context._isLoadingRtspCommunicationSettings)
+            if (!_presetStorageReady || _applyingPresetProfile || _context.IsLoadingRtspCommunicationSettings)
             {
                 return;
             }
@@ -404,7 +404,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 ConsoleLogHelper.State("PRESET EQUIPMENT", "이전 장비 저장 실패 / 원본 파일 확인 필요");
             }
 
-            _context._isLoadingPresetStorage = true;
+            _context.IsLoadingPresetStorage = true;
 
             try
             {
@@ -419,19 +419,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 _presetEquipmentDirectory = null;
                 _presetStorageLoadFailed = false;
 
-                _context._laPresetSlotNumber = 1;
-                _context._presetSlotNumber = 1;
-                _context._laPresetCommandStatusText = "READY";
-                _context._presetCommandStatusText = "READY";
-                _context._presetScanOrderMode = PresetScanOrderMode.SavedOrder;
-                _context._laPresetScanSpeed = 10;
-                _context._presetScanSpeed = 10;
-                _context._laPresetScanDelay = 1;
-                _context._presetScanDelay = 1;
+                _context.LaPresetSlotNumberState = 1;
+                _context.PresetSlotNumberState = 1;
+                _context.LaPresetCommandStatusTextState = "READY";
+                _context.PresetCommandStatusTextState = "READY";
+                _context.PresetScanOrderMode = PresetScanOrderMode.SavedOrder;
+                _context.LaPresetScanSpeedState = 10;
+                _context.PresetScanSpeedState = 10;
+                _context.LaPresetScanDelayState = 1;
+                _context.PresetScanDelayState = 1;
             }
             finally
             {
-                _context._isLoadingPresetStorage = false;
+                _context.IsLoadingPresetStorage = false;
             }
 
             try
@@ -491,7 +491,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     return;
                 }
 
-                _context._isLoadingPresetStorage = true;
+                _context.IsLoadingPresetStorage = true;
 
                 var rows = legacy ? File.ReadAllLines(loadPath).Select(line => line.Split('\t')).ToList() : DeviceCatalog.Parse(File.ReadAllText(loadPath, Encoding.UTF8)).Select(row => row.ToArray()).ToList();
 
@@ -510,27 +510,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         if (Enum.TryParse(p[3], out PresetScanOrderMode mode))
                         {
-                            _context._presetScanOrderMode = mode;
+                            _context.PresetScanOrderMode = mode;
                         }
 
                         if (int.TryParse(p[4], out int laSpeed))
                         {
-                            _context._laPresetScanSpeed = ClampPresetScanSetting(laSpeed);
+                            _context.LaPresetScanSpeedState = ClampPresetScanSetting(laSpeed);
                         }
 
                         if (int.TryParse(p[5], out int laDelay))
                         {
-                            _context._laPresetScanDelay = ClampPresetScanSetting(laDelay);
+                            _context.LaPresetScanDelayState = ClampPresetScanSetting(laDelay);
                         }
 
                         if (int.TryParse(p[6], out int webSpeed))
                         {
-                            _context._presetScanSpeed = ClampPresetScanSetting(webSpeed);
+                            _context.PresetScanSpeedState = ClampPresetScanSetting(webSpeed);
                         }
 
                         if (int.TryParse(p[7], out int webDelay))
                         {
-                            _context._presetScanDelay = ClampPresetScanSetting(webDelay);
+                            _context.PresetScanDelayState = ClampPresetScanSetting(webDelay);
                         }
 
                         continue;
@@ -585,7 +585,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 // 이전 파일을 덮어쓰거나 지우지 않으며 이후 시작부터 CSV를 우선한다.
                 if (legacy || (coordinateColumn < 0 && rows.FirstOrDefault()?.Length > 12))
                 {
-                    _context._isLoadingPresetStorage = false;
+                    _context.IsLoadingPresetStorage = false;
 
                     SavePresetStorage();
                 }
@@ -609,7 +609,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             finally
             {
-                _context._isLoadingPresetStorage = false;
+                _context.IsLoadingPresetStorage = false;
             }
         }
 
@@ -619,7 +619,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         internal bool SavePresetStorage()
         {
             // 읽기 실패한 파일을 빈 목록으로 덮어쓰지 않는다.
-            if (!_presetStorageReady || _presetEquipmentContext == null || _context._isLoadingPresetStorage || _applyingPresetProfile || _presetStorageLoadFailed)
+            if (!_presetStorageReady || _presetEquipmentContext == null || _context.IsLoadingPresetStorage || _applyingPresetProfile || _presetStorageLoadFailed)
             {
                 return false;
             }
@@ -635,7 +635,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 List<string> lines = new List<string>
                 {
                     "TYPE\tSAVED_ORDER\tNUMBER\tNAME_OR_MODE\tPAN_OR_L_SPEED\tTILT_OR_L_DELAY\tEO_ZOOM_OR_W_SPEED\tEO_FOCUS_OR_W_DELAY\tIR_ZOOM\tIR_FOCUS\t" + "POSITION_CAPTURED_AT\tPOSITION_SOURCE\tIR_ZOOM_COORDINATES",
-                    string.Join("\t", new[] { "SETTINGS", "0", "0", _context._presetScanOrderMode.ToString(), _context._laPresetScanSpeed.ToString(), _context._laPresetScanDelay.ToString(), _context._presetScanSpeed.ToString(), _context._presetScanDelay.ToString(), "-", "-", "", "" })
+                    string.Join("\t", new[] { "SETTINGS", "0", "0", _context.PresetScanOrderMode.ToString(), _context.LaPresetScanSpeedState.ToString(), _context.LaPresetScanDelayState.ToString(), _context.PresetScanSpeedState.ToString(), _context.PresetScanDelayState.ToString(), "-", "-", "", "" })
                 };
 
                 var positions = new XElement("PresetPositions", new XAttribute("Version", 1));
@@ -838,7 +838,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: 본 GUI에서 NEAREST는 PAN/TILT 공간거리가 아니라
             // 등록된 PRESET 번호의 오름차순을 의미한다. SAVED ORDER는 사용자가
             // 저장한 순서를 그대로 보존하며 기본 모드로 유지한다.
-            PresetPointOption[] result = _context._presetScanOrderMode == PresetScanOrderMode.SavedOrder ? registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).ToArray() : registered.OrderBy(p => p.Number).ThenBy(p => p.SavedOrder).ToArray();
+            PresetPointOption[] result = _context.PresetScanOrderMode == PresetScanOrderMode.SavedOrder ? registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).ToArray() : registered.OrderBy(p => p.Number).ThenBy(p => p.SavedOrder).ToArray();
 
             if (_context.IsPresetPanOrderMode)
             {
@@ -850,7 +850,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 result = result.Concat(result.Reverse().Skip(1).Take(result.Length - 2)).ToArray();
             }
 
-            ConsoleLogHelper.State("PRESET SCAN ORDER", "MODE=" + _context._presetScanOrderMode + " / REGISTERED=" + string.Join("->", registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).Select(p => p.Number)) + " / EXECUTION=" + string.Join("->", result.Select(p => p.Number)));
+            ConsoleLogHelper.State("PRESET SCAN ORDER", "MODE=" + _context.PresetScanOrderMode + " / REGISTERED=" + string.Join("->", registered.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).Select(p => p.Number)) + " / EXECUTION=" + string.Join("->", result.Select(p => p.Number)));
 
             return result;
         }

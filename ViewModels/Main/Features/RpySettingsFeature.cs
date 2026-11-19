@@ -14,9 +14,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>자세 센서 설정에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IRpySettingsFeatureContext
     {
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
-        ITcpClientServicePort _laTcpService { get; }
+        ITcpClientServicePort LaTcpService { get; }
 
         bool IsEnvironmentStatusSelected { get; }
 
@@ -381,7 +381,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             RpyOffsetStatusText = "Applying";
 
-            bool sent = _context._controlCommandService.SetRpyOffsets(rollHundredths, pitchHundredths, yawHundredths);
+            bool sent = _context.ControlCommandService.SetRpyOffsets(rollHundredths, pitchHundredths, yawHundredths);
 
             ConsoleLogHelper.Command("RPY OFFSET TX", string.Format(CultureInfo.InvariantCulture, "ROLL={0:F2} / PITCH={1:F2} / YAW={2:F2} / PACKET={3} / SENT={4}", roll, pitch, yaw, ToHex(packet), sent));
 
@@ -420,7 +420,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             RpyRateStatusText = "Applying";
 
-            bool sent = _context._controlCommandService.SetRpyAutoTxRate(frequency);
+            bool sent = _context.ControlCommandService.SetRpyAutoTxRate(frequency);
 
             ConsoleLogHelper.Command("RPY RATE TX", "HZ=" + frequencyHz + " / PACKET=" + ToHex(packet) + " / SENT=" + sent);
 
@@ -444,7 +444,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            bool sent = _context._controlCommandService.RequestImuTelemetry();
+            bool sent = _context.ControlCommandService.RequestImuTelemetry();
 
             ConsoleLogHelper.Command("RPY QUERY", "Function 0x24 single query / CMD2=0xE5 / SENT=" + sent);
 
@@ -470,7 +470,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             RunOnUiThread(() => RpyOffsetStatusText = "DB 저장값 조회 중");
 
-            bool sent = _context._controlCommandService.RequestStoredRpyOffsets();
+            bool sent = _context.ControlCommandService.RequestStoredRpyOffsets();
 
             ConsoleLogHelper.Command("RPY OFFSET DB QUERY TX", "PACKET=FF 01 00 F3 00 00 F4 / SENT=" + sent);
 
@@ -496,7 +496,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             RunOnUiThread(() => RpyRateStatusText = "DB 저장값 조회 중");
 
-            bool sent = _context._controlCommandService.RequestStoredRpyAutoTxRate();
+            bool sent = _context.ControlCommandService.RequestStoredRpyAutoTxRate();
 
             ConsoleLogHelper.Command("RPY RATE DB QUERY TX", "PACKET=FF 01 00 F5 00 00 F6 / SENT=" + sent);
 
@@ -527,7 +527,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            if (_context._laTcpService == null || !_context._laTcpService.IsConnected)
+            if (_context.LaTcpService == null || !_context.LaTcpService.IsConnected)
             {
                 reason = "Failed: WebAgent 미연결";
 

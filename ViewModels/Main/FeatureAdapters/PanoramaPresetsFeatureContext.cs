@@ -21,133 +21,133 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        System.Collections.Generic.Dictionary<string, RtspSourceOption> IPanoramaPresetsFeatureContext._axisCtecSources
+        System.Collections.Generic.Dictionary<string, RtspSourceOption> IPanoramaPresetsFeatureContext.AxisCtecSources
         {
-            get { return _features._inputCoordinatorFeature._axisCtecSources; }
+            get { return _features.InputCoordinatorFeature._axisCtecSources; }
         }
 
-        Services.Communication.IControlCommandServicePort IPanoramaPresetsFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IPanoramaPresetsFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> IPanoramaPresetsFeatureContext._controlInputs
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> IPanoramaPresetsFeatureContext.ControlInputs
         {
-            get { return _features._inputCoordinatorFeature._controlInputs; }
+            get { return _features.InputCoordinatorFeature._controlInputs; }
         }
 
-        ContinuousMoveType IPanoramaPresetsFeatureContext._currentMoveType
+        ContinuousMoveType IPanoramaPresetsFeatureContext.CurrentMoveType
         {
-            get { return _features._screenStateFeature._currentMoveType; }
-            set { _features._screenStateFeature._currentMoveType = value; }
+            get { return _features.ScreenStateFeature._currentMoveType; }
+            set { _features.ScreenStateFeature._currentMoveType = value; }
         }
 
-        double IPanoramaPresetsFeatureContext._currentPan
+        double IPanoramaPresetsFeatureContext.CurrentPan
         {
-            get { return _features._screenStateFeature._currentPan; }
-            set { _features._screenStateFeature._currentPan = value; }
+            get { return _features.ScreenStateFeature._currentPan; }
+            set { _features.ScreenStateFeature._currentPan = value; }
         }
 
-        double IPanoramaPresetsFeatureContext._currentTilt
+        double IPanoramaPresetsFeatureContext.CurrentTilt
         {
-            get { return _features._screenStateFeature._currentTilt; }
-            set { _features._screenStateFeature._currentTilt = value; }
+            get { return _features.ScreenStateFeature._currentTilt; }
+            set { _features.ScreenStateFeature._currentTilt = value; }
         }
 
-        bool IPanoramaPresetsFeatureContext._isDeviceConnectionRequested
+        bool IPanoramaPresetsFeatureContext.IsDeviceConnectionRequested
         {
-            get { return _features._screenStateFeature._isDeviceConnectionRequested; }
-            set { _features._screenStateFeature._isDeviceConnectionRequested = value; }
+            get { return _features.ScreenStateFeature._isDeviceConnectionRequested; }
+            set { _features.ScreenStateFeature._isDeviceConnectionRequested = value; }
         }
 
-        System.Collections.Generic.Dictionary<string, Tuple<int, int>> IPanoramaPresetsFeatureContext._issuedControlAxes
+        System.Collections.Generic.Dictionary<string, Tuple<int, int>> IPanoramaPresetsFeatureContext.IssuedControlAxes
         {
-            get { return _features._inputCoordinatorFeature._issuedControlAxes; }
+            get { return _features.InputCoordinatorFeature._issuedControlAxes; }
         }
 
-        CancellationTokenSource IPanoramaPresetsFeatureContext._laPresetSingleMoveCts
+        CancellationTokenSource IPanoramaPresetsFeatureContext.LaPresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._laPresetSingleMoveCts; }
-            set { _features._screenStateFeature._laPresetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._laPresetSingleMoveCts; }
+            set { _features.ScreenStateFeature._laPresetSingleMoveCts = value; }
         }
 
-        Services.Communication.ITcpClientServicePort IPanoramaPresetsFeatureContext._laTcpService
+        Services.Communication.ITcpClientServicePort IPanoramaPresetsFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        CancellationTokenSource IPanoramaPresetsFeatureContext._presetSingleMoveCts
+        CancellationTokenSource IPanoramaPresetsFeatureContext.PresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._presetSingleMoveCts; }
-            set { _features._screenStateFeature._presetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._presetSingleMoveCts; }
+            set { _features.ScreenStateFeature._presetSingleMoveCts = value; }
         }
 
-        bool IPanoramaPresetsFeatureContext._videoCenterBusy
+        bool IPanoramaPresetsFeatureContext.VideoCenterBusy
         {
-            get { return _features._cameraFeatureControlFeature._videoCenterBusy; }
-            set { _features._cameraFeatureControlFeature._videoCenterBusy = value; }
+            get { return _features.CameraFeatureControlFeature._videoCenterBusy; }
+            set { _features.CameraFeatureControlFeature._videoCenterBusy = value; }
         }
 
         string IPanoramaPresetsFeatureContext.ControlLockMessage
         {
-            get { return _features._propertiesFeature.ControlLockMessage; }
+            get { return _features.PropertiesFeature.ControlLockMessage; }
         }
 
         string IPanoramaPresetsFeatureContext.ControlLockTitle
         {
-            get { return _features._propertiesFeature.ControlLockTitle; }
+            get { return _features.PropertiesFeature.ControlLockTitle; }
         }
 
         string IPanoramaPresetsFeatureContext.EoSourceAddress
         {
-            get { return _features._propertiesFeature.EoSourceAddress; }
-            set { _features._propertiesFeature.EoSourceAddress = value; }
+            get { return _features.PropertiesFeature.EoSourceAddress; }
+            set { _features.PropertiesFeature.EoSourceAddress = value; }
         }
 
         bool IPanoramaPresetsFeatureContext.HasRegisteredEquipmentIdentity
         {
-            get { return _features._presetStorageFeature.HasRegisteredEquipmentIdentity; }
+            get { return _features.PresetStorageFeature.HasRegisteredEquipmentIdentity; }
         }
 
         bool IPanoramaPresetsFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IPanoramaPresetsFeatureContext.IsEventAlertControlEnabled
         {
-            get { return _features._propertiesFeature.IsEventAlertControlEnabled; }
+            get { return _features.PropertiesFeature.IsEventAlertControlEnabled; }
         }
 
         bool IPanoramaPresetsFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IPanoramaPresetsFeatureContext.IsOperationLockOverlayVisible
         {
-            get { return _features._propertiesFeature.IsOperationLockOverlayVisible; }
+            get { return _features.PropertiesFeature.IsOperationLockOverlayVisible; }
         }
 
         bool IPanoramaPresetsFeatureContext.IsPanTiltSpeedControlEnabled
         {
-            get { return _features._propertiesFeature.IsPanTiltSpeedControlEnabled; }
+            get { return _features.PropertiesFeature.IsPanTiltSpeedControlEnabled; }
         }
 
         bool IPanoramaPresetsFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         string IPanoramaPresetsFeatureContext.LaPresetCommandStatusText
         {
-            get { return _features._propertiesFeature.LaPresetCommandStatusText; }
-            set { _features._propertiesFeature.LaPresetCommandStatusText = value; }
+            get { return _features.PropertiesFeature.LaPresetCommandStatusText; }
+            set { _features.PropertiesFeature.LaPresetCommandStatusText = value; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> IPanoramaPresetsFeatureContext.LaPresetPoints
         {
-            get { return _features._propertiesFeature.LaPresetPoints; }
+            get { return _features.PropertiesFeature.LaPresetPoints; }
         }
 
         /// <summary>
@@ -156,7 +156,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task IPanoramaPresetsFeatureContext.MoveToSelectedLaPresetPointAsync()
         {
-            return _features._moveControlFeature.MoveToSelectedLaPresetPointAsync();
+            return _features.MoveControlFeature.MoveToSelectedLaPresetPointAsync();
         }
 
         /// <summary>
@@ -164,7 +164,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Task IPanoramaPresetsFeatureContext.MoveToSelectedPresetPointAsync()
         {
-            return _features._moveControlFeature.MoveToSelectedPresetPointAsync();
+            return _features.MoveControlFeature.MoveToSelectedPresetPointAsync();
         }
 
         /// <summary>
@@ -177,51 +177,51 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string IPanoramaPresetsFeatureContext.PanoramaDeviceKey
         {
-            get { return _features._opticalCenterFeature.PanoramaDeviceKey; }
+            get { return _features.OpticalCenterFeature.PanoramaDeviceKey; }
         }
 
         bool IPanoramaPresetsFeatureContext.PanoramaPoseFresh
         {
-            get { return _features._opticalCenterFeature.PanoramaPoseFresh; }
+            get { return _features.OpticalCenterFeature.PanoramaPoseFresh; }
         }
 
         Services.Video.PanoramaReferenceState IPanoramaPresetsFeatureContext.PanoramaReference
         {
-            get { return _features._panoramaReferenceFeature.PanoramaReference; }
+            get { return _features.PanoramaReferenceFeature.PanoramaReference; }
         }
 
         string IPanoramaPresetsFeatureContext.PresetCommandStatusText
         {
-            get { return _features._propertiesFeature.PresetCommandStatusText; }
-            set { _features._propertiesFeature.PresetCommandStatusText = value; }
+            get { return _features.PropertiesFeature.PresetCommandStatusText; }
+            set { _features.PropertiesFeature.PresetCommandStatusText = value; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> IPanoramaPresetsFeatureContext.PresetPoints
         {
-            get { return _features._propertiesFeature.PresetPoints; }
+            get { return _features.PropertiesFeature.PresetPoints; }
         }
 
         string IPanoramaPresetsFeatureContext.RegisteredEquipmentIdentity
         {
-            get { return _features._presetStorageFeature.RegisteredEquipmentIdentity; }
+            get { return _features.PresetStorageFeature.RegisteredEquipmentIdentity; }
         }
 
         ControlAgentProfileOption IPanoramaPresetsFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
         PresetPointOption IPanoramaPresetsFeatureContext.SelectedLaPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedLaPresetPoint; }
-            set { _features._propertiesFeature.SelectedLaPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedLaPresetPoint; }
+            set { _features.PropertiesFeature.SelectedLaPresetPoint = value; }
         }
 
         PresetPointOption IPanoramaPresetsFeatureContext.SelectedPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedPresetPoint; }
-            set { _features._propertiesFeature.SelectedPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedPresetPoint; }
+            set { _features.PropertiesFeature.SelectedPresetPoint = value; }
         }
 
         /// <summary>
@@ -230,7 +230,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IPanoramaPresetsFeatureContext.StopLaPresetMove()
         {
-            _features._moveControlFeature.StopLaPresetMove();
+            _features.MoveControlFeature.StopLaPresetMove();
         }
 
         /// <summary>
@@ -239,7 +239,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IPanoramaPresetsFeatureContext.StopPresetMove()
         {
-            _features._moveControlFeature.StopPresetMove();
+            _features.MoveControlFeature.StopPresetMove();
         }
     }
 }

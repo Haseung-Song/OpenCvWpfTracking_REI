@@ -14,17 +14,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>연기 분석 설정에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface ISmokeFeatureContext
     {
-        ref double? _activePanAbsoluteTarget { get; }
+        ref double? ActivePanAbsoluteTarget { get; }
 
-        ref double? _activeTiltAbsoluteTarget { get; }
+        ref double? ActiveTiltAbsoluteTarget { get; }
 
-        ContinuousMoveType _currentMoveType { get; set; }
+        ContinuousMoveType CurrentMoveType { get; set; }
 
-        ThermalFireDetectionService _eoFireDetectionService { get; }
+        ThermalFireDetectionService EoFireDetectionService { get; }
 
-        ThermalFireDetectionService _irFireDetectionService { get; }
+        ThermalFireDetectionService IrFireDetectionService { get; }
 
-        ref int _visionSettingsGeneration { get; }
+        ref int VisionSettingsGeneration { get; }
 
         double AiDisplayConfidenceThreshold { get; set; }
 
@@ -225,7 +225,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _isSmokeDetectionEnabled = value;
 
-                System.Threading.Interlocked.Increment(ref _context._visionSettingsGeneration);
+                System.Threading.Interlocked.Increment(ref _context.VisionSettingsGeneration);
 
                 if (!value)
                 {
@@ -678,9 +678,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _irSmokeDetectionService.Reset();
 
-            _context._eoFireDetectionService.Reset();
+            _context.EoFireDetectionService.Reset();
 
-            _context._irFireDetectionService.Reset();
+            _context.IrFireDetectionService.Reset();
 
             ConsoleLogHelper.State("FIRE / SMOKE", "Frame analysis reset / REASON=" + reason);
         }
@@ -703,7 +703,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return true;
             }
 
-            return !_context.IsControlInputLocked && _context._currentMoveType == ContinuousMoveType.None && !_context._activePanAbsoluteTarget.HasValue && !_context._activeTiltAbsoluteTarget.HasValue;
+            return !_context.IsControlInputLocked && _context.CurrentMoveType == ContinuousMoveType.None && !_context.ActivePanAbsoluteTarget.HasValue && !_context.ActiveTiltAbsoluteTarget.HasValue;
         }
 
         /// <summary>

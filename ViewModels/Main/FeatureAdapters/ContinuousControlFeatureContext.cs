@@ -20,284 +20,284 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        RtspSourceOption IContinuousControlFeatureContext._activeEoCtecSource
+        RtspSourceOption IContinuousControlFeatureContext.ActiveEoCtecSource
         {
-            get { return _features._screenStateFeature._activeEoCtecSource; }
-            set { _features._screenStateFeature._activeEoCtecSource = value; }
+            get { return _features.ScreenStateFeature._activeEoCtecSource; }
+            set { _features.ScreenStateFeature._activeEoCtecSource = value; }
         }
 
-        KeyboardPanTiltDirection IContinuousControlFeatureContext._activePanTiltMoveDirection
+        KeyboardPanTiltDirection IContinuousControlFeatureContext.ActivePanTiltMoveDirection
         {
-            get { return _features._screenStateFeature._activePanTiltMoveDirection; }
-            set { _features._screenStateFeature._activePanTiltMoveDirection = value; }
+            get { return _features.ScreenStateFeature._activePanTiltMoveDirection; }
+            set { _features.ScreenStateFeature._activePanTiltMoveDirection = value; }
         }
 
-        System.Collections.Generic.Dictionary<string, RtspSourceOption> IContinuousControlFeatureContext._axisCtecSources
+        System.Collections.Generic.Dictionary<string, RtspSourceOption> IContinuousControlFeatureContext.AxisCtecSources
         {
-            get { return _features._inputCoordinatorFeature._axisCtecSources; }
+            get { return _features.InputCoordinatorFeature._axisCtecSources; }
         }
 
-        long IContinuousControlFeatureContext._centerDeadlineTicks
+        long IContinuousControlFeatureContext.CenterDeadlineTicks
         {
-            get { return _features._cameraFeatureControlFeature._centerDeadlineTicks; }
-            set { _features._cameraFeatureControlFeature._centerDeadlineTicks = value; }
+            get { return _features.CameraFeatureControlFeature._centerDeadlineTicks; }
+            set { _features.CameraFeatureControlFeature._centerDeadlineTicks = value; }
         }
 
-        RtspSourceOption IContinuousControlFeatureContext._connectedEoCtecSource
+        RtspSourceOption IContinuousControlFeatureContext.ConnectedEoCtecSource
         {
-            get { return _features._screenStateFeature._connectedEoCtecSource; }
-            set { _features._screenStateFeature._connectedEoCtecSource = value; }
+            get { return _features.ScreenStateFeature._connectedEoCtecSource; }
+            set { _features.ScreenStateFeature._connectedEoCtecSource = value; }
         }
 
-        Services.Communication.IControlCommandServicePort IContinuousControlFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IContinuousControlFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> IContinuousControlFeatureContext._controlInputs
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> IContinuousControlFeatureContext.ControlInputs
         {
-            get { return _features._inputCoordinatorFeature._controlInputs; }
+            get { return _features.InputCoordinatorFeature._controlInputs; }
         }
 
-        Services.Communication.ICtecCameraCommandServicePort IContinuousControlFeatureContext._ctecCameraCommandService
+        Services.Communication.ICtecCameraCommandServicePort IContinuousControlFeatureContext.CtecCameraCommandService
         {
             get { return _features.Runtime._ctecCameraCommandService; }
         }
 
-        Services.Communication.ICtecCameraResponseServicePort IContinuousControlFeatureContext._ctecCameraResponseService
+        Services.Communication.ICtecCameraResponseServicePort IContinuousControlFeatureContext.CtecCameraResponseService
         {
             get { return _features.Runtime._ctecCameraResponseService; }
         }
 
-        ref long IContinuousControlFeatureContext._ctecEoPositionOperationGeneration
+        ref long IContinuousControlFeatureContext.CtecEoPositionOperationGeneration
         {
-            get { return ref _features._screenStateFeature._ctecEoPositionOperationGeneration; }
+            get { return ref _features.ScreenStateFeature._ctecEoPositionOperationGeneration; }
         }
 
-        ref global::System.Threading.CancellationTokenSource IContinuousControlFeatureContext._ctecEoPositionPollingCts
+        ref global::System.Threading.CancellationTokenSource IContinuousControlFeatureContext.CtecEoPositionPollingCts
         {
-            get { return ref _features._screenStateFeature._ctecEoPositionPollingCts; }
+            get { return ref _features.ScreenStateFeature._ctecEoPositionPollingCts; }
         }
 
-        SemaphoreSlim IContinuousControlFeatureContext._ctecEoPositionQueryLock
+        SemaphoreSlim IContinuousControlFeatureContext.CtecEoPositionQueryLock
         {
             get { return _features.Runtime._ctecEoPositionQueryLock; }
         }
 
-        byte IContinuousControlFeatureContext._currentCtecEoFocusMode
+        byte IContinuousControlFeatureContext.CurrentCtecEoFocusMode
         {
-            get { return _features._screenStateFeature._currentCtecEoFocusMode; }
-            set { _features._screenStateFeature._currentCtecEoFocusMode = value; }
+            get { return _features.ScreenStateFeature._currentCtecEoFocusMode; }
+            set { _features.ScreenStateFeature._currentCtecEoFocusMode = value; }
         }
 
-        ushort IContinuousControlFeatureContext._currentCtecEoFocusPosition
+        ushort IContinuousControlFeatureContext.CurrentCtecEoFocusPosition
         {
-            get { return _features._screenStateFeature._currentCtecEoFocusPosition; }
-            set { _features._screenStateFeature._currentCtecEoFocusPosition = value; }
+            get { return _features.ScreenStateFeature._currentCtecEoFocusPosition; }
+            set { _features.ScreenStateFeature._currentCtecEoFocusPosition = value; }
         }
 
-        ushort IContinuousControlFeatureContext._currentCtecEoZoomPosition
+        ushort IContinuousControlFeatureContext.CurrentCtecEoZoomPosition
         {
-            get { return _features._screenStateFeature._currentCtecEoZoomPosition; }
-            set { _features._screenStateFeature._currentCtecEoZoomPosition = value; }
+            get { return _features.ScreenStateFeature._currentCtecEoZoomPosition; }
+            set { _features.ScreenStateFeature._currentCtecEoZoomPosition = value; }
         }
 
-        short IContinuousControlFeatureContext._currentEoFocus
+        short IContinuousControlFeatureContext.CurrentEoFocus
         {
-            get { return _features._screenStateFeature._currentEoFocus; }
-            set { _features._screenStateFeature._currentEoFocus = value; }
+            get { return _features.ScreenStateFeature._currentEoFocus; }
+            set { _features.ScreenStateFeature._currentEoFocus = value; }
         }
 
-        short IContinuousControlFeatureContext._currentEoZoom
+        short IContinuousControlFeatureContext.CurrentEoZoom
         {
-            get { return _features._screenStateFeature._currentEoZoom; }
-            set { _features._screenStateFeature._currentEoZoom = value; }
+            get { return _features.ScreenStateFeature._currentEoZoom; }
+            set { _features.ScreenStateFeature._currentEoZoom = value; }
         }
 
-        ushort IContinuousControlFeatureContext._currentIrFocus
+        ushort IContinuousControlFeatureContext.CurrentIrFocus
         {
-            get { return _features._screenStateFeature._currentIrFocus; }
-            set { _features._screenStateFeature._currentIrFocus = value; }
+            get { return _features.ScreenStateFeature._currentIrFocus; }
+            set { _features.ScreenStateFeature._currentIrFocus = value; }
         }
 
-        ushort IContinuousControlFeatureContext._currentIrZoom
+        ushort IContinuousControlFeatureContext.CurrentIrZoom
         {
-            get { return _features._screenStateFeature._currentIrZoom; }
-            set { _features._screenStateFeature._currentIrZoom = value; }
+            get { return _features.ScreenStateFeature._currentIrZoom; }
+            set { _features.ScreenStateFeature._currentIrZoom = value; }
         }
 
-        KeyboardPanTiltDirection IContinuousControlFeatureContext._currentKeyboardPanTiltDirection
+        KeyboardPanTiltDirection IContinuousControlFeatureContext.CurrentKeyboardPanTiltDirection
         {
-            get { return _features._screenStateFeature._currentKeyboardPanTiltDirection; }
-            set { _features._screenStateFeature._currentKeyboardPanTiltDirection = value; }
+            get { return _features.ScreenStateFeature._currentKeyboardPanTiltDirection; }
+            set { _features.ScreenStateFeature._currentKeyboardPanTiltDirection = value; }
         }
 
-        ContinuousMoveType IContinuousControlFeatureContext._currentMoveType
+        ContinuousMoveType IContinuousControlFeatureContext.CurrentMoveType
         {
-            get { return _features._screenStateFeature._currentMoveType; }
-            set { _features._screenStateFeature._currentMoveType = value; }
+            get { return _features.ScreenStateFeature._currentMoveType; }
+            set { _features.ScreenStateFeature._currentMoveType = value; }
         }
 
-        int IContinuousControlFeatureContext._environmentIrManualMoveDirection
+        int IContinuousControlFeatureContext.EnvironmentIrManualMoveDirection
         {
-            get { return _features._screenStateFeature._environmentIrManualMoveDirection; }
-            set { _features._screenStateFeature._environmentIrManualMoveDirection = value; }
+            get { return _features.ScreenStateFeature._environmentIrManualMoveDirection; }
+            set { _features.ScreenStateFeature._environmentIrManualMoveDirection = value; }
         }
 
-        ref global::System.DateTime IContinuousControlFeatureContext._environmentIrManualMoveStartedUtc
+        ref global::System.DateTime IContinuousControlFeatureContext.EnvironmentIrManualMoveStartedUtc
         {
-            get { return ref _features._screenStateFeature._environmentIrManualMoveStartedUtc; }
+            get { return ref _features.ScreenStateFeature._environmentIrManualMoveStartedUtc; }
         }
 
-        ContinuousMoveType IContinuousControlFeatureContext._environmentIrManualMoveType
+        ContinuousMoveType IContinuousControlFeatureContext.EnvironmentIrManualMoveType
         {
-            get { return _features._screenStateFeature._environmentIrManualMoveType; }
-            set { _features._screenStateFeature._environmentIrManualMoveType = value; }
+            get { return _features.ScreenStateFeature._environmentIrManualMoveType; }
+            set { _features.ScreenStateFeature._environmentIrManualMoveType = value; }
         }
 
-        ref int IContinuousControlFeatureContext._eoFocusCommandSequence
+        ref int IContinuousControlFeatureContext.EoFocusCommandSequence
         {
-            get { return ref _features._screenStateFeature._eoFocusCommandSequence; }
+            get { return ref _features.ScreenStateFeature._eoFocusCommandSequence; }
         }
 
-        System.Diagnostics.Stopwatch IContinuousControlFeatureContext._focusLogStopwatch
+        System.Diagnostics.Stopwatch IContinuousControlFeatureContext.FocusLogStopwatch
         {
             get { return _features.Runtime._focusLogStopwatch; }
         }
 
-        int IContinuousControlFeatureContext._inputEpoch
+        int IContinuousControlFeatureContext.InputEpoch
         {
-            get { return _features._inputCoordinatorFeature._inputEpoch; }
-            set { _features._inputCoordinatorFeature._inputEpoch = value; }
+            get { return _features.InputCoordinatorFeature._inputEpoch; }
+            set { _features.InputCoordinatorFeature._inputEpoch = value; }
         }
 
-        ref long IContinuousControlFeatureContext._irLensStatusVersion
+        ref long IContinuousControlFeatureContext.IrLensStatusVersion
         {
-            get { return ref _features._screenStateFeature._irLensStatusVersion; }
+            get { return ref _features.ScreenStateFeature._irLensStatusVersion; }
         }
 
-        bool IContinuousControlFeatureContext._isDeviceConnectionRequested
+        bool IContinuousControlFeatureContext.IsDeviceConnectionRequested
         {
-            get { return _features._screenStateFeature._isDeviceConnectionRequested; }
-            set { _features._screenStateFeature._isDeviceConnectionRequested = value; }
+            get { return _features.ScreenStateFeature._isDeviceConnectionRequested; }
+            set { _features.ScreenStateFeature._isDeviceConnectionRequested = value; }
         }
 
-        bool IContinuousControlFeatureContext._isKeyboardPanLeftPressed
+        bool IContinuousControlFeatureContext.IsKeyboardPanLeftPressed
         {
-            get { return _features._screenStateFeature._isKeyboardPanLeftPressed; }
-            set { _features._screenStateFeature._isKeyboardPanLeftPressed = value; }
+            get { return _features.ScreenStateFeature._isKeyboardPanLeftPressed; }
+            set { _features.ScreenStateFeature._isKeyboardPanLeftPressed = value; }
         }
 
-        bool IContinuousControlFeatureContext._isKeyboardPanRightPressed
+        bool IContinuousControlFeatureContext.IsKeyboardPanRightPressed
         {
-            get { return _features._screenStateFeature._isKeyboardPanRightPressed; }
-            set { _features._screenStateFeature._isKeyboardPanRightPressed = value; }
+            get { return _features.ScreenStateFeature._isKeyboardPanRightPressed; }
+            set { _features.ScreenStateFeature._isKeyboardPanRightPressed = value; }
         }
 
-        bool IContinuousControlFeatureContext._isKeyboardTiltDownPressed
+        bool IContinuousControlFeatureContext.IsKeyboardTiltDownPressed
         {
-            get { return _features._screenStateFeature._isKeyboardTiltDownPressed; }
-            set { _features._screenStateFeature._isKeyboardTiltDownPressed = value; }
+            get { return _features.ScreenStateFeature._isKeyboardTiltDownPressed; }
+            set { _features.ScreenStateFeature._isKeyboardTiltDownPressed = value; }
         }
 
-        bool IContinuousControlFeatureContext._isKeyboardTiltUpPressed
+        bool IContinuousControlFeatureContext.IsKeyboardTiltUpPressed
         {
-            get { return _features._screenStateFeature._isKeyboardTiltUpPressed; }
-            set { _features._screenStateFeature._isKeyboardTiltUpPressed = value; }
+            get { return _features.ScreenStateFeature._isKeyboardTiltUpPressed; }
+            set { _features.ScreenStateFeature._isKeyboardTiltUpPressed = value; }
         }
 
-        bool IContinuousControlFeatureContext._isPanTiltMoveActive
+        bool IContinuousControlFeatureContext.IsPanTiltMoveActive
         {
-            get { return _features._screenStateFeature._isPanTiltMoveActive; }
-            set { _features._screenStateFeature._isPanTiltMoveActive = value; }
+            get { return _features.ScreenStateFeature._isPanTiltMoveActive; }
+            set { _features.ScreenStateFeature._isPanTiltMoveActive = value; }
         }
 
-        System.Collections.Generic.Dictionary<string, Tuple<int, int>> IContinuousControlFeatureContext._issuedControlAxes
+        System.Collections.Generic.Dictionary<string, Tuple<int, int>> IContinuousControlFeatureContext.IssuedControlAxes
         {
-            get { return _features._inputCoordinatorFeature._issuedControlAxes; }
+            get { return _features.InputCoordinatorFeature._issuedControlAxes; }
         }
 
-        long IContinuousControlFeatureContext._lastEoFocusCommandElapsedMs
+        long IContinuousControlFeatureContext.LastEoFocusCommandElapsedMs
         {
-            get { return _features._screenStateFeature._lastEoFocusCommandElapsedMs; }
-            set { _features._screenStateFeature._lastEoFocusCommandElapsedMs = value; }
+            get { return _features.ScreenStateFeature._lastEoFocusCommandElapsedMs; }
+            set { _features.ScreenStateFeature._lastEoFocusCommandElapsedMs = value; }
         }
 
-        string IContinuousControlFeatureContext._lastEoFocusCommandName
+        string IContinuousControlFeatureContext.LastEoFocusCommandName
         {
-            get { return _features._screenStateFeature._lastEoFocusCommandName; }
-            set { _features._screenStateFeature._lastEoFocusCommandName = value; }
+            get { return _features.ScreenStateFeature._lastEoFocusCommandName; }
+            set { _features.ScreenStateFeature._lastEoFocusCommandName = value; }
         }
 
-        ref global::System.DateTime IContinuousControlFeatureContext._lastEoFocusCommandTime
+        ref global::System.DateTime IContinuousControlFeatureContext.LastEoFocusCommandTime
         {
-            get { return ref _features._screenStateFeature._lastEoFocusCommandTime; }
+            get { return ref _features.ScreenStateFeature._lastEoFocusCommandTime; }
         }
 
-        ref long IContinuousControlFeatureContext._panStopTxCount
+        ref long IContinuousControlFeatureContext.PanStopTxCount
         {
-            get { return ref _features._screenStateFeature._panStopTxCount; }
+            get { return ref _features.ScreenStateFeature._panStopTxCount; }
         }
 
-        ref long IContinuousControlFeatureContext._panTiltStatusVersion
+        ref long IContinuousControlFeatureContext.PanTiltStatusVersion
         {
-            get { return ref _features._screenStateFeature._panTiltStatusVersion; }
+            get { return ref _features.ScreenStateFeature._panTiltStatusVersion; }
         }
 
-        bool IContinuousControlFeatureContext._precisionStopUncertain
+        bool IContinuousControlFeatureContext.PrecisionStopUncertain
         {
-            get { return _features._webAgentMotionFocusFeature._precisionStopUncertain; }
-            set { _features._webAgentMotionFocusFeature._precisionStopUncertain = value; }
+            get { return _features.WebAgentMotionFocusFeature._precisionStopUncertain; }
+            set { _features.WebAgentMotionFocusFeature._precisionStopUncertain = value; }
         }
 
-        string IContinuousControlFeatureContext._ptzPerformanceScenario
+        string IContinuousControlFeatureContext.PtzPerformanceScenario
         {
-            get { return _features._screenStateFeature._ptzPerformanceScenario; }
-            set { _features._screenStateFeature._ptzPerformanceScenario = value; }
+            get { return _features.ScreenStateFeature._ptzPerformanceScenario; }
+            set { _features.ScreenStateFeature._ptzPerformanceScenario = value; }
         }
 
-        ref long IContinuousControlFeatureContext._tiltStopTxCount
+        ref long IContinuousControlFeatureContext.TiltStopTxCount
         {
-            get { return ref _features._screenStateFeature._tiltStopTxCount; }
+            get { return ref _features.ScreenStateFeature._tiltStopTxCount; }
         }
 
-        bool IContinuousControlFeatureContext._videoCenterBusy
+        bool IContinuousControlFeatureContext.VideoCenterBusy
         {
-            get { return _features._cameraFeatureControlFeature._videoCenterBusy; }
-            set { _features._cameraFeatureControlFeature._videoCenterBusy = value; }
+            get { return _features.CameraFeatureControlFeature._videoCenterBusy; }
+            set { _features.CameraFeatureControlFeature._videoCenterBusy = value; }
         }
 
-        ref global::System.DateTimeOffset IContinuousControlFeatureContext._zoneCtecZoomAt
+        ref global::System.DateTimeOffset IContinuousControlFeatureContext.ZoneCtecZoomAt
         {
-            get { return ref _features._zonesFeature._zoneCtecZoomAt; }
+            get { return ref _features.ZonesFeature._zoneCtecZoomAt; }
         }
 
-        int IContinuousControlFeatureContext._zoneCtecZoomEpoch
+        int IContinuousControlFeatureContext.ZoneCtecZoomEpoch
         {
-            get { return _features._zonesFeature._zoneCtecZoomEpoch; }
-            set { _features._zonesFeature._zoneCtecZoomEpoch = value; }
+            get { return _features.ZonesFeature._zoneCtecZoomEpoch; }
+            set { _features.ZonesFeature._zoneCtecZoomEpoch = value; }
         }
 
-        string IContinuousControlFeatureContext._zoneCtecZoomKey
+        string IContinuousControlFeatureContext.ZoneCtecZoomKey
         {
-            get { return _features._zonesFeature._zoneCtecZoomKey; }
-            set { _features._zonesFeature._zoneCtecZoomKey = value; }
+            get { return _features.ZonesFeature._zoneCtecZoomKey; }
+            set { _features.ZonesFeature._zoneCtecZoomKey = value; }
         }
 
-        int IContinuousControlFeatureContext._zoneEpoch
+        int IContinuousControlFeatureContext.ZoneEpoch
         {
-            get { return _features._zonesFeature._zoneEpoch; }
-            set { _features._zonesFeature._zoneEpoch = value; }
+            get { return _features.ZonesFeature._zoneEpoch; }
+            set { _features.ZonesFeature._zoneEpoch = value; }
         }
 
-        ref long IContinuousControlFeatureContext._zoomStartTxCount
+        ref long IContinuousControlFeatureContext.ZoomStartTxCount
         {
-            get { return ref _features._screenStateFeature._zoomStartTxCount; }
+            get { return ref _features.ScreenStateFeature._zoomStartTxCount; }
         }
 
-        ref long IContinuousControlFeatureContext._zoomStopTxCount
+        ref long IContinuousControlFeatureContext.ZoomStopTxCount
         {
-            get { return ref _features._screenStateFeature._zoomStopTxCount; }
+            get { return ref _features.ScreenStateFeature._zoomStopTxCount; }
         }
 
         /// <summary>
@@ -306,7 +306,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.ApplyEnvironmentIrCommandedPosition(int? zoomPosition, int? focusPosition, string reason)
         {
-            _features._controlAgentFeature.ApplyEnvironmentIrCommandedPosition(zoomPosition, focusPosition, reason);
+            _features.ControlAgentFeature.ApplyEnvironmentIrCommandedPosition(zoomPosition, focusPosition, reason);
         }
 
         /// <summary>
@@ -316,7 +316,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IContinuousControlFeatureContext.ApplyPanTiltPositionSpeedFromUi(out double positionSpeed)
         {
-            return _features._moveControlFeature.ApplyPanTiltPositionSpeedFromUi(out positionSpeed);
+            return _features.MoveControlFeature.ApplyPanTiltPositionSpeedFromUi(out positionSpeed);
         }
 
         /// <summary>
@@ -324,7 +324,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IContinuousControlFeatureContext.AutoFocusTargetUsesAgent(int target)
         {
-            return _features._webAgentMotionFocusFeature.AutoFocusTargetUsesAgent(target);
+            return _features.WebAgentMotionFocusFeature.AutoFocusTargetUsesAgent(target);
         }
 
         /// <summary>
@@ -332,7 +332,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.CancelMoveControlPanOperation()
         {
-            _features._moveControlFeature.CancelMoveControlPanOperation();
+            _features.MoveControlFeature.CancelMoveControlPanOperation();
         }
 
         /// <summary>
@@ -340,7 +340,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.CancelPanoramaPresets()
         {
-            _features._panoramaPresetsFeature.CancelPanoramaPresets();
+            _features.PanoramaPresetsFeature.CancelPanoramaPresets();
         }
 
         /// <summary>
@@ -348,7 +348,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.ClearActivePanTiltAbsoluteMove()
         {
-            _features._moveControlFeature.ClearActivePanTiltAbsoluteMove();
+            _features.MoveControlFeature.ClearActivePanTiltAbsoluteMove();
         }
 
         /// <summary>
@@ -356,42 +356,42 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Services.Configuration.LensControlTuning IContinuousControlFeatureContext.ControlTuningFor(bool ir)
         {
-            return _features._inputCoordinatorFeature.ControlTuningFor(ir);
+            return _features.InputCoordinatorFeature.ControlTuningFor(ir);
         }
 
         string IContinuousControlFeatureContext.CurrentEoFocusText
         {
-            get { return _features._propertiesFeature.CurrentEoFocusText; }
+            get { return _features.PropertiesFeature.CurrentEoFocusText; }
         }
 
         string IContinuousControlFeatureContext.CurrentEoZoomText
         {
-            get { return _features._propertiesFeature.CurrentEoZoomText; }
+            get { return _features.PropertiesFeature.CurrentEoZoomText; }
         }
 
         string IContinuousControlFeatureContext.CurrentLaPresetSnapshotText
         {
-            get { return _features._propertiesFeature.CurrentLaPresetSnapshotText; }
+            get { return _features.PropertiesFeature.CurrentLaPresetSnapshotText; }
         }
 
         string IContinuousControlFeatureContext.CurrentPresetSnapshotText
         {
-            get { return _features._propertiesFeature.CurrentPresetSnapshotText; }
+            get { return _features.PropertiesFeature.CurrentPresetSnapshotText; }
         }
 
         byte IContinuousControlFeatureContext.EffectivePanTiltSpeedLevel
         {
-            get { return _features._propertiesFeature.EffectivePanTiltSpeedLevel; }
+            get { return _features.PropertiesFeature.EffectivePanTiltSpeedLevel; }
         }
 
         string IContinuousControlFeatureContext.EnvironmentEoFocusStatusText
         {
-            get { return _features._propertiesFeature.EnvironmentEoFocusStatusText; }
+            get { return _features.PropertiesFeature.EnvironmentEoFocusStatusText; }
         }
 
         string IContinuousControlFeatureContext.EnvironmentEoZoomStatusText
         {
-            get { return _features._propertiesFeature.EnvironmentEoZoomStatusText; }
+            get { return _features.PropertiesFeature.EnvironmentEoZoomStatusText; }
         }
 
         /// <summary>
@@ -399,7 +399,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.ExecuteAutoFocus(object parameter)
         {
-            _features._webAgentMotionFocusFeature.ExecuteAutoFocus(parameter);
+            _features.WebAgentMotionFocusFeature.ExecuteAutoFocus(parameter);
         }
 
         /// <summary>
@@ -409,7 +409,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IContinuousControlFeatureContext.GetCurrentIrFocusStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrFocusStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrFocusStandardPosition();
         }
 
         /// <summary>
@@ -419,7 +419,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int IContinuousControlFeatureContext.GetCurrentIrZoomStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
         /// <summary>
@@ -427,7 +427,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IContinuousControlFeatureContext.GetCurrentPresetStandardFocus()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardFocus();
+            return _features.MoveControlFeature.GetCurrentPresetStandardFocus();
         }
 
         /// <summary>
@@ -435,7 +435,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort IContinuousControlFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         /// <summary>
@@ -443,28 +443,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IContinuousControlFeatureContext.IsAutoFocusBlockingManualFocus(bool ir, bool logWarning)
         {
-            return _features._webAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
+            return _features.WebAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
         }
 
         bool IContinuousControlFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IContinuousControlFeatureContext.IsFovSpeedEnabled
         {
-            get { return _features._inputCoordinatorFeature.IsFovSpeedEnabled; }
-            set { _features._inputCoordinatorFeature.IsFovSpeedEnabled = value; }
+            get { return _features.InputCoordinatorFeature.IsFovSpeedEnabled; }
+            set { _features.InputCoordinatorFeature.IsFovSpeedEnabled = value; }
         }
 
         bool IContinuousControlFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         bool IContinuousControlFeatureContext.IsWebAgentFocusControlReady
         {
-            get { return _features._webAgentMotionFocusFeature.IsWebAgentFocusControlReady; }
+            get { return _features.WebAgentMotionFocusFeature.IsWebAgentFocusControlReady; }
         }
 
         /// <summary>
@@ -472,7 +472,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.MarkLensEvidence(bool ir)
         {
-            _features._inputCoordinatorFeature.MarkLensEvidence(ir);
+            _features.InputCoordinatorFeature.MarkLensEvidence(ir);
         }
 
         /// <summary>
@@ -480,7 +480,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.MarkPanTiltMoveCommandIssued()
         {
-            _features._webAgentProtocolFeature.MarkPanTiltMoveCommandIssued();
+            _features.WebAgentProtocolFeature.MarkPanTiltMoveCommandIssued();
         }
 
         /// <summary>
@@ -489,7 +489,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.MarkPresetLensEvidence(bool ir, bool zoom, bool focus)
         {
-            _features._presetLensFeature.MarkPresetLensEvidence(ir, zoom, focus);
+            _features.PresetLensFeature.MarkPresetLensEvidence(ir, zoom, focus);
         }
 
         /// <summary>
@@ -497,7 +497,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.NotifyEoCurrentStatusChanged(bool panChanged, bool tiltChanged, bool zoomChanged, bool focusChanged, bool powerChanged)
         {
-            _features._controlAgentFeature.NotifyEoCurrentStatusChanged(panChanged, tiltChanged, zoomChanged, focusChanged, powerChanged);
+            _features.ControlAgentFeature.NotifyEoCurrentStatusChanged(panChanged, tiltChanged, zoomChanged, focusChanged, powerChanged);
         }
 
         /// <summary>
@@ -505,7 +505,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.NotifyIrCurrentStatusChanged()
         {
-            _features._controlAgentFeature.NotifyIrCurrentStatusChanged();
+            _features.ControlAgentFeature.NotifyIrCurrentStatusChanged();
         }
 
         /// <summary>
@@ -518,13 +518,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string IContinuousControlFeatureContext.PanTiltSpeedDisplayText
         {
-            get { return _features._propertiesFeature.PanTiltSpeedDisplayText; }
+            get { return _features.PropertiesFeature.PanTiltSpeedDisplayText; }
         }
 
         byte IContinuousControlFeatureContext.PanTiltSpeedLevel
         {
-            get { return _features._propertiesFeature.PanTiltSpeedLevel; }
-            set { _features._propertiesFeature.PanTiltSpeedLevel = value; }
+            get { return _features.PropertiesFeature.PanTiltSpeedLevel; }
+            set { _features.PropertiesFeature.PanTiltSpeedLevel = value; }
         }
 
         /// <summary>
@@ -534,29 +534,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.ReapplyActivePanTiltAbsoluteTarget(double positionSpeed)
         {
-            _features._moveControlFeature.ReapplyActivePanTiltAbsoluteTarget(positionSpeed);
+            _features.MoveControlFeature.ReapplyActivePanTiltAbsoluteTarget(positionSpeed);
         }
 
         string IContinuousControlFeatureContext.RooftopEoFocusStatusText
         {
-            get { return _features._propertiesFeature.RooftopEoFocusStatusText; }
+            get { return _features.PropertiesFeature.RooftopEoFocusStatusText; }
         }
 
         string IContinuousControlFeatureContext.RooftopEoZoomStatusText
         {
-            get { return _features._propertiesFeature.RooftopEoZoomStatusText; }
+            get { return _features.PropertiesFeature.RooftopEoZoomStatusText; }
         }
 
         RtspSourceOption IContinuousControlFeatureContext.SelectedEoRtspSource
         {
-            get { return _features._propertiesFeature.SelectedEoRtspSource; }
-            set { _features._propertiesFeature.SelectedEoRtspSource = value; }
+            get { return _features.PropertiesFeature.SelectedEoRtspSource; }
+            set { _features.PropertiesFeature.SelectedEoRtspSource = value; }
         }
 
         EquipmentStatusMode IContinuousControlFeatureContext.SelectedEquipmentStatusMode
         {
-            get { return _features._propertiesFeature.SelectedEquipmentStatusMode; }
-            set { _features._propertiesFeature.SelectedEquipmentStatusMode = value; }
+            get { return _features.PropertiesFeature.SelectedEquipmentStatusMode; }
+            set { _features.PropertiesFeature.SelectedEquipmentStatusMode = value; }
         }
 
         /// <summary>
@@ -564,7 +564,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.SetDigitalEstimateDirection(int direction, bool ir)
         {
-            _features._cameraFeatureControlFeature.SetDigitalEstimateDirection(direction, ir);
+            _features.CameraFeatureControlFeature.SetDigitalEstimateDirection(direction, ir);
         }
 
         /// <summary>
@@ -572,7 +572,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IContinuousControlFeatureContext.StopPrecisionMotion(string reason, bool force)
         {
-            _features._webAgentMotionFocusFeature.StopPrecisionMotion(reason, force);
+            _features.WebAgentMotionFocusFeature.StopPrecisionMotion(reason, force);
         }
 
         /// <summary>
@@ -580,7 +580,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         string IContinuousControlFeatureContext.ZoneKey(string camera)
         {
-            return _features._zonesFeature.ZoneKey(camera);
+            return _features.ZonesFeature.ZoneKey(camera);
         }
     }
 }

@@ -160,7 +160,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [LA Status Packet] 수신 시 갱신되고,
         /// 버튼 클릭 시 상대 이동 계산 기준값으로 사용한다.
         /// </summary>
-        internal double _currentPan
+        internal double CurrentPan
         {
             get { return _screenStateFeature._currentPan; }
             set { _screenStateFeature._currentPan = value; }
@@ -172,7 +172,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [LA Status Packet] 수신 시 갱신되고,
         /// 버튼 클릭 시 상대 이동 계산 기준값으로 사용한다.
         /// </summary>
-        internal double _currentTilt
+        internal double CurrentTilt
         {
             get { return _screenStateFeature._currentTilt; }
             set { _screenStateFeature._currentTilt = value; }
@@ -275,7 +275,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [IR]이 아닌 [EO] 기준 값으로 확인되어
         /// [EO Zoom] 상태값으로 관리한다.
         /// </summary>
-        internal short _currentEoZoom
+        internal short CurrentEoZoom
         {
             get { return _screenStateFeature._currentEoZoom; }
             set { _screenStateFeature._currentEoZoom = value; }
@@ -289,7 +289,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// [IR]이 아닌 [EO] 기준 값으로 확인되어
         /// [EO Focus] 상태값으로 관리한다.
         /// </summary>
-        internal short _currentEoFocus
+        internal short CurrentEoFocus
         {
             get { return _screenStateFeature._currentEoFocus; }
             set { _screenStateFeature._currentEoFocus = value; }
@@ -361,39 +361,39 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             // 아래 필드는 새 기능 객체를 만드는 것이 아니라, 구성 객체가 만든 동일한 인스턴스를 가리킨다.
             // 화면의 기존 명령·속성 이름을 유지하면서 실제 처리는 담당 기능에 전달하기 위한 연결이다.
-            _webAgentMotionFocusFeature = _features._webAgentMotionFocusFeature;
-            _webAgentEquipmentFeature = _features._webAgentEquipmentFeature;
-            _panoramaReferenceFeature = _features._panoramaReferenceFeature;
-            _panoramaPresetsFeature = _features._panoramaPresetsFeature;
-            _specialFeaturesFeature = _features._specialFeaturesFeature;
-            _presetLensFeature = _features._presetLensFeature;
-            _inputCoordinatorFeature = _features._inputCoordinatorFeature;
-            _cameraFeatureControlFeature = _features._cameraFeatureControlFeature;
-            _opticalCenterFeature = _features._opticalCenterFeature;
-            _scanTraversalFeature = _features._scanTraversalFeature;
-            _routesFeature = _features._routesFeature;
-            _zonesFeature = _features._zonesFeature;
-            _aiFeature = _features._aiFeature;
-            _continuousControlFeature = _features._continuousControlFeature;
-            _controlAgentFeature = _features._controlAgentFeature;
-            _webAgentProtocolFeature = _features._webAgentProtocolFeature;
-            _fireEventsFeature = _features._fireEventsFeature;
-            _eventAlertsFeature = _features._eventAlertsFeature;
-            _moveControlFeature = _features._moveControlFeature;
-            _panoramaFeature = _features._panoramaFeature;
-            _positionFeature = _features._positionFeature;
-            _presetStorageFeature = _features._presetStorageFeature;
-            _propertiesFeature = _features._propertiesFeature;
-            _rtspSettingsFeature = _features._rtspSettingsFeature;
-            _rpySettingsFeature = _features._rpySettingsFeature;
-            _gpsSettingsFeature = _features._gpsSettingsFeature;
-            _devicePowerFeature = _features._devicePowerFeature;
-            _systemDateTimeFeature = _features._systemDateTimeFeature;
-            _smokeFeature = _features._smokeFeature;
-            _syncFeature = _features._syncFeature;
-            _thermalFeature = _features._thermalFeature;
-            _videoFeature = _features._videoFeature;
-            _screenStateFeature = _features._screenStateFeature;
+            _webAgentMotionFocusFeature = _features.WebAgentMotionFocusFeature;
+            _webAgentEquipmentFeature = _features.WebAgentEquipmentFeature;
+            _panoramaReferenceFeature = _features.PanoramaReferenceFeature;
+            _panoramaPresetsFeature = _features.PanoramaPresetsFeature;
+            _specialFeaturesFeature = _features.SpecialFeaturesFeature;
+            _presetLensFeature = _features.PresetLensFeature;
+            _inputCoordinatorFeature = _features.InputCoordinatorFeature;
+            _cameraFeatureControlFeature = _features.CameraFeatureControlFeature;
+            _opticalCenterFeature = _features.OpticalCenterFeature;
+            _scanTraversalFeature = _features.ScanTraversalFeature;
+            _routesFeature = _features.RoutesFeature;
+            _zonesFeature = _features.ZonesFeature;
+            _aiFeature = _features.AiFeature;
+            _continuousControlFeature = _features.ContinuousControlFeature;
+            _controlAgentFeature = _features.ControlAgentFeature;
+            _webAgentProtocolFeature = _features.WebAgentProtocolFeature;
+            _fireEventsFeature = _features.FireEventsFeature;
+            _eventAlertsFeature = _features.EventAlertsFeature;
+            _moveControlFeature = _features.MoveControlFeature;
+            _panoramaFeature = _features.PanoramaFeature;
+            _positionFeature = _features.PositionFeature;
+            _presetStorageFeature = _features.PresetStorageFeature;
+            _propertiesFeature = _features.PropertiesFeature;
+            _rtspSettingsFeature = _features.RtspSettingsFeature;
+            _rpySettingsFeature = _features.RpySettingsFeature;
+            _gpsSettingsFeature = _features.GpsSettingsFeature;
+            _devicePowerFeature = _features.DevicePowerFeature;
+            _systemDateTimeFeature = _features.SystemDateTimeFeature;
+            _smokeFeature = _features.SmokeFeature;
+            _syncFeature = _features.SyncFeature;
+            _thermalFeature = _features.ThermalFeature;
+            _videoFeature = _features.VideoFeature;
+            _screenStateFeature = _features.ScreenStateFeature;
 
             // 잠금과 계측 시계도 기존 인스턴스를 공유한다. 복사하거나 새로 만들면 동시 제어 순서가 달라질 수 있다.
             _features.Runtime._lensSyncOperationLock = _lensSyncOperationLock;
@@ -546,7 +546,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             InitializeEquipmentPresetFolders();
 
-            _presetStorageReady = true;
+            PresetStorageReady = true;
 
             SwitchEquipmentPresets();
 

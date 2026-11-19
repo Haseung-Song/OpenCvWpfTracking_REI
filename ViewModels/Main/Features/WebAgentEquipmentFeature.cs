@@ -10,17 +10,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>장비 특수 명령과 온도에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IWebAgentEquipmentFeatureContext
     {
-        string _connectionSessionId { get; set; }
+        string ConnectionSessionId { get; set; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        byte _currentScbPowerStatus { get; set; }
+        byte CurrentScbPowerStatus { get; set; }
 
-        bool _hasDevicePowerStatus { get; set; }
+        bool HasDevicePowerStatus { get; set; }
 
-        bool _isDevicePowerStatusStale { get; set; }
+        bool IsDevicePowerStatusStale { get; set; }
 
-        IWebAgentThermalPaletteServicePort _webAgentThermalPaletteService { get; }
+        IWebAgentThermalPaletteServicePort WebAgentThermalPaletteService { get; }
 
         bool CameraFeatureTransportReady { get; }
 
@@ -163,9 +163,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (IsWebAgentEquipmentControlReady && _context._hasDevicePowerStatus && !_context._isDevicePowerStatusStale)
+                if (IsWebAgentEquipmentControlReady && _context.HasDevicePowerStatus && !_context.IsDevicePowerStatusStale)
                 {
-                    return ((_context._currentScbPowerStatus & 0x20) != 0 ? "장비 와이퍼 ON" : "장비 와이퍼 OFF");
+                    return ((_context.CurrentScbPowerStatus & 0x20) != 0 ? "장비 와이퍼 ON" : "장비 와이퍼 OFF");
                 }
                 else
                 {
@@ -236,7 +236,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            bool sent = _context._controlCommandService.SendCommand(0x00, 0x3F, (byte)mode, (byte)seconds);
+            bool sent = _context.ControlCommandService.SendCommand(0x00, 0x3F, (byte)mode, (byte)seconds);
 
             string action = mode == 1 ? seconds + "초 구동" : mode == 2 ? "정지" : "연속 구동";
 
@@ -244,7 +244,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.OnPropertyChanged(nameof(WiperRequestText));
 
-            ConsoleLogHelper.Command("WEB 와이퍼", _wiperRequestText + Environment.NewLine + "CMD2=0x3F / MODE=" + mode + " / SECONDS=" + seconds + " / SESSION=" + _context._connectionSessionId);
+            ConsoleLogHelper.Command("WEB 와이퍼", _wiperRequestText + Environment.NewLine + "CMD2=0x3F / MODE=" + mode + " / SECONDS=" + seconds + " / SESSION=" + _context.ConnectionSessionId);
         }
 
         /// <summary>
@@ -257,7 +257,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            bool sent = _context._controlCommandService.SendCommand(0x00, 0xFB, 0x00, 0x00);
+            bool sent = _context.ControlCommandService.SendCommand(0x00, 0xFB, 0x00, 0x00);
 
             ConsoleLogHelper.Command("WEB 온도", sent ? "최신 온도 캐시 조회 전송" : "온도 조회 전송 실패");
         }
@@ -276,11 +276,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            string session = _context._connectionSessionId;
+            string session = _context.ConnectionSessionId;
 
             Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (session != _context._connectionSessionId || !IsWebAgentEquipmentControlReady)
+                if (session != _context.ConnectionSessionId || !IsWebAgentEquipmentControlReady)
                 {
                     return;
                 }
@@ -296,7 +296,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ResetWebAgentEquipmentState()
         {
-            _context._webAgentThermalPaletteService?.ResetRelativeSelection();
+            _context.WebAgentThermalPaletteService?.ResetRelativeSelection();
 
             _temperatureSnapshot = null;
             _wiperRequestText = "와이퍼 요청 대기";

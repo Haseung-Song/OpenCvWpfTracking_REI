@@ -17,91 +17,91 @@ namespace OpenCvWpfTracking.ViewModels.Main
     internal interface IVideoFeatureContext
 : IVideoPerformanceContext
     {
-        Models.Main.RtspSourceOption _activeEoCtecSource { get; set; }
+        Models.Main.RtspSourceOption ActiveEoCtecSource { get; set; }
 
-        Models.Main.RtspSourceOption _connectedEoCtecSource { get; set; }
+        Models.Main.RtspSourceOption ConnectedEoCtecSource { get; set; }
 
-        CancellationTokenSource _controlAgentReconnectCts { get; set; }
+        CancellationTokenSource ControlAgentReconnectCts { get; set; }
 
-        Services.Communication.ICtecCameraResponseServicePort _ctecCameraResponseService { get; }
+        Services.Communication.ICtecCameraResponseServicePort CtecCameraResponseService { get; }
 
-        CancellationTokenSource _cts { get; set; }
+        CancellationTokenSource Cts { get; set; }
 
-        byte _currentCtecEoFocusMode { get; set; }
+        byte CurrentCtecEoFocusMode { get; set; }
 
-        ushort _currentCtecEoFocusPosition { get; set; }
+        ushort CurrentCtecEoFocusPosition { get; set; }
 
-        ushort _currentCtecEoZoomPosition { get; set; }
+        ushort CurrentCtecEoZoomPosition { get; set; }
 
-        short _currentEoFocus { get; set; }
+        short CurrentEoFocus { get; set; }
 
-        short _currentEoZoom { get; set; }
+        short CurrentEoZoom { get; set; }
 
-        ushort _currentIrFocus { get; set; }
+        ushort CurrentIrFocus { get; set; }
 
-        ushort _currentIrZoom { get; set; }
+        ushort CurrentIrZoom { get; set; }
 
-        KeyboardPanTiltDirection _currentKeyboardPanTiltDirection { get; set; }
+        KeyboardPanTiltDirection CurrentKeyboardPanTiltDirection { get; set; }
 
-        ContinuousMoveType _currentMoveType { get; set; }
+        ContinuousMoveType CurrentMoveType { get; set; }
 
-        double _currentPan { get; set; }
+        double CurrentPan { get; set; }
 
-        byte _currentPowerStatus { get; set; }
+        byte CurrentPowerStatus { get; set; }
 
-        double _currentTilt { get; set; }
+        double CurrentTilt { get; set; }
 
-        ref int _deviceConnectRequested { get; }
+        ref int DeviceConnectRequested { get; }
 
-        IFFmpegDecoderServicePort _eoDecoder { get; }
+        IFFmpegDecoderServicePort EoDecoder { get; }
 
-        ThermalFireDetectionService _eoFireDetectionService { get; }
+        ThermalFireDetectionService EoFireDetectionService { get; }
 
-        ref long _eoLensReceivedTicks { get; }
+        ref long EoLensReceivedTicks { get; }
 
-        IFFmpegDecoderServicePort _irDecoder { get; }
+        IFFmpegDecoderServicePort IrDecoder { get; }
 
-        ThermalFireDetectionService _irFireDetectionService { get; }
+        ThermalFireDetectionService IrFireDetectionService { get; }
 
-        ref long _irLensReceivedTicks { get; }
+        ref long IrLensReceivedTicks { get; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        ref int _isEoFrameDispatchPending { get; }
+        ref int IsEoFrameDispatchPending { get; }
 
-        bool _isEoFrameDisplayed { get; set; }
+        bool IsEoFrameDisplayed { get; set; }
 
-        bool _isEoRtspAddressValid { get; set; }
+        bool IsEoRtspAddressValid { get; set; }
 
-        ref int _isIrFrameDispatchPending { get; }
+        ref int IsIrFrameDispatchPending { get; }
 
-        bool _isIrFrameDisplayed { get; set; }
+        bool IsIrFrameDisplayed { get; set; }
 
-        bool _isIrRtspAddressValid { get; set; }
+        bool IsIrRtspAddressValid { get; set; }
 
-        bool _isVideoConnecting { get; set; }
+        bool IsVideoConnecting { get; set; }
 
-        Services.Communication.ILAPacketParserPort _laPacketParser { get; }
+        Services.Communication.ILAPacketParserPort LaPacketParser { get; }
 
-        ref double? _lastPanAbsoluteTarget { get; }
+        ref double? LastPanAbsoluteTarget { get; }
 
-        Services.Communication.ITcpClientServicePort _laTcpService { get; }
+        Services.Communication.ITcpClientServicePort LaTcpService { get; }
 
-        string _requestedControlIp { get; set; }
+        string RequestedControlIp { get; set; }
 
-        string _requestedControlPort { get; set; }
+        string RequestedControlPort { get; set; }
 
-        ControlAgentProfileOption _requestedControlProfile { get; set; }
+        ControlAgentProfileOption RequestedControlProfile { get; set; }
 
-        string _requestedEoAddress { get; set; }
+        string RequestedEoAddress { get; set; }
 
-        string _requestedIrAddress { get; set; }
+        string RequestedIrAddress { get; set; }
 
-        long[] _videoCenterFrameTicks { get; }
+        long[] VideoCenterFrameTicks { get; }
 
-        CancellationTokenSource _videoReconnectCts { get; set; }
+        CancellationTokenSource VideoReconnectCts { get; set; }
 
-        ref int _visionSettingsGeneration { get; }
+        ref int VisionSettingsGeneration { get; }
 
         string AiPowerStatusText { get; set; }
 
@@ -386,9 +386,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal readonly DisplayFrameSlot _irDisplaySlot = new DisplayFrameSlot();
 
-        internal RtspChannelPerformance _eoRtspPerformance { get { return _performanceRecorder._eoRtspPerformance; } }
+        internal RtspChannelPerformance EoRtspPerformance { get { return _performanceRecorder._eoRtspPerformance; } }
 
-        internal RtspChannelPerformance _irRtspPerformance { get { return _performanceRecorder._irRtspPerformance; } }
+        internal RtspChannelPerformance IrRtspPerformance { get { return _performanceRecorder._irRtspPerformance; } }
 
         internal readonly SemaphoreSlim _deviceConnectionLifecycleLock = new SemaphoreSlim(1, 1);
 
@@ -410,7 +410,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal async void Connect()
         {
-            if (Volatile.Read(ref _deviceDisconnectRequested) != 0 || _context.IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _context._deviceConnectRequested, 1, 0) != 0)
+            if (Volatile.Read(ref _deviceDisconnectRequested) != 0 || _context.IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _context.DeviceConnectRequested, 1, 0) != 0)
             {
                 _context.ShowAlreadyConnected();
 
@@ -437,7 +437,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             finally
             {
-                Interlocked.Exchange(ref _context._deviceConnectRequested, 0);
+                Interlocked.Exchange(ref _context.DeviceConnectRequested, 0);
 
                 _deviceConnectionLifecycleLock.Release();
             }
@@ -466,7 +466,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 현재 [Connect] 시도 중이면
             // 중복 [Connect] 입력 무시
             //
-            if (_context._isVideoConnecting)
+            if (_context.IsVideoConnecting)
             {
                 Console.WriteLine();
 
@@ -501,30 +501,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.SaveRtspCommunicationSettings();
 
             // 재시도 연결 주소를 고정하고 선택 상자 변경은 다음 명시적 연결에 적용한다.
-            _context._requestedControlProfile = _context.SelectedControlAgentProfile;
-            _context._requestedControlIp = _context.ControlAgentIp;
-            _context._requestedControlPort = _context.ControlAgentPortText;
-            _context._requestedEoAddress = eoRtspAddress;
-            _context._requestedIrAddress = irRtspAddress;
+            _context.RequestedControlProfile = _context.SelectedControlAgentProfile;
+            _context.RequestedControlIp = _context.ControlAgentIp;
+            _context.RequestedControlPort = _context.ControlAgentPortText;
+            _context.RequestedEoAddress = eoRtspAddress;
+            _context.RequestedIrAddress = irRtspAddress;
 
             // 이전 연결 중 선택한 다음 장비는 아직 이전 좌표계를 사용했을 수 있다.
             // 새 TCP 수신과 자동 HOME 전에 송신·수신 좌표계를 새 요청에 맞춘다.
-            _context.ApplyControlAgentPanCoordinateMode(_context._requestedControlProfile);
+            _context.ApplyControlAgentPanCoordinateMode(_context.RequestedControlProfile);
 
             // 2026-08-18: 한 채널만 연결된 상태에서 다시 연결해도
             // 정상 채널의 프레임과 CaptureLoop는 유지하고 실패 채널만 초기화한다.
-            bool isEoStreamActive = _context._eoDecoder.IsOpened || _context._isEoFrameDisplayed;
+            bool isEoStreamActive = _context.EoDecoder.IsOpened || _context.IsEoFrameDisplayed;
 
-            bool isIrStreamActive = _context._irDecoder.IsOpened || _context._isIrFrameDisplayed;
+            bool isIrStreamActive = _context.IrDecoder.IsOpened || _context.IsIrFrameDisplayed;
 
-            if (_context._isEoRtspAddressValid && !isEoStreamActive)
+            if (_context.IsEoRtspAddressValid && !isEoStreamActive)
             {
-                _context._isEoFrameDisplayed = false;
+                _context.IsEoFrameDisplayed = false;
             }
 
-            if (_context._isIrRtspAddressValid && !isIrStreamActive)
+            if (_context.IsIrRtspAddressValid && !isIrStreamActive)
             {
-                _context._isIrFrameDisplayed = false;
+                _context.IsIrFrameDisplayed = false;
             }
 
             App.Current.Dispatcher.Invoke(() =>
@@ -548,7 +548,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
             });
 
-            _context._isVideoConnecting = true; // 연결 시도 중 상태 설정
+            _context.IsVideoConnecting = true; // 연결 시도 중 상태 설정
 
             /*
              * [VD] 로컬 테스트 영상 연결 기능 임시 비활성화
@@ -556,7 +556,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 현재 실제 [EO / IR] RTSP 영상만 사용하므로
              * VD 연결 상태는 갱신하지 않는다.
              */
-            if (_context._isEoRtspAddressValid && !isEoStreamActive)
+            if (_context.IsEoRtspAddressValid && !isEoStreamActive)
             {
                 _context.EoStatusText = "[EO] Connecting...";
             }
@@ -568,7 +568,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * IR 연결을 시작하므로, 초기 상태 표시 순서가
              * EO -> IR 순서로 명확하게 유지된다.
              */
-            if (_context._isIrRtspAddressValid && !isIrStreamActive)
+            if (_context.IsIrRtspAddressValid && !isIrStreamActive)
             {
                 _context.IrStatusText = "[IR] Waiting for EO...";
             }
@@ -577,12 +577,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 // 2026-08-18: 살아 있는 채널의 CaptureLoop가 사용하는 Token은
                 // 취소하지 않는다. 최초 연결 또는 명시적 연결 해제 후에만 새로 만든다.
-                if (_context._cts == null || _context._cts.IsCancellationRequested)
+                if (_context.Cts == null || _context.Cts.IsCancellationRequested)
                 {
                     ResetCancellationToken();
                 }
 
-                _context._isDeviceConnectionRequested = true;
+                _context.IsDeviceConnectionRequested = true;
 
                 // [Control Agent] 최초 연결을 바로 시도한다.
                 //
@@ -616,9 +616,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  */
                 VideoConnectResult result = await OpenVideoSourcesAsync();
 
-                if (!_context._isDeviceConnectionRequested || _context._cts == null || _context._cts.IsCancellationRequested)
+                if (!_context.IsDeviceConnectionRequested || _context.Cts == null || _context.Cts.IsCancellationRequested)
                 {
-                    await Task.WhenAll(Task.Run(() => _context._eoDecoder.Close()), Task.Run(() => _context._irDecoder.Close()));
+                    await Task.WhenAll(Task.Run(() => _context.EoDecoder.Close()), Task.Run(() => _context.IrDecoder.Close()));
 
                     return;
                 }
@@ -647,7 +647,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  */
                 bool areBothCamerasConnected = result.EoResult && result.IrResult;
 
-                if (isControlAgentConnected && _context._laTcpService.IsConnected && session == Interlocked.Read(ref _deviceSessionGeneration) && areBothCamerasConnected)
+                if (isControlAgentConnected && _context.LaTcpService.IsConnected && session == Interlocked.Read(ref _deviceSessionGeneration) && areBothCamerasConnected)
                 {
                     ConsoleLogHelper.Info("CONNECT / AUTO HOME", $"Eligibility passed / CONTROL AGENT + EO and IR connected / MODE={(_context.IsRooftopStatusSelected ? "LA AGENT" : "WEB AGENT")}");
 
@@ -720,7 +720,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             finally
             {
-                _context._isVideoConnecting = false;
+                _context.IsVideoConnecting = false;
             }
         }
 
@@ -738,13 +738,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Interlocked.Increment(ref _deviceSessionGeneration);
 
-            _context._isDeviceConnectionRequested = false;
+            _context.IsDeviceConnectionRequested = false;
 
             _context.ResetDigitalZoomSession();
 
-            _context._controlAgentReconnectCts?.Cancel();
+            _context.ControlAgentReconnectCts?.Cancel();
 
-            _context._videoReconnectCts?.Cancel();
+            _context.VideoReconnectCts?.Cancel();
 
             // 2026-10-01: native RTSP 자원 정리가 끝날 때까지 기존 Connected/Waiting
             // 문구가 남지 않도록 해제 요청을 UI에 즉시 표시한다.
@@ -757,7 +757,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.SetControlAgentConnectionStatus("Disconnecting...", "#FFD166");
 
-            _context._cts?.Cancel();
+            _context.Cts?.Cancel();
 
             await _deviceConnectionLifecycleLock.WaitAsync();
 
@@ -809,11 +809,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 연결 시도 / 자동 재연결 진행 중에도
             // 사용자가 즉시 연결 해제할 수 있도록 모든 Token을 먼저 종료한다.
             //
-            _context._isDeviceConnectionRequested = false;
+            _context.IsDeviceConnectionRequested = false;
 
-            _context._controlAgentReconnectCts?.Cancel();
+            _context.ControlAgentReconnectCts?.Cancel();
 
-            _context._videoReconnectCts?.Cancel();
+            _context.VideoReconnectCts?.Cancel();
 
             /*
              * CTEC EO Zoom / Focus 버튼을 누르고 있던 상태에서
@@ -834,19 +834,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             await _context.StopFocusSyncAsync();
 
             // 1. 먼저 [Loop] 종료 요청
-            _context._cts?.Cancel();
+            _context.Cts?.Cancel();
 
-            Interlocked.Exchange(ref _context._isEoFrameDispatchPending, 0);
+            Interlocked.Exchange(ref _context.IsEoFrameDispatchPending, 0);
 
-            Interlocked.Exchange(ref _context._isIrFrameDispatchPending, 0);
+            Interlocked.Exchange(ref _context.IsIrFrameDispatchPending, 0);
 
             // 2-1. [EO] 영상 표시 상태 초기화
             //
-            _context._isEoFrameDisplayed = false;
+            _context.IsEoFrameDisplayed = false;
 
             // 2-2. [IR] 영상 표시 상태 초기화
             //
-            _context._isIrFrameDisplayed = false;
+            _context.IsIrFrameDisplayed = false;
 
             /*
              * [VD] 로컬 테스트 영상 연결 기능 비활성화
@@ -854,27 +854,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 현재 VD Decoder를 Open하지 않으므로
              * Release 처리도 함께 비활성화한다.
              */
-            await Task.WhenAll(Task.Run(() => _context._eoDecoder.Close()), Task.Run(() => _context._irDecoder.Close()));
+            await Task.WhenAll(Task.Run(() => _context.EoDecoder.Close()), Task.Run(() => _context.IrDecoder.Close()));
 
             await WaitForCaptureWorkersAsync();
 
             // [Control Agent] 제어 TCP 연결 해제
             //
-            await _context._laTcpService.DisconnectAsync();
+            await _context.LaTcpService.DisconnectAsync();
 
             // [옥상 MR300 EO] CTEC Response TCP Port 9000 연결 해제
             //
-            _context._ctecCameraResponseService.Stop();
+            _context.CtecCameraResponseService.Stop();
 
-            _context._connectedEoCtecSource = null;
-            _context._requestedControlProfile = null;
+            _context.ConnectedEoCtecSource = null;
+            _context.RequestedControlProfile = null;
 
-            _context._requestedControlIp = _context._requestedControlPort = _context._requestedEoAddress = _context._requestedIrAddress = null;
+            _context.RequestedControlIp = _context.RequestedControlPort = _context.RequestedEoAddress = _context.RequestedIrAddress = null;
 
-            _context._activeEoCtecSource = null;
-            _context._currentCtecEoZoomPosition = 0;
-            _context._currentCtecEoFocusPosition = 0;
-            _context._currentCtecEoFocusMode = 0;
+            _context.ActiveEoCtecSource = null;
+            _context.CurrentCtecEoZoomPosition = 0;
+            _context.CurrentCtecEoFocusPosition = 0;
+            _context.CurrentCtecEoFocusMode = 0;
 
             _context.SetControlAgentConnectionStatus("Disconnected", "#FF6B6B");
 
@@ -890,38 +890,38 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // Control Agent 연결 해제 후에는
             // 마지막 수신 상태값이 화면에 남지 않도록 초기화한다.
             //
-            _context._currentPan = 0.0;
-            _context._lastPanAbsoluteTarget = null;
+            _context.CurrentPan = 0.0;
+            _context.LastPanAbsoluteTarget = null;
 
             _context.ClearActivePanTiltAbsoluteMove();
 
             _context.IsPresetScanRunning = false;
             _context.PresetCommandStatusText = "CONTROL AGENT DISCONNECTED";
-            _context._currentTilt = 0.0;
-            _context._currentEoZoom = 0;
-            _context._currentEoFocus = 0;
-            _context._currentIrZoom = 0;
-            _context._currentIrFocus = 0;
+            _context.CurrentTilt = 0.0;
+            _context.CurrentEoZoom = 0;
+            _context.CurrentEoFocus = 0;
+            _context.CurrentIrZoom = 0;
+            _context.CurrentIrFocus = 0;
 
-            System.Threading.Interlocked.Exchange(ref _context._eoLensReceivedTicks, 0);
+            System.Threading.Interlocked.Exchange(ref _context.EoLensReceivedTicks, 0);
 
-            System.Threading.Interlocked.Exchange(ref _context._irLensReceivedTicks, 0);
+            System.Threading.Interlocked.Exchange(ref _context.IrLensReceivedTicks, 0);
 
             // CONTROL AGENT TCP 연결에서 남아 있을 수 있는
             // 분할 수신 Packet Buffer 초기화
             //
-            _context._laPacketParser.Reset();
+            _context.LaPacketParser.Reset();
 
-            _context._currentPowerStatus = 0x00;
+            _context.CurrentPowerStatus = 0x00;
 
             // 2026-10-06: 재연결 전에는 0x31 상태를 OFF로 오인하지 않는다.
             _context.ResetDevicePowerStatus();
 
-            _context._currentMoveType = ContinuousMoveType.None;
+            _context.CurrentMoveType = ContinuousMoveType.None;
 
             _context.ClearKeyboardPanTiltPressedState();
 
-            _context._currentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
+            _context.CurrentKeyboardPanTiltDirection = KeyboardPanTiltDirection.None;
 
             // CURRENT STATUS UI Binding 갱신
             //
@@ -957,9 +957,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             ResetLatestVideoFrameState();
 
-            _context._cts?.Dispose();
+            _context.Cts?.Dispose();
 
-            _context._cts = null;
+            _context.Cts = null;
 
             // 5. [VIDEO] 연결 해제 완료 [Log] 출력
             Console.WriteLine("[VIDEO] Disconnect Complete.");
@@ -1118,11 +1118,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ResetCancellationToken()
         {
-            _context._cts?.Cancel();
+            _context.Cts?.Cancel();
 
-            _context._cts?.Dispose();
+            _context.Cts?.Dispose();
 
-            _context._cts = new CancellationTokenSource();
+            _context.Cts = new CancellationTokenSource();
         }
 
         /// <summary>
@@ -1137,7 +1137,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             bool irResult = false;
 
-            CancellationToken captureToken = _context._cts?.Token ?? CancellationToken.None;
+            CancellationToken captureToken = _context.Cts?.Token ?? CancellationToken.None;
 
             /*
              * [1] EO RTSP 우선 연결
@@ -1146,11 +1146,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
              * 첫 번째 장비의 Connect 결과가 확정되기 전에는
              * 다음 장비 연결을 시작하지 않는다.
              */
-            bool wasEoAlreadyOpen = _context._eoDecoder.IsOpened;
+            bool wasEoAlreadyOpen = _context.EoDecoder.IsOpened;
 
-            eoResult = _context._isEoRtspAddressValid && (wasEoAlreadyOpen || await Task.Run(() => _context._eoDecoder.Open(_context.SessionEoAddress, captureToken)));
+            eoResult = _context.IsEoRtspAddressValid && (wasEoAlreadyOpen || await Task.Run(() => _context.EoDecoder.Open(_context.SessionEoAddress, captureToken)));
 
-            if (!_context._isDeviceConnectionRequested || captureToken.IsCancellationRequested)
+            if (!_context.IsDeviceConnectionRequested || captureToken.IsCancellationRequested)
             {
                 return new VideoConnectResult
                 {
@@ -1161,8 +1161,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (eoResult)
             {
-                _context.EoVideoWidth = _context._eoDecoder.VideoWidth;
-                _context.EoVideoHeight = _context._eoDecoder.VideoHeight;
+                _context.EoVideoWidth = _context.EoDecoder.VideoWidth;
+                _context.EoVideoHeight = _context.EoDecoder.VideoHeight;
                 _context.EoStatusText = "[EO] Waiting Frame...";
 
                 /*
@@ -1173,16 +1173,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
                  */
                 if (!wasEoAlreadyOpen)
                 {
-                    _eoCaptureTask = Task.Run(() => FFmpegCaptureLoop(_context._eoDecoder, _context.SessionEoAddress, "EO", bitmap =>
+                    _eoCaptureTask = Task.Run(() => FFmpegCaptureLoop(_context.EoDecoder, _context.SessionEoAddress, "EO", bitmap =>
                     {
                         _context.EOCameraImage = bitmap;
-                        _context._isEoFrameDisplayed = true;
+                        _context.IsEoFrameDisplayed = true;
                     }, captureToken));
                 }
             }
-            else if (_context._isEoRtspAddressValid)
+            else if (_context.IsEoRtspAddressValid)
             {
-                _context.EoStatusText = _context._eoDecoder.IsAuthenticationFailure ? "[EO] RTSP 인증 실패 (401)" : "[EO] Connect Failed";
+                _context.EoStatusText = _context.EoDecoder.IsAuthenticationFailure ? "[EO] RTSP 인증 실패 (401)" : "[EO] Connect Failed";
             }
 
             /*
@@ -1204,7 +1204,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 };
             }
 
-            if (!_context._isDeviceConnectionRequested || captureToken.IsCancellationRequested)
+            if (!_context.IsDeviceConnectionRequested || captureToken.IsCancellationRequested)
             {
                 return new VideoConnectResult
                 {
@@ -1216,16 +1216,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
             /*
              * [2] EO 연결 처리 완료 후 IR RTSP 연결
              */
-            if (_context._isIrRtspAddressValid)
+            if (_context.IsIrRtspAddressValid)
             {
                 _context.IrStatusText = "[IR] Connecting...";
             }
 
-            bool wasIrAlreadyOpen = _context._irDecoder.IsOpened;
+            bool wasIrAlreadyOpen = _context.IrDecoder.IsOpened;
 
-            irResult = _context._isIrRtspAddressValid && (wasIrAlreadyOpen || await Task.Run(() => _context._irDecoder.Open(_context.SessionIrAddress, captureToken)));
+            irResult = _context.IsIrRtspAddressValid && (wasIrAlreadyOpen || await Task.Run(() => _context.IrDecoder.Open(_context.SessionIrAddress, captureToken)));
 
-            if (!_context._isDeviceConnectionRequested || captureToken.IsCancellationRequested)
+            if (!_context.IsDeviceConnectionRequested || captureToken.IsCancellationRequested)
             {
                 return new VideoConnectResult
                 {
@@ -1236,22 +1236,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (irResult)
             {
-                _context.IrVideoWidth = _context._irDecoder.VideoWidth;
-                _context.IrVideoHeight = _context._irDecoder.VideoHeight;
+                _context.IrVideoWidth = _context.IrDecoder.VideoWidth;
+                _context.IrVideoHeight = _context.IrDecoder.VideoHeight;
                 _context.IrStatusText = "[IR] Waiting Frame...";
 
                 if (!wasIrAlreadyOpen)
                 {
-                    _irCaptureTask = Task.Run(() => FFmpegCaptureLoop(_context._irDecoder, _context.SessionIrAddress, "IR", bitmap =>
+                    _irCaptureTask = Task.Run(() => FFmpegCaptureLoop(_context.IrDecoder, _context.SessionIrAddress, "IR", bitmap =>
                     {
                         _context.IRCameraImage = bitmap;
-                        _context._isIrFrameDisplayed = true;
+                        _context.IsIrFrameDisplayed = true;
                     }, captureToken));
                 }
             }
-            else if (_context._isIrRtspAddressValid)
+            else if (_context.IsIrRtspAddressValid)
             {
-                _context.IrStatusText = _context._irDecoder.IsAuthenticationFailure ? "[IR] RTSP 인증 실패 (401)" : "[IR] Connect Failed";
+                _context.IrStatusText = _context.IrDecoder.IsAuthenticationFailure ? "[IR] RTSP 인증 실패 (401)" : "[IR] Connect Failed";
             }
 
             return new VideoConnectResult
@@ -1267,29 +1267,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void StartVideoReconnectLoops(VideoConnectResult result)
         {
-            _context._videoReconnectCts?.Cancel();
+            _context.VideoReconnectCts?.Cancel();
 
-            _context._videoReconnectCts?.Dispose();
+            _context.VideoReconnectCts?.Dispose();
 
-            _context._videoReconnectCts = new CancellationTokenSource();
+            _context.VideoReconnectCts = new CancellationTokenSource();
 
-            CancellationToken token = _context._videoReconnectCts.Token;
+            CancellationToken token = _context.VideoReconnectCts.Token;
 
-            if (_context._isEoRtspAddressValid && !result.EoResult)
+            if (_context.IsEoRtspAddressValid && !result.EoResult)
             {
-                _ = ReconnectVideoAsync(_context._eoDecoder, _context.SessionEoAddress, "EO", bitmap =>
+                _ = ReconnectVideoAsync(_context.EoDecoder, _context.SessionEoAddress, "EO", bitmap =>
                 {
                     _context.EOCameraImage = bitmap;
-                    _context._isEoFrameDisplayed = true;
+                    _context.IsEoFrameDisplayed = true;
                 }, token);
             }
 
-            if (_context._isIrRtspAddressValid && !result.IrResult)
+            if (_context.IsIrRtspAddressValid && !result.IrResult)
             {
-                _ = ReconnectVideoAsync(_context._irDecoder, _context.SessionIrAddress, "IR", bitmap =>
+                _ = ReconnectVideoAsync(_context.IrDecoder, _context.SessionIrAddress, "IR", bitmap =>
                 {
                     _context.IRCameraImage = bitmap;
-                    _context._isIrFrameDisplayed = true;
+                    _context.IsIrFrameDisplayed = true;
                 }, token);
             }
         }
@@ -1310,7 +1310,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             int retryCount = 0;
 
-            while (_context._isDeviceConnectionRequested && session == Interlocked.Read(ref _deviceSessionGeneration) && !token.IsCancellationRequested && !decoder.IsOpened && reconnectStopwatch.Elapsed < maximumReconnectDuration)
+            while (_context.IsDeviceConnectionRequested && session == Interlocked.Read(ref _deviceSessionGeneration) && !token.IsCancellationRequested && !decoder.IsOpened && reconnectStopwatch.Elapsed < maximumReconnectDuration)
             {
                 retryCount++;
 
@@ -1335,7 +1335,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 bool connected = await Task.Run(() => decoder.Open(sourceAddress, token));
 
-                if (token.IsCancellationRequested || !_context._isDeviceConnectionRequested || session != Interlocked.Read(ref _deviceSessionGeneration))
+                if (token.IsCancellationRequested || !_context.IsDeviceConnectionRequested || session != Interlocked.Read(ref _deviceSessionGeneration))
                 {
                     return;
                 }
@@ -1369,9 +1369,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         _context.IsCrosshairVisible = true;
                     });
 
-                    if (_context._cts != null && !token.IsCancellationRequested)
+                    if (_context.Cts != null && !token.IsCancellationRequested)
                     {
-                        CancellationToken captureToken = _context._cts.Token;
+                        CancellationToken captureToken = _context.Cts.Token;
 
                         Task captureTask = Task.Run(() => FFmpegCaptureLoop(decoder, sourceAddress, streamName, setImageAction, captureToken));
 
@@ -1422,7 +1422,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             reconnectStopwatch.Stop();
 
-            if (!_context._isDeviceConnectionRequested || session != Interlocked.Read(ref _deviceSessionGeneration) || token.IsCancellationRequested || decoder.IsOpened)
+            if (!_context.IsDeviceConnectionRequested || session != Interlocked.Read(ref _deviceSessionGeneration) || token.IsCancellationRequested || decoder.IsOpened)
             {
                 return;
             }
@@ -1440,12 +1440,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 if (streamName == "EO")
                 {
                     _context.EoStatusText = "[EO] Disconnected";
-                    _context._isEoFrameDisplayed = false;
+                    _context.IsEoFrameDisplayed = false;
                 }
                 else
                 {
                     _context.IrStatusText = "[IR] Disconnected";
-                    _context._isIrFrameDisplayed = false;
+                    _context.IsIrFrameDisplayed = false;
                 }
             });
 
@@ -1473,12 +1473,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (streamName == "EO")
             {
-                return Interlocked.CompareExchange(ref _context._isEoFrameDispatchPending, 1, 0) == 0;
+                return Interlocked.CompareExchange(ref _context.IsEoFrameDispatchPending, 1, 0) == 0;
             }
 
             if (streamName == "IR")
             {
-                return Interlocked.CompareExchange(ref _context._isIrFrameDispatchPending, 1, 0) == 0;
+                return Interlocked.CompareExchange(ref _context.IsIrFrameDispatchPending, 1, 0) == 0;
             }
 
             return false;
@@ -1491,14 +1491,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             if (streamName == "EO")
             {
-                Interlocked.Exchange(ref _context._isEoFrameDispatchPending, 0);
+                Interlocked.Exchange(ref _context.IsEoFrameDispatchPending, 0);
 
                 return;
             }
 
             if (streamName == "IR")
             {
-                Interlocked.Exchange(ref _context._isIrFrameDispatchPending, 0);
+                Interlocked.Exchange(ref _context.IsIrFrameDispatchPending, 0);
             }
         }
 
@@ -1934,7 +1934,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             bool isEo = string.Equals(streamName, "EO", StringComparison.OrdinalIgnoreCase);
 
             // 오래되거나 멈춘 표시 프레임으로 클릭 이동을 수행하지 않는다.
-            Interlocked.Exchange(ref _context._videoCenterFrameTicks[isEo ? 0 : 1], DateTime.UtcNow.Ticks);
+            Interlocked.Exchange(ref _context.VideoCenterFrameTicks[isEo ? 0 : 1], DateTime.UtcNow.Ticks);
 
             string connected = isEo ? "[EO] Connected" : "[IR] Connected";
 
@@ -2402,7 +2402,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                         return;
                     }
 
-                    int settingsGeneration = Volatile.Read(ref _context._visionSettingsGeneration);
+                    int settingsGeneration = Volatile.Read(ref _context.VisionSettingsGeneration);
 
                     // 프레임 통계는 시간값만 보관해 매 프레임 Stopwatch 객체 할당을 피한다.
                     long stopwatchStartedAt = Stopwatch.GetTimestamp();
@@ -2411,7 +2411,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     {
                         bool isInfraredFire = string.Equals(streamName, "IR", StringComparison.OrdinalIgnoreCase);
 
-                        ThermalFireDetectionService fireService = isInfraredFire ? _context._irFireDetectionService : _context._eoFireDetectionService;
+                        ThermalFireDetectionService fireService = isInfraredFire ? _context.IrFireDetectionService : _context.EoFireDetectionService;
 
                         ThermalFireDetectionResult thermalResult = fireService.Process(frame, _context.IsThermalFireDetectionEnabled && _context.IsFireSourceEnabled(isInfraredFire) && _context.IsFireSmokeFrameAnalysisAllowed(), _context.ThermalHotThresholdRatio, _context.ThermalMinimumAreaRatio, _context.ThermalFireBoxGroupingMode, _context.GetRecentAiFireCandidates(isInfraredFire));
 
@@ -2419,7 +2419,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         lock (slot.Sync)
                         {
-                            if (settingsGeneration != Volatile.Read(ref _context._visionSettingsGeneration))
+                            if (settingsGeneration != Volatile.Read(ref _context.VisionSettingsGeneration))
                             {
                                 continue;
                             }
@@ -2479,7 +2479,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 thermalResult = slot.ThermalResult;
                 smokeResult = slot.SmokeResult;
 
-                if (slot.SettingsGeneration != Volatile.Read(ref _context._visionSettingsGeneration))
+                if (slot.SettingsGeneration != Volatile.Read(ref _context.VisionSettingsGeneration))
                 {
                     thermalResult = default(ThermalFireDetectionResult);
 
@@ -2706,7 +2706,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                         // 2026-09-16: 탐지 결과는 별도 최신 프레임 Worker가 갱신한다.
                         // 표시 경로는 탐지 완료를 기다리지 않는다.
-                        int overlaySettingsGeneration = Volatile.Read(ref _context._visionSettingsGeneration);
+                        int overlaySettingsGeneration = Volatile.Read(ref _context.VisionSettingsGeneration);
 
                         GetLatestDetectionResult(streamName, out ThermalFireDetectionResult thermalResult, out SmokeDetectionResult smokeResult, out long _, out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame);
 
@@ -2802,7 +2802,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                                 }
 
                                 // 2026-10-06: 라이브 EO 원본 프레임에서도 화재 BBOX/경고 상태를 갱신한다.
-                                if (overlaySettingsGeneration != Volatile.Read(ref _context._visionSettingsGeneration))
+                                if (overlaySettingsGeneration != Volatile.Read(ref _context.VisionSettingsGeneration))
                                 {
                                     return;
                                 }
@@ -2868,7 +2868,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 2026-10-01: Watchdog가 종료시킨 채널만 새 Decoder/Capture Loop로 복구한다.
             // 기존 Loop가 완전히 끝난 뒤 시작하므로 하나의 RTSP를 두 Loop가 동시에
             // 소비하는 경쟁 상태를 방지한다.
-            if (Volatile.Read(ref watchdogReconnectRequested) != 0 && _context._isDeviceConnectionRequested && !cancellationToken.IsCancellationRequested && _context._videoReconnectCts != null && !_context._videoReconnectCts.IsCancellationRequested)
+            if (Volatile.Read(ref watchdogReconnectRequested) != 0 && _context.IsDeviceConnectionRequested && !cancellationToken.IsCancellationRequested && _context.VideoReconnectCts != null && !_context.VideoReconnectCts.IsCancellationRequested)
             {
                 ConsoleLogHelper.Info(streamName + " VIDEO", "Runtime frame stall recovery started");
 
@@ -2876,7 +2876,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 try
                 {
-                    reconnectToken = _context._videoReconnectCts.Token;
+                    reconnectToken = _context.VideoReconnectCts.Token;
                 }
                 catch (ObjectDisposedException)
                 {
@@ -2901,7 +2901,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (isEo)
             {
-                _context._isEoFrameDisplayed = false;
+                _context.IsEoFrameDisplayed = false;
                 _context.EOCameraImage = null;
                 _context.EoStatusText = "[EO] Reconnecting...";
 
@@ -2913,7 +2913,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             else
             {
-                _context._isIrFrameDisplayed = false;
+                _context.IsIrFrameDisplayed = false;
                 _context.IRCameraImage = null;
                 _context.IrStatusText = "[IR] Reconnecting...";
 
@@ -2926,7 +2926,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.ResetFireSmokeFrameAnalysis(streamName + " RTSP frame loss");
 
-            bool allVideoFramesLost = !_context._isEoFrameDisplayed && !_context._isIrFrameDisplayed;
+            bool allVideoFramesLost = !_context.IsEoFrameDisplayed && !_context.IsIrFrameDisplayed;
 
             if (allVideoFramesLost)
             {

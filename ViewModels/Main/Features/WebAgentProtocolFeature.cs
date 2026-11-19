@@ -10,47 +10,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>수신 패킷 분배에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IWebAgentProtocolFeatureContext
     {
-        ref double? _activePanAbsoluteTarget { get; }
+        ref double? ActivePanAbsoluteTarget { get; }
 
-        KeyboardPanTiltDirection _activePanTiltMoveDirection { get; set; }
+        KeyboardPanTiltDirection ActivePanTiltMoveDirection { get; set; }
 
-        ref double? _activeTiltAbsoluteTarget { get; }
+        ref double? ActiveTiltAbsoluteTarget { get; }
 
-        string _connectionSessionId { get; set; }
+        string ConnectionSessionId { get; set; }
 
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
-        short _currentEoFocus { get; set; }
+        short CurrentEoFocus { get; set; }
 
-        short _currentEoZoom { get; set; }
+        short CurrentEoZoom { get; set; }
 
-        ushort _currentIrFocus { get; set; }
+        ushort CurrentIrFocus { get; set; }
 
-        ushort _currentIrZoom { get; set; }
+        ushort CurrentIrZoom { get; set; }
 
-        double _currentPan { get; set; }
+        double CurrentPan { get; set; }
 
-        double _currentTilt { get; set; }
+        double CurrentTilt { get; set; }
 
-        ref long _eoLensStatusVersion { get; }
+        ref long EoLensStatusVersion { get; }
 
-        string _irFocusDirectUnavailableSession { get; set; }
+        string IrFocusDirectUnavailableSession { get; set; }
 
-        ref long _irLensStatusVersion { get; }
+        ref long IrLensStatusVersion { get; }
 
-        ref double? _lastPanAbsoluteTarget { get; }
+        ref double? LastPanAbsoluteTarget { get; }
 
-        ref long _panStartTxCount { get; }
+        ref long PanStartTxCount { get; }
 
-        ref long _panTiltStatusVersion { get; }
+        ref long PanTiltStatusVersion { get; }
 
-        Services.Position.PositionSnapshotService _positionSnapshotService { get; }
+        Services.Position.PositionSnapshotService PositionSnapshotService { get; }
 
-        string _ptzPerformanceScenario { get; set; }
+        string PtzPerformanceScenario { get; set; }
 
-        ref long _tiltStartTxCount { get; }
+        ref long TiltStartTxCount { get; }
 
-        ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
+        ref global::System.Tuple<double, double, long> VideoCenterPose { get; }
 
         /// <summary>
         /// 2026-10-06: 0x31의 MCB/SCB 원본 상태를 보존한다. 요청 송신 여부로 상태를 추정하지 않고 이 수신값만 표시 기준으로
@@ -372,7 +372,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 Interlocked.Exchange(ref _webAgentLensSampleMilliseconds[index], 0);
             }
 
-            _context._irFocusDirectUnavailableSession = null;
+            _context.IrFocusDirectUnavailableSession = null;
         }
 
         /// <summary>
@@ -417,25 +417,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _context.BeginWebAgentBuildCheck();
 
-            _context._controlCommandService.RequestWebAgentIdentity();
+            _context.ControlCommandService.RequestWebAgentIdentity();
 
             _context.QueryEquipmentTemperature();
 
-            _context._controlCommandService.RequestLensCapabilityAndTelemetry(0x00);
+            _context.ControlCommandService.RequestLensCapabilityAndTelemetry(0x00);
 
-            _context._controlCommandService.RequestLensCapabilityAndTelemetry(0x01);
+            _context.ControlCommandService.RequestLensCapabilityAndTelemetry(0x01);
 
-            _context._controlCommandService.RequestCameraFeatureCapability(0x01);
+            _context.ControlCommandService.RequestCameraFeatureCapability(0x01);
 
-            _context._controlCommandService.RequestCameraFeatureCapability(0x00);
+            _context.ControlCommandService.RequestCameraFeatureCapability(0x00);
 
-            _context._controlCommandService.RequestImuTelemetry();
+            _context.ControlCommandService.RequestImuTelemetry();
 
             _context.RequestGpsAutoTxRateAfterConnection();
 
             for (byte category = 0; category <= 3; category++)
             {
-                _context._controlCommandService.RequestWebAgentTelemetrySetting(category);
+                _context.ControlCommandService.RequestWebAgentTelemetrySetting(category);
             }
 
             ConsoleLogHelper.State("WEB AGENT V2.9", "Identity, EO/IR lens, feature, IMU, GPS rate and separated telemetry capability queries sent");
@@ -568,9 +568,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            double previousPan = _context._currentPan;
+            double previousPan = _context.CurrentPan;
 
-            double previousTilt = _context._currentTilt;
+            double previousTilt = _context.CurrentTilt;
 
             bool panNew = panValid && (long)panUpdatedAt > Interlocked.Read(ref _webAgentPanSampleMilliseconds);
 
@@ -580,11 +580,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 Interlocked.Exchange(ref _webAgentPanSampleMilliseconds, (long)panUpdatedAt);
 
-                _context._currentPan = ConvertWebAgentPanToGuiAngle(panRaw / 100.0);
+                _context.CurrentPan = ConvertWebAgentPanToGuiAngle(panRaw / 100.0);
 
-                if (Math.Abs(Math.Abs(_context._currentPan) - 180.0) <= 0.05 && _context._lastPanAbsoluteTarget.HasValue && Math.Abs(Math.Abs(_context._lastPanAbsoluteTarget.Value) - 180.0) <= 0.05)
+                if (Math.Abs(Math.Abs(_context.CurrentPan) - 180.0) <= 0.05 && _context.LastPanAbsoluteTarget.HasValue && Math.Abs(Math.Abs(_context.LastPanAbsoluteTarget.Value) - 180.0) <= 0.05)
                 {
-                    _context._currentPan = _context._lastPanAbsoluteTarget.Value < 0 ? -180.0 : 180.0;
+                    _context.CurrentPan = _context.LastPanAbsoluteTarget.Value < 0 ? -180.0 : 180.0;
                 }
             }
 
@@ -592,7 +592,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 Interlocked.Exchange(ref _webAgentTiltSampleMilliseconds, (long)tiltUpdatedAt);
 
-                _context._currentTilt = NormalizeUnsignedWebAgentTilt(tiltRaw / 100.0, _context._currentTilt);
+                _context.CurrentTilt = NormalizeUnsignedWebAgentTilt(tiltRaw / 100.0, _context.CurrentTilt);
             }
 
             if (!panNew && !tiltNew)
@@ -600,30 +600,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
-            if (panNew && _context._activePanAbsoluteTarget.HasValue && Math.Abs(_context._currentPan - _context._activePanAbsoluteTarget.Value) <= 0.03)
+            if (panNew && _context.ActivePanAbsoluteTarget.HasValue && Math.Abs(_context.CurrentPan - _context.ActivePanAbsoluteTarget.Value) <= 0.03)
             {
-                _context._activePanAbsoluteTarget = null;
+                _context.ActivePanAbsoluteTarget = null;
             }
 
-            if (tiltNew && _context._activeTiltAbsoluteTarget.HasValue && Math.Abs(_context.GetTiltDifference(_context._currentTilt, _context._activeTiltAbsoluteTarget.Value)) <= 0.03)
+            if (tiltNew && _context.ActiveTiltAbsoluteTarget.HasValue && Math.Abs(_context.GetTiltDifference(_context.CurrentTilt, _context.ActiveTiltAbsoluteTarget.Value)) <= 0.03)
             {
-                _context._activeTiltAbsoluteTarget = null;
+                _context.ActiveTiltAbsoluteTarget = null;
             }
 
             if (panValid && tiltValid)
             {
                 DateTimeOffset poseTime = panTime < tiltTime ? panTime : tiltTime;
 
-                Interlocked.Exchange(ref _context._videoCenterPose, Tuple.Create(_context._currentPan, _context._currentTilt, poseTime.UtcDateTime.Ticks));
+                Interlocked.Exchange(ref _context.VideoCenterPose, Tuple.Create(_context.CurrentPan, _context.CurrentTilt, poseTime.UtcDateTime.Ticks));
 
-                Interlocked.Increment(ref _context._panTiltStatusVersion);
+                Interlocked.Increment(ref _context.PanTiltStatusVersion);
 
-                _context._positionSnapshotService.UpdatePtz(_context._currentPan, _context._currentTilt, poseTime);
+                _context.PositionSnapshotService.UpdatePtz(_context.CurrentPan, _context.CurrentTilt, poseTime);
 
                 _context.QueuePositionStatusNotification();
             }
 
-            _context.NotifyEoCurrentStatusChanged(panValid && Math.Abs(previousPan - _context._currentPan) > 0.0001, tiltValid && Math.Abs(previousTilt - _context._currentTilt) > 0.0001, false, false, false);
+            _context.NotifyEoCurrentStatusChanged(panValid && Math.Abs(previousPan - _context.CurrentPan) > 0.0001, tiltValid && Math.Abs(previousTilt - _context.CurrentTilt) > 0.0001, false, false, false);
 
             long nowTicks = DateTime.UtcNow.Ticks;
 
@@ -631,7 +631,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 Interlocked.Exchange(ref _webAgentSplitLogTicks, nowTicks);
 
-                ConsoleLogHelper.State("WEB AGENT TELEMETRY", $"FUNCTION=0x32 / VALID=0x{validFlags:X2} / PAN={_context._currentPan:F2} / TILT={_context._currentTilt:F2} / PAN_AT={panUpdatedAt} / TILT_AT={tiltUpdatedAt}");
+                ConsoleLogHelper.State("WEB AGENT TELEMETRY", $"FUNCTION=0x32 / VALID=0x{validFlags:X2} / PAN={_context.CurrentPan:F2} / TILT={_context.CurrentTilt:F2} / PAN_AT={panUpdatedAt} / TILT_AT={tiltUpdatedAt}");
             }
         }
 
@@ -700,11 +700,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (_context.IsEnvironmentStatusSelected && category == 0 && maximumHz >= 10 && (flags & 0x01) != 0 && Interlocked.CompareExchange(ref _webAgentTelemetryNegotiationStarted, 1, 0) == 0)
             {
-                bool ptSent = _context._controlCommandService.SetWebAgentTelemetryRate(0, 10);
+                bool ptSent = _context.ControlCommandService.SetWebAgentTelemetryRate(0, 10);
 
-                bool eoSent = _context._controlCommandService.SetWebAgentTelemetryRate(1, 2);
+                bool eoSent = _context.ControlCommandService.SetWebAgentTelemetryRate(1, 2);
 
-                bool irSent = _context._controlCommandService.SetWebAgentTelemetryRate(2, 2);
+                bool irSent = _context.ControlCommandService.SetWebAgentTelemetryRate(2, 2);
 
                 ConsoleLogHelper.Command("WEB AGENT TELEMETRY", $"SEPARATED_MODE_REQUEST / PT_10HZ={ptSent} / EO_2HZ={eoSent} / IR_2HZ={irSent}");
             }
@@ -727,7 +727,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 if ((acknowledged & 0x07) == 0x07 && (currentMask & 0x07) != 0x07)
                 {
-                    _context._controlCommandService.RequestWebAgentTelemetrySnapshot(3);
+                    _context.ControlCommandService.RequestWebAgentTelemetrySnapshot(3);
                 }
             }
         }
@@ -857,7 +857,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (target == 0x00)
             {
-                Interlocked.Increment(ref _context._eoLensStatusVersion);
+                Interlocked.Increment(ref _context.EoLensStatusVersion);
 
                 // 2026-09-15: Web Agent가 기존 Function 0x01에서는 EO Zoom/Focus를
                 // 정상값으로 보내면서 Function 0x28에서는 valid=1인 0을 반복하는
@@ -868,26 +868,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 {
                     if (zoomValid)
                     {
-                        _context._currentEoZoom = (short)zoom;
+                        _context.CurrentEoZoom = (short)zoom;
 
                         _context.MarkLensEvidence(false);
                     }
 
                     if (focusValid)
                     {
-                        _context._currentEoFocus = (short)focus;
+                        _context.CurrentEoFocus = (short)focus;
                     }
 
                     _context.MarkPresetLensEvidence(false, zoomValid, focusValid);
 
                     if (zoomValid && focusValid)
                     {
-                        _context.UpdatePositionEoLens(_context._currentEoZoom, _context._currentEoFocus);
+                        _context.UpdatePositionEoLens(_context.CurrentEoZoom, _context.CurrentEoFocus);
                     }
 
                     _context.NotifyEoCurrentStatusChanged();
                 }
-                else if ((zoomValid && zoom != (ushort)_context._currentEoZoom) || (focusValid && focus != (ushort)_context._currentEoFocus))
+                else if ((zoomValid && zoom != (ushort)_context.CurrentEoZoom) || (focusValid && focus != (ushort)_context.CurrentEoFocus))
                 {
                     LogWebAgentEoLensConflict(zoom, focus, flags);
                 }
@@ -896,24 +896,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             {
                 if (zoomValid)
                 {
-                    _context._currentIrZoom = zoom;
+                    _context.CurrentIrZoom = zoom;
 
                     _context.MarkLensEvidence(true);
                 }
 
                 if (focusValid)
                 {
-                    _context._currentIrFocus = focus;
+                    _context.CurrentIrFocus = focus;
                 }
 
                 _context.MarkPresetLensEvidence(true, zoomValid, focusValid);
 
                 if (zoomValid && focusValid)
                 {
-                    _context.UpdatePositionIrLens(_context._currentIrZoom, _context._currentIrFocus);
+                    _context.UpdatePositionIrLens(_context.CurrentIrZoom, _context.CurrentIrFocus);
                 }
 
-                Interlocked.Increment(ref _context._irLensStatusVersion);
+                Interlocked.Increment(ref _context.IrLensStatusVersion);
 
                 _context.NotifyIrCurrentStatusChanged();
             }
@@ -951,7 +951,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             long lastChangeTicks = Interlocked.Read(ref _lastPanTiltValueChangeUtcTicks);
 
-            if (lastCommandTicks == 0 || _context._activePanTiltMoveDirection == KeyboardPanTiltDirection.None || nowTicks - lastCommandTicks < TimeSpan.TicksPerSecond || nowTicks - lastCommandTicks > TimeSpan.TicksPerSecond * 3 || nowTicks - lastChangeTicks < TimeSpan.TicksPerSecond)
+            if (lastCommandTicks == 0 || _context.ActivePanTiltMoveDirection == KeyboardPanTiltDirection.None || nowTicks - lastCommandTicks < TimeSpan.TicksPerSecond || nowTicks - lastCommandTicks > TimeSpan.TicksPerSecond * 3 || nowTicks - lastChangeTicks < TimeSpan.TicksPerSecond)
             {
                 return;
             }
@@ -973,29 +973,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void MarkPanTiltMoveCommandIssued()
         {
-            switch (_context._activePanTiltMoveDirection)
+            switch (_context.ActivePanTiltMoveDirection)
             {
                 case KeyboardPanTiltDirection.PanLeft:
-                    _context._ptzPerformanceScenario = "PAN_LEFT";
-                    Interlocked.Increment(ref _context._panStartTxCount);
+                    _context.PtzPerformanceScenario = "PAN_LEFT";
+                    Interlocked.Increment(ref _context.PanStartTxCount);
                     break;
                 case KeyboardPanTiltDirection.PanRight:
-                    _context._ptzPerformanceScenario = "PAN_RIGHT";
-                    Interlocked.Increment(ref _context._panStartTxCount);
+                    _context.PtzPerformanceScenario = "PAN_RIGHT";
+                    Interlocked.Increment(ref _context.PanStartTxCount);
                     break;
                 case KeyboardPanTiltDirection.TiltUp:
-                    _context._ptzPerformanceScenario = "TILT_UP";
-                    Interlocked.Increment(ref _context._tiltStartTxCount);
+                    _context.PtzPerformanceScenario = "TILT_UP";
+                    Interlocked.Increment(ref _context.TiltStartTxCount);
                     break;
                 case KeyboardPanTiltDirection.TiltDown:
-                    _context._ptzPerformanceScenario = "TILT_DOWN";
-                    Interlocked.Increment(ref _context._tiltStartTxCount);
+                    _context.PtzPerformanceScenario = "TILT_DOWN";
+                    Interlocked.Increment(ref _context.TiltStartTxCount);
                     break;
                 default:
-                    _context._ptzPerformanceScenario = "PAN_TILT_DIAGONAL";
-                    Interlocked.Increment(ref _context._panStartTxCount);
+                    _context.PtzPerformanceScenario = "PAN_TILT_DIAGONAL";
+                    Interlocked.Increment(ref _context.PanStartTxCount);
 
-                    Interlocked.Increment(ref _context._tiltStartTxCount);
+                    Interlocked.Increment(ref _context.TiltStartTxCount);
                     break;
             }
 
@@ -1033,7 +1033,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             Interlocked.Exchange(ref _lastEoLensConflictWarningUtcTicks, nowTicks);
 
-            ConsoleLogHelper.Warning("WEB AGENT EO LENS", "Conflicting Function 0x28 value ignored; recent Function 0x01 retained" + " / FLAGS=0x" + flags.ToString("X2") + " / 0x28_ZOOM=" + zoom + " / 0x28_FOCUS=" + focus + " / ACTIVE_ZOOM=" + _context._currentEoZoom + " / ACTIVE_FOCUS=" + _context._currentEoFocus);
+            ConsoleLogHelper.Warning("WEB AGENT EO LENS", "Conflicting Function 0x28 value ignored; recent Function 0x01 retained" + " / FLAGS=0x" + flags.ToString("X2") + " / 0x28_ZOOM=" + zoom + " / 0x28_FOCUS=" + focus + " / ACTIVE_ZOOM=" + _context.CurrentEoZoom + " / ACTIVE_FOCUS=" + _context.CurrentEoFocus);
         }
 
         /// <summary>
@@ -1103,7 +1103,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             if (p[0] == 1 && p[1] == 0 && p[2] == 0 && p[3] == 0x2B)
             {
-                _context._irFocusDirectUnavailableSession = _context._connectionSessionId;
+                _context.IrFocusDirectUnavailableSession = _context.ConnectionSessionId;
             }
 
             _context.DispatchSpecialFeaturePacket(p, _context.ApplySpecialFeatureUnavailableCallback);

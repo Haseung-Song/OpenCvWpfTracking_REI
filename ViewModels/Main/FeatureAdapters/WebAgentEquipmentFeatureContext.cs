@@ -18,43 +18,43 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        string IWebAgentEquipmentFeatureContext._connectionSessionId
+        string IWebAgentEquipmentFeatureContext.ConnectionSessionId
         {
-            get { return _features._devicePowerFeature._connectionSessionId; }
-            set { _features._devicePowerFeature._connectionSessionId = value; }
+            get { return _features.DevicePowerFeature._connectionSessionId; }
+            set { _features.DevicePowerFeature._connectionSessionId = value; }
         }
 
-        Services.Communication.IControlCommandServicePort IWebAgentEquipmentFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IWebAgentEquipmentFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        byte IWebAgentEquipmentFeatureContext._currentScbPowerStatus
+        byte IWebAgentEquipmentFeatureContext.CurrentScbPowerStatus
         {
-            get { return _features._devicePowerFeature._currentScbPowerStatus; }
-            set { _features._devicePowerFeature._currentScbPowerStatus = value; }
+            get { return _features.DevicePowerFeature._currentScbPowerStatus; }
+            set { _features.DevicePowerFeature._currentScbPowerStatus = value; }
         }
 
-        bool IWebAgentEquipmentFeatureContext._hasDevicePowerStatus
+        bool IWebAgentEquipmentFeatureContext.HasDevicePowerStatus
         {
-            get { return _features._devicePowerFeature._hasDevicePowerStatus; }
-            set { _features._devicePowerFeature._hasDevicePowerStatus = value; }
+            get { return _features.DevicePowerFeature._hasDevicePowerStatus; }
+            set { _features.DevicePowerFeature._hasDevicePowerStatus = value; }
         }
 
-        bool IWebAgentEquipmentFeatureContext._isDevicePowerStatusStale
+        bool IWebAgentEquipmentFeatureContext.IsDevicePowerStatusStale
         {
-            get { return _features._devicePowerFeature._isDevicePowerStatusStale; }
-            set { _features._devicePowerFeature._isDevicePowerStatusStale = value; }
+            get { return _features.DevicePowerFeature._isDevicePowerStatusStale; }
+            set { _features.DevicePowerFeature._isDevicePowerStatusStale = value; }
         }
 
-        IWebAgentThermalPaletteServicePort IWebAgentEquipmentFeatureContext._webAgentThermalPaletteService
+        IWebAgentThermalPaletteServicePort IWebAgentEquipmentFeatureContext.WebAgentThermalPaletteService
         {
             get { return _features.Runtime._webAgentThermalPaletteService; }
         }
 
         bool IWebAgentEquipmentFeatureContext.CameraFeatureTransportReady
         {
-            get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
+            get { return _features.CameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IWebAgentEquipmentFeatureContext.DispatchSpecialFeaturePacket(byte[] p, Action<byte[]> apply)
         {
-            _features._specialFeaturesFeature.DispatchSpecialFeaturePacket(p, apply);
+            _features.SpecialFeaturesFeature.DispatchSpecialFeaturePacket(p, apply);
         }
 
         /// <summary>
@@ -71,27 +71,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IWebAgentEquipmentFeatureContext.EnsureSpecialFeatures()
         {
-            _features._specialFeaturesFeature.EnsureSpecialFeatures();
+            _features.SpecialFeaturesFeature.EnsureSpecialFeatures();
         }
 
         bool IWebAgentEquipmentFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IWebAgentEquipmentFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IWebAgentEquipmentFeatureContext.IsSelectedConnectionTarget
         {
-            get { return _features._rtspSettingsFeature.IsSelectedConnectionTarget; }
+            get { return _features.RtspSettingsFeature.IsSelectedConnectionTarget; }
         }
 
         bool IWebAgentEquipmentFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         /// <summary>
@@ -107,12 +107,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IWebAgentEquipmentFeatureContext.ResetThermalPaletteButtonVisuals()
         {
-            _features._thermalFeature.ResetThermalPaletteButtonVisuals();
+            _features.ThermalFeature.ResetThermalPaletteButtonVisuals();
         }
 
         System.Collections.Generic.IEnumerable<Models.Main.CameraSpecialFeatureRow> IWebAgentEquipmentFeatureContext.SpecialFeatureRows
         {
-            get { return _features._specialFeaturesFeature.SpecialFeatureRows; }
+            get { return _features.SpecialFeaturesFeature.SpecialFeatureRows; }
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IWebAgentEquipmentFeatureContext.TryReadTelemetryTime(ulong milliseconds, out DateTimeOffset value, bool requireFresh)
         {
-            return _features._webAgentProtocolFeature.TryReadTelemetryTime(milliseconds, out value, requireFresh);
+            return _features.WebAgentProtocolFeature.TryReadTelemetryTime(milliseconds, out value, requireFresh);
         }
 
         Action IWebAgentEquipmentFeatureContext.QueryEquipmentTemperatureCallback

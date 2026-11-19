@@ -21,44 +21,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        List<VisionBBoxEventTrack> IEventAlertsFeatureContext._activeVisionBBoxEvents
+        List<VisionBBoxEventTrack> IEventAlertsFeatureContext.ActiveVisionBBoxEvents
         {
-            get { return _features._fireEventsFeature._activeVisionBBoxEvents; }
+            get { return _features.FireEventsFeature._activeVisionBBoxEvents; }
         }
 
-        bool IEventAlertsFeatureContext._isFireCsvHistoryLoaded
+        bool IEventAlertsFeatureContext.IsFireCsvHistoryLoaded
         {
-            get { return _features._fireEventsFeature._isFireCsvHistoryLoaded; }
-            set { _features._fireEventsFeature._isFireCsvHistoryLoaded = value; }
+            get { return _features.FireEventsFeature._isFireCsvHistoryLoaded; }
+            set { _features.FireEventsFeature._isFireCsvHistoryLoaded = value; }
         }
 
-        ref global::System.DateTime? IEventAlertsFeatureContext._lastFireDetectedTime
+        ref global::System.DateTime? IEventAlertsFeatureContext.LastFireDetectedTime
         {
-            get { return ref _features._fireEventsFeature._lastFireDetectedTime; }
+            get { return ref _features.FireEventsFeature._lastFireDetectedTime; }
         }
 
-        int IEventAlertsFeatureContext._nextFireEventId
+        int IEventAlertsFeatureContext.NextFireEventId
         {
-            get { return _features._fireEventsFeature._nextFireEventId; }
-            set { _features._fireEventsFeature._nextFireEventId = value; }
+            get { return _features.FireEventsFeature._nextFireEventId; }
+            set { _features.FireEventsFeature._nextFireEventId = value; }
         }
 
         int IEventAlertsFeatureContext.ActiveFireCount
         {
-            get { return _features._fireEventsFeature.ActiveFireCount; }
-            set { _features._fireEventsFeature.ActiveFireCount = value; }
+            get { return _features.FireEventsFeature.ActiveFireCount; }
+            set { _features.FireEventsFeature.ActiveFireCount = value; }
         }
 
         double IEventAlertsFeatureContext.AiDisplayConfidenceThreshold
         {
-            get { return _features._propertiesFeature.AiDisplayConfidenceThreshold; }
-            set { _features._propertiesFeature.AiDisplayConfidenceThreshold = value; }
+            get { return _features.PropertiesFeature.AiDisplayConfidenceThreshold; }
+            set { _features.PropertiesFeature.AiDisplayConfidenceThreshold = value; }
         }
 
         string IEventAlertsFeatureContext.AiPowerStatusText
         {
-            get { return _features._propertiesFeature.AiPowerStatusText; }
-            set { _features._propertiesFeature.AiPowerStatusText = value; }
+            get { return _features.PropertiesFeature.AiPowerStatusText; }
+            set { _features.PropertiesFeature.AiPowerStatusText = value; }
         }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Services.Position.ZoneAssessment IEventAlertsFeatureContext.AssessAiZone(AiDetectionResult result, AiDetectionBox box, string type)
         {
-            return _features._zonesFeature.AssessAiZone(result, box, type);
+            return _features.ZonesFeature.AssessAiZone(result, box, type);
         }
 
         /// <summary>
@@ -74,12 +74,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Models.Position.PositionSnapshot IEventAlertsFeatureContext.CapturePositionSnapshot(string source, int? presetId)
         {
-            return _features._positionFeature.CapturePositionSnapshot(source, presetId);
+            return _features.PositionFeature.CapturePositionSnapshot(source, presetId);
         }
 
         ObservableCollection<FireEventRecord> IEventAlertsFeatureContext.FireEvents
         {
-            get { return _features._fireEventsFeature.FireEvents; }
+            get { return _features.FireEventsFeature.FireEvents; }
         }
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IEventAlertsFeatureContext.NotifyFireEventSummaryChanged()
         {
-            _features._fireEventsFeature.NotifyFireEventSummaryChanged();
+            _features.FireEventsFeature.NotifyFireEventSummaryChanged();
         }
 
         /// <summary>

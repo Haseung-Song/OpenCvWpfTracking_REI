@@ -18,81 +18,81 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        bool IPresetStorageFeatureContext._isLoadingPresetStorage
+        bool IPresetStorageFeatureContext.IsLoadingPresetStorage
         {
-            get { return _features._screenStateFeature._isLoadingPresetStorage; }
-            set { _features._screenStateFeature._isLoadingPresetStorage = value; }
+            get { return _features.ScreenStateFeature._isLoadingPresetStorage; }
+            set { _features.ScreenStateFeature._isLoadingPresetStorage = value; }
         }
 
-        bool IPresetStorageFeatureContext._isLoadingRtspCommunicationSettings
+        bool IPresetStorageFeatureContext.IsLoadingRtspCommunicationSettings
         {
-            get { return _features._rtspSettingsFeature._isLoadingRtspCommunicationSettings; }
-            set { _features._rtspSettingsFeature._isLoadingRtspCommunicationSettings = value; }
+            get { return _features.RtspSettingsFeature._isLoadingRtspCommunicationSettings; }
+            set { _features.RtspSettingsFeature._isLoadingRtspCommunicationSettings = value; }
         }
 
-        string IPresetStorageFeatureContext._laPresetCommandStatusText
+        string IPresetStorageFeatureContext.LaPresetCommandStatusTextState
         {
-            get { return _features._screenStateFeature._laPresetCommandStatusText; }
-            set { _features._screenStateFeature._laPresetCommandStatusText = value; }
+            get { return _features.ScreenStateFeature._laPresetCommandStatusText; }
+            set { _features.ScreenStateFeature._laPresetCommandStatusText = value; }
         }
 
-        int IPresetStorageFeatureContext._laPresetScanDelay
+        int IPresetStorageFeatureContext.LaPresetScanDelayState
         {
-            get { return _features._screenStateFeature._laPresetScanDelay; }
-            set { _features._screenStateFeature._laPresetScanDelay = value; }
+            get { return _features.ScreenStateFeature._laPresetScanDelay; }
+            set { _features.ScreenStateFeature._laPresetScanDelay = value; }
         }
 
-        int IPresetStorageFeatureContext._laPresetScanSpeed
+        int IPresetStorageFeatureContext.LaPresetScanSpeedState
         {
-            get { return _features._screenStateFeature._laPresetScanSpeed; }
-            set { _features._screenStateFeature._laPresetScanSpeed = value; }
+            get { return _features.ScreenStateFeature._laPresetScanSpeed; }
+            set { _features.ScreenStateFeature._laPresetScanSpeed = value; }
         }
 
-        int IPresetStorageFeatureContext._laPresetSlotNumber
+        int IPresetStorageFeatureContext.LaPresetSlotNumberState
         {
-            get { return _features._screenStateFeature._laPresetSlotNumber; }
-            set { _features._screenStateFeature._laPresetSlotNumber = value; }
+            get { return _features.ScreenStateFeature._laPresetSlotNumber; }
+            set { _features.ScreenStateFeature._laPresetSlotNumber = value; }
         }
 
-        string IPresetStorageFeatureContext._presetCommandStatusText
+        string IPresetStorageFeatureContext.PresetCommandStatusTextState
         {
-            get { return _features._screenStateFeature._presetCommandStatusText; }
-            set { _features._screenStateFeature._presetCommandStatusText = value; }
+            get { return _features.ScreenStateFeature._presetCommandStatusText; }
+            set { _features.ScreenStateFeature._presetCommandStatusText = value; }
         }
 
-        int IPresetStorageFeatureContext._presetScanDelay
+        int IPresetStorageFeatureContext.PresetScanDelayState
         {
-            get { return _features._screenStateFeature._presetScanDelay; }
-            set { _features._screenStateFeature._presetScanDelay = value; }
+            get { return _features.ScreenStateFeature._presetScanDelay; }
+            set { _features.ScreenStateFeature._presetScanDelay = value; }
         }
 
-        PresetScanOrderMode IPresetStorageFeatureContext._presetScanOrderMode
+        PresetScanOrderMode IPresetStorageFeatureContext.PresetScanOrderMode
         {
-            get { return _features._screenStateFeature._presetScanOrderMode; }
-            set { _features._screenStateFeature._presetScanOrderMode = value; }
+            get { return _features.ScreenStateFeature._presetScanOrderMode; }
+            set { _features.ScreenStateFeature._presetScanOrderMode = value; }
         }
 
-        int IPresetStorageFeatureContext._presetScanSpeed
+        int IPresetStorageFeatureContext.PresetScanSpeedState
         {
-            get { return _features._screenStateFeature._presetScanSpeed; }
-            set { _features._screenStateFeature._presetScanSpeed = value; }
+            get { return _features.ScreenStateFeature._presetScanSpeed; }
+            set { _features.ScreenStateFeature._presetScanSpeed = value; }
         }
 
-        int IPresetStorageFeatureContext._presetSlotNumber
+        int IPresetStorageFeatureContext.PresetSlotNumberState
         {
-            get { return _features._screenStateFeature._presetSlotNumber; }
-            set { _features._screenStateFeature._presetSlotNumber = value; }
+            get { return _features.ScreenStateFeature._presetSlotNumber; }
+            set { _features.ScreenStateFeature._presetSlotNumber = value; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<ControlAgentProfileOption> IPresetStorageFeatureContext.ControlAgentProfiles
         {
-            get { return _features._rtspSettingsFeature.ControlAgentProfiles; }
+            get { return _features.RtspSettingsFeature.ControlAgentProfiles; }
         }
 
         string IPresetStorageFeatureContext.EoSourceAddress
         {
-            get { return _features._propertiesFeature.EoSourceAddress; }
-            set { _features._propertiesFeature.EoSourceAddress = value; }
+            get { return _features.PropertiesFeature.EoSourceAddress; }
+            set { _features.PropertiesFeature.EoSourceAddress = value; }
         }
 
         /// <summary>
@@ -100,71 +100,71 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IPresetStorageFeatureContext.InvalidatePanoramaReference()
         {
-            _features._opticalCenterFeature.InvalidatePanoramaReference();
+            _features.OpticalCenterFeature.InvalidatePanoramaReference();
         }
 
         string IPresetStorageFeatureContext.IrSourceAddress
         {
-            get { return _features._propertiesFeature.IrSourceAddress; }
-            set { _features._propertiesFeature.IrSourceAddress = value; }
+            get { return _features.PropertiesFeature.IrSourceAddress; }
+            set { _features.PropertiesFeature.IrSourceAddress = value; }
         }
 
         bool IPresetStorageFeatureContext.IsPresetNearestOrderMode
         {
-            get { return _features._propertiesFeature.IsPresetNearestOrderMode; }
-            set { _features._propertiesFeature.IsPresetNearestOrderMode = value; }
+            get { return _features.PropertiesFeature.IsPresetNearestOrderMode; }
+            set { _features.PropertiesFeature.IsPresetNearestOrderMode = value; }
         }
 
         bool IPresetStorageFeatureContext.IsPresetPanOrderMode
         {
-            get { return _features._scanTraversalFeature.IsPresetPanOrderMode; }
-            set { _features._scanTraversalFeature.IsPresetPanOrderMode = value; }
+            get { return _features.ScanTraversalFeature.IsPresetPanOrderMode; }
+            set { _features.ScanTraversalFeature.IsPresetPanOrderMode = value; }
         }
 
         bool IPresetStorageFeatureContext.IsPresetPingPong
         {
-            get { return _features._scanTraversalFeature.IsPresetPingPong; }
-            set { _features._scanTraversalFeature.IsPresetPingPong = value; }
+            get { return _features.ScanTraversalFeature.IsPresetPingPong; }
+            set { _features.ScanTraversalFeature.IsPresetPingPong = value; }
         }
 
         bool IPresetStorageFeatureContext.IsPresetSavedOrderMode
         {
-            get { return _features._propertiesFeature.IsPresetSavedOrderMode; }
-            set { _features._propertiesFeature.IsPresetSavedOrderMode = value; }
+            get { return _features.PropertiesFeature.IsPresetSavedOrderMode; }
+            set { _features.PropertiesFeature.IsPresetSavedOrderMode = value; }
         }
 
         bool IPresetStorageFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         string IPresetStorageFeatureContext.LaPresetCommandStatusText
         {
-            get { return _features._propertiesFeature.LaPresetCommandStatusText; }
-            set { _features._propertiesFeature.LaPresetCommandStatusText = value; }
+            get { return _features.PropertiesFeature.LaPresetCommandStatusText; }
+            set { _features.PropertiesFeature.LaPresetCommandStatusText = value; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> IPresetStorageFeatureContext.LaPresetPoints
         {
-            get { return _features._propertiesFeature.LaPresetPoints; }
+            get { return _features.PropertiesFeature.LaPresetPoints; }
         }
 
         int IPresetStorageFeatureContext.LaPresetScanDelay
         {
-            get { return _features._propertiesFeature.LaPresetScanDelay; }
-            set { _features._propertiesFeature.LaPresetScanDelay = value; }
+            get { return _features.PropertiesFeature.LaPresetScanDelay; }
+            set { _features.PropertiesFeature.LaPresetScanDelay = value; }
         }
 
         int IPresetStorageFeatureContext.LaPresetScanSpeed
         {
-            get { return _features._propertiesFeature.LaPresetScanSpeed; }
-            set { _features._propertiesFeature.LaPresetScanSpeed = value; }
+            get { return _features.PropertiesFeature.LaPresetScanSpeed; }
+            set { _features.PropertiesFeature.LaPresetScanSpeed = value; }
         }
 
         int IPresetStorageFeatureContext.LaPresetSlotNumber
         {
-            get { return _features._propertiesFeature.LaPresetSlotNumber; }
-            set { _features._propertiesFeature.LaPresetSlotNumber = value; }
+            get { return _features.PropertiesFeature.LaPresetSlotNumber; }
+            set { _features.PropertiesFeature.LaPresetSlotNumber = value; }
         }
 
         /// <summary>
@@ -177,36 +177,36 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string IPresetStorageFeatureContext.PanoramaDeviceKey
         {
-            get { return _features._opticalCenterFeature.PanoramaDeviceKey; }
+            get { return _features.OpticalCenterFeature.PanoramaDeviceKey; }
         }
 
         string IPresetStorageFeatureContext.PresetCommandStatusText
         {
-            get { return _features._propertiesFeature.PresetCommandStatusText; }
-            set { _features._propertiesFeature.PresetCommandStatusText = value; }
+            get { return _features.PropertiesFeature.PresetCommandStatusText; }
+            set { _features.PropertiesFeature.PresetCommandStatusText = value; }
         }
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> IPresetStorageFeatureContext.PresetPoints
         {
-            get { return _features._propertiesFeature.PresetPoints; }
+            get { return _features.PropertiesFeature.PresetPoints; }
         }
 
         int IPresetStorageFeatureContext.PresetScanDelay
         {
-            get { return _features._propertiesFeature.PresetScanDelay; }
-            set { _features._propertiesFeature.PresetScanDelay = value; }
+            get { return _features.PropertiesFeature.PresetScanDelay; }
+            set { _features.PropertiesFeature.PresetScanDelay = value; }
         }
 
         int IPresetStorageFeatureContext.PresetScanSpeed
         {
-            get { return _features._propertiesFeature.PresetScanSpeed; }
-            set { _features._propertiesFeature.PresetScanSpeed = value; }
+            get { return _features.PropertiesFeature.PresetScanSpeed; }
+            set { _features.PropertiesFeature.PresetScanSpeed = value; }
         }
 
         int IPresetStorageFeatureContext.PresetSlotNumber
         {
-            get { return _features._propertiesFeature.PresetSlotNumber; }
-            set { _features._propertiesFeature.PresetSlotNumber = value; }
+            get { return _features.PropertiesFeature.PresetSlotNumber; }
+            set { _features.PropertiesFeature.PresetSlotNumber = value; }
         }
 
         /// <summary>
@@ -215,25 +215,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IPresetStorageFeatureContext.RecoverPanoramaPresetReference()
         {
-            _features._panoramaReferenceFeature.RecoverPanoramaPresetReference();
+            _features.PanoramaReferenceFeature.RecoverPanoramaPresetReference();
         }
 
         ControlAgentProfileOption IPresetStorageFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
         PresetPointOption IPresetStorageFeatureContext.SelectedLaPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedLaPresetPoint; }
-            set { _features._propertiesFeature.SelectedLaPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedLaPresetPoint; }
+            set { _features.PropertiesFeature.SelectedLaPresetPoint = value; }
         }
 
         PresetPointOption IPresetStorageFeatureContext.SelectedPresetPoint
         {
-            get { return _features._propertiesFeature.SelectedPresetPoint; }
-            set { _features._propertiesFeature.SelectedPresetPoint = value; }
+            get { return _features.PropertiesFeature.SelectedPresetPoint; }
+            set { _features.PropertiesFeature.SelectedPresetPoint = value; }
         }
     }
 }

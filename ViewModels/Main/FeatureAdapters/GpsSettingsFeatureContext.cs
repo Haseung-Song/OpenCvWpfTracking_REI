@@ -18,29 +18,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        IControlCommandServicePort IGpsSettingsFeatureContext._controlCommandService
+        IControlCommandServicePort IGpsSettingsFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        ITcpClientServicePort IGpsSettingsFeatureContext._laTcpService
+        ITcpClientServicePort IGpsSettingsFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        ref double? IGpsSettingsFeatureContext._storedRpyYawOffset
+        ref double? IGpsSettingsFeatureContext.StoredRpyYawOffset
         {
-            get { return ref _features._rpySettingsFeature._storedRpyYawOffset; }
+            get { return ref _features.RpySettingsFeature._storedRpyYawOffset; }
         }
 
         bool IGpsSettingsFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         bool IGpsSettingsFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IGpsSettingsFeatureContext.UpdatePositionGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid)
         {
-            _features._positionFeature.UpdatePositionGps(latitude, longitude, altitude, speed, course, hdop, satelliteCount, fixStatus, valid);
+            _features.PositionFeature.UpdatePositionGps(latitude, longitude, altitude, speed, course, hdop, satelliteCount, fixStatus, valid);
         }
 
         Action IGpsSettingsFeatureContext.RequestGpsTelemetryCallback

@@ -19,57 +19,57 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        string ISpecialFeaturesFeatureContext._connectionSessionId
+        string ISpecialFeaturesFeatureContext.ConnectionSessionId
         {
-            get { return _features._devicePowerFeature._connectionSessionId; }
-            set { _features._devicePowerFeature._connectionSessionId = value; }
+            get { return _features.DevicePowerFeature._connectionSessionId; }
+            set { _features.DevicePowerFeature._connectionSessionId = value; }
         }
 
-        Services.Communication.IControlCommandServicePort ISpecialFeaturesFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort ISpecialFeaturesFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        IWebAgentThermalPaletteServicePort ISpecialFeaturesFeatureContext._webAgentThermalPaletteService
+        IWebAgentThermalPaletteServicePort ISpecialFeaturesFeatureContext.WebAgentThermalPaletteService
         {
             get { return _features.Runtime._webAgentThermalPaletteService; }
         }
 
         bool ISpecialFeaturesFeatureContext.CameraFeatureTransportReady
         {
-            get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
+            get { return _features.CameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
         string ISpecialFeaturesFeatureContext.ControlAgentIp
         {
-            get { return _features._propertiesFeature.ControlAgentIp; }
-            set { _features._propertiesFeature.ControlAgentIp = value; }
+            get { return _features.PropertiesFeature.ControlAgentIp; }
+            set { _features.PropertiesFeature.ControlAgentIp = value; }
         }
 
         string ISpecialFeaturesFeatureContext.ControlAgentPortText
         {
-            get { return _features._propertiesFeature.ControlAgentPortText; }
-            set { _features._propertiesFeature.ControlAgentPortText = value; }
+            get { return _features.PropertiesFeature.ControlAgentPortText; }
+            set { _features.PropertiesFeature.ControlAgentPortText = value; }
         }
 
         bool ISpecialFeaturesFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool ISpecialFeaturesFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool ISpecialFeaturesFeatureContext.IsSelectedConnectionTarget
         {
-            get { return _features._rtspSettingsFeature.IsSelectedConnectionTarget; }
+            get { return _features.RtspSettingsFeature.IsSelectedConnectionTarget; }
         }
 
         bool ISpecialFeaturesFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         /// <summary>
@@ -86,13 +86,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ISpecialFeaturesFeatureContext.ResetFireSmokeFrameAnalysis(string reason)
         {
-            _features._smokeFeature.ResetFireSmokeFrameAnalysis(reason);
+            _features.SmokeFeature.ResetFireSmokeFrameAnalysis(reason);
         }
 
         ControlAgentProfileOption ISpecialFeaturesFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool ISpecialFeaturesFeatureContext.SetDigitalZoom(bool ir, bool on)
         {
-            return _features._cameraFeatureControlFeature.SetDigitalZoom(ir, on);
+            return _features.CameraFeatureControlFeature.SetDigitalZoom(ir, on);
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ISpecialFeaturesFeatureContext.UpdateThermalPaletteButtonVisual(int paletteType)
         {
-            _features._thermalFeature.UpdateThermalPaletteButtonVisual(paletteType);
+            _features.ThermalFeature.UpdateThermalPaletteButtonVisual(paletteType);
         }
 
         Action ISpecialFeaturesFeatureContext.QuerySpecialFeatureSupportCallback

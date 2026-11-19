@@ -23,45 +23,45 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        List<FireEventRecord> IFireEventsFeatureContext._activeTestFireEvents
+        List<FireEventRecord> IFireEventsFeatureContext.ActiveTestFireEvents
         {
-            get { return _features._eventAlertsFeature._activeTestFireEvents; }
+            get { return _features.EventAlertsFeature._activeTestFireEvents; }
         }
 
-        bool IFireEventsFeatureContext._hasEoLocalFireDetection
+        bool IFireEventsFeatureContext.HasEoLocalFireDetection
         {
-            get { return _features._propertiesFeature._hasEoLocalFireDetection; }
-            set { _features._propertiesFeature._hasEoLocalFireDetection = value; }
+            get { return _features.PropertiesFeature._hasEoLocalFireDetection; }
+            set { _features.PropertiesFeature._hasEoLocalFireDetection = value; }
         }
 
-        bool IFireEventsFeatureContext._hasEoLocalSmokeDetection
+        bool IFireEventsFeatureContext.HasEoLocalSmokeDetection
         {
-            get { return _features._propertiesFeature._hasEoLocalSmokeDetection; }
-            set { _features._propertiesFeature._hasEoLocalSmokeDetection = value; }
+            get { return _features.PropertiesFeature._hasEoLocalSmokeDetection; }
+            set { _features.PropertiesFeature._hasEoLocalSmokeDetection = value; }
         }
 
-        bool IFireEventsFeatureContext._hasIrLocalFireDetection
+        bool IFireEventsFeatureContext.HasIrLocalFireDetection
         {
-            get { return _features._propertiesFeature._hasIrLocalFireDetection; }
-            set { _features._propertiesFeature._hasIrLocalFireDetection = value; }
+            get { return _features.PropertiesFeature._hasIrLocalFireDetection; }
+            set { _features.PropertiesFeature._hasIrLocalFireDetection = value; }
         }
 
-        bool IFireEventsFeatureContext._hasIrLocalSmokeDetection
+        bool IFireEventsFeatureContext.HasIrLocalSmokeDetection
         {
-            get { return _features._propertiesFeature._hasIrLocalSmokeDetection; }
-            set { _features._propertiesFeature._hasIrLocalSmokeDetection = value; }
+            get { return _features.PropertiesFeature._hasIrLocalSmokeDetection; }
+            set { _features.PropertiesFeature._hasIrLocalSmokeDetection = value; }
         }
 
-        bool IFireEventsFeatureContext._isEoFireCandidateDetected
+        bool IFireEventsFeatureContext.IsEoFireCandidateDetected
         {
-            get { return _features._thermalFeature._isEoFireCandidateDetected; }
-            set { _features._thermalFeature._isEoFireCandidateDetected = value; }
+            get { return _features.ThermalFeature._isEoFireCandidateDetected; }
+            set { _features.ThermalFeature._isEoFireCandidateDetected = value; }
         }
 
-        bool IFireEventsFeatureContext._isIrFireCandidateDetected
+        bool IFireEventsFeatureContext.IsIrFireCandidateDetected
         {
-            get { return _features._thermalFeature._isIrFireCandidateDetected; }
-            set { _features._thermalFeature._isIrFireCandidateDetected = value; }
+            get { return _features.ThermalFeature._isIrFireCandidateDetected; }
+            set { _features.ThermalFeature._isIrFireCandidateDetected = value; }
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ZoneAssessment IFireEventsFeatureContext.AssessZone(string camera, string type, double left, double top, double right, double bottom, ZoneFrameContext f)
         {
-            return _features._zonesFeature.AssessZone(camera, type, left, top, right, bottom, f);
+            return _features.ZonesFeature.AssessZone(camera, type, left, top, right, bottom, f);
         }
 
         /// <summary>
@@ -77,44 +77,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         PositionSnapshot IFireEventsFeatureContext.CapturePositionSnapshot(string source, int? presetId)
         {
-            return _features._positionFeature.CapturePositionSnapshot(source, presetId);
+            return _features.PositionFeature.CapturePositionSnapshot(source, presetId);
         }
 
         ObservableCollection<AiDetectionBox> IFireEventsFeatureContext.EoDetectionBoxes
         {
-            get { return _features._propertiesFeature.EoDetectionBoxes; }
+            get { return _features.PropertiesFeature.EoDetectionBoxes; }
         }
 
         ObservableCollection<VisionDetectionBox> IFireEventsFeatureContext.EoFireSmokeDetectionBoxes
         {
-            get { return _features._propertiesFeature.EoFireSmokeDetectionBoxes; }
+            get { return _features.PropertiesFeature.EoFireSmokeDetectionBoxes; }
         }
 
         int IFireEventsFeatureContext.EoVideoHeight
         {
-            get { return _features._propertiesFeature.EoVideoHeight; }
-            set { _features._propertiesFeature.EoVideoHeight = value; }
+            get { return _features.PropertiesFeature.EoVideoHeight; }
+            set { _features.PropertiesFeature.EoVideoHeight = value; }
         }
 
         int IFireEventsFeatureContext.EoVideoWidth
         {
-            get { return _features._propertiesFeature.EoVideoWidth; }
-            set { _features._propertiesFeature.EoVideoWidth = value; }
+            get { return _features.PropertiesFeature.EoVideoWidth; }
+            set { _features.PropertiesFeature.EoVideoWidth = value; }
         }
 
         Brush IFireEventsFeatureContext.EventAlertHeaderBrush
         {
-            get { return _features._eventAlertsFeature.EventAlertHeaderBrush; }
+            get { return _features.EventAlertsFeature.EventAlertHeaderBrush; }
         }
 
         string IFireEventsFeatureContext.EventAlertHeaderText
         {
-            get { return _features._eventAlertsFeature.EventAlertHeaderText; }
+            get { return _features.EventAlertsFeature.EventAlertHeaderText; }
         }
 
         ObservableCollection<FireEventRecord> IFireEventsFeatureContext.FireDetectionEvents
         {
-            get { return _features._eventAlertsFeature.FireDetectionEvents; }
+            get { return _features.EventAlertsFeature.FireDetectionEvents; }
         }
 
         /// <summary>
@@ -122,61 +122,61 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IFireEventsFeatureContext.InitializeEventAlertFeatures()
         {
-            _features._eventAlertsFeature.InitializeEventAlertFeatures();
+            _features.EventAlertsFeature.InitializeEventAlertFeatures();
         }
 
         ObservableCollection<AiDetectionBox> IFireEventsFeatureContext.IrDetectionBoxes
         {
-            get { return _features._propertiesFeature.IrDetectionBoxes; }
+            get { return _features.PropertiesFeature.IrDetectionBoxes; }
         }
 
         ObservableCollection<VisionDetectionBox> IFireEventsFeatureContext.IrFireSmokeDetectionBoxes
         {
-            get { return _features._propertiesFeature.IrFireSmokeDetectionBoxes; }
+            get { return _features.PropertiesFeature.IrFireSmokeDetectionBoxes; }
         }
 
         int IFireEventsFeatureContext.IrVideoHeight
         {
-            get { return _features._propertiesFeature.IrVideoHeight; }
-            set { _features._propertiesFeature.IrVideoHeight = value; }
+            get { return _features.PropertiesFeature.IrVideoHeight; }
+            set { _features.PropertiesFeature.IrVideoHeight = value; }
         }
 
         int IFireEventsFeatureContext.IrVideoWidth
         {
-            get { return _features._propertiesFeature.IrVideoWidth; }
-            set { _features._propertiesFeature.IrVideoWidth = value; }
+            get { return _features.PropertiesFeature.IrVideoWidth; }
+            set { _features.PropertiesFeature.IrVideoWidth = value; }
         }
 
         bool IFireEventsFeatureContext.IsEoFireWarningVisible
         {
-            get { return _features._propertiesFeature.IsEoFireWarningVisible; }
+            get { return _features.PropertiesFeature.IsEoFireWarningVisible; }
         }
 
         bool IFireEventsFeatureContext.IsEoSmokeWarningVisible
         {
-            get { return _features._propertiesFeature.IsEoSmokeWarningVisible; }
+            get { return _features.PropertiesFeature.IsEoSmokeWarningVisible; }
         }
 
         bool IFireEventsFeatureContext.IsIrFireWarningVisible
         {
-            get { return _features._propertiesFeature.IsIrFireWarningVisible; }
+            get { return _features.PropertiesFeature.IsIrFireWarningVisible; }
         }
 
         bool IFireEventsFeatureContext.IsIrSmokeWarningVisible
         {
-            get { return _features._propertiesFeature.IsIrSmokeWarningVisible; }
+            get { return _features.PropertiesFeature.IsIrSmokeWarningVisible; }
         }
 
         bool IFireEventsFeatureContext.IsSmokeDetectionEnabled
         {
-            get { return _features._smokeFeature.IsSmokeDetectionEnabled; }
-            set { _features._smokeFeature.IsSmokeDetectionEnabled = value; }
+            get { return _features.SmokeFeature.IsSmokeDetectionEnabled; }
+            set { _features.SmokeFeature.IsSmokeDetectionEnabled = value; }
         }
 
         bool IFireEventsFeatureContext.IsThermalFireDetectionEnabled
         {
-            get { return _features._thermalFeature.IsThermalFireDetectionEnabled; }
-            set { _features._thermalFeature.IsThermalFireDetectionEnabled = value; }
+            get { return _features.ThermalFeature.IsThermalFireDetectionEnabled; }
+            set { _features.ThermalFeature.IsThermalFireDetectionEnabled = value; }
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IFireEventsFeatureContext.RefreshActiveFireCount()
         {
-            _features._eventAlertsFeature.RefreshActiveFireCount();
+            _features.EventAlertsFeature.RefreshActiveFireCount();
         }
 
         /// <summary>
@@ -201,7 +201,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IFireEventsFeatureContext.SetLocalFireSmokeDetectionState(int rtspIndex, bool hasFire, bool hasSmoke)
         {
-            _features._propertiesFeature.SetLocalFireSmokeDetectionState(rtspIndex, hasFire, hasSmoke);
+            _features.PropertiesFeature.SetLocalFireSmokeDetectionState(rtspIndex, hasFire, hasSmoke);
         }
 
         Action IFireEventsFeatureContext.SaveFireEventsCallback

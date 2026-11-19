@@ -10,29 +10,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>파노라마 프리셋 연동에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IPanoramaPresetsFeatureContext
     {
-        System.Collections.Generic.Dictionary<string, RtspSourceOption> _axisCtecSources { get; }
+        System.Collections.Generic.Dictionary<string, RtspSourceOption> AxisCtecSources { get; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> _controlInputs { get; }
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> ControlInputs { get; }
 
-        ContinuousMoveType _currentMoveType { get; set; }
+        ContinuousMoveType CurrentMoveType { get; set; }
 
-        double _currentPan { get; set; }
+        double CurrentPan { get; set; }
 
-        double _currentTilt { get; set; }
+        double CurrentTilt { get; set; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        System.Collections.Generic.Dictionary<string, Tuple<int, int>> _issuedControlAxes { get; }
+        System.Collections.Generic.Dictionary<string, Tuple<int, int>> IssuedControlAxes { get; }
 
-        CancellationTokenSource _laPresetSingleMoveCts { get; set; }
+        CancellationTokenSource LaPresetSingleMoveCts { get; set; }
 
-        Services.Communication.ITcpClientServicePort _laTcpService { get; }
+        Services.Communication.ITcpClientServicePort LaTcpService { get; }
 
-        CancellationTokenSource _presetSingleMoveCts { get; set; }
+        CancellationTokenSource PresetSingleMoveCts { get; set; }
 
-        bool _videoCenterBusy { get; set; }
+        bool VideoCenterBusy { get; set; }
 
         string ControlLockMessage { get; }
 
@@ -187,7 +187,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return !IsPanoramaPresetRunning && _context.IsOperationCommandEnabled && !_context.IsControlInputLocked && _context._isDeviceConnectionRequested && _context._laTcpService?.IsConnected == true && _context._laPresetSingleMoveCts == null && _context._presetSingleMoveCts == null && !_context._videoCenterBusy && _context._currentMoveType == ContinuousMoveType.None && _context._controlInputs.Count == 0 && _context._issuedControlAxes.Count == 0 && _context._axisCtecSources.Count == 0 && _context.PanoramaPoseFresh && !_context.PanoramaReference.Pending && _context.PanoramaReference.Journal.Count == 0;
+                return !IsPanoramaPresetRunning && _context.IsOperationCommandEnabled && !_context.IsControlInputLocked && _context.IsDeviceConnectionRequested && _context.LaTcpService?.IsConnected == true && _context.LaPresetSingleMoveCts == null && _context.PresetSingleMoveCts == null && !_context.VideoCenterBusy && _context.CurrentMoveType == ContinuousMoveType.None && _context.ControlInputs.Count == 0 && _context.IssuedControlAxes.Count == 0 && _context.AxisCtecSources.Count == 0 && _context.PanoramaPoseFresh && !_context.PanoramaReference.Pending && _context.PanoramaReference.Journal.Count == 0;
             }
         }
 
@@ -273,7 +273,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 bool full = sameContext && status != null && status.EndsWith(" COMPLETED", StringComparison.Ordinal);
 
-                bool lensOnly = sameContext && IsPanoramaLensOnlyIncomplete(status, _panoramaPanTiltConfirmed, SignedPan(_context._currentPan - point.Pan), _context._currentTilt - point.Tilt);
+                bool lensOnly = sameContext && IsPanoramaLensOnlyIncomplete(status, _panoramaPanTiltConfirmed, SignedPan(_context.CurrentPan - point.Pan), _context.CurrentTilt - point.Tilt);
 
                 completed = full || lensOnly;
 
@@ -291,9 +291,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
             finally
             {
-                if (!completed && context == PanoramaPresetContext && _context._laTcpService?.IsConnected == true)
+                if (!completed && context == PanoramaPresetContext && _context.LaTcpService?.IsConnected == true)
                 {
-                    _context._controlCommandService.StopPanTiltPositionMove();
+                    _context.ControlCommandService.StopPanTiltPositionMove();
                 }
 
                 _panoramaPresetCts = null;
@@ -325,21 +325,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             _panoramaPresetCts.Cancel();
 
-            if (_panoramaPresetActiveContext != PanoramaPresetContext || _context._laTcpService?.IsConnected != true)
+            if (_panoramaPresetActiveContext != PanoramaPresetContext || _context.LaTcpService?.IsConnected != true)
             {
-                _context._laPresetSingleMoveCts?.Cancel();
+                _context.LaPresetSingleMoveCts?.Cancel();
 
-                _context._presetSingleMoveCts?.Cancel();
+                _context.PresetSingleMoveCts?.Cancel();
 
                 return;
             }
 
-            if (_context._laPresetSingleMoveCts != null)
+            if (_context.LaPresetSingleMoveCts != null)
             {
                 _context.StopLaPresetMove();
             }
 
-            if (_context._presetSingleMoveCts != null)
+            if (_context.PresetSingleMoveCts != null)
             {
                 _context.StopPresetMove();
             }

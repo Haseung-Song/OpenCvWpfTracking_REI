@@ -15,27 +15,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>정밀 이동과 자동 초점에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IWebAgentMotionFocusFeatureContext
     {
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> _controlInputs { get; }
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> ControlInputs { get; }
 
-        ContinuousMoveType _currentMoveType { get; set; }
+        ContinuousMoveType CurrentMoveType { get; set; }
 
-        CancellationTokenSource _laPresetSingleMoveCts { get; set; }
+        CancellationTokenSource LaPresetSingleMoveCts { get; set; }
 
-        ITcpClientServicePort _laTcpService { get; }
+        ITcpClientServicePort LaTcpService { get; }
 
-        SemaphoreSlim _lensSyncOperationLock { get; }
+        SemaphoreSlim LensSyncOperationLock { get; }
 
-        CancellationTokenSource _moveControlPanCts { get; set; }
+        CancellationTokenSource MoveControlPanCts { get; set; }
 
-        CancellationTokenSource _presetSingleMoveCts { get; set; }
+        CancellationTokenSource PresetSingleMoveCts { get; set; }
 
-        CancellationTokenSource _rooftopFocusSyncCts { get; set; }
+        CancellationTokenSource RooftopFocusSyncCts { get; set; }
 
-        CancellationTokenSource _rooftopZoomSyncCts { get; set; }
+        CancellationTokenSource RooftopZoomSyncCts { get; set; }
 
-        ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
+        ref global::System.Tuple<double, double, long> VideoCenterPose { get; }
 
         /// <summary>
         /// 현재 RadioButton에서 선택한 Pan 회전 모드를 Pelco-D 확장 명령 0x4D로 장비에 적용한다.
@@ -281,7 +281,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._laPresetSingleMoveCts != null || _context._presetSingleMoveCts != null || _context._rooftopZoomSyncCts != null || _context._rooftopFocusSyncCts != null || _context._moveControlPanCts != null || _context._lensSyncOperationLock.CurrentCount == 0;
+                return _context.LaPresetSingleMoveCts != null || _context.PresetSingleMoveCts != null || _context.RooftopZoomSyncCts != null || _context.RooftopFocusSyncCts != null || _context.MoveControlPanCts != null || _context.LensSyncOperationLock.CurrentCount == 0;
             }
         }
 
@@ -326,7 +326,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool IsPrecisionPoseFresh()
         {
-            var pose = Volatile.Read(ref _context._videoCenterPose);
+            var pose = Volatile.Read(ref _context.VideoCenterPose);
 
             return pose != null && Math.Abs(DateTime.UtcNow.Ticks - pose.Item3) < TimeSpan.FromSeconds(2).Ticks;
         }
@@ -428,7 +428,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 _precisionPreparing = false;
 
-                if (!_context._controlCommandService.SendPrecisionAbsolute(tilt, _precisionTarget, speed, PrecisionMaximumSpeed))
+                if (!_context.ControlCommandService.SendPrecisionAbsolute(tilt, _precisionTarget, speed, PrecisionMaximumSpeed))
                 {
                     StopPrecisionMotion("정밀 절대 이동 송신 실패");
 
@@ -489,7 +489,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 RefreshWebAgentFocusControls();
 
-                if (!_context._controlCommandService.SendPrecisionJog(direction, pan, tilt, PrecisionMaximumSpeed))
+                if (!_context.ControlCommandService.SendPrecisionJog(direction, pan, tilt, PrecisionMaximumSpeed))
                 {
                     StopPrecisionMotion("정밀 조그 송신 실패");
 
@@ -513,7 +513,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal bool IsPrecisionJogWithinLimits(byte direction)
         {
-            var pose = Volatile.Read(ref _context._videoCenterPose);
+            var pose = Volatile.Read(ref _context.VideoCenterPose);
 
             if (pose == null)
             {
@@ -554,12 +554,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _precisionPreparing = false;
             _precisionJog = false;
 
-            if (shouldSend && _context._laTcpService.IsConnected && _context.IsEnvironmentStatusSelected)
+            if (shouldSend && _context.LaTcpService.IsConnected && _context.IsEnvironmentStatusSelected)
             {
                 // 두 축 검증 후 순차 실행되는 조그의 부분 실패에도 정지 요청을 두 경로로 보낸다.
-                bool jogStop = _context._controlCommandService.SendPrecisionJog(0, 0, 0, PrecisionMaximumSpeed);
+                bool jogStop = _context.ControlCommandService.SendPrecisionJog(0, 0, 0, PrecisionMaximumSpeed);
 
-                bool axisStop = _context._controlCommandService.StopPanTiltPositionMove();
+                bool axisStop = _context.ControlCommandService.StopPanTiltPositionMove();
 
                 _precisionStopUncertain = !(jogStop && axisStop);
 
@@ -591,7 +591,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             int action = text[1] - '0';
 
-            if (!IsWebAgentFocusControlReady || !AutoFocusTargetUsesAgent(target) || HasConflictingLensOrMotionOperation || _context._controlInputs.Count != 0 || _context._currentMoveType != ContinuousMoveType.None || _autoFocusUncertain[target] || _autoFocusPending[target] >= 0 || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked)
+            if (!IsWebAgentFocusControlReady || !AutoFocusTargetUsesAgent(target) || HasConflictingLensOrMotionOperation || _context.ControlInputs.Count != 0 || _context.CurrentMoveType != ContinuousMoveType.None || _autoFocusUncertain[target] || _autoFocusPending[target] >= 0 || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked)
             {
                 return false;
             }
@@ -644,7 +644,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             byte command = operation == 0 ? (byte)0xCB : operation == 1 ? (byte)0xC7 : (byte)0xC9;
 
-            bool sent = _context._controlCommandService.SendAutoFocusCommand(command, (byte)target, (byte)value);
+            bool sent = _context.ControlCommandService.SendAutoFocusCommand(command, (byte)target, (byte)value);
 
             if (!sent)
             {
@@ -924,7 +924,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 else if (!_precisionJog && now - _precisionSentAt > 500)
                 {
-                    var pose = Volatile.Read(ref _context._videoCenterPose);
+                    var pose = Volatile.Read(ref _context.VideoCenterPose);
 
                     double actual = _precisionTilt ? pose.Item2 : pose.Item1;
 

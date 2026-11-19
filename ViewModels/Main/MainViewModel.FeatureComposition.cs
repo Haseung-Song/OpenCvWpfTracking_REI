@@ -220,7 +220,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 AiSettingStatusText = "[AI] Refresh Setting...";
 
-                int refreshGeneration = Volatile.Read(ref _aiManualConnectionGeneration);
+                int refreshGeneration = Volatile.Read(ref AiManualConnectionGeneration);
 
                 await RequestAiDetectorInfoAsync();
 
@@ -236,7 +236,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 await RequestAiDetectorMappingAsync();
 
-                if (refreshGeneration != Volatile.Read(ref _aiManualConnectionGeneration) || !_aiDetectorClientService.IsConnected)
+                if (refreshGeneration != Volatile.Read(ref AiManualConnectionGeneration) || !_aiDetectorClientService.IsConnected)
                 {
                     return;
                 }
@@ -260,7 +260,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             PanLeftCommand = new RelayCommand(() =>
             {
-                double targetPan = _currentPan - PanTiltMoveStep;
+                double targetPan = CurrentPan - PanTiltMoveStep;
 
                 Console.WriteLine();
 
@@ -277,7 +277,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             PanRightCommand = new RelayCommand(() =>
             {
-                double targetPan = _currentPan + PanTiltMoveStep;
+                double targetPan = CurrentPan + PanTiltMoveStep;
 
                 Console.WriteLine();
 
@@ -294,7 +294,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             TiltUpCommand = new RelayCommand(() =>
             {
-                double targetTilt = _currentTilt + PanTiltMoveStep;
+                double targetTilt = CurrentTilt + PanTiltMoveStep;
 
                 Console.WriteLine();
 
@@ -311,7 +311,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             TiltDownCommand = new RelayCommand(() =>
             {
-                double targetTilt = _currentTilt - PanTiltMoveStep;
+                double targetTilt = CurrentTilt - PanTiltMoveStep;
 
                 Console.WriteLine();
 
@@ -328,7 +328,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             ZoomInCommand = new RelayCommand(() =>
             {
-                short targetZoom = (short)(_currentEoZoom + ZoomMoveStep);
+                short targetZoom = (short)(CurrentEoZoom + ZoomMoveStep);
 
                 Console.WriteLine();
 
@@ -345,7 +345,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
             //
             ZoomOutCommand = new RelayCommand(() =>
             {
-                short targetZoom = (short)(_currentEoZoom - ZoomMoveStep);
+                short targetZoom = (short)(CurrentEoZoom - ZoomMoveStep);
 
                 Console.WriteLine();
 
@@ -358,11 +358,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             FocusFarCommand = new RelayCommand(() =>
             {
-                int targetFocus = Math.Max(0, _currentEoFocus - FocusMoveStep);
+                int targetFocus = Math.Max(0, CurrentEoFocus - FocusMoveStep);
 
                 Console.WriteLine();
 
-                Console.WriteLine($"[CONTROL] EO FOCUS FAR : " + $"{_currentEoFocus} -> {targetFocus}");
+                Console.WriteLine($"[CONTROL] EO FOCUS FAR : " + $"{CurrentEoFocus} -> {targetFocus}");
 
                 ConsoleLogHelper.PrintLine();
 
@@ -371,11 +371,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             FocusNearCommand = new RelayCommand(() =>
             {
-                int targetFocus = Math.Min(1000, _currentEoFocus + FocusMoveStep);
+                int targetFocus = Math.Min(1000, CurrentEoFocus + FocusMoveStep);
 
                 Console.WriteLine();
 
-                Console.WriteLine($"[CONTROL] EO FOCUS NEAR : " + $"{_currentEoFocus} -> {targetFocus}");
+                Console.WriteLine($"[CONTROL] EO FOCUS NEAR : " + $"{CurrentEoFocus} -> {targetFocus}");
 
                 ConsoleLogHelper.PrintLine();
 

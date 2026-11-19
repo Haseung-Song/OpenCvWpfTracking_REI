@@ -17,24 +17,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        Services.Communication.IControlCommandServicePort IThermalFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort IThermalFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        ref int IThermalFeatureContext._visionSettingsGeneration
+        ref int IThermalFeatureContext.VisionSettingsGeneration
         {
-            get { return ref _features._fireEventsFeature._visionSettingsGeneration; }
+            get { return ref _features.FireEventsFeature._visionSettingsGeneration; }
         }
 
-        Services.Communication.WebAgent.IWebAgentThermalPaletteServicePort IThermalFeatureContext._webAgentThermalPaletteService
+        Services.Communication.WebAgent.IWebAgentThermalPaletteServicePort IThermalFeatureContext.WebAgentThermalPaletteService
         {
             get { return _features.Runtime._webAgentThermalPaletteService; }
         }
 
         bool IThermalFeatureContext.CameraFeatureTransportReady
         {
-            get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
+            get { return _features.CameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
         /// <summary>
@@ -42,32 +42,32 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IThermalFeatureContext.ClearDisabledVisionEvents(bool fire, bool writeAudit)
         {
-            _features._fireEventsFeature.ClearDisabledVisionEvents(fire, writeAudit);
+            _features.FireEventsFeature.ClearDisabledVisionEvents(fire, writeAudit);
         }
 
         string IThermalFeatureContext.FireAlertStatusText
         {
-            get { return _features._fireEventsFeature.FireAlertStatusText; }
+            get { return _features.FireEventsFeature.FireAlertStatusText; }
         }
 
         bool IThermalFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IThermalFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IThermalFeatureContext.IsSelectedConnectionTarget
         {
-            get { return _features._rtspSettingsFeature.IsSelectedConnectionTarget; }
+            get { return _features.RtspSettingsFeature.IsSelectedConnectionTarget; }
         }
 
         bool IThermalFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IThermalFeatureContext.ResetFireSmokeFrameAnalysis(string reason)
         {
-            _features._smokeFeature.ResetFireSmokeFrameAnalysis(reason);
+            _features.SmokeFeature.ResetFireSmokeFrameAnalysis(reason);
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IThermalFeatureContext.UpdateVisionBBoxEvents(string camera, string detectionType, System.Collections.Generic.IList<OpenCvSharp.Rect> candidates, System.Collections.Generic.IList<double> candidateScores, string detectionSource, Services.Position.ZoneFrameContext zoneFrame)
         {
-            _features._fireEventsFeature.UpdateVisionBBoxEvents(camera, detectionType, candidates, candidateScores, detectionSource, zoneFrame);
+            _features.FireEventsFeature.UpdateVisionBBoxEvents(camera, detectionType, candidates, candidateScores, detectionSource, zoneFrame);
         }
     }
 }

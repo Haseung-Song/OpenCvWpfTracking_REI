@@ -11,11 +11,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>위치 센서 설정에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IGpsSettingsFeatureContext
     {
-        IControlCommandServicePort _controlCommandService { get; }
+        IControlCommandServicePort ControlCommandService { get; }
 
-        ITcpClientServicePort _laTcpService { get; }
+        ITcpClientServicePort LaTcpService { get; }
 
-        ref double? _storedRpyYawOffset { get; }
+        ref double? StoredRpyYawOffset { get; }
 
         bool IsEnvironmentStatusSelected { get; }
 
@@ -314,7 +314,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return false;
             }
 
-            if (_context._laTcpService == null || !_context._laTcpService.IsConnected)
+            if (_context.LaTcpService == null || !_context.LaTcpService.IsConnected)
             {
                 reason = "Failed: WebAgent 미연결";
 
@@ -342,7 +342,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             GpsStatusText = "단건 조회 응답 대기";
 
-            bool sent = _context._controlCommandService.RequestGpsTelemetry();
+            bool sent = _context.ControlCommandService.RequestGpsTelemetry();
 
             ConsoleLogHelper.Command("GPS QUERY TX", "CMD2=0xA3 / PACKET=FF 01 00 A3 00 00 A4 / SENT=" + sent);
 
@@ -381,7 +381,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             GpsRateStatusText = "설정 응답 대기";
 
-            bool sent = _context._controlCommandService.SetGpsAutoTxRate(frequency);
+            bool sent = _context.ControlCommandService.SetGpsAutoTxRate(frequency);
 
             ConsoleLogHelper.Command("GPS RATE SET TX", "HZ=" + frequencyHz + " / PACKET=" + ToHex(packet) + " / SENT=" + sent);
 
@@ -407,7 +407,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             GpsRateStatusText = "현재 설정 조회 중";
 
-            bool sent = _context._controlCommandService.RequestGpsAutoTxRate();
+            bool sent = _context.ControlCommandService.RequestGpsAutoTxRate();
 
             ConsoleLogHelper.Command("GPS RATE QUERY TX", "CMD2=0xF9 / PACKET=FF 01 00 F9 00 00 FA / SENT=" + sent);
 
@@ -422,12 +422,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void RequestGpsAutoTxRateAfterConnection()
         {
-            if (_context._laTcpService == null || !_context._laTcpService.IsConnected)
+            if (_context.LaTcpService == null || !_context.LaTcpService.IsConnected)
             {
                 return;
             }
 
-            bool sent = _context._controlCommandService.RequestGpsAutoTxRate();
+            bool sent = _context.ControlCommandService.RequestGpsAutoTxRate();
 
             ConsoleLogHelper.Command("GPS RATE CONNECT QUERY TX", "PACKET=FF 01 00 F9 00 00 FA / SENT=" + sent);
         }
@@ -546,9 +546,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             string imuText = _latestImuRawYawDegrees.HasValue ? _latestImuRawYawDegrees.Value.ToString("F2", CultureInfo.InvariantCulture) + "°" : "--";
 
-            double? trueNorth = _latestImuRawYawDegrees.HasValue && _context._storedRpyYawOffset.HasValue ? NormalizeHeadingDegrees(_latestImuRawYawDegrees.Value + _context._storedRpyYawOffset.Value) : (double?)null;
+            double? trueNorth = _latestImuRawYawDegrees.HasValue && _context.StoredRpyYawOffset.HasValue ? NormalizeHeadingDegrees(_latestImuRawYawDegrees.Value + _context.StoredRpyYawOffset.Value) : (double?)null;
 
-            string offsetText = _context._storedRpyYawOffset.HasValue ? _context._storedRpyYawOffset.Value.ToString("F2", CultureInfo.InvariantCulture) + "°" : "--";
+            string offsetText = _context.StoredRpyYawOffset.HasValue ? _context.StoredRpyYawOffset.Value.ToString("F2", CultureInfo.InvariantCulture) + "°" : "--";
 
             string trueNorthText = trueNorth.HasValue ? trueNorth.Value.ToString("F2", CultureInfo.InvariantCulture) + "°" : "--";
 

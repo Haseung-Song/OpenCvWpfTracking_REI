@@ -19,47 +19,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        ref double? ISmokeFeatureContext._activePanAbsoluteTarget
+        ref double? ISmokeFeatureContext.ActivePanAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._activePanAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._activePanAbsoluteTarget; }
         }
 
-        ref double? ISmokeFeatureContext._activeTiltAbsoluteTarget
+        ref double? ISmokeFeatureContext.ActiveTiltAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._activeTiltAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._activeTiltAbsoluteTarget; }
         }
 
-        ContinuousMoveType ISmokeFeatureContext._currentMoveType
+        ContinuousMoveType ISmokeFeatureContext.CurrentMoveType
         {
-            get { return _features._screenStateFeature._currentMoveType; }
-            set { _features._screenStateFeature._currentMoveType = value; }
+            get { return _features.ScreenStateFeature._currentMoveType; }
+            set { _features.ScreenStateFeature._currentMoveType = value; }
         }
 
-        ThermalFireDetectionService ISmokeFeatureContext._eoFireDetectionService
+        ThermalFireDetectionService ISmokeFeatureContext.EoFireDetectionService
         {
-            get { return _features._thermalFeature._eoFireDetectionService; }
+            get { return _features.ThermalFeature._eoFireDetectionService; }
         }
 
-        ThermalFireDetectionService ISmokeFeatureContext._irFireDetectionService
+        ThermalFireDetectionService ISmokeFeatureContext.IrFireDetectionService
         {
-            get { return _features._thermalFeature._irFireDetectionService; }
+            get { return _features.ThermalFeature._irFireDetectionService; }
         }
 
-        ref int ISmokeFeatureContext._visionSettingsGeneration
+        ref int ISmokeFeatureContext.VisionSettingsGeneration
         {
-            get { return ref _features._fireEventsFeature._visionSettingsGeneration; }
+            get { return ref _features.FireEventsFeature._visionSettingsGeneration; }
         }
 
         double ISmokeFeatureContext.AiDisplayConfidenceThreshold
         {
-            get { return _features._propertiesFeature.AiDisplayConfidenceThreshold; }
-            set { _features._propertiesFeature.AiDisplayConfidenceThreshold = value; }
+            get { return _features.PropertiesFeature.AiDisplayConfidenceThreshold; }
+            set { _features.PropertiesFeature.AiDisplayConfidenceThreshold = value; }
         }
 
         string ISmokeFeatureContext.AiPowerStatusText
         {
-            get { return _features._propertiesFeature.AiPowerStatusText; }
-            set { _features._propertiesFeature.AiPowerStatusText = value; }
+            get { return _features.PropertiesFeature.AiPowerStatusText; }
+            set { _features.PropertiesFeature.AiPowerStatusText = value; }
         }
 
         /// <summary>
@@ -67,12 +67,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ISmokeFeatureContext.ClearDisabledVisionEvents(bool fire, bool writeAudit)
         {
-            _features._fireEventsFeature.ClearDisabledVisionEvents(fire, writeAudit);
+            _features.FireEventsFeature.ClearDisabledVisionEvents(fire, writeAudit);
         }
 
         string ISmokeFeatureContext.FireAlertStatusText
         {
-            get { return _features._fireEventsFeature.FireAlertStatusText; }
+            get { return _features.FireEventsFeature.FireAlertStatusText; }
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int ISmokeFeatureContext.GetCurrentIrZoomStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
         /// <summary>
@@ -90,30 +90,30 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort ISmokeFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         bool ISmokeFeatureContext.IsAutoTrackingEnabled
         {
-            get { return _features._propertiesFeature.IsAutoTrackingEnabled; }
-            set { _features._propertiesFeature.IsAutoTrackingEnabled = value; }
+            get { return _features.PropertiesFeature.IsAutoTrackingEnabled; }
+            set { _features.PropertiesFeature.IsAutoTrackingEnabled = value; }
         }
 
         bool ISmokeFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool ISmokeFeatureContext.IsLaPresetScanRunning
         {
-            get { return _features._propertiesFeature.IsLaPresetScanRunning; }
-            set { _features._propertiesFeature.IsLaPresetScanRunning = value; }
+            get { return _features.PropertiesFeature.IsLaPresetScanRunning; }
+            set { _features.PropertiesFeature.IsLaPresetScanRunning = value; }
         }
 
         bool ISmokeFeatureContext.IsPanoramaCaptureRunning
         {
-            get { return _features._panoramaFeature.IsPanoramaCaptureRunning; }
-            set { _features._panoramaFeature.IsPanoramaCaptureRunning = value; }
+            get { return _features.PanoramaFeature.IsPanoramaCaptureRunning; }
+            set { _features.PanoramaFeature.IsPanoramaCaptureRunning = value; }
         }
 
         /// <summary>
@@ -121,24 +121,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool ISmokeFeatureContext.IsPanoramaMotionDetectionSuppressed()
         {
-            return _features._panoramaFeature.IsPanoramaMotionDetectionSuppressed();
+            return _features.PanoramaFeature.IsPanoramaMotionDetectionSuppressed();
         }
 
         bool ISmokeFeatureContext.IsPanoramaProcessingRunning
         {
-            get { return _features._panoramaFeature.IsPanoramaProcessingRunning; }
+            get { return _features.PanoramaFeature.IsPanoramaProcessingRunning; }
         }
 
         bool ISmokeFeatureContext.IsPresetScanRunning
         {
-            get { return _features._propertiesFeature.IsPresetScanRunning; }
-            set { _features._propertiesFeature.IsPresetScanRunning = value; }
+            get { return _features.PropertiesFeature.IsPresetScanRunning; }
+            set { _features.PropertiesFeature.IsPresetScanRunning = value; }
         }
 
         bool ISmokeFeatureContext.IsThermalFireDetectionEnabled
         {
-            get { return _features._thermalFeature.IsThermalFireDetectionEnabled; }
-            set { _features._thermalFeature.IsThermalFireDetectionEnabled = value; }
+            get { return _features.ThermalFeature.IsThermalFireDetectionEnabled; }
+            set { _features.ThermalFeature.IsThermalFireDetectionEnabled = value; }
         }
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool ISmokeFeatureContext.TryRunAiUiAction(Action action, string operationName)
         {
-            return _features._aiFeature.TryRunAiUiAction(action, operationName);
+            return _features.AiFeature.TryRunAiUiAction(action, operationName);
         }
     }
 }

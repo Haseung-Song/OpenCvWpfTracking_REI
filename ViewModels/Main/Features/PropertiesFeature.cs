@@ -15,157 +15,157 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>화면 바인딩 상태에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IPropertiesFeatureContext
     {
-        int _activePanTiltZoomSource { get; set; }
+        int ActivePanTiltZoomSource { get; set; }
 
-        int _aiAgentPort { get; set; }
+        int AiAgentPort { get; set; }
 
-        string _aiControlAgentIp { get; set; }
+        string AiControlAgentIpState { get; set; }
 
-        double _aiDisplayConfidenceThreshold { get; set; }
+        double AiDisplayConfidenceThreshold { get; set; }
 
-        double _aiMappingConfidence { get; set; }
+        double AiMappingConfidence { get; set; }
 
-        double _aiMappingIou { get; set; }
+        double AiMappingIou { get; set; }
 
-        string _aiPowerStatusText { get; set; }
+        string AiPowerStatusText { get; set; }
 
-        string _aiRtsp0Address { get; set; }
+        string AiRtsp0Address { get; set; }
 
-        int _aiRtsp0OnnxIndex { get; set; }
+        int AiRtsp0OnnxIndex { get; set; }
 
-        string _aiRtsp1Address { get; set; }
+        string AiRtsp1Address { get; set; }
 
-        int _aiRtsp1OnnxIndex { get; set; }
+        int AiRtsp1OnnxIndex { get; set; }
 
-        string _aiSettingStatusText { get; set; }
+        string AiSettingStatusText { get; set; }
 
-        string _controlAgentConnectionStatusColor { get; set; }
+        string ControlAgentConnectionStatusColor { get; set; }
 
-        string _controlAgentConnectionStatusText { get; set; }
+        string ControlAgentConnectionStatusText { get; set; }
 
-        Services.Communication.IControlCommandServicePort _controlCommandService { get; }
+        Services.Communication.IControlCommandServicePort ControlCommandService { get; }
 
-        string _controlControlAgentIp { get; set; }
+        string ControlControlAgentIp { get; set; }
 
-        string _controlControlAgentPortText { get; set; }
+        string ControlControlAgentPortText { get; set; }
 
-        Brush _crosshairBrush { get; set; }
+        Brush CrosshairBrush { get; set; }
 
-        byte _currentMcbPowerStatus { get; set; }
+        byte CurrentMcbPowerStatus { get; set; }
 
-        double _currentPan { get; set; }
+        double CurrentPan { get; set; }
 
-        byte _currentPowerStatus { get; set; }
+        byte CurrentPowerStatus { get; set; }
 
-        byte _currentScbPowerStatus { get; set; }
+        byte CurrentScbPowerStatus { get; set; }
 
-        double _currentTilt { get; set; }
+        double CurrentTilt { get; set; }
 
-        bool _eoAlreadyConnectedNotice { get; set; }
+        bool EoAlreadyConnectedNotice { get; set; }
 
-        BitmapSource _eoCameraImage { get; set; }
+        BitmapSource EoCameraImage { get; set; }
 
-        string _eoSourceAddress { get; set; }
+        string EoSourceAddress { get; set; }
 
-        string _eoStatusText { get; set; }
+        string EoStatusText { get; set; }
 
-        int _eoVideoHeight { get; set; }
+        int EoVideoHeight { get; set; }
 
-        int _eoVideoWidth { get; set; }
+        int EoVideoWidth { get; set; }
 
-        ref int? _focusPositionValue { get; }
+        ref int? FocusPositionValue { get; }
 
-        string _focusSyncStatusText { get; set; }
+        string FocusSyncStatusText { get; set; }
 
-        bool _hasDevicePowerStatus { get; set; }
+        bool HasDevicePowerStatus { get; set; }
 
-        string _homeZeroLockMessage { get; set; }
+        string HomeZeroLockMessage { get; set; }
 
-        string _homeZeroLockTitle { get; set; }
+        string HomeZeroLockTitle { get; set; }
 
-        string _homeZeroStatusText { get; set; }
+        string HomeZeroStatusText { get; set; }
 
-        bool _irAlreadyConnectedNotice { get; set; }
+        bool IrAlreadyConnectedNotice { get; set; }
 
-        BitmapSource _irCameraImage { get; set; }
+        BitmapSource IrCameraImage { get; set; }
 
-        string _irSourceAddress { get; set; }
+        string IrSourceAddress { get; set; }
 
-        string _irStatusText { get; set; }
+        string IrStatusText { get; set; }
 
-        int _irVideoHeight { get; set; }
+        int IrVideoHeight { get; set; }
 
-        int _irVideoWidth { get; set; }
+        int IrVideoWidth { get; set; }
 
-        bool _isAutoTrackingEnabled { get; set; }
+        bool IsAutoTrackingEnabled { get; set; }
 
-        bool _isCrosshairVisible { get; set; }
+        bool IsCrosshairVisible { get; set; }
 
-        bool _isDeviceConnectionRequested { get; set; }
+        bool IsDeviceConnectionRequested { get; set; }
 
-        bool _isDevicePowerStatusStale { get; set; }
+        bool IsDevicePowerStatusStale { get; set; }
 
-        bool _isHomePositionMoving { get; set; }
+        bool IsHomePositionMoving { get; set; }
 
-        bool _isLaPresetScanRunning { get; set; }
+        bool IsLaPresetScanRunning { get; set; }
 
-        bool _isPresetScanRunning { get; set; }
+        bool IsPresetScanRunning { get; set; }
 
-        string _laPresetCommandStatusText { get; set; }
+        string LaPresetCommandStatusTextState { get; set; }
 
-        int _laPresetScanDelay { get; set; }
+        int LaPresetScanDelayState { get; set; }
 
-        int _laPresetScanSpeed { get; set; }
+        int LaPresetScanSpeedState { get; set; }
 
-        int _laPresetSlotNumber { get; set; }
+        int LaPresetSlotNumberState { get; set; }
 
-        string _lrfDistanceText { get; set; }
+        string LrfDistanceText { get; set; }
 
-        string _mcbMaintenanceIpAddress { get; set; }
+        string McbMaintenanceIpAddress { get; set; }
 
-        ref double? _panAbsoluteValue { get; }
+        ref double? PanAbsoluteValue { get; }
 
-        byte _panTiltSpeedLevel { get; set; }
+        byte PanTiltSpeedLevel { get; set; }
 
-        PanTurnMode _panTurnMode { get; set; }
+        PanTurnMode PanTurnMode { get; set; }
 
-        bool _precisionActive { get; set; }
+        bool PrecisionActive { get; set; }
 
-        bool _precisionStopUncertain { get; set; }
+        bool PrecisionStopUncertain { get; set; }
 
-        string _presetCommandStatusText { get; set; }
+        string PresetCommandStatusTextState { get; set; }
 
-        int _presetScanDelay { get; set; }
+        int PresetScanDelayState { get; set; }
 
-        PresetScanOrderMode _presetScanOrderMode { get; set; }
+        PresetScanOrderMode PresetScanOrderMode { get; set; }
 
-        int _presetScanSpeed { get; set; }
+        int PresetScanSpeedState { get; set; }
 
-        int _presetSlotNumber { get; set; }
+        int PresetSlotNumberState { get; set; }
 
-        ControlAgentProfileOption _selectedControlAgentProfile { get; set; }
+        ControlAgentProfileOption SelectedControlAgentProfileState { get; set; }
 
-        EquipmentStatusMode _selectedEquipmentStatusMode { get; set; }
+        EquipmentStatusMode SelectedEquipmentStatusMode { get; set; }
 
-        ZoomSyncLevelOption _selectedFocusSyncLevel { get; set; }
+        ZoomSyncLevelOption SelectedFocusSyncLevel { get; set; }
 
-        PresetPointOption _selectedLaPresetPoint { get; set; }
+        PresetPointOption SelectedLaPresetPoint { get; set; }
 
-        int _selectedOperationControlTabIndex { get; set; }
+        int SelectedOperationControlTabIndex { get; set; }
 
-        PresetPointOption _selectedPresetPoint { get; set; }
+        PresetPointOption SelectedPresetPoint { get; set; }
 
-        int _selectedRightPanelTabIndex { get; set; }
+        int SelectedRightPanelTabIndex { get; set; }
 
-        ZoomSyncLevelOption _selectedZoomSyncLevel { get; set; }
+        ZoomSyncLevelOption SelectedZoomSyncLevel { get; set; }
 
-        ref double? _tiltAbsoluteValue { get; }
+        ref double? TiltAbsoluteValue { get; }
 
-        ref int? _zoomPositionValue { get; }
+        ref int? ZoomPositionValue { get; }
 
-        ref double? _zoomRatioValue { get; }
+        ref double? ZoomRatioValue { get; }
 
-        string _zoomSyncStatusText { get; set; }
+        string ZoomSyncStatusText { get; set; }
 
         string AiAlertStatusText { get; }
 
@@ -507,18 +507,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal EquipmentStatusMode SelectedEquipmentStatusMode
         {
-            get { return _context._selectedEquipmentStatusMode; }
+            get { return _context.SelectedEquipmentStatusMode; }
 
             set
             {
-                if (_context._selectedEquipmentStatusMode == value)
+                if (_context.SelectedEquipmentStatusMode == value)
                 {
                     return;
                 }
 
-                _context._selectedEquipmentStatusMode = value;
+                _context.SelectedEquipmentStatusMode = value;
 
-                if (_context._controlCommandService != null)
+                if (_context.ControlCommandService != null)
                 {
                     // 상태 화면이나 EO 카메라 경로는 PT 프로토콜을 결정하지 않는다.
                     // 연결 중에는 고정한 Agent 프로필의 좌표계를 계속 사용한다.
@@ -656,7 +656,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._selectedControlAgentProfile?.AgentType == ControlAgentType.LaAgent)
+                if (_context.SelectedControlAgentProfileState?.AgentType == ControlAgentType.LaAgent)
                 {
                     return "LA AGENT : MCB DIRECT ZERO";
                 }
@@ -674,16 +674,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string HomeZeroLockTitle
         {
-            get { return _context._homeZeroLockTitle; }
+            get { return _context.HomeZeroLockTitle; }
 
             set
             {
-                if (_context._homeZeroLockTitle == value)
+                if (_context.HomeZeroLockTitle == value)
                 {
                     return;
                 }
 
-                _context._homeZeroLockTitle = value;
+                _context.HomeZeroLockTitle = value;
 
                 _context.OnPropertyChanged();
             }
@@ -691,16 +691,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string HomeZeroLockMessage
         {
-            get { return _context._homeZeroLockMessage; }
+            get { return _context.HomeZeroLockMessage; }
 
             set
             {
-                if (_context._homeZeroLockMessage == value)
+                if (_context.HomeZeroLockMessage == value)
                 {
                     return;
                 }
 
-                _context._homeZeroLockMessage = value;
+                _context.HomeZeroLockMessage = value;
 
                 _context.OnPropertyChanged();
             }
@@ -708,16 +708,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal bool IsHomePositionMoving
         {
-            get { return _context._isHomePositionMoving; }
+            get { return _context.IsHomePositionMoving; }
 
             set
             {
-                if (_context._isHomePositionMoving == value)
+                if (_context.IsHomePositionMoving == value)
                 {
                     return;
                 }
 
-                _context._isHomePositionMoving = value;
+                _context.IsHomePositionMoving = value;
 
                 _context.OnPropertyChanged();
 
@@ -748,7 +748,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return !_context.IsPanoramaPresetRunning && !_context._precisionActive && !_context._precisionStopUncertain && !IsHomePositionMoving && !IsPresetScanControlLocked && !_context.IsPanoramaCaptureRunning && !_context.IsPanoramaProcessingRunning;
+                return !_context.IsPanoramaPresetRunning && !_context.PrecisionActive && !_context.PrecisionStopUncertain && !IsHomePositionMoving && !IsPresetScanControlLocked && !_context.IsPanoramaCaptureRunning && !_context.IsPanoramaProcessingRunning;
             }
         }
 
@@ -775,16 +775,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int SelectedRightPanelTabIndex
         {
-            get { return _context._selectedRightPanelTabIndex; }
+            get { return _context.SelectedRightPanelTabIndex; }
 
             set
             {
-                if (_context._selectedRightPanelTabIndex == value)
+                if (_context.SelectedRightPanelTabIndex == value)
                 {
                     return;
                 }
 
-                _context._selectedRightPanelTabIndex = value;
+                _context.SelectedRightPanelTabIndex = value;
 
                 _context.OnPropertyChanged();
 
@@ -806,16 +806,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int SelectedOperationControlTabIndex
         {
-            get { return _context._selectedOperationControlTabIndex; }
+            get { return _context.SelectedOperationControlTabIndex; }
 
             set
             {
-                if (_context._selectedOperationControlTabIndex == value)
+                if (_context.SelectedOperationControlTabIndex == value)
                 {
                     return;
                 }
 
-                _context._selectedOperationControlTabIndex = value;
+                _context.SelectedOperationControlTabIndex = value;
 
                 _context.OnPropertyChanged();
 
@@ -840,7 +840,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context.IsPanoramaPresetRunning || _context._precisionActive || _context._precisionStopUncertain || IsHomePositionMoving || IsPresetScanControlLocked || _context.IsPanoramaCaptureRunning || _context.IsPanoramaProcessingRunning;
+                return _context.IsPanoramaPresetRunning || _context.PrecisionActive || _context.PrecisionStopUncertain || IsHomePositionMoving || IsPresetScanControlLocked || _context.IsPanoramaCaptureRunning || _context.IsPanoramaProcessingRunning;
             }
         }
 
@@ -854,7 +854,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 else
                 {
-                    return _context._precisionStopUncertain ? "정밀 이동 정지 송신 미확인" : _context._precisionActive ? "정밀 이동 시험 중" : _context.IsPanoramaCompleted ? "360° PANORAMA COMPLETED" : _context.IsPanoramaCancellationCompleted ? "360° PANORAMA CANCELED" : _context.IsPanoramaCancellationRequested ? "360° PANORAMA CANCELING" : _context.IsPanoramaProcessingRunning ? "360° PANORAMA OPERATION" : IsPresetScanControlLocked ? "AUTO SCAN OPERATION" : HomeZeroLockTitle;
+                    return _context.PrecisionStopUncertain ? "정밀 이동 정지 송신 미확인" : _context.PrecisionActive ? "정밀 이동 시험 중" : _context.IsPanoramaCompleted ? "360° PANORAMA COMPLETED" : _context.IsPanoramaCancellationCompleted ? "360° PANORAMA CANCELED" : _context.IsPanoramaCancellationRequested ? "360° PANORAMA CANCELING" : _context.IsPanoramaProcessingRunning ? "360° PANORAMA OPERATION" : IsPresetScanControlLocked ? "AUTO SCAN OPERATION" : HomeZeroLockTitle;
                 }
             }
         }
@@ -869,23 +869,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 }
                 else
                 {
-                    return _context._precisionStopUncertain ? "다른 제어 잠금 / STOP 재시도 및 장비 정지 여부 현장 확인 필요" : _context._precisionActive ? "다른 제어 잠금 / 정밀 이동 STOP 또는 수동 STOP 사용" : _context.IsPanoramaCompleted ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED" : _context.IsPanoramaCancellationCompleted ? "CAPTURE CANCELED / START POSITION RESTORED" : _context.IsPanoramaCancellationRequested ? "CANCELING / RETURNING TO START POSITION..." : _context.IsPanoramaProcessingRunning ? _context.IsPanoramaCaptureRunning ? "EO CAMERA AUTO PAN / CAPTURING..." : "FEATURE MATCHING / BLENDING / SAVING..." : IsLaPresetScanRunning ? "PRESET L AUTO SCAN RUNNING" : IsPresetScanRunning ? "PRESET W AUTO SCAN RUNNING" : HomeZeroLockMessage;
+                    return _context.PrecisionStopUncertain ? "다른 제어 잠금 / STOP 재시도 및 장비 정지 여부 현장 확인 필요" : _context.PrecisionActive ? "다른 제어 잠금 / 정밀 이동 STOP 또는 수동 STOP 사용" : _context.IsPanoramaCompleted ? "FEATURE MATCHING / BLENDING / SAVING COMPLETED" : _context.IsPanoramaCancellationCompleted ? "CAPTURE CANCELED / START POSITION RESTORED" : _context.IsPanoramaCancellationRequested ? "CANCELING / RETURNING TO START POSITION..." : _context.IsPanoramaProcessingRunning ? _context.IsPanoramaCaptureRunning ? "EO CAMERA AUTO PAN / CAPTURING..." : "FEATURE MATCHING / BLENDING / SAVING..." : IsLaPresetScanRunning ? "PRESET L AUTO SCAN RUNNING" : IsPresetScanRunning ? "PRESET W AUTO SCAN RUNNING" : HomeZeroLockMessage;
                 }
             }
         }
 
         internal ZoomSyncLevelOption SelectedZoomSyncLevel
         {
-            get { return _context._selectedZoomSyncLevel; }
+            get { return _context.SelectedZoomSyncLevel; }
 
             set
             {
-                if (_context._selectedZoomSyncLevel == value)
+                if (_context.SelectedZoomSyncLevel == value)
                 {
                     return;
                 }
 
-                _context._selectedZoomSyncLevel = value;
+                _context.SelectedZoomSyncLevel = value;
 
                 _context.OnPropertyChanged();
 
@@ -910,16 +910,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string ZoomSyncStatusText
         {
-            get { return _context._zoomSyncStatusText; }
+            get { return _context.ZoomSyncStatusText; }
 
             set
             {
-                if (_context._zoomSyncStatusText == value)
+                if (_context.ZoomSyncStatusText == value)
                 {
                     return;
                 }
 
-                _context._zoomSyncStatusText = value;
+                _context.ZoomSyncStatusText = value;
 
                 _context.OnPropertyChanged();
             }
@@ -927,16 +927,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal ZoomSyncLevelOption SelectedFocusSyncLevel
         {
-            get { return _context._selectedFocusSyncLevel; }
+            get { return _context.SelectedFocusSyncLevel; }
 
             set
             {
-                if (_context._selectedFocusSyncLevel == value)
+                if (_context.SelectedFocusSyncLevel == value)
                 {
                     return;
                 }
 
-                _context._selectedFocusSyncLevel = value;
+                _context.SelectedFocusSyncLevel = value;
 
                 _context.OnPropertyChanged();
 
@@ -961,16 +961,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string FocusSyncStatusText
         {
-            get { return _context._focusSyncStatusText; }
+            get { return _context.FocusSyncStatusText; }
 
             set
             {
-                if (_context._focusSyncStatusText == value)
+                if (_context.FocusSyncStatusText == value)
                 {
                     return;
                 }
 
-                _context._focusSyncStatusText = value;
+                _context.FocusSyncStatusText = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1042,16 +1042,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string HomeZeroStatusText
         {
-            get { return _context._homeZeroStatusText; }
+            get { return _context.HomeZeroStatusText; }
 
             set
             {
-                if (_context._homeZeroStatusText == value)
+                if (_context.HomeZeroStatusText == value)
                 {
                     return;
                 }
 
-                _context._homeZeroStatusText = value;
+                _context.HomeZeroStatusText = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1061,17 +1061,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._panTurnMode == PanTurnMode.Short;
+                return _context.PanTurnMode == PanTurnMode.Short;
             }
 
             set
             {
-                if (!value || _context._panTurnMode == PanTurnMode.Short)
+                if (!value || _context.PanTurnMode == PanTurnMode.Short)
                 {
                     return;
                 }
 
-                _context._panTurnMode = PanTurnMode.Short;
+                _context.PanTurnMode = PanTurnMode.Short;
 
                 _context.ApplySelectedPanTurnMode();
 
@@ -1085,17 +1085,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._panTurnMode == PanTurnMode.ViaZero;
+                return _context.PanTurnMode == PanTurnMode.ViaZero;
             }
 
             set
             {
-                if (!value || _context._panTurnMode == PanTurnMode.ViaZero)
+                if (!value || _context.PanTurnMode == PanTurnMode.ViaZero)
                 {
                     return;
                 }
 
-                _context._panTurnMode = PanTurnMode.ViaZero;
+                _context.PanTurnMode = PanTurnMode.ViaZero;
 
                 _context.ApplySelectedPanTurnMode();
 
@@ -1109,17 +1109,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._presetScanOrderMode == PresetScanOrderMode.SavedOrder;
+                return _context.PresetScanOrderMode == PresetScanOrderMode.SavedOrder;
             }
 
             set
             {
-                if (!value || _context._presetScanOrderMode == PresetScanOrderMode.SavedOrder)
+                if (!value || _context.PresetScanOrderMode == PresetScanOrderMode.SavedOrder)
                 {
                     return;
                 }
 
-                _context._presetScanOrderMode = PresetScanOrderMode.SavedOrder;
+                _context.PresetScanOrderMode = PresetScanOrderMode.SavedOrder;
 
                 _context.OnPropertyChanged();
 
@@ -1133,17 +1133,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return _context._presetScanOrderMode == PresetScanOrderMode.NearestOrder;
+                return _context.PresetScanOrderMode == PresetScanOrderMode.NearestOrder;
             }
 
             set
             {
-                if (!value || _context._presetScanOrderMode == PresetScanOrderMode.NearestOrder)
+                if (!value || _context.PresetScanOrderMode == PresetScanOrderMode.NearestOrder)
                 {
                     return;
                 }
 
-                _context._presetScanOrderMode = PresetScanOrderMode.NearestOrder;
+                _context.PresetScanOrderMode = PresetScanOrderMode.NearestOrder;
 
                 _context.OnPropertyChanged();
 
@@ -1155,18 +1155,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal double? PanAbsoluteValue
         {
-            get { return _context._panAbsoluteValue; }
+            get { return _context.PanAbsoluteValue; }
 
             set
             {
                 double? roundedValue = RoundNullableAngle(value);
 
-                if (_context._panAbsoluteValue == roundedValue)
+                if (_context.PanAbsoluteValue == roundedValue)
                 {
                     return;
                 }
 
-                _context._panAbsoluteValue = roundedValue;
+                _context.PanAbsoluteValue = roundedValue;
 
                 _context.OnPropertyChanged();
             }
@@ -1174,18 +1174,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal double? TiltAbsoluteValue
         {
-            get { return _context._tiltAbsoluteValue; }
+            get { return _context.TiltAbsoluteValue; }
 
             set
             {
                 double? roundedValue = RoundNullableAngle(value);
 
-                if (_context._tiltAbsoluteValue == roundedValue)
+                if (_context.TiltAbsoluteValue == roundedValue)
                 {
                     return;
                 }
 
-                _context._tiltAbsoluteValue = roundedValue;
+                _context.TiltAbsoluteValue = roundedValue;
 
                 _context.OnPropertyChanged();
             }
@@ -1193,16 +1193,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int? ZoomPositionValue
         {
-            get { return _context._zoomPositionValue; }
+            get { return _context.ZoomPositionValue; }
 
             set
             {
-                if (_context._zoomPositionValue == value)
+                if (_context.ZoomPositionValue == value)
                 {
                     return;
                 }
 
-                _context._zoomPositionValue = value;
+                _context.ZoomPositionValue = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1210,18 +1210,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal double? ZoomRatioValue
         {
-            get { return _context._zoomRatioValue; }
+            get { return _context.ZoomRatioValue; }
 
             set
             {
                 double? roundedValue = value.HasValue ? Math.Round(value.Value, 1, MidpointRounding.AwayFromZero) : (double?)null;
 
-                if (_context._zoomRatioValue == roundedValue)
+                if (_context.ZoomRatioValue == roundedValue)
                 {
                     return;
                 }
 
-                _context._zoomRatioValue = roundedValue;
+                _context.ZoomRatioValue = roundedValue;
 
                 _context.OnPropertyChanged();
             }
@@ -1229,16 +1229,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int? FocusPositionValue
         {
-            get { return _context._focusPositionValue; }
+            get { return _context.FocusPositionValue; }
 
             set
             {
-                if (_context._focusPositionValue == value)
+                if (_context.FocusPositionValue == value)
                 {
                     return;
                 }
 
-                _context._focusPositionValue = value;
+                _context.FocusPositionValue = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1250,18 +1250,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int LaPresetSlotNumber
         {
-            get { return _context._laPresetSlotNumber; }
+            get { return _context.LaPresetSlotNumberState; }
 
             set
             {
                 int safeValue = Math.Max(1, Math.Min(100, value));
 
-                if (_context._laPresetSlotNumber == safeValue)
+                if (_context.LaPresetSlotNumberState == safeValue)
                 {
                     return;
                 }
 
-                _context._laPresetSlotNumber = safeValue;
+                _context.LaPresetSlotNumberState = safeValue;
 
                 _context.OnPropertyChanged();
 
@@ -1271,24 +1271,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal PresetPointOption SelectedLaPresetPoint
         {
-            get { return _context._selectedLaPresetPoint; }
+            get { return _context.SelectedLaPresetPoint; }
 
             set
             {
-                if (ReferenceEquals(_context._selectedLaPresetPoint, value))
+                if (ReferenceEquals(_context.SelectedLaPresetPoint, value))
                 {
                     return;
                 }
 
-                _context._selectedLaPresetPoint = value;
+                _context.SelectedLaPresetPoint = value;
 
                 _context.OnPropertyChanged();
 
                 _context.OnPropertyChanged(nameof(SelectedLaPresetDetailText));
 
-                if (value != null && _context._laPresetSlotNumber != value.Number)
+                if (value != null && _context.LaPresetSlotNumberState != value.Number)
                 {
-                    _context._laPresetSlotNumber = value.Number;
+                    _context.LaPresetSlotNumberState = value.Number;
 
                     _context.OnPropertyChanged(nameof(LaPresetSlotNumber));
                 }
@@ -1299,7 +1299,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return $"PAN      : {_context._currentPan:F2}°\n" + $"TILT     : {_context._currentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
+                return $"PAN      : {_context.CurrentPan:F2}°\n" + $"TILT     : {_context.CurrentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
             }
         }
 
@@ -1320,18 +1320,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int LaPresetScanSpeed
         {
-            get { return _context._laPresetScanSpeed; }
+            get { return _context.LaPresetScanSpeedState; }
 
             set
             {
                 int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_context._laPresetScanSpeed == safeValue)
+                if (_context.LaPresetScanSpeedState == safeValue)
                 {
                     return;
                 }
 
-                _context._laPresetScanSpeed = safeValue;
+                _context.LaPresetScanSpeedState = safeValue;
 
                 _context.OnPropertyChanged();
 
@@ -1341,18 +1341,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int LaPresetScanDelay
         {
-            get { return _context._laPresetScanDelay; }
+            get { return _context.LaPresetScanDelayState; }
 
             set
             {
                 int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_context._laPresetScanDelay == safeValue)
+                if (_context.LaPresetScanDelayState == safeValue)
                 {
                     return;
                 }
 
-                _context._laPresetScanDelay = safeValue;
+                _context.LaPresetScanDelayState = safeValue;
 
                 _context.OnPropertyChanged();
 
@@ -1362,16 +1362,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string LaPresetCommandStatusText
         {
-            get { return _context._laPresetCommandStatusText; }
+            get { return _context.LaPresetCommandStatusTextState; }
 
             set
             {
-                if (_context._laPresetCommandStatusText == value)
+                if (_context.LaPresetCommandStatusTextState == value)
                 {
                     return;
                 }
 
-                _context._laPresetCommandStatusText = value;
+                _context.LaPresetCommandStatusTextState = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1379,16 +1379,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal bool IsLaPresetScanRunning
         {
-            get { return _context._isLaPresetScanRunning; }
+            get { return _context.IsLaPresetScanRunning; }
 
             set
             {
-                if (_context._isLaPresetScanRunning == value)
+                if (_context.IsLaPresetScanRunning == value)
                 {
                     return;
                 }
 
-                _context._isLaPresetScanRunning = value;
+                _context.IsLaPresetScanRunning = value;
 
                 _context.OnPropertyChanged();
 
@@ -1420,18 +1420,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int PresetSlotNumber
         {
-            get { return _context._presetSlotNumber; }
+            get { return _context.PresetSlotNumberState; }
 
             set
             {
                 int safeValue = Math.Max(1, Math.Min(100, value));
 
-                if (_context._presetSlotNumber == safeValue)
+                if (_context.PresetSlotNumberState == safeValue)
                 {
                     return;
                 }
 
-                _context._presetSlotNumber = safeValue;
+                _context.PresetSlotNumberState = safeValue;
 
                 _context.OnPropertyChanged();
 
@@ -1448,24 +1448,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal PresetPointOption SelectedPresetPoint
         {
-            get { return _context._selectedPresetPoint; }
+            get { return _context.SelectedPresetPoint; }
 
             set
             {
-                if (ReferenceEquals(_context._selectedPresetPoint, value))
+                if (ReferenceEquals(_context.SelectedPresetPoint, value))
                 {
                     return;
                 }
 
-                _context._selectedPresetPoint = value;
+                _context.SelectedPresetPoint = value;
 
                 _context.OnPropertyChanged();
 
                 _context.OnPropertyChanged(nameof(SelectedPresetDetailText));
 
-                if (value != null && _context._presetSlotNumber != value.Number)
+                if (value != null && _context.PresetSlotNumberState != value.Number)
                 {
-                    _context._presetSlotNumber = value.Number;
+                    _context.PresetSlotNumberState = value.Number;
 
                     _context.OnPropertyChanged(nameof(PresetSlotNumber));
                 }
@@ -1476,7 +1476,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return $"PAN      : {_context._currentPan:F2}°\n" + $"TILT     : {_context._currentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
+                return $"PAN      : {_context.CurrentPan:F2}°\n" + $"TILT     : {_context.CurrentTilt:F2}°\n" + $"EO ZOOM  : {CurrentEoZoomText} / 1000\n" + $"EO FOCUS : {CurrentEoFocusText} / 1000\n" + $"IR ZOOM  : {CurrentIrZoomText} / 1000\n" + $"IR FOCUS : {CurrentIrFocusText} / 1000";
             }
         }
 
@@ -1497,18 +1497,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int PresetScanSpeed
         {
-            get { return _context._presetScanSpeed; }
+            get { return _context.PresetScanSpeedState; }
 
             set
             {
                 int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_context._presetScanSpeed == safeValue)
+                if (_context.PresetScanSpeedState == safeValue)
                 {
                     return;
                 }
 
-                _context._presetScanSpeed = safeValue;
+                _context.PresetScanSpeedState = safeValue;
 
                 _context.OnPropertyChanged();
 
@@ -1518,18 +1518,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int PresetScanDelay
         {
-            get { return _context._presetScanDelay; }
+            get { return _context.PresetScanDelayState; }
 
             set
             {
                 int safeValue = Math.Max(1, Math.Min(60, value));
 
-                if (_context._presetScanDelay == safeValue)
+                if (_context.PresetScanDelayState == safeValue)
                 {
                     return;
                 }
 
-                _context._presetScanDelay = safeValue;
+                _context.PresetScanDelayState = safeValue;
 
                 _context.OnPropertyChanged();
 
@@ -1539,16 +1539,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string PresetCommandStatusText
         {
-            get { return _context._presetCommandStatusText; }
+            get { return _context.PresetCommandStatusTextState; }
 
             set
             {
-                if (_context._presetCommandStatusText == value)
+                if (_context.PresetCommandStatusTextState == value)
                 {
                     return;
                 }
 
-                _context._presetCommandStatusText = value;
+                _context.PresetCommandStatusTextState = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1556,16 +1556,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal bool IsPresetScanRunning
         {
-            get { return _context._isPresetScanRunning; }
+            get { return _context.IsPresetScanRunning; }
 
             set
             {
-                if (_context._isPresetScanRunning == value)
+                if (_context.IsPresetScanRunning == value)
                 {
                     return;
                 }
 
-                _context._isPresetScanRunning = value;
+                _context.IsPresetScanRunning = value;
 
                 _context.OnPropertyChanged();
 
@@ -1604,16 +1604,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string EoSourceAddress
         {
-            get { return _context._eoSourceAddress; }
+            get { return _context.EoSourceAddress; }
 
             set
             {
-                if (_context._eoSourceAddress == value)
+                if (_context.EoSourceAddress == value)
                 {
                     return;
                 }
 
-                _context._eoSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
+                _context.EoSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
 
                 _context.OnPropertyChanged();
 
@@ -1676,16 +1676,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string IrSourceAddress
         {
-            get { return _context._irSourceAddress; }
+            get { return _context.IrSourceAddress; }
 
             set
             {
-                if (_context._irSourceAddress == value)
+                if (_context.IrSourceAddress == value)
                 {
                     return;
                 }
 
-                _context._irSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
+                _context.IrSourceAddress = OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(value);
 
                 _context.OnPropertyChanged();
 
@@ -1749,16 +1749,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string ControlAgentIp
         {
-            get { return _context._controlControlAgentIp; }
+            get { return _context.ControlControlAgentIp; }
 
             set
             {
-                if (_context._controlControlAgentIp == value)
+                if (_context.ControlControlAgentIp == value)
                 {
                     return;
                 }
 
-                _context._controlControlAgentIp = value;
+                _context.ControlControlAgentIp = value;
 
                 _context.OnPropertyChanged();
 
@@ -1772,16 +1772,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string McbMaintenanceIpAddress
         {
-            get { return _context._mcbMaintenanceIpAddress; }
+            get { return _context.McbMaintenanceIpAddress; }
 
             set
             {
-                if (_context._mcbMaintenanceIpAddress == value)
+                if (_context.McbMaintenanceIpAddress == value)
                 {
                     return;
                 }
 
-                _context._mcbMaintenanceIpAddress = value;
+                _context.McbMaintenanceIpAddress = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1789,16 +1789,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string ControlAgentPortText
         {
-            get { return _context._controlControlAgentPortText; }
+            get { return _context.ControlControlAgentPortText; }
 
             set
             {
-                if (_context._controlControlAgentPortText == value)
+                if (_context.ControlControlAgentPortText == value)
                 {
                     return;
                 }
 
-                _context._controlControlAgentPortText = value;
+                _context.ControlControlAgentPortText = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1806,13 +1806,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal BitmapSource EOCameraImage
         {
-            get { return _context._eoCameraImage; }
+            get { return _context.EoCameraImage; }
 
             set
             {
-                if (_context._eoCameraImage != value)
+                if (_context.EoCameraImage != value)
                 {
-                    _context._eoCameraImage = value;
+                    _context.EoCameraImage = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -1821,13 +1821,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal BitmapSource IRCameraImage
         {
-            get { return _context._irCameraImage; }
+            get { return _context.IrCameraImage; }
 
             set
             {
-                if (_context._irCameraImage != value)
+                if (_context.IrCameraImage != value)
                 {
-                    _context._irCameraImage = value;
+                    _context.IrCameraImage = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -1836,11 +1836,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int EoVideoWidth
         {
-            get { return _context._eoVideoWidth; }
+            get { return _context.EoVideoWidth; }
 
             set
             {
-                _context._eoVideoWidth = value;
+                _context.EoVideoWidth = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1848,11 +1848,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int EoVideoHeight
         {
-            get { return _context._eoVideoHeight; }
+            get { return _context.EoVideoHeight; }
 
             set
             {
-                _context._eoVideoHeight = value;
+                _context.EoVideoHeight = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1860,11 +1860,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int IrVideoWidth
         {
-            get { return _context._irVideoWidth; }
+            get { return _context.IrVideoWidth; }
 
             set
             {
-                _context._irVideoWidth = value;
+                _context.IrVideoWidth = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1872,11 +1872,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int IrVideoHeight
         {
-            get { return _context._irVideoHeight; }
+            get { return _context.IrVideoHeight; }
 
             set
             {
-                _context._irVideoHeight = value;
+                _context.IrVideoHeight = value;
 
                 _context.OnPropertyChanged();
             }
@@ -1884,13 +1884,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string AiControlAgentIp
         {
-            get { return _context._aiControlAgentIp; }
+            get { return _context.AiControlAgentIpState; }
 
             set
             {
-                if (_context._aiControlAgentIp != value)
+                if (_context.AiControlAgentIpState != value)
                 {
-                    _context._aiControlAgentIp = value;
+                    _context.AiControlAgentIpState = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -1899,13 +1899,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int AiAgentPort
         {
-            get { return _context._aiAgentPort; }
+            get { return _context.AiAgentPort; }
 
             set
             {
-                if (_context._aiAgentPort != value)
+                if (_context.AiAgentPort != value)
                 {
-                    _context._aiAgentPort = value;
+                    _context.AiAgentPort = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -1914,13 +1914,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string AiRtsp0Address
         {
-            get { return _context._aiRtsp0Address; }
+            get { return _context.AiRtsp0Address; }
 
             set
             {
-                if (_context._aiRtsp0Address != value)
+                if (_context.AiRtsp0Address != value)
                 {
-                    _context._aiRtsp0Address = value;
+                    _context.AiRtsp0Address = value;
 
                     _context.OnPropertyChanged();
 
@@ -1933,13 +1933,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string AiRtsp1Address
         {
-            get { return _context._aiRtsp1Address; }
+            get { return _context.AiRtsp1Address; }
 
             set
             {
-                if (_context._aiRtsp1Address != value)
+                if (_context.AiRtsp1Address != value)
                 {
-                    _context._aiRtsp1Address = value;
+                    _context.AiRtsp1Address = value;
 
                     _context.OnPropertyChanged();
 
@@ -2026,13 +2026,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int AiRtsp0OnnxIndex
         {
-            get { return _context._aiRtsp0OnnxIndex; }
+            get { return _context.AiRtsp0OnnxIndex; }
 
             set
             {
-                if (_context._aiRtsp0OnnxIndex != value)
+                if (_context.AiRtsp0OnnxIndex != value)
                 {
-                    _context._aiRtsp0OnnxIndex = value;
+                    _context.AiRtsp0OnnxIndex = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -2041,13 +2041,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal int AiRtsp1OnnxIndex
         {
-            get { return _context._aiRtsp1OnnxIndex; }
+            get { return _context.AiRtsp1OnnxIndex; }
 
             set
             {
-                if (_context._aiRtsp1OnnxIndex != value)
+                if (_context.AiRtsp1OnnxIndex != value)
                 {
-                    _context._aiRtsp1OnnxIndex = value;
+                    _context.AiRtsp1OnnxIndex = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -2056,13 +2056,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal double AiMappingConfidence
         {
-            get { return _context._aiMappingConfidence; }
+            get { return _context.AiMappingConfidence; }
 
             set
             {
-                if (_context._aiMappingConfidence != value)
+                if (_context.AiMappingConfidence != value)
                 {
-                    _context._aiMappingConfidence = value;
+                    _context.AiMappingConfidence = value;
 
                     _context.OnPropertyChanged();
 
@@ -2081,13 +2081,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal double AiMappingIou
         {
-            get { return _context._aiMappingIou; }
+            get { return _context.AiMappingIou; }
 
             set
             {
-                if (_context._aiMappingIou != value)
+                if (_context.AiMappingIou != value)
                 {
-                    _context._aiMappingIou = value;
+                    _context.AiMappingIou = value;
 
                     _context.OnPropertyChanged();
 
@@ -2106,13 +2106,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal double AiDisplayConfidenceThreshold
         {
-            get { return _context._aiDisplayConfidenceThreshold; }
+            get { return _context.AiDisplayConfidenceThreshold; }
 
             set
             {
-                if (_context._aiDisplayConfidenceThreshold != value)
+                if (_context.AiDisplayConfidenceThreshold != value)
                 {
-                    _context._aiDisplayConfidenceThreshold = value;
+                    _context.AiDisplayConfidenceThreshold = value;
 
                     _context.OnPropertyChanged();
 
@@ -2131,13 +2131,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string AiSettingStatusText
         {
-            get { return _context._aiSettingStatusText; }
+            get { return _context.AiSettingStatusText; }
 
             set
             {
-                if (_context._aiSettingStatusText != value)
+                if (_context.AiSettingStatusText != value)
                 {
-                    _context._aiSettingStatusText = value;
+                    _context.AiSettingStatusText = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -2146,13 +2146,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string AiPowerStatusText
         {
-            get { return _context._aiPowerStatusText; }
+            get { return _context.AiPowerStatusText; }
 
             set
             {
-                if (_context._aiPowerStatusText != value)
+                if (_context.AiPowerStatusText != value)
                 {
-                    _context._aiPowerStatusText = value;
+                    _context.AiPowerStatusText = value;
 
                     _context.OnPropertyChanged();
 
@@ -2163,13 +2163,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal bool IsAutoTrackingEnabled
         {
-            get { return _context._isAutoTrackingEnabled; }
+            get { return _context.IsAutoTrackingEnabled; }
 
             set
             {
-                if (_context._isAutoTrackingEnabled != value)
+                if (_context.IsAutoTrackingEnabled != value)
                 {
-                    _context._isAutoTrackingEnabled = value;
+                    _context.IsAutoTrackingEnabled = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -2178,16 +2178,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal bool IsCrosshairVisible
         {
-            get { return _context._isCrosshairVisible; }
+            get { return _context.IsCrosshairVisible; }
 
             set
             {
-                if (_context._isCrosshairVisible == value)
+                if (_context.IsCrosshairVisible == value)
                 {
                     return;
                 }
 
-                _context._isCrosshairVisible = value;
+                _context.IsCrosshairVisible = value;
 
                 _context.OnPropertyChanged();
 
@@ -2212,7 +2212,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal Brush CrosshairBrush
         {
-            get { return _context._crosshairBrush; }
+            get { return _context.CrosshairBrush; }
         }
 
         internal bool IsContextPanelsVisible
@@ -2225,16 +2225,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string ControlAgentConnectionStatusText
         {
-            get { return _context._controlAgentConnectionStatusText; }
+            get { return _context.ControlAgentConnectionStatusText; }
 
             set
             {
-                if (_context._controlAgentConnectionStatusText == value)
+                if (_context.ControlAgentConnectionStatusText == value)
                 {
                     return;
                 }
 
-                _context._controlAgentConnectionStatusText = value;
+                _context.ControlAgentConnectionStatusText = value;
 
                 _context.OnPropertyChanged();
 
@@ -2246,16 +2246,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal string ControlAgentConnectionStatusColor
         {
-            get { return _context._controlAgentConnectionStatusColor; }
+            get { return _context.ControlAgentConnectionStatusColor; }
 
             set
             {
-                if (_context._controlAgentConnectionStatusColor == value)
+                if (_context.ControlAgentConnectionStatusColor == value)
                 {
                     return;
                 }
 
-                _context._controlAgentConnectionStatusColor = value;
+                _context.ControlAgentConnectionStatusColor = value;
 
                 _context.OnPropertyChanged();
             }
@@ -2263,15 +2263,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal byte PanTiltSpeedLevel
         {
-            get { return _context._panTiltSpeedLevel; }
+            get { return _context.PanTiltSpeedLevel; }
 
             set
             {
                 byte normalizedValue = (byte)Math.Max(1, Math.Min(60, (int)value));
 
-                if (_context._panTiltSpeedLevel != normalizedValue)
+                if (_context.PanTiltSpeedLevel != normalizedValue)
                 {
-                    _context._panTiltSpeedLevel = normalizedValue;
+                    _context.PanTiltSpeedLevel = normalizedValue;
 
                     _context.OnPropertyChanged();
 
@@ -2297,7 +2297,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
                 // 연결 해제 상태의 EO/IR은 캐시 렌즈 감속값 대신 설정된 기본값을 표시한다.
                 // 연결 중 이동은 기존 배율 기반 속도 안전 계산을 유지한다.
-                if (!_context._isDeviceConnectionRequested)
+                if (!_context.IsDeviceConnectionRequested)
                 {
                     return baseProtocolSpeed;
                 }
@@ -2310,19 +2310,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return $"SET : {PanTiltSpeedLevel} / " + $"ACTIVE({(_context._activePanTiltZoomSource == 1 ? "IR" : "EO")}) : " + $"{EffectivePanTiltSpeedLevel} / 60";
+                return $"SET : {PanTiltSpeedLevel} / " + $"ACTIVE({(_context.ActivePanTiltZoomSource == 1 ? "IR" : "EO")}) : " + $"{EffectivePanTiltSpeedLevel} / 60";
             }
         }
 
         internal string LrfDistanceText
         {
-            get { return _context._lrfDistanceText; }
+            get { return _context.LrfDistanceText; }
 
             set
             {
-                if (_context._lrfDistanceText != value)
+                if (_context.LrfDistanceText != value)
                 {
-                    _context._lrfDistanceText = value;
+                    _context.LrfDistanceText = value;
 
                     _context.OnPropertyChanged();
                 }
@@ -2333,28 +2333,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._eoAlreadyConnectedNotice)
+                if (_context.EoAlreadyConnectedNotice)
                 {
                     return "[EO] Already Connected...";
                 }
                 else
                 {
-                    return _context._eoStatusText;
+                    return _context.EoStatusText;
                 }
             }
 
             set
             {
-                _context._eoAlreadyConnectedNotice = false;
+                _context.EoAlreadyConnectedNotice = false;
 
-                if (_context._eoStatusText == value)
+                if (_context.EoStatusText == value)
                 {
                     return;
                 }
 
-                _context._eoStatusText = value;
+                _context.EoStatusText = value;
 
-                if (_context.IsSelectedConnectionTarget && value == "[EO] Connected" && (!_context.IsGpsTabVisible || !_context._hasDevicePowerStatus || _context._isDevicePowerStatusStale))
+                if (_context.IsSelectedConnectionTarget && value == "[EO] Connected" && (!_context.IsGpsTabVisible || !_context.HasDevicePowerStatus || _context.IsDevicePowerStatusStale))
                 {
                     _context.RememberCameraPower("EO", true);
                 }
@@ -2392,28 +2392,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._irAlreadyConnectedNotice)
+                if (_context.IrAlreadyConnectedNotice)
                 {
                     return "[IR] Already Connected...";
                 }
                 else
                 {
-                    return _context._irStatusText;
+                    return _context.IrStatusText;
                 }
             }
 
             set
             {
-                _context._irAlreadyConnectedNotice = false;
+                _context.IrAlreadyConnectedNotice = false;
 
-                if (_context._irStatusText == value)
+                if (_context.IrStatusText == value)
                 {
                     return;
                 }
 
-                _context._irStatusText = value;
+                _context.IrStatusText = value;
 
-                if (_context.IsSelectedConnectionTarget && value == "[IR] Connected" && (!_context.IsGpsTabVisible || !_context._hasDevicePowerStatus || _context._isDevicePowerStatusStale))
+                if (_context.IsSelectedConnectionTarget && value == "[IR] Connected" && (!_context.IsGpsTabVisible || !_context.HasDevicePowerStatus || _context.IsDevicePowerStatusStale))
                 {
                     _context.RememberCameraPower("IR", true);
                 }
@@ -2451,7 +2451,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return GetRtspConnectionStatusText(_context._eoStatusText, "[EO]");
+                return GetRtspConnectionStatusText(_context.EoStatusText, "[EO]");
             }
         }
 
@@ -2467,7 +2467,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return GetRtspConnectionStatusText(_context._irStatusText, "[IR]");
+                return GetRtspConnectionStatusText(_context.IrStatusText, "[IR]");
             }
         }
 
@@ -2483,7 +2483,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return $"{NormalizeToSignedAngle(_context._currentPan):F2}°";
+                return $"{NormalizeToSignedAngle(_context.CurrentPan):F2}°";
             }
         }
 
@@ -2491,7 +2491,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                return $"{_context._currentTilt:F2}°";
+                return $"{_context.CurrentTilt:F2}°";
             }
         }
 
@@ -2531,20 +2531,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._controlCommandService != null && _context.IsGpsTabVisible && _context._hasDevicePowerStatus)
+                if (_context.ControlCommandService != null && _context.IsGpsTabVisible && _context.HasDevicePowerStatus)
                 {
                     // 2026-10-06: WebAgent는 Function 0x31의 보드 상태를 단일 기준으로 사용한다.
                     // 첫 상태 패킷 전에는 OFF로 오인하지 않도록 UNKNOWN을 유지한다.
                     return $"CONTROL:{CurrentControlPowerText} / " + $"EO:{CurrentEoPowerText} / " + $"IR:{CurrentIrPowerText}";
                 }
 
-                bool isPanOn = (_context._currentPowerStatus & 0x80) != 0;
+                bool isPanOn = (_context.CurrentPowerStatus & 0x80) != 0;
 
-                bool isTiltOn = (_context._currentPowerStatus & 0x40) != 0;
+                bool isTiltOn = (_context.CurrentPowerStatus & 0x40) != 0;
 
-                bool isEoOn = _context._eoStatusText == "[EO] Connected";
+                bool isEoOn = _context.EoStatusText == "[EO] Connected";
 
-                bool isIrOn = _context._irStatusText == "[IR] Connected";
+                bool isIrOn = _context.IrStatusText == "[IR] Connected";
 
                 return $"CONTROL:{ToOnOff(isPanOn && isTiltOn)} / " + $"EO:{ToOnOff(isEoOn)} / " + $"IR:{ToOnOff(isIrOn)}";
             }
@@ -2554,11 +2554,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._controlCommandService != null && _context.IsGpsTabVisible && _context._hasDevicePowerStatus)
+                if (_context.ControlCommandService != null && _context.IsGpsTabVisible && _context.HasDevicePowerStatus)
                 {
-                    if (_context._hasDevicePowerStatus && !_context._isDevicePowerStatusStale)
+                    if (_context.HasDevicePowerStatus && !_context.IsDevicePowerStatusStale)
                     {
-                        return ToOnOff((_context._currentMcbPowerStatus & 0x01) != 0);
+                        return ToOnOff((_context.CurrentMcbPowerStatus & 0x01) != 0);
                     }
                     else
                     {
@@ -2566,9 +2566,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                 }
 
-                bool isPanOn = (_context._currentPowerStatus & 0x80) != 0;
+                bool isPanOn = (_context.CurrentPowerStatus & 0x80) != 0;
 
-                bool isTiltOn = (_context._currentPowerStatus & 0x40) != 0;
+                bool isTiltOn = (_context.CurrentPowerStatus & 0x40) != 0;
 
                 return ToOnOff(isPanOn && isTiltOn);
             }
@@ -2578,11 +2578,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._controlCommandService != null && _context.IsGpsTabVisible && _context._hasDevicePowerStatus)
+                if (_context.ControlCommandService != null && _context.IsGpsTabVisible && _context.HasDevicePowerStatus)
                 {
-                    if (_context._hasDevicePowerStatus && !_context._isDevicePowerStatusStale)
+                    if (_context.HasDevicePowerStatus && !_context.IsDevicePowerStatusStale)
                     {
-                        return ToOnOff((_context._currentScbPowerStatus & 0x01) != 0);
+                        return ToOnOff((_context.CurrentScbPowerStatus & 0x01) != 0);
                     }
                     else
                     {
@@ -2590,7 +2590,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                 }
 
-                return GetLegacyCameraPowerText(_context._eoStatusText, "EO");
+                return GetLegacyCameraPowerText(_context.EoStatusText, "EO");
             }
         }
 
@@ -2598,11 +2598,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
         {
             get
             {
-                if (_context._controlCommandService != null && _context.IsGpsTabVisible && _context._hasDevicePowerStatus)
+                if (_context.ControlCommandService != null && _context.IsGpsTabVisible && _context.HasDevicePowerStatus)
                 {
-                    if (_context._hasDevicePowerStatus && !_context._isDevicePowerStatusStale)
+                    if (_context.HasDevicePowerStatus && !_context.IsDevicePowerStatusStale)
                     {
-                        return ToOnOff((_context._currentMcbPowerStatus & 0x20) != 0);
+                        return ToOnOff((_context.CurrentMcbPowerStatus & 0x20) != 0);
                     }
                     else
                     {
@@ -2610,7 +2610,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
                     }
                 }
 
-                return GetLegacyCameraPowerText(_context._irStatusText, "IR");
+                return GetLegacyCameraPowerText(_context.IrStatusText, "IR");
             }
         }
 
@@ -2674,9 +2674,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         internal void ConvertPanTiltValuesForSelectedCoordinateMode()
         {
-            _context._currentPan = NormalizeToSignedAngle(_context._currentPan);
+            _context.CurrentPan = NormalizeToSignedAngle(_context.CurrentPan);
 
-            _context._currentTilt = Math.Max(_context.CurrentMoveControlTiltMinimum, Math.Min(_context.CurrentMoveControlTiltMaximum, NormalizeToSignedAngle(_context._currentTilt)));
+            _context.CurrentTilt = Math.Max(_context.CurrentMoveControlTiltMinimum, Math.Min(_context.CurrentMoveControlTiltMaximum, NormalizeToSignedAngle(_context.CurrentTilt)));
 
             PanAbsoluteValue = PanAbsoluteValue.HasValue ? NormalizeToSignedAngle(PanAbsoluteValue.Value) : (double?)null;
 

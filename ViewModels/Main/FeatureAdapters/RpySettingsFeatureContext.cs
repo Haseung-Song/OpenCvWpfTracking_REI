@@ -18,24 +18,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        IControlCommandServicePort IRpySettingsFeatureContext._controlCommandService
+        IControlCommandServicePort IRpySettingsFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        ITcpClientServicePort IRpySettingsFeatureContext._laTcpService
+        ITcpClientServicePort IRpySettingsFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
         bool IRpySettingsFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         bool IRpySettingsFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void IRpySettingsFeatureContext.UpdateGpsHeadingReferenceDisplay()
         {
-            _features._gpsSettingsFeature.UpdateGpsHeadingReferenceDisplay();
+            _features.GpsSettingsFeature.UpdateGpsHeadingReferenceDisplay();
         }
 
         Action IRpySettingsFeatureContext.ApplyRpyOffsetCallback

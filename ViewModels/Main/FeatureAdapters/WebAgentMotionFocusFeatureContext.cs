@@ -21,65 +21,65 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        IControlCommandServicePort IWebAgentMotionFocusFeatureContext._controlCommandService
+        IControlCommandServicePort IWebAgentMotionFocusFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> IWebAgentMotionFocusFeatureContext._controlInputs
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> IWebAgentMotionFocusFeatureContext.ControlInputs
         {
-            get { return _features._inputCoordinatorFeature._controlInputs; }
+            get { return _features.InputCoordinatorFeature._controlInputs; }
         }
 
-        ContinuousMoveType IWebAgentMotionFocusFeatureContext._currentMoveType
+        ContinuousMoveType IWebAgentMotionFocusFeatureContext.CurrentMoveType
         {
-            get { return _features._screenStateFeature._currentMoveType; }
-            set { _features._screenStateFeature._currentMoveType = value; }
+            get { return _features.ScreenStateFeature._currentMoveType; }
+            set { _features.ScreenStateFeature._currentMoveType = value; }
         }
 
-        CancellationTokenSource IWebAgentMotionFocusFeatureContext._laPresetSingleMoveCts
+        CancellationTokenSource IWebAgentMotionFocusFeatureContext.LaPresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._laPresetSingleMoveCts; }
-            set { _features._screenStateFeature._laPresetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._laPresetSingleMoveCts; }
+            set { _features.ScreenStateFeature._laPresetSingleMoveCts = value; }
         }
 
-        ITcpClientServicePort IWebAgentMotionFocusFeatureContext._laTcpService
+        ITcpClientServicePort IWebAgentMotionFocusFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        SemaphoreSlim IWebAgentMotionFocusFeatureContext._lensSyncOperationLock
+        SemaphoreSlim IWebAgentMotionFocusFeatureContext.LensSyncOperationLock
         {
             get { return _features.Runtime._lensSyncOperationLock; }
         }
 
-        CancellationTokenSource IWebAgentMotionFocusFeatureContext._moveControlPanCts
+        CancellationTokenSource IWebAgentMotionFocusFeatureContext.MoveControlPanCts
         {
-            get { return _features._screenStateFeature._moveControlPanCts; }
-            set { _features._screenStateFeature._moveControlPanCts = value; }
+            get { return _features.ScreenStateFeature._moveControlPanCts; }
+            set { _features.ScreenStateFeature._moveControlPanCts = value; }
         }
 
-        CancellationTokenSource IWebAgentMotionFocusFeatureContext._presetSingleMoveCts
+        CancellationTokenSource IWebAgentMotionFocusFeatureContext.PresetSingleMoveCts
         {
-            get { return _features._screenStateFeature._presetSingleMoveCts; }
-            set { _features._screenStateFeature._presetSingleMoveCts = value; }
+            get { return _features.ScreenStateFeature._presetSingleMoveCts; }
+            set { _features.ScreenStateFeature._presetSingleMoveCts = value; }
         }
 
-        CancellationTokenSource IWebAgentMotionFocusFeatureContext._rooftopFocusSyncCts
+        CancellationTokenSource IWebAgentMotionFocusFeatureContext.RooftopFocusSyncCts
         {
-            get { return _features._screenStateFeature._rooftopFocusSyncCts; }
-            set { _features._screenStateFeature._rooftopFocusSyncCts = value; }
+            get { return _features.ScreenStateFeature._rooftopFocusSyncCts; }
+            set { _features.ScreenStateFeature._rooftopFocusSyncCts = value; }
         }
 
-        CancellationTokenSource IWebAgentMotionFocusFeatureContext._rooftopZoomSyncCts
+        CancellationTokenSource IWebAgentMotionFocusFeatureContext.RooftopZoomSyncCts
         {
-            get { return _features._screenStateFeature._rooftopZoomSyncCts; }
-            set { _features._screenStateFeature._rooftopZoomSyncCts = value; }
+            get { return _features.ScreenStateFeature._rooftopZoomSyncCts; }
+            set { _features.ScreenStateFeature._rooftopZoomSyncCts = value; }
         }
 
-        ref global::System.Tuple<double, double, long> IWebAgentMotionFocusFeatureContext._videoCenterPose
+        ref global::System.Tuple<double, double, long> IWebAgentMotionFocusFeatureContext.VideoCenterPose
         {
-            get { return ref _features._cameraFeatureControlFeature._videoCenterPose; }
+            get { return ref _features.CameraFeatureControlFeature._videoCenterPose; }
         }
 
         /// <summary>
@@ -88,72 +88,72 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IWebAgentMotionFocusFeatureContext.ApplySelectedPanTurnMode()
         {
-            return _features._moveControlFeature.ApplySelectedPanTurnMode();
+            return _features.MoveControlFeature.ApplySelectedPanTurnMode();
         }
 
         bool IWebAgentMotionFocusFeatureContext.CameraFeatureTransportReady
         {
-            get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
+            get { return _features.CameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
         string IWebAgentMotionFocusFeatureContext.ControlLockMessage
         {
-            get { return _features._propertiesFeature.ControlLockMessage; }
+            get { return _features.PropertiesFeature.ControlLockMessage; }
         }
 
         string IWebAgentMotionFocusFeatureContext.ControlLockTitle
         {
-            get { return _features._propertiesFeature.ControlLockTitle; }
+            get { return _features.PropertiesFeature.ControlLockTitle; }
         }
 
         double IWebAgentMotionFocusFeatureContext.CurrentMoveControlPanMaximum
         {
-            get { return _features._screenStateFeature.CurrentMoveControlPanMaximum; }
+            get { return _features.ScreenStateFeature.CurrentMoveControlPanMaximum; }
         }
 
         double IWebAgentMotionFocusFeatureContext.CurrentMoveControlPanMinimum
         {
-            get { return _features._screenStateFeature.CurrentMoveControlPanMinimum; }
+            get { return _features.ScreenStateFeature.CurrentMoveControlPanMinimum; }
         }
 
         double IWebAgentMotionFocusFeatureContext.CurrentMoveControlTiltMaximum
         {
-            get { return _features._screenStateFeature.CurrentMoveControlTiltMaximum; }
+            get { return _features.ScreenStateFeature.CurrentMoveControlTiltMaximum; }
         }
 
         double IWebAgentMotionFocusFeatureContext.CurrentMoveControlTiltMinimum
         {
-            get { return _features._screenStateFeature.CurrentMoveControlTiltMinimum; }
+            get { return _features.ScreenStateFeature.CurrentMoveControlTiltMinimum; }
         }
 
         bool IWebAgentMotionFocusFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool IWebAgentMotionFocusFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         bool IWebAgentMotionFocusFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         bool IWebAgentMotionFocusFeatureContext.IsOperationLockOverlayVisible
         {
-            get { return _features._propertiesFeature.IsOperationLockOverlayVisible; }
+            get { return _features.PropertiesFeature.IsOperationLockOverlayVisible; }
         }
 
         bool IWebAgentMotionFocusFeatureContext.IsPanTiltSpeedControlEnabled
         {
-            get { return _features._propertiesFeature.IsPanTiltSpeedControlEnabled; }
+            get { return _features.PropertiesFeature.IsPanTiltSpeedControlEnabled; }
         }
 
         bool IWebAgentMotionFocusFeatureContext.IsSelectedControlAgentWebAgent
         {
-            get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
+            get { return _features.RtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
         /// <summary>
@@ -166,14 +166,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         double? IWebAgentMotionFocusFeatureContext.PanAbsoluteValue
         {
-            get { return _features._propertiesFeature.PanAbsoluteValue; }
-            set { _features._propertiesFeature.PanAbsoluteValue = value; }
+            get { return _features.PropertiesFeature.PanAbsoluteValue; }
+            set { _features.PropertiesFeature.PanAbsoluteValue = value; }
         }
 
         double? IWebAgentMotionFocusFeatureContext.TiltAbsoluteValue
         {
-            get { return _features._propertiesFeature.TiltAbsoluteValue; }
-            set { _features._propertiesFeature.TiltAbsoluteValue = value; }
+            get { return _features.PropertiesFeature.TiltAbsoluteValue; }
+            set { _features.PropertiesFeature.TiltAbsoluteValue = value; }
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool IWebAgentMotionFocusFeatureContext.TryGetSelectedEoCtecSource(out RtspSourceOption sourceOption)
         {
-            return _features._continuousControlFeature.TryGetSelectedEoCtecSource(out sourceOption);
+            return _features.ContinuousControlFeature.TryGetSelectedEoCtecSource(out sourceOption);
         }
 
         Action<object> IWebAgentMotionFocusFeatureContext.ExecuteAutoFocusCallback

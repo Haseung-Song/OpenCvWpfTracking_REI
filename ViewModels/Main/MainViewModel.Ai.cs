@@ -16,7 +16,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         internal const int AiDisplayHoldMilliseconds = 750;
 
         // 수동 연결 요청의 세대 번호는 AiFeature와 동일한 저장 위치를 사용한다.
-        internal ref int _aiManualConnectionGeneration
+        internal ref int AiManualConnectionGeneration
         {
             get { return ref _aiFeature._aiManualConnectionGeneration; }
         }

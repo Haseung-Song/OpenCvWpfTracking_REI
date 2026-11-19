@@ -18,57 +18,57 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
-        ref double? ICameraFeatureControlFeatureContext._activePanAbsoluteTarget
+        ref double? ICameraFeatureControlFeatureContext.ActivePanAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._activePanAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._activePanAbsoluteTarget; }
         }
 
-        ref double? ICameraFeatureControlFeatureContext._activeTiltAbsoluteTarget
+        ref double? ICameraFeatureControlFeatureContext.ActiveTiltAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._activeTiltAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._activeTiltAbsoluteTarget; }
         }
 
-        Services.Communication.IControlCommandServicePort ICameraFeatureControlFeatureContext._controlCommandService
+        Services.Communication.IControlCommandServicePort ICameraFeatureControlFeatureContext.ControlCommandService
         {
             get { return _features.Runtime._controlCommandService; }
         }
 
-        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> ICameraFeatureControlFeatureContext._controlInputs
+        System.Collections.Generic.Dictionary<string, Tuple<string, int, int>> ICameraFeatureControlFeatureContext.ControlInputs
         {
-            get { return _features._inputCoordinatorFeature._controlInputs; }
+            get { return _features.InputCoordinatorFeature._controlInputs; }
         }
 
-        int ICameraFeatureControlFeatureContext._inputEpoch
+        int ICameraFeatureControlFeatureContext.InputEpoch
         {
-            get { return _features._inputCoordinatorFeature._inputEpoch; }
-            set { _features._inputCoordinatorFeature._inputEpoch = value; }
+            get { return _features.InputCoordinatorFeature._inputEpoch; }
+            set { _features.InputCoordinatorFeature._inputEpoch = value; }
         }
 
-        ref long ICameraFeatureControlFeatureContext._irLensReceivedTicks
+        ref long ICameraFeatureControlFeatureContext.IrLensReceivedTicks
         {
-            get { return ref _features._inputCoordinatorFeature._irLensReceivedTicks; }
+            get { return ref _features.InputCoordinatorFeature._irLensReceivedTicks; }
         }
 
-        bool ICameraFeatureControlFeatureContext._isDeviceConnectionRequested
+        bool ICameraFeatureControlFeatureContext.IsDeviceConnectionRequested
         {
-            get { return _features._screenStateFeature._isDeviceConnectionRequested; }
-            set { _features._screenStateFeature._isDeviceConnectionRequested = value; }
+            get { return _features.ScreenStateFeature._isDeviceConnectionRequested; }
+            set { _features.ScreenStateFeature._isDeviceConnectionRequested = value; }
         }
 
-        ref double? ICameraFeatureControlFeatureContext._lastPanAbsoluteTarget
+        ref double? ICameraFeatureControlFeatureContext.LastPanAbsoluteTarget
         {
-            get { return ref _features._screenStateFeature._lastPanAbsoluteTarget; }
+            get { return ref _features.ScreenStateFeature._lastPanAbsoluteTarget; }
         }
 
-        Services.Communication.ITcpClientServicePort ICameraFeatureControlFeatureContext._laTcpService
+        Services.Communication.ITcpClientServicePort ICameraFeatureControlFeatureContext.LaTcpService
         {
             get { return _features.Runtime._laTcpService; }
         }
 
-        ControlAgentProfileOption ICameraFeatureControlFeatureContext._requestedControlProfile
+        ControlAgentProfileOption ICameraFeatureControlFeatureContext.RequestedControlProfile
         {
-            get { return _features._rtspSettingsFeature._requestedControlProfile; }
-            set { _features._rtspSettingsFeature._requestedControlProfile = value; }
+            get { return _features.RtspSettingsFeature._requestedControlProfile; }
+            set { _features.RtspSettingsFeature._requestedControlProfile = value; }
         }
 
         /// <summary>
@@ -76,23 +76,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Services.Configuration.LensControlTuning ICameraFeatureControlFeatureContext.ControlTuningFor(bool ir)
         {
-            return _features._inputCoordinatorFeature.ControlTuningFor(ir);
+            return _features.InputCoordinatorFeature.ControlTuningFor(ir);
         }
 
         double ICameraFeatureControlFeatureContext.CurrentMoveControlTiltMaximum
         {
-            get { return _features._screenStateFeature.CurrentMoveControlTiltMaximum; }
+            get { return _features.ScreenStateFeature.CurrentMoveControlTiltMaximum; }
         }
 
         double ICameraFeatureControlFeatureContext.CurrentMoveControlTiltMinimum
         {
-            get { return _features._screenStateFeature.CurrentMoveControlTiltMinimum; }
+            get { return _features.ScreenStateFeature.CurrentMoveControlTiltMinimum; }
         }
 
         string ICameraFeatureControlFeatureContext.EoStatusText
         {
-            get { return _features._propertiesFeature.EoStatusText; }
-            set { _features._propertiesFeature.EoStatusText = value; }
+            get { return _features.PropertiesFeature.EoStatusText; }
+            set { _features.PropertiesFeature.EoStatusText = value; }
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         int ICameraFeatureControlFeatureContext.GetCurrentIrZoomStandardPosition()
         {
-            return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
+            return _features.MoveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         ushort ICameraFeatureControlFeatureContext.GetCurrentPresetStandardZoom()
         {
-            return _features._moveControlFeature.GetCurrentPresetStandardZoom();
+            return _features.MoveControlFeature.GetCurrentPresetStandardZoom();
         }
 
         /// <summary>
@@ -118,29 +118,29 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         Point ICameraFeatureControlFeatureContext.GetOpticalCenter(bool ir)
         {
-            return _features._opticalCenterFeature.GetOpticalCenter(ir);
+            return _features.OpticalCenterFeature.GetOpticalCenter(ir);
         }
 
         string ICameraFeatureControlFeatureContext.IrStatusText
         {
-            get { return _features._propertiesFeature.IrStatusText; }
-            set { _features._propertiesFeature.IrStatusText = value; }
+            get { return _features.PropertiesFeature.IrStatusText; }
+            set { _features.PropertiesFeature.IrStatusText = value; }
         }
 
         bool ICameraFeatureControlFeatureContext.IsControlInputLocked
         {
-            get { return _features._propertiesFeature.IsControlInputLocked; }
+            get { return _features.PropertiesFeature.IsControlInputLocked; }
         }
 
         bool ICameraFeatureControlFeatureContext.IsEnvironmentStatusSelected
         {
-            get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
+            get { return _features.PropertiesFeature.IsEnvironmentStatusSelected; }
         }
 
         bool ICameraFeatureControlFeatureContext.IsFovSpeedEnabled
         {
-            get { return _features._inputCoordinatorFeature.IsFovSpeedEnabled; }
-            set { _features._inputCoordinatorFeature.IsFovSpeedEnabled = value; }
+            get { return _features.InputCoordinatorFeature.IsFovSpeedEnabled; }
+            set { _features.InputCoordinatorFeature.IsFovSpeedEnabled = value; }
         }
 
         /// <summary>
@@ -148,12 +148,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         bool ICameraFeatureControlFeatureContext.IsLensFresh(bool ir)
         {
-            return _features._inputCoordinatorFeature.IsLensFresh(ir);
+            return _features.InputCoordinatorFeature.IsLensFresh(ir);
         }
 
         bool ICameraFeatureControlFeatureContext.IsOperationCommandEnabled
         {
-            get { return _features._propertiesFeature.IsOperationCommandEnabled; }
+            get { return _features.PropertiesFeature.IsOperationCommandEnabled; }
         }
 
         /// <summary>
@@ -166,8 +166,8 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         byte ICameraFeatureControlFeatureContext.PanTiltSpeedLevel
         {
-            get { return _features._propertiesFeature.PanTiltSpeedLevel; }
-            set { _features._propertiesFeature.PanTiltSpeedLevel = value; }
+            get { return _features.PropertiesFeature.PanTiltSpeedLevel; }
+            set { _features.PropertiesFeature.PanTiltSpeedLevel = value; }
         }
 
         /// <summary>
@@ -175,7 +175,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ICameraFeatureControlFeatureContext.ResetPresetLensEvidence()
         {
-            _features._presetLensFeature.ResetPresetLensEvidence();
+            _features.PresetLensFeature.ResetPresetLensEvidence();
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ICameraFeatureControlFeatureContext.ResetSpecialFeatureSession()
         {
-            _features._specialFeaturesFeature.ResetSpecialFeatureSession();
+            _features.SpecialFeaturesFeature.ResetSpecialFeatureSession();
         }
 
         /// <summary>
@@ -191,13 +191,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ICameraFeatureControlFeatureContext.ResetWebAgentControlSession()
         {
-            _features._webAgentMotionFocusFeature.ResetWebAgentControlSession();
+            _features.WebAgentMotionFocusFeature.ResetWebAgentControlSession();
         }
 
         ControlAgentProfileOption ICameraFeatureControlFeatureContext.SelectedControlAgentProfile
         {
-            get { return _features._rtspSettingsFeature.SelectedControlAgentProfile; }
-            set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
+            get { return _features.RtspSettingsFeature.SelectedControlAgentProfile; }
+            set { _features.RtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
         /// <summary>
@@ -206,7 +206,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ICameraFeatureControlFeatureContext.SetActivePanTiltZoomSource(bool isInfrared)
         {
-            _features._continuousControlFeature.SetActivePanTiltZoomSource(isInfrared);
+            _features.ContinuousControlFeature.SetActivePanTiltZoomSource(isInfrared);
         }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         /// </summary>
         void ICameraFeatureControlFeatureContext.StopAllPtzfMove()
         {
-            _features._continuousControlFeature.StopAllPtzfMove();
+            _features.ContinuousControlFeature.StopAllPtzfMove();
         }
     }
 }
