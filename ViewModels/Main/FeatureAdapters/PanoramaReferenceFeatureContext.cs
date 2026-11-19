@@ -29,21 +29,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return ref _features._cameraFeatureControlFeature._videoCenterPose; }
         }
 
+        /// <summary>
+        /// 변환과 적용 번호를 같은 XML에 확정해 재시작 시 중복 보정을 방지한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPanoramaReferenceFeatureContext.ApplyZoneReferenceRebase(PanoramaZoneRebase operation)
         {
             _features._zonesFeature.ApplyZoneReferenceRebase(operation);
         }
 
+        /// <summary>
+        /// ZERO 확인 전에는 구역을 지우지 않고 과거 프레임·정합 결과의 적용만 중지한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPanoramaReferenceFeatureContext.BeginZoneReferenceChange()
         {
             _features._zonesFeature.BeginZoneReferenceChange();
         }
 
+        /// <summary>
+        /// 장면 기준 변경 후 구역 참조와 표시 상태를 마무리한다.
+        /// </summary>
         void IPanoramaReferenceFeatureContext.FinishZoneReferenceChange(bool notifyEditor)
         {
             _features._zonesFeature.FinishZoneReferenceChange(notifyEditor);
         }
 
+        /// <summary>
+        /// 현재 연결 장비에 해당하는 기존 프리셋만 번호 순서로 복사한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         PresetPointOption[] IPanoramaReferenceFeatureContext.GetPanoramaPresets()
         {
             return _features._panoramaPresetsFeature.GetPanoramaPresets();
@@ -85,6 +97,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.PresetPoints; }
         }
 
+        /// <summary>
+        /// 현재 프리셋과 순서 정보를 저장하며 기존 파일 보존 규칙을 적용한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IPanoramaReferenceFeatureContext.SavePresetStorage()
         {
             return _features._presetStorageFeature.SavePresetStorage();

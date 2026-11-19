@@ -114,6 +114,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _devicePowerFeature.IsIrPowerOffEnabled; }
         }
 
+        /// <summary>
+        /// 구형 장비 응답을 카메라 전원 표시 문구로 변환한다.
+        /// </summary>
         internal static string GetLegacyCameraPowerText(string status, string camera)
         {
             return DevicePowerFeature.GetLegacyCameraPowerText(status, camera);

@@ -197,6 +197,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 누적 영상 처리 성능 수치를 가져온 뒤 다음 측정 구간을 위해 초기화한다.
+        /// </summary>
         public DecoderPerformanceSnapshot CaptureAndResetPerformance()
         {
             return new DecoderPerformanceSnapshot
@@ -215,6 +218,9 @@ namespace OpenCvWpfTracking.Services.Video
             };
         }
 
+        /// <summary>
+        /// 마지막 영상 프레임의 수신·디코딩 시간 정보를 반환한다.
+        /// </summary>
         public FrameTimingSnapshot GetLastFrameTiming()
         {
             lock (_syncLock)
@@ -223,6 +229,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 현재 관측값이 더 클 때 누적 최댓값을 갱신한다.
+        /// </summary>
         private static void UpdateMaximum(ref long destination, long value)
         {
             long current = Interlocked.Read(ref destination);
@@ -256,6 +265,9 @@ namespace OpenCvWpfTracking.Services.Video
             _interruptCallback = InterruptCallback;
         }
 
+        /// <summary>
+        /// FFmpeg의 블로킹 작업을 취소·종료 조건에 따라 중단할지 반환한다.
+        /// </summary>
         private int InterruptCallback(void* opaque)
         {
             if (Volatile.Read(ref _interruptRequested) != 0 || _openCancellationToken.IsCancellationRequested)
@@ -313,6 +325,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 기본 RTSP 연결을 시도하고 필요한 경우 인증 호환 경로로 다시 연다.
+        /// </summary>
         private bool OpenWithAuthenticationFallback(string rtspUrl)
         {
             if (OpenCore(rtspUrl) || !IsAuthenticationFailure)
@@ -350,6 +365,9 @@ namespace OpenCvWpfTracking.Services.Video
 
         private RtspAuthenticationRelay _authenticationRelay;
 
+        /// <summary>
+        /// FFmpeg 입력과 디코더 자원을 열고 영상 스트림을 준비한다.
+        /// </summary>
         private bool OpenCore(string rtspUrl)
         {
             Close();
@@ -436,6 +454,9 @@ namespace OpenCvWpfTracking.Services.Video
             return true;
         }
 
+        /// <summary>
+        /// FFmpeg 연결 오류 코드를 읽을 수 있는 메시지로 변환한다.
+        /// </summary>
         private static string GetOpenErrorText(int errorCode)
         {
             if (errorCode == ffmpeg.AVERROR_HTTP_UNAUTHORIZED)
@@ -847,6 +868,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 프레임 수신·디코딩 시각을 기록해 지연 측정에 사용한다.
+        /// </summary>
         private void CaptureFrameTiming(AVFrame* frame)
         {
             long bestEffortTimestamp = frame->best_effort_timestamp;

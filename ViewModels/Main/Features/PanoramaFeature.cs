@@ -36,16 +36,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string ControlLockTitle { get; }
 
+        /// <summary>
+        /// 현재 광학 줌과 채널 비율에 따른 파노라마 화각 정보를 반환한다.
+        /// </summary>
         Tuple<double, double> ControlTuningForPanorama(bool ir);
 
         BitmapSource EOCameraImage { get; set; }
 
         string EoStatusText { get; set; }
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
+        /// <summary>
+        /// 현재 장비와 줌 위치에 대응하는 십자선 중심을 반환한다.
+        /// </summary>
         System.Windows.Point GetOpticalCenter(bool ir);
 
+        /// <summary>
+        /// Web Agent의 0/360도 경계를 고려한 Tilt 차이를 반환한다. ROOFTOP LA는 기존 선형 -90 ~ 90도 차이를 유지한다.
+        /// </summary>
         double GetTiltDifference(double currentTilt, double targetTilt);
 
         bool IsControlInputLocked { get; }
@@ -62,6 +74,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsRooftopStatusSelected { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         string PanoramaPresetContextHash { get; }
@@ -79,11 +94,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IPanoramaFeatureContext _context;
 
+        /// <summary>
+        /// 파노라마 촬영 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal PanoramaFeature(IPanoramaFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _selectedPanoramaCaptureOptionIndex = 1;
@@ -240,6 +261,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 2026-08-24: 파노라마 취소 요청 및 시작 위치 복귀 완료 상태를 우측 상단 작업 상태 표시와 동기화한다.
+        /// </summary>
         internal void SetPanoramaCancellationState(bool isRequested, bool isCompleted)
         {
             _isPanoramaCancellationRequested = isRequested;
@@ -254,6 +278,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(_context.ControlLockMessage));
         }
 
+        /// <summary>
+        /// 2026-08-24: 정상 생성 완료 상태를 우측 상단 작업 표시와 동기화한다. 완료 알림을 확인할 때까지 촬영 중 문구가 남지 않도록 별도
+        /// 상태로 관리한다.
+        /// </summary>
         internal void SetPanoramaCompletionState(bool isCompleted)
         {
             _isPanoramaCompleted = isCompleted;
@@ -265,6 +293,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(_context.ControlLockMessage));
         }
 
+        /// <summary>
+        /// 파노라마 영상 처리의 진행 상태를 화면과 조작 가능 상태에 반영한다.
+        /// </summary>
         internal void SetPanoramaProcessingRunning(bool isRunning)
         {
             if (_isPanoramaProcessingRunning == isRunning)
@@ -293,6 +324,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(_context.ControlLockMessage));
         }
 
+        /// <summary>
+        /// 2026-08-28: ROOFTOP과 ENVIRONMENT 공통 EO 파노라마 촬영 전 필수 연결·영상·운용 상태를 검사한다. null이면
+        /// 촬영 가능하며, 문자열이면 사용자에게 표시할 차단 사유다.
+        /// </summary>
         internal string GetPanoramaCaptureBlockReason()
         {
             if (!_context._laTcpService.IsConnected)
@@ -329,6 +364,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return null;
         }
 
+        /// <summary>
+        /// 현재 촬영 설정으로 파노라마 행별 Tilt 목표 목록을 만든다.
+        /// </summary>
         internal static IList<double> BuildPanoramaTiltTargets(int optionIndex, double startTilt)
         {
             int safeOptionIndex = Math.Max(0, Math.Min(4, optionIndex));
@@ -363,6 +401,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return targets.AsReadOnly();
         }
 
+        /// <summary>
+        /// 2026-08-18: 기준 Tilt의 위·아래 12°에서 현재 Pan을 시작점으로 같은 방향으로 10°씩 순환하며 행별 EO 프레임 36장을
+        /// 복사한다. 첫 실장비 결과 대비 중첩률과 RTSP 안정화 시간을 높였다. 고정 -180° 선이동을 제거하여 촬영 도중 반대 방향 전환을
+        /// 방지한다.
+        /// </summary>
         internal async Task<IList<IList<BitmapSource>>> CaptureEoPanoramaFramesAsync(IProgress<string> progress, CancellationToken cancellationToken)
         {
             string blockReason = GetPanoramaCaptureBlockReason();
@@ -587,6 +630,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-31: 탐지 Overlay 적용 전 EO 프레임을 파노라마 전용 버퍼에 보관한다. Frozen Bitmap만 공유하여 수신
+        /// Thread와 촬영 Thread 간 접근을 안전하게 한다.
+        /// </summary>
         internal void SetRawEoPanoramaFrame(BitmapSource frame)
         {
             if (frame == null)
@@ -600,6 +647,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 파노라마 촬영에 사용할 원본 EO 프레임을 복사해 가져온다.
+        /// </summary>
         internal BitmapSource GetRawEoPanoramaFrame()
         {
             lock (_panoramaSourceFrameSync)
@@ -608,6 +658,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 보관 중인 원본 EO 프레임을 해제하고 참조를 비운다.
+        /// </summary>
         internal void ClearRawEoPanoramaFrame()
         {
             lock (_panoramaSourceFrameSync)
@@ -618,6 +671,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("EO PANORAMA / FRAME", "Raw panorama frame buffer reset");
         }
 
+        /// <summary>
+        /// 2026-08-18: 누적 Pan 목표값을 LA 절대 위치 범위 -180°~+180°로 정규화한다. +180/-180 경계에서도 다음 목표는
+        /// 항상 10° 차이다.
+        /// </summary>
         internal static double NormalizePanoramaPan(double pan)
         {
             while (pan > 180.0)
@@ -633,6 +690,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return pan;
         }
 
+        /// <summary>
+        /// 파노라마 전용 고정 PT 속도에 따라 도착 판정 후 추가 안정화 시간을 선택한다. Speed 15에서는 상태 Packet 4회 연속(오차
+        /// 0.05° 이하) 안정 판정 후 1초를 더 기다려 잔진동이 영상에 남는 것을 줄인다.
+        /// </summary>
         internal static int GetPanoramaFrameStabilizationMs(int positionSpeed)
         {
             if (positionSpeed <= 20)
@@ -650,6 +711,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return 1500;
         }
 
+        /// <summary>
+        /// 2026-08-18: 파노라마 촬영 전용 Pan 이동 및 상태 Packet 기반 도착 판정. 기존 수동/프리셋 입력값을 변경하지 않고 명령만
+        /// 독립 송신한다.
+        /// </summary>
         internal async Task<bool> MovePanForPanoramaAsync(double targetPan, int positionSpeed, CancellationToken cancellationToken, bool allowRetry = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -774,6 +839,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 2026-08-18: 휴대폰 파노라마에 가까운 세로 화각 확보를 위한 2행 촬영 전용 Tilt 절대 이동 및 상태 Packet 기반 도착
+        /// 판정.
+        /// </summary>
         internal async Task<bool> MoveTiltForPanoramaAsync(double targetTilt, int positionSpeed, CancellationToken cancellationToken, bool allowRetry = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -863,6 +932,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 파노라마 이동 중과 도착 직후 잔진동 구간의 신규 탐지를 억제한다.
+        /// </summary>
         internal void BeginPanoramaCameraMotion(string axis, double target)
         {
             Volatile.Write(ref _panoramaCameraMotionActive, 1);
@@ -872,6 +944,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("PANORAMA DETECTION GATE", "Detection suspended / AXIS=" + axis + " / TARGET=" + target.ToString("F2"));
         }
 
+        /// <summary>
+        /// 파노라마 카메라 이동 종료를 탐지 억제 상태에 반영한다.
+        /// </summary>
         internal void EndPanoramaCameraMotion(string axis, double target)
         {
             Interlocked.Exchange(ref _panoramaDetectionResumeUtcTicks, DateTime.UtcNow.AddMilliseconds(PanoramaDetectionSettleMs).Ticks);
@@ -881,6 +956,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("PANORAMA DETECTION GATE", "Stable-frame analysis scheduled / AXIS=" + axis + " / TARGET=" + target.ToString("F2") + " / SETTLE_MS=" + PanoramaDetectionSettleMs);
         }
 
+        /// <summary>
+        /// 파노라마 촬영 이동 때문에 로컬 화재·연기 분석을 억제해야 하는지 확인한다.
+        /// </summary>
         internal bool IsPanoramaMotionDetectionSuppressed()
         {
             if (!IsPanoramaCaptureRunning)
@@ -891,6 +969,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return Volatile.Read(ref _panoramaCameraMotionActive) != 0 || DateTime.UtcNow.Ticks < Interlocked.Read(ref _panoramaDetectionResumeUtcTicks);
         }
 
+        /// <summary>
+        /// 파노라마 이동에 따른 탐지 억제와 안정화 대기 상태를 초기화한다.
+        /// </summary>
         internal void ResetPanoramaDetectionGate()
         {
             Volatile.Write(ref _panoramaCameraMotionActive, 0);

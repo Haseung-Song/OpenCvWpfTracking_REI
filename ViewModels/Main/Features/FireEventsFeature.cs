@@ -36,8 +36,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool _isIrFireCandidateDetected { get; set; }
 
+        /// <summary>
+        /// 영상 탐지 사각형과 현재 위치를 이용해 구역 판정 결과를 구한다.
+        /// </summary>
         ZoneAssessment AssessZone(string camera, string type, double left, double top, double right, double bottom, ZoneFrameContext f);
 
+        /// <summary>
+        /// 현재 위치·센서·렌즈 상태를 일관된 스냅샷으로 취득한다.
+        /// </summary>
         PositionSnapshot CapturePositionSnapshot(string source, int? presetId = null);
 
         ObservableCollection<AiDetectionBox> EoDetectionBoxes { get; }
@@ -54,6 +60,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         ObservableCollection<FireEventRecord> FireDetectionEvents { get; }
 
+        /// <summary>
+        /// AI 이벤트 명령과 테스트 프로그램 실시간 이벤트 감시를 초기화한다.
+        /// </summary>
         void InitializeEventAlertFeatures();
 
         ObservableCollection<AiDetectionBox> IrDetectionBoxes { get; }
@@ -76,10 +85,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsThermalFireDetectionEnabled { get; set; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 2026-08-27: BBox 개수가 아닌 현재 ACTIVE FIRE/SMOKE 이벤트 행 개수를 합산한다.
+        /// </summary>
         void RefreshActiveFireCount();
 
+        /// <summary>
+        /// 로컬 화재·연기 탐지의 사용 여부를 관련 상태에 반영한다.
+        /// </summary>
         void SetLocalFireSmokeDetectionState(int rtspIndex, bool hasFire, bool hasSmoke);
 
         Action SaveFireEventsCallback { get; }
@@ -97,11 +115,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IFireEventsFeatureContext _context;
 
+        /// <summary>
+        /// 화재·연기 이벤트 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal FireEventsFeature(IFireEventsFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _nextFireEventId = 1;
@@ -230,6 +254,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 화재·연기 이벤트 저장·불러오기 명령을 초기화한다.
+        /// </summary>
         internal void InitializeFireEventFeatures()
         {
             SaveFireEventsCommand = new RelayCommand(_context.SaveFireEventsCallback);
@@ -241,6 +268,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.InitializeEventAlertFeatures();
         }
 
+        /// <summary>
+        /// 2026-09-17: 로컬 FIRE/SMOKE 분석 결과를 영상 오버레이 컬렉션에 반영한다. 이벤트 목록만 갱신되고 영상 BBox가 누락되던
+        /// 경로를 복구하며, AI Agent BBox 컬렉션은 변경하지 않는다.
+        /// </summary>
         internal void UpdateFireSmokeDetectionOverlay(string camera, ThermalFireDetectionResult thermalResult, SmokeDetectionResult smokeResult)
         {
             if (!_context.IsThermalFireDetectionEnabled)
@@ -287,6 +318,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(isInfrared ? nameof(_context.IsIrSmokeWarningVisible) : nameof(_context.IsEoSmokeWarningVisible));
         }
 
+        /// <summary>
+        /// 검출 OFF는 해당 종류의 ACTIVE만 해제한다. 이력과 다른 검출 종류는 보존한다.
+        /// </summary>
         internal void ClearDisabledVisionEvents(bool fire, bool writeAudit = true)
         {
             string kind = fire ? "FIRE" : "SMOKE";
@@ -351,6 +385,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("VISION BBOX EVENT", "ACTION=CLEAR / TYPE=" + kind + " / REASON=DETECTOR_DISABLED / HISTORY_RETAINED");
         }
 
+        /// <summary>
+        /// AI 사각형과 겹치는 로컬 사각형을 숨겨 같은 객체의 중복 표시를 줄인다.
+        /// </summary>
         internal static void SuppressLocalBoxesOverlappingAi(ObservableCollection<VisionDetectionBox> localBoxes, ObservableCollection<AiDetectionBox> aiBoxes)
         {
             if (aiBoxes == null || aiBoxes.Count == 0)
@@ -380,6 +417,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 판정된 로컬 탐지 후보를 영상 오버레이 목록에 추가한다.
+        /// </summary>
         internal static void AddVisionOverlayBoxes(ObservableCollection<VisionDetectionBox> target, IList<CvRect> rectangles, IList<double> scores, string detectionType, int frameWidth, int frameHeight, ref int displayOrder)
         {
             if (rectangles == null)
@@ -450,6 +490,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 로컬 영상 후보와 기존 추적 이벤트를 대응시켜 생성·유지·해제를 반영한다.
+        /// </summary>
         internal void UpdateVisionBBoxEvents(string camera, string detectionType, IList<CvRect> candidates, IList<double> candidateScores, string detectionSource, ZoneFrameContext zoneFrame = null)
         {
             DateTime now = DateTime.Now;
@@ -564,6 +607,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 #endif
         }
 
+        /// <summary>
+        /// 사각형 겹침과 중심 거리를 이용해 기존 영상 이벤트와의 대응 점수를 구한다.
+        /// </summary>
         internal static double VisionBBoxMatchRatio(CvRect left, CvRect right)
         {
             CvRect intersection = left & right;
@@ -592,6 +638,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 알림 탭의 집계 Binding을 한 번에 갱신한다.
+        /// </summary>
         internal void NotifyFireEventSummaryChanged()
         {
             _context.OnPropertyChanged(nameof(TotalFireEventCount));
@@ -609,6 +658,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(_context.EventAlertHeaderBrush));
         }
 
+        /// <summary>
+        /// 현재 이벤트 목록을 Excel에서 바로 열 수 있는 UTF-8 CSV로 저장한다.
+        /// </summary>
         internal void SaveFireEvents()
         {
             SaveFileDialog dialog = new SaveFileDialog
@@ -640,6 +692,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 이전에 저장한 화재·연기 이벤트 CSV를 현재 목록으로 불러온다.
+        /// </summary>
         internal void LoadFireEvents()
         {
             OpenFileDialog dialog = new OpenFileDialog
@@ -695,6 +750,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 화면의 이벤트 목록만 초기화한다. 자동 감사 CSV는 보존한다.
+        /// </summary>
         internal void ClearFireEvents()
         {
             FireEvents.Clear();
@@ -723,6 +781,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("FIRE EVENT", "Event list cleared / NEXT_ID=1");
         }
 
+        /// <summary>
+        /// 상태 전환을 날짜별 감사 CSV에 추가한다. XLSX 생성기의 읽기와 파일별로 직렬화한다.
+        /// </summary>
         internal static void AppendFireEventAudit(FireEventRecord fireEvent, string transition)
         {
             try
@@ -777,6 +838,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 화재·연기 이벤트 목록을 CSV 파일에 기록한다.
+        /// </summary>
         internal static void WriteFireEventCsv(string path, IEnumerable<FireEventRecord> events)
         {
             // 수동 내보내기가 진행 중인 자동 저장과 동일 CSV를 대상으로 할 수 있다.
@@ -796,11 +860,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OpenCvWpfTracking.Services.Configuration.CsvExcelCompanion.Create(path);
         }
 
+        /// <summary>
+        /// 화재·연기 이벤트 CSV의 열 제목을 저장 순서대로 반환한다.
+        /// </summary>
         internal static string GetFireEventCsvHeader()
         {
             return "EventId,DetectedTime,ClearedTime,Camera,DetectionType,VisionScore,ObjectCount,PixelWidth,PixelHeight,PixelArea,DetectionSource,Status";
         }
 
+        /// <summary>
+        /// 이벤트 한 건을 시각·상태·위치 정보가 포함된 CSV 행으로 변환한다.
+        /// </summary>
         internal static string ToFireEventCsvLine(FireEventRecord fireEvent)
         {
             List<string> fields = new List<string>
@@ -822,6 +892,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return string.Join(",", fields);
         }
 
+        /// <summary>
+        /// 저장된 이벤트 CSV를 읽고 필드와 종류를 확인해 목록으로 복원한다.
+        /// </summary>
         internal static IList<FireEventRecord> ReadFireEventCsv(string path)
         {
             string[] lines = File.ReadAllLines(path, Encoding.UTF8);
@@ -896,6 +969,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return result;
         }
 
+        /// <summary>
+        /// 불러올 CSV가 요청한 이벤트 종류에 맞는지 검사한다.
+        /// </summary>
         internal static void ValidateEventCsvKind(IList<FireEventRecord> records, bool ai)
         {
             if (records.Count == 0)
@@ -911,6 +987,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-28: 신규 날짜·시간 형식과 기존 밀리초 형식을 모두 복원한다. 기존 V9 이전 CSV를 계속 불러올 수 있도록 하위
+        /// 호환성을 유지한다.
+        /// </summary>
         internal static bool TryParseEventTime(string value, out DateTime parsed)
         {
             value = NormalizeExcelTextCell(value);
@@ -926,6 +1006,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return DateTime.TryParseExact(value, supportedFormats, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out parsed) || DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out parsed);
         }
 
+        /// <summary>
+        /// [2026-08-24] Excel이 이벤트 시각을 임의의 분:초 형식으로 바꾸지 않도록 텍스트 셀로 저장한다.
+        /// </summary>
         internal static string ToExcelTextCell(string value)
         {
             if (string.IsNullOrWhiteSpace(value) || value == "-")
@@ -936,6 +1019,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return "=\"" + value.Replace("\"", "\"\"") + "\"";
         }
 
+        /// <summary>
+        /// [2026-08-24] Excel 텍스트 수식 및 기존 CSV 문자열을 동일한 시각 파서로 복원한다.
+        /// </summary>
         internal static string NormalizeExcelTextCell(string value)
         {
             string normalized = (value ?? string.Empty).Trim();
@@ -948,6 +1034,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return normalized.TrimStart('\'');
         }
 
+        /// <summary>
+        /// 따옴표와 쉼표 규칙을 반영해 CSV 한 행을 필드 목록으로 나눈다.
+        /// </summary>
         internal static IList<string> ParseCsvLine(string line)
         {
             List<string> fields = new List<string>();
@@ -993,6 +1082,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return fields;
         }
 
+        /// <summary>
+        /// 쉼표·따옴표·줄바꿈이 있는 값을 CSV 필드로 안전하게 감싼다.
+        /// </summary>
         internal static string EscapeCsv(string value)
         {
             string safe = value ?? string.Empty;

@@ -71,6 +71,9 @@ namespace OpenCvWpfTracking
 
         private readonly string file = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "PanoramaRegistration.xml");
 
+        /// <summary>
+        /// PanoramaLinkedView 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
+        /// </summary>
         public PanoramaLinkedView(MainViewModel model, Func<string> identity)
         {
             vm = model;
@@ -106,6 +109,9 @@ namespace OpenCvWpfTracking
             MouseLeftButtonDown += Click;
         }
 
+        /// <summary>
+        /// 현재 파노라마·장면 참조를 더 이상 유효하지 않은 상태로 만든다.
+        /// </summary>
         private void InvalidateReference()
         {
             if (!Dispatcher.CheckAccess())
@@ -125,6 +131,9 @@ namespace OpenCvWpfTracking
             InvalidateVisual();
         }
 
+        /// <summary>
+        /// 연결 영상이 현재 장비 시야를 따라갈지 설정한다.
+        /// </summary>
         public void SetFollowing(bool enabled)
         {
             follow = enabled && registered;
@@ -134,6 +143,9 @@ namespace OpenCvWpfTracking
 
         private bool referenceWriteFailed;
 
+        /// <summary>
+        /// 기준 위치가 바뀌었음을 반영해 영상 위치 참조를 무효화한다.
+        /// </summary>
         private void InvalidatePositionReference()
         {
             if (!Dispatcher.CheckAccess())
@@ -171,6 +183,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 기준 영상과 현재 영상의 대응점을 등록하는 절차를 시작한다.
+        /// </summary>
         public void BeginRegistration()
         {
             if (!vm.PanoramaPoseFresh)
@@ -184,6 +199,9 @@ namespace OpenCvWpfTracking
             InvalidateVisual();
         }
 
+        /// <summary>
+        /// 저장된 영상 정합·기준 위치 정보를 읽는다.
+        /// </summary>
         public void LoadRegistration()
         {
             var p = ReadEntry();
@@ -213,6 +231,9 @@ namespace OpenCvWpfTracking
             InvalidateVisual();
         }
 
+        /// <summary>
+        /// 압축 저장 자료에서 지정 항목의 내용을 읽는다.
+        /// </summary>
         private XElement ReadEntry()
         {
             if (!referenceWriteFailed && File.Exists(file))
@@ -225,6 +246,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 파노라마 영상 키별 연결 기준점과 장비 자세 정보를 XML에 저장한다.
+        /// </summary>
         private void Save()
         {
             var doc = File.Exists(file) ? XDocument.Load(file) : new XDocument(new XElement("Panoramas"));
@@ -238,6 +262,9 @@ namespace OpenCvWpfTracking
             referenceWriteFailed = false;
         }
 
+        /// <summary>
+        /// 영상 정합 정보와 참조 데이터를 저장한다.
+        /// </summary>
         private void WriteRegistration(XDocument doc)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(file));
@@ -256,11 +283,17 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 각도 또는 순환 인덱스를 지정한 범위 안으로 감싼다.
+        /// </summary>
         public static double Wrap(double value)
         {
             return value - Math.Floor(value);
         }
 
+        /// <summary>
+        /// 파노라마 배경·현재 시야·연결 표시를 화면 비율과 따라가기 상태에 맞춰 그린다.
+        /// </summary>
         protected override void OnRender(DrawingContext dc)
         {
             base.OnRender(dc);
@@ -388,6 +421,9 @@ namespace OpenCvWpfTracking
             DrawText(dc, registerNext ? "현재 영상과 같은 기준물을 사진에서 클릭" : !registered ? "상단 '사진 기준 맞춤'으로 현재 시선 연결" : !vm.PanoramaPoseFresh ? "위치 수신 대기 · 표시 중지" : (follow ? "시선 따라가기" : "전체 보기") + " · " + vm.CurrentRoute.Name + " / " + vm.CurrentRoute.Points.Count + "점", new Point(8, 5), Brushes.LightSteelBlue);
         }
 
+        /// <summary>
+        /// 파노라마 기준점과 Pan·Tilt 차이로 화면상의 영상 좌표를 계산한다.
+        /// </summary>
         private Point Project(double pan, double tilt)
         {
             double u = Wrap(anchorU + (pan - anchorPan) / 360.0), v = anchorV - (tilt - anchorTilt) / verticalSpan;
@@ -410,11 +446,17 @@ namespace OpenCvWpfTracking
             return new Point(x, imageY + v * worldHeight);
         }
 
+        /// <summary>
+        /// 오버레이 문자열을 지정 위치와 표시 형식으로 그린다.
+        /// </summary>
         private static void DrawText(DrawingContext dc, string text, Point at, Brush color)
         {
             dc.DrawText(new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Malgun Gothic"), 11, color, 1), at);
         }
 
+        /// <summary>
+        /// 영상 클릭 위치를 참조 장면의 보정·연결 작업에 전달한다.
+        /// </summary>
         private void Click(object sender, MouseButtonEventArgs e)
         {
             Point mouse = e.GetPosition(this);

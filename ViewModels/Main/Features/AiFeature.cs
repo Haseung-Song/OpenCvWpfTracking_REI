@@ -75,10 +75,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string AiSettingStatusText { get; set; }
 
+        /// <summary>
+        /// AI 연기 후보의 최근 프레임 정보를 비운다.
+        /// </summary>
         void ClearAiSmokeCandidateSnapshots();
 
+        /// <summary>
+        /// 검출 OFF는 해당 종류의 ACTIVE만 해제한다. 이력과 다른 검출 종류는 보존한다.
+        /// </summary>
         void ClearDisabledVisionEvents(bool fire, bool writeAudit = true);
 
+        /// <summary>
+        /// 영상 연결 해제 함수 1. [CaptureLoop] 종료 요청 2. [VD__VideoCapture] 해제 3. [FFmpeg] [EO /
+        /// IR] [RTSP] Decoder 해제 4. [상태 문자열 갱신]
+        /// </summary>
         void Disconnect();
 
         ObservableCollection<AiDetectionBox> EoDetectionBoxes { get; }
@@ -105,6 +115,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsFireDiagnosticEnabled { get; set; }
 
+        /// <summary>
+        /// 파노라마 촬영 이동 때문에 로컬 화재·연기 분석을 억제해야 하는지 확인한다.
+        /// </summary>
         bool IsPanoramaMotionDetectionSuppressed();
 
         bool IsSmokeDetectionEnabled { get; set; }
@@ -113,22 +126,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsThermalFireDetectionEnabled { get; set; }
 
+        /// <summary>
+        /// AI 이벤트 수와 요약에 연결된 화면 속성의 변경을 알린다.
+        /// </summary>
         void NotifyAiEventSummaryChanged();
 
+        /// <summary>
+        /// AI BBox 갱신·Hold 만료·연결 해제 시 계산 속성의 UI 바인딩을 갱신한다. Collection은 기존 모든 AI 클래스를 그대로
+        /// 유지하고 경고 속성만 다시 계산한다.
+        /// </summary>
         void NotifyFireSmokeWarningStateChanged(int rtspIndex);
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 현재 선택값을 다음 연결용 설정으로 저장하며 로그의 인증정보는 가린다.
+        /// </summary>
         void SaveRtspCommunicationSettings();
 
         Models.Main.RtspSourceOption SelectedAiEoRtspSource { get; set; }
 
         Models.Main.RtspSourceOption SelectedAiIrRtspSource { get; set; }
 
+        /// <summary>
+        /// AI 연결 상태에 맞춰 로컬 화재·연기 탐지기 사용 상태를 조정한다.
+        /// </summary>
         void SetFireSmokeDetectorsForAiConnection(bool enabled, string reason);
 
+        /// <summary>
+        /// AI Agent의 프레임 결과를 RTSP 채널별 이벤트 생명주기로 변환한다. 프레임마다 행을 추가하지 않고 탐지 시작과 해제만 기록한다.
+        /// </summary>
         void UpdateAiDetectionEvent(AiDetectionResult result, DateTime receiveTime);
 
+        /// <summary>
+        /// 채널별 최근 AI 연기 후보와 수신 시각을 보관한다.
+        /// </summary>
         void UpdateAiSmokeCandidateSnapshot(AiDetectionResult result, DateTime receiveTime);
 
         Action DrainPendingAiUiUpdatesCallback { get; }
@@ -144,11 +179,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IAiFeatureContext _context;
 
+        /// <summary>
+        /// AI 연결·탐지 결과 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal AiFeature(IAiFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _lastEoAiDisplayDetectionTime = DateTime.MinValue;
@@ -195,6 +236,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// [AI CONNECT] 버튼 기준 수동 연결 및 초기 설정 적용 프로그램 시작 또는 장비 연결 시에는 AI Agent에 자동 연결하지
+        /// 않는다. 사용자가 [AI CONNECT]를 누른 경우에만 UI의 IP / Port로 1회 연결하고, 연결 성공 뒤 RTSP / 모델 /
+        /// Mapping 정보를 순서대로 적용 및 조회한다.
+        /// </summary>
         internal async Task ConnectAiAgentFromSettingAsync()
         {
             int generation = Interlocked.Increment(ref _aiManualConnectionGeneration);
@@ -324,6 +370,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-31: 최초 연결의 ONNX 목록 응답과 기본 모델 선택 완료를 제한 시간 동안 기다린다. 응답이 늦거나 모델이 없는 경우에는
+        /// 기존 선택값으로 계속 연결한다.
+        /// </summary>
         internal async Task WaitForInitialAiModelSelectionAsync()
         {
             const string DefaultModelName = "Real-Time-Smoke-Fire-Detection-YOLO11n-main.onnx";
@@ -341,6 +391,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("AI DETECTOR", "Default smoke model selection timeout; current mapping will be used");
         }
 
+        /// <summary>
+        /// [AI DISCONNECT] 버튼 기준 수동 연결 해제 자동 재연결 요청을 함께 중단하여 사용자가 다시 [AI CONNECT]를 누르기
+        /// 전에는 AI Agent에 재접속하지 않는다.
+        /// </summary>
         internal void DisconnectAiAgent()
         {
             Interlocked.Increment(ref _aiManualConnectionGeneration);
@@ -392,6 +446,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [AI Detector Agent] [TCP] 수신 [Packet] 처리 함수 공통 [Packet] 구조를 먼저 검증한 뒤, [CMD] 값에
+        /// 따라 응답 처리 함수를 분기한다.
+        /// </summary>
         internal void OnAiDetectorPacketReceived(byte[] packet, DateTime receiveTime)
         {
             // [AI Detector] 공통 [Packet] 구조 파싱
@@ -476,6 +534,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [CMD 55] 탐지데이터 [Packet] 처리 [AiDetectorPacketParser]에서 [AiDetectionResult]로 변환한
+        /// 뒤, 화면 [Bounding Box] 반영 및 로그 출력을 수행한다.
+        /// </summary>
         internal void HandleAiDetectorDetectionPacket(byte[] packet, DateTime receiveTime)
         {
             // 2026-08-25: Disconnect 이후 도착한 지연 CMD 55가 BBox를 다시 만들지 못하게 한다.
@@ -501,6 +563,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             HandleAiDetectionResult(result, receiveTime);
         }
 
+        /// <summary>
+        /// 접속 및 RTSP URL 변경 때 이전 원본 크기를 무효화한다.
+        /// </summary>
         internal void ResetAiRtspVideoSizes()
         {
             lock (_aiRtspVideoSizeSync)
@@ -511,6 +576,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// v2.91 CMD56의 RTSP 원본 영상 크기를 검증하고 최신값을 보관한다. 로컬 FFmpeg 해상도는 실제 표시 영상의 기준이므로 이
+        /// 값으로 덮어쓰지 않는다.
+        /// </summary>
         internal void HandleAiDetectorRtspVideoSizeResponse(string payload, DateTime receiveTime)
         {
             if (!_context._aiDetectorPacketParser.TryParseRtspVideoSizePayload(payload, out int rtspIndex, out int width, out int height))
@@ -546,6 +615,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [AI Detector] 탐지 결과 처리 함수 [AI Detector Agent]에서 파싱된 탐지 결과를 [RTSP Index] 기준으로
+        /// 화면 [Bounding Box] 컬렉션에 반영한다. 현재 기준: [RTSP Index 0] =&gt; [EO] 화면 표시 [RTSP Index
+        /// 1] =&gt; 수신은 하지만 [IR] 화면에는 표시하지 않음 현재 [AI Detector Agent]에서 [RTSP Index 0] / [1]
+        /// 데이터가 모두 수신되므로, 데모 화면 기준상 [EO]에만 [Bounding Box]를 표시하고 [IR] [Bounding Box]는 항상
+        /// 제거한다.
+        /// </summary>
         internal void HandleAiDetectionResult(AiDetectionResult result, DateTime receiveTime, bool forcePrintLog = false)
         {
             /*
@@ -729,6 +805,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 채널별 최신 탐지 화면 갱신을 병합하고 Dispatcher 실행을 한 번만 예약한다.
+        /// </summary>
         internal void QueueAiDetectionUiUpdate(int rtspIndex, Action updateAction, bool containsDetection)
         {
             bool shouldSchedule = false;
@@ -796,6 +875,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 채널별로 모아 둔 최신 AI 화면 갱신을 UI 스레드에서 실행하고 대기 상태를 비운다.
+        /// </summary>
         internal void DrainPendingAiUiUpdates()
         {
             List<Action> pendingActions;
@@ -846,6 +928,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 대기 중인 AI 화면 갱신과 병합 횟수·예약 상태를 잠금 안에서 초기화한다.
+        /// </summary>
         internal void ResetPendingAiUiUpdates()
         {
             lock (_aiUiUpdateSync)
@@ -859,6 +944,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-26: Application/Dispatcher 종료 상태를 확인한 뒤 UI 작업을 수행한다. 종료 이후 지연
+        /// Callback이 Application.Current를 참조하여 발생하던 예외를 방지한다.
+        /// </summary>
         internal bool TryRunAiUiAction(Action action, string operationName)
         {
             if (_isApplicationShutdownRequested)
@@ -899,6 +988,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-26: 메인 창 종료 전에 AI 수신, 이벤트 Timer와 장비 연결을 정리한다. 종료 뒤 Dispatcher Callback
+        /// 및 Application.Current null 참조를 차단한다.
+        /// </summary>
         internal void ShutdownForApplicationExit()
         {
             lock (_aiUiUpdateSync)
@@ -960,6 +1053,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("APPLICATION / SHUTDOWN", "ViewModel resource cleanup completed");
         }
 
+        /// <summary>
+        /// [CMD 51] [AI Detector Info] 응답 처리 현재는 응답 [Payload] 구조 확인 단계이므로 [Raw Payload]를
+        /// [Console]에 출력한다.
+        /// </summary>
         internal void HandleAiDetectorInfoResponse(string payload)
         {
             ConsoleLogHelper.PrintLine();
@@ -971,6 +1068,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [CMD 52] [RTSP] 주소 조회 응답 처리 현재는 응답 [Payload] 구조 확인 단계이므로 [Raw Payload]를
+        /// [Console]에 출력한다.
+        /// </summary>
         internal void HandleAiDetectorRtspResponse(string payload)
         {
             ConsoleLogHelper.PrintLine();
@@ -992,6 +1093,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [CMD 53] [ONNX] 목록 조회 응답 처리 현재는 응답 [Payload] 구조 확인 단계이므로 [Raw Payload]를
+        /// [Console]에 출력한다.
+        /// </summary>
         internal void HandleAiDetectorOnnxResponse(string payload)
         {
             ConsoleLogHelper.PrintLine();
@@ -1011,6 +1116,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [CMD 54] / [CMD 56] [RTSP] / [ONNX] Mapping 응답 처리 현재는 응답 [Payload] 구조 확인 단계이므로
+        /// [Raw Payload]를 [Console]에 출력한다.
+        /// </summary>
         internal void HandleAiDetectorMappingResponse(string payload)
         {
             ConsoleLogHelper.PrintLine();
@@ -1032,6 +1141,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [AI Detector Info] 조회 요청 요청 [CMD 01] 응답 [CMD 51]
+        /// </summary>
         internal async Task<bool> RequestAiDetectorInfoAsync()
         {
             byte[] packet = _context._aiPacketBuilder.BuildAiDetectorInfoRequest();
@@ -1039,6 +1151,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return await _context._aiDetectorClientService.SendAsync(packet);
         }
 
+        /// <summary>
+        /// [AI Detector Agent] [RTSP] 주소 설정 요청 UI에서 입력한 [RTSP 0] / [RTSP 1] 주소를 [AI
+        /// Detector Agent]에 전달한다.
+        /// </summary>
         internal async Task<bool> RequestAiDetectorRtspAddressSetAsync()
         {
             string eoAddress = _context.AiRtsp0Address?.Trim();
@@ -1077,6 +1193,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return await _context._aiDetectorClientService.SendAsync(packet);
         }
 
+        /// <summary>
+        /// [RTSP] 주소 조회 요청 요청 [CMD 03] 응답 [CMD 52]
+        /// </summary>
         internal async Task<bool> RequestAiDetectorRtspAddressAsync()
         {
             byte[] packet = _context._aiPacketBuilder.BuildRtspAddressRequest();
@@ -1084,6 +1203,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return await _context._aiDetectorClientService.SendAsync(packet);
         }
 
+        /// <summary>
+        /// [ONNX/HEF] 파일 목록 조회 요청 2026-08-25: 웹 설정 API(5101/api/config)를 우선 사용한다. HTTP
+        /// 조회가 실패하거나 모델이 없을 때만 기존 TCP CMD 04/53으로 복귀한다.
+        /// </summary>
         internal async Task<bool> RequestAiDetectorOnnxListAsync()
         {
             if (await TryLoadAiDetectorModelListFromHttpAsync())
@@ -1098,6 +1221,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return await _context._aiDetectorClientService.SendAsync(packet);
         }
 
+        /// <summary>
+        /// 2026-08-25: AI 웹 뷰어 설정 API에서 ONNX/HEF 파일명을 읽어 기존 AiOnnxList에 반영한다. 모델 파일 자체는
+        /// 다운로드하지 않는다.
+        /// </summary>
         internal async Task<bool> TryLoadAiDetectorModelListFromHttpAsync()
         {
             try
@@ -1145,6 +1272,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-31: AI 설정 API의 models 배열에서 파일명과 클래스 배열을 함께 읽는다. 배열 순서를 ONNX Index로
+        /// 유지하여 CMD 54/56 Mapping과 정확히 대응시킨다.
+        /// </summary>
         internal static List<AiOnnxInfo> ParseAiModelsFromHttpConfig(string json)
         {
             List<AiOnnxInfo> models = new List<AiOnnxInfo>();
@@ -1202,6 +1333,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return models;
         }
 
+        /// <summary>
+        /// [AI Detector Agent] [RTSP] / [ONNX] Mapping 설정 요청 UI에서 입력한 [RTSP 0] / [RTSP
+        /// 1]별 [ONNX Index], [Confidence], [IOU] 값을 기준으로 [CMD 05] Packet을 송신한다.
+        /// </summary>
         internal async Task<bool> RequestAiDetectorMappingSetAsync()
         {
             byte[] packet = _context._aiPacketBuilder.BuildRtspOnnxMappingSetRequest(_context.AiRtsp0OnnxIndex, _context.AiRtsp1OnnxIndex, _context.AiMappingConfidence, _context.AiMappingIou);
@@ -1209,6 +1344,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return await _context._aiDetectorClientService.SendAsync(packet);
         }
 
+        /// <summary>
+        /// [RTSP] / [ONNX] Mapping 조회 요청 요청 [CMD 06] 응답 [CMD 54]
+        /// </summary>
         internal async Task<bool> RequestAiDetectorMappingAsync()
         {
             byte[] packet = _context._aiPacketBuilder.BuildRtspOnnxMappingRequest();
@@ -1216,6 +1354,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return await _context._aiDetectorClientService.SendAsync(packet);
         }
 
+        /// <summary>
+        /// v2.91 CMD07로 지정 RTSP Index의 원본 영상 크기를 조회한다.
+        /// </summary>
         internal async Task<bool> RequestAiDetectorRtspVideoSizeAsync(int rtspIndex)
         {
             byte[] packet = _context._aiPacketBuilder.BuildRtspVideoSizeRequest(rtspIndex);
@@ -1227,6 +1368,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return sent;
         }
 
+        /// <summary>
+        /// 2026-08-31: CMD 55의 RTSP Index와 Class Index를 현재 Mapping 및 모델별 클래스 목록에 연결한다. 조회
+        /// 실패나 범위 초과 시 기존 Class n 표시를 유지한다.
+        /// </summary>
         internal void ResolveAiDetectionClassNames(AiDetectionResult result)
         {
             if (result == null || result.Boxes == null)
@@ -1250,6 +1395,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [AI Detector] 탐지 결과 [Bounding Box] 목록 갱신 기존 [Bounding Box] 목록을 초기화한 뒤, 새로 수신한
+        /// 탐지 결과를 화면 표시용 [Collection]에 반영한다.
+        /// </summary>
         internal void UpdateDetectionBoxes(ObservableCollection<AiDetectionBox> targetBoxes, List<AiDetectionBox> sourceBoxes, int rtspIndex, DateTime receiveTime)
         {
             bool hasDetection = sourceBoxes != null && sourceBoxes.Count > 0;
@@ -1326,6 +1475,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 #endif
         }
 
+        /// <summary>
+        /// 영상 크기에 맞춰 AI 사각형의 테두리·라벨 배치를 계산한다.
+        /// </summary>
         internal static void PrepareAiOverlayLayout(AiDetectionBox box, int frameWidth, int frameHeight)
         {
             const int strokeInset = 2;
@@ -1372,6 +1524,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             box.LabelWidth = labelWidth;
         }
 
+        /// <summary>
+        /// 잠시 유지할 AI 탐지 표시 상태를 설정한다.
+        /// </summary>
         internal void SetAiDisplayHoldState(int rtspIndex, bool active)
         {
             bool previous = rtspIndex == 0 ? _isEoAiDisplayHoldActive : _isIrAiDisplayHoldActive;
@@ -1393,6 +1548,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("AI BBOX HOLD", (active ? "Short detection gap retained" : "Hold ended") + " / CHANNEL=" + (rtspIndex == 0 ? "EO" : "IR") + " / HOLD_MS=" + AiDisplayHoldMilliseconds);
         }
 
+        /// <summary>
+        /// 2026-08-25: AI 연결 전환 또는 해제 시 화면 BBox와 ACTIVE 이벤트 상태를 UI Dispatcher에서 함께 정리하여
+        /// 연결이 끊긴 뒤 이전 탐지 결과가 남지 않게 한다.
+        /// </summary>
         internal void ClearAiDetectionState(string reason, bool writeAudit = true)
         {
             Interlocked.Increment(ref _aiDetectionGeneration);
@@ -1474,6 +1633,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [AI Detector Agent] [RTSP] 조회 결과를 [UI Collection]에 반영한다.
+        /// </summary>
         internal void UpdateAiRtspList(List<AiRtspInfo> rtspList)
         {
             TryRunAiUiAction(() =>
@@ -1487,6 +1649,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }, "RTSP list update");
         }
 
+        /// <summary>
+        /// [AI Detector Agent] [ONNX] 조회 결과를 [UI Collection]에 반영한다.
+        /// </summary>
         internal void UpdateAiOnnxList(List<AiOnnxInfo> onnxList)
         {
             TryRunAiUiAction(() =>
@@ -1539,6 +1704,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }, "Model list update");
         }
 
+        /// <summary>
+        /// [AI Detector Agent] [RTSP] / [ONNX] Mapping 조회 결과를 [UI Collection]에 반영한다.
+        /// </summary>
         internal void UpdateAiMappingList(List<AiMappingInfo> mappingList)
         {
             TryRunAiUiAction(() =>
@@ -1552,6 +1720,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }, "Mapping list update");
         }
 
+        /// <summary>
+        /// [AI Detector] 탐지 로그 출력 여부 확인 현재 시간과 마지막 출력 시간을 비교하여 일정 시간 이내면 =&gt; [Console] 출력
+        /// 생략
+        /// </summary>
         internal bool CanPrintAiDetectorLog()
         {
             if ((DateTime.Now - _context._lastAiDetectorLogTime).TotalSeconds < AiDetectorLogIntervalSeconds)
@@ -1564,6 +1736,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// [AI Detector] [Bounding Box] 표시 좌표 보정 현재 [AI Agent] 좌표와 [Viewer] 표시 좌표가 [Zoom]
+        /// 상태에 따라 어긋나는 경우를 보정하기 위한 함수이다. 기본 기준: - [Zoom] 기준값 : 5 - 현재 [EO Zoom] 값이 커질수록
+        /// 중앙 기준으로 [Box] 확대 - 현재 [EO Zoom] 값이 작아질수록 중앙 기준으로 [Box] 축소
+        /// </summary>
         internal AiDetectionBox ConvertBoxForDisplay(AiDetectionBox sourceBox, int videoWidth, int videoHeight)
         {
             return sourceBox;

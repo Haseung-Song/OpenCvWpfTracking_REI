@@ -216,7 +216,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// Process 처리 함수.
+        /// 현재 프레임을 해당 탐지기로 분석하고 후보·확정 상태를 반환한다.
         /// </summary>
         internal ThermalFireDetectionResult Process(Mat frame, bool isEnabled, double hotThresholdRatio, double minimumAreaRatio, int fireBoxGroupingMode, IList<Rect> aiFireCandidates)
         {
@@ -537,7 +537,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// MergeNearbyRects 동작 수행 함수.
+        /// 인접한 탐지 사각형을 현재 묶음 표시 방식과 거리 기준으로 합친다.
         /// </summary>
         private static List<Rect> MergeNearbyRects(IList<Rect> source, int frameWidth, int frameHeight, int fireBoxGroupingMode)
         {
@@ -679,7 +679,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// SmoothTrackedRect 동작 수행 함수.
+        /// 이전 추적 사각형과 새 후보를 가중 평균해 표시 흔들림을 줄인다.
         /// </summary>
         private Rect SmoothTrackedRect(Rect current, int width, int height)
         {
@@ -700,7 +700,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// ExpandRect 동작 수행 함수.
+        /// 후보 사각형을 지정한 여유만큼 넓히고 영상 경계 안으로 제한한다.
         /// </summary>
         private static Rect ExpandRect(Rect rect, int xPadding, int yPadding, int width, int height)
         {
@@ -716,7 +716,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// Intersects 동작 수행 함수.
+        /// 두 사각형 또는 구역 도형의 교차 여부를 검사한다.
         /// </summary>
         private static bool Intersects(Rect first, Rect second)
         {
@@ -724,7 +724,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// Union 동작 수행 함수.
+        /// 두 사각형을 모두 포함하는 최소 외접 사각형을 반환한다.
         /// </summary>
         private static Rect Union(Rect first, Rect second)
         {
@@ -740,7 +740,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// IntersectionOverUnion 동작 수행 함수.
+        /// 두 사각형의 교집합 면적을 합집합 면적으로 나누어 겹침 비율을 계산한다.
         /// </summary>
         private static double IntersectionOverUnion(Rect first, Rect second)
         {
@@ -838,6 +838,9 @@ namespace OpenCvWpfTracking.Services.Video
             return scores;
         }
 
+        /// <summary>
+        /// 후보의 지속성·변화·크기 등 영상 근거를 합산해 탐지 점수를 계산한다.
+        /// </summary>
         private static double CalculateVisionScore(FireVisionScoreTrack track, Rect candidate, int frameWidth, int frameHeight, double elapsedSeconds)
         {
             double frameArea = Math.Max(1.0, frameWidth * (double)frameHeight);
@@ -1127,6 +1130,9 @@ namespace OpenCvWpfTracking.Services.Video
             return filtered;
         }
 
+        /// <summary>
+        /// AI 화재 탐지와 중복되는 로컬 화재 추적 항목을 제외한다.
+        /// </summary>
         private void RemoveAiFireOverlappingTracks(IList<Rect> aiFireCandidates)
         {
             if (aiFireCandidates == null || aiFireCandidates.Count == 0 || _candidateTracks.Count == 0)
@@ -1146,7 +1152,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// CreateHotPixelMask 생성 및 변환 함수.
+        /// 열상 프레임의 밝기와 국부 대비를 이용해 화재 후보 마스크를 만든다.
         /// </summary>
         private static Mat CreateHotPixelMask(Mat frame, int threshold)
         {
@@ -1234,7 +1240,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// UpdateConfirmation 갱신 함수.
+        /// 후보의 연속 검출·해제 프레임 수로 화재 확정 상태를 전환하고 변화를 기록한다.
         /// </summary>
         private void UpdateConfirmation(bool hasCandidate)
         {
@@ -1270,7 +1276,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// ResetDetectionState 동작 수행 함수.
+        /// 기존 영상 탐지·추적 결과를 초기화해 새 분석을 준비한다.
         /// </summary>
         private ThermalFireDetectionResult ResetDetectionState()
         {
@@ -1331,6 +1337,9 @@ namespace OpenCvWpfTracking.Services.Video
 
         private sealed class FireCandidateTrack
         {
+            /// <summary>
+            /// 화재 후보의 시작 위치와 지속성·점수 상태를 초기화한다.
+            /// </summary>
             internal FireCandidateTrack(Rect rectangle)
             {
                 Rectangle = rectangle;
@@ -1359,7 +1368,7 @@ namespace OpenCvWpfTracking.Services.Video
     internal struct ThermalFireDetectionResult
     {
         /// <summary>
-        /// ThermalFireDetectionResult 동작 수행 함수.
+        /// ThermalFireDetectionResult의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         internal ThermalFireDetectionResult(bool isDetected, bool stateChanged, double candidateArea, Rect candidateRect, int candidateCount, double visionScore, IList<Rect> candidateRects, IList<double> candidateScores)
         {

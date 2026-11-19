@@ -111,18 +111,42 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         ref long _zoomStopTxCount { get; }
 
+        /// <summary>
+        /// 환경장비 Web Agent가 IR 상태 패킷을 보내지 않는 경우에만 사용하는 성공한 명령값 기반 UI 상태 보완이다. 실제 Function
+        /// 0x07 패킷이 수신되면 실측값으로 다시 덮어쓴다.
+        /// </summary>
         void ApplyEnvironmentIrCommandedPosition(int? zoomPosition, int? focusPosition, string reason);
 
+        /// <summary>
+        /// 현재 PAN / TILT SPEED UI 값으로 위치 이동 속도를 설정한다. Pan Position Speed : Command2 0x49
+        /// Tilt Position Speed: Command2 0x4B UI 1~60 값을 위치 이동 속도 1~60 deg/s로 적용하며, UI 0은
+        /// 위치 이동을 시작하지 않고 STOP으로 처리한다.
+        /// </summary>
         bool ApplyPanTiltPositionSpeedFromUi(out double positionSpeed);
 
+        /// <summary>
+        /// EO 직접 제어 구성을 구분해 WEB AGENT AF 명령을 적용할 대상인지 확인한다.
+        /// </summary>
         bool AutoFocusTargetUsesAgent(int target);
 
+        /// <summary>
+        /// 기존 VIA 0 Pan 이동 작업 취소
+        /// </summary>
         void CancelMoveControlPanOperation();
 
+        /// <summary>
+        /// 연동 버튼과 공통 정지는 기존 단일 프리셋 이동의 취소 경로를 그대로 사용한다.
+        /// </summary>
         void CancelPanoramaPresets();
 
+        /// <summary>
+        /// 진행 중인 Pan / Tilt Absolute 이동 추적값을 초기화한다.
+        /// </summary>
         void ClearActivePanTiltAbsoluteMove();
 
+        /// <summary>
+        /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다.
+        /// </summary>
         Services.Configuration.LensControlTuning ControlTuningFor(bool ir);
 
         string CurrentEoFocusText { get; }
@@ -139,16 +163,38 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string EnvironmentEoZoomStatusText { get; }
 
+        /// <summary>
+        /// 선택한 EO/IR AF 버튼 인수를 조회·설정·단발 초점 요청으로 변환한다.
+        /// </summary>
         void ExecuteAutoFocus(object parameter);
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// 현재 EO Focus 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardFocus();
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
+        /// <summary>
+        /// AF 동작·응답 대기·상태 불명 중 해당 채널의 수동 초점 충돌을 차단한다.
+        /// </summary>
         bool IsAutoFocusBlockingManualFocus(bool ir, bool logWarning = true);
 
         bool IsControlInputLocked { get; }
@@ -159,22 +205,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsWebAgentFocusControlReady { get; }
 
+        /// <summary>
+        /// 채널별 렌즈 응답 시각을 원자적으로 기록한다.
+        /// </summary>
         void MarkLensEvidence(bool ir);
 
+        /// <summary>
+        /// 팬·틸트 이동 명령 시점을 기록해 이전 수신 위치를 새 이동의 완료로 오인하지 않는다.
+        /// </summary>
         void MarkPanTiltMoveCommandIssued();
 
+        /// <summary>
+        /// 2026-10-14 실제 수신된 유효 Zoom/Focus 증거를 축별로 보관한다. 명령 추정값은 증거가 아니다.
+        /// </summary>
         void MarkPresetLensEvidence(bool ir, bool zoom, bool focus);
 
+        /// <summary>
+        /// EO 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         void NotifyEoCurrentStatusChanged(bool panChanged = true, bool tiltChanged = true, bool zoomChanged = true, bool focusChanged = true, bool powerChanged = true);
 
+        /// <summary>
+        /// IR 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         void NotifyIrCurrentStatusChanged();
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         string PanTiltSpeedDisplayText { get; }
 
         byte PanTiltSpeedLevel { get; set; }
 
+        /// <summary>
+        /// 위치 이동 중 속도 변경 시 현재 Absolute 목표를 그대로 재송신한다. 일부 장비는 0x49 / 0x4B 속도 설정을 다음 위치 이동
+        /// 명령부터 적용하므로, 진행 중인 0x45 / 0x47 목표를 다시 보내야 변경된 속도가 현재 이동에도 즉시 반영된다.
+        /// </summary>
         void ReapplyActivePanTiltAbsoluteTarget(double positionSpeed);
 
         string RooftopEoFocusStatusText { get; }
@@ -185,10 +253,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         EquipmentStatusMode SelectedEquipmentStatusMode { get; set; }
 
+        /// <summary>
+        /// 이전 방향의 경과 시간을 먼저 반영한 후 추정 배율의 증감 방향을 변경한다.
+        /// </summary>
         void SetDigitalEstimateDirection(int direction, bool ir = false);
 
+        /// <summary>
+        /// 진행 중 정밀 동작 상태를 정리하고 필요할 때 양 축 정지를 요청한다.
+        /// </summary>
         void StopPrecisionMotion(string reason, bool force = false);
 
+        /// <summary>
+        /// 현재 장비와 채널에 대응하는 구역 저장 키를 만든다.
+        /// </summary>
         string ZoneKey(string camera);
     }
 
@@ -200,6 +277,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IContinuousControlFeatureContext _context;
 
+        /// <summary>
+        /// 연속 이동과 정지 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal ContinuousControlFeature(IContinuousControlFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -215,6 +295,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// Keyboard 방향키 KeyDown 처리 방향키 눌림 상태를 저장한 뒤, 현재 눌린 전체 방향키 조합에 따라 단일 방향 또는 대각선 이동
+        /// 명령을 송신한다.
+        /// </summary>
         internal void HandlePanTiltKeyDown(Key key)
         {
             if (_context.IsControlInputLocked)
@@ -238,6 +322,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             UpdateKeyboardPanTiltMove();
         }
 
+        /// <summary>
+        /// Keyboard 방향키 KeyUp 처리 해제된 방향키 상태를 제거한 뒤, 아직 누르고 있는 나머지 방향키 기준으로 이동 방향을 다시
+        /// 계산한다.
+        /// </summary>
         internal void HandlePanTiltKeyUp(Key key)
         {
             if (_context.IsControlInputLocked)
@@ -259,11 +347,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             UpdateKeyboardPanTiltMove();
         }
 
+        /// <summary>
+        /// 장비 제어용 키보드 상태 전체 초기화 HOME POSITION 시작/완료/실패/Timeout 시 공통으로 호출한다. 현재 구현: - 방향키
+        /// Pan/Tilt 상태 초기화 - WASD Pan/Tilt 상태 초기화 방향키와 WASD는 동일한 Pan/Tilt 상태 필드를 사용하므로
+        /// ResetKeyboardPanTiltState 호출 한 번으로 함께 초기화된다. Zoom/Focus 단축키는 현재 별도 눌림 상태를 보관하지
+        /// 않고 Window PreviewKeyDown/PreviewKeyUp 입구에서 HOME Lock 중 전체 차단한다. 추후 Zoom/Focus
+        /// 키 상태 필드가 추가되면 반드시 이 함수에서 같이 초기화한다.
+        /// </summary>
         internal void ResetAllKeyboardControlState()
         {
             ResetKeyboardPanTiltState();
         }
 
+        /// <summary>
+        /// Keyboard Pan / Tilt 상태 초기화 Window Focus 이탈로 KeyUp 이벤트가 누락될 경우 모든 방향키 상태를 초기화하고
+        /// 현재 키보드 Pan / Tilt 이동을 정지한다.
+        /// </summary>
         internal void ResetKeyboardPanTiltState()
         {
             bool wasKeyboardMoveActive = _context._currentKeyboardPanTiltDirection != KeyboardPanTiltDirection.None;
@@ -304,11 +403,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._ptzPerformanceScenario = "IDLE";
         }
 
+        /// <summary>
+        /// Pan / Tilt Keyboard 제어 키 여부 확인
+        /// </summary>
         internal bool IsPanTiltKeyboardKey(Key key)
         {
             return OpenCvWpfTracking.Common.ControlShortcutKeys.IsPanTiltKey(key);
         }
 
+        /// <summary>
+        /// Keyboard 방향키 입력 상태 반영
+        /// </summary>
         internal void SetKeyboardPanTiltPressedState(Key key, bool isPressed)
         {
             switch (key)
@@ -328,6 +433,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// Keyboard 방향키 입력 상태 초기화
+        /// </summary>
         internal void ClearKeyboardPanTiltPressedState()
         {
             _context._isKeyboardPanLeftPressed = false;
@@ -336,6 +444,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._isKeyboardTiltDownPressed = false;
         }
 
+        /// <summary>
+        /// 현재 Keyboard 입력 조합에 맞춰 Pan / Tilt 이동 방향 갱신 동일 방향이 유지되는 경우에는 KeyDown 자동 반복으로 인한
+        /// 중복 패킷을 송신하지 않는다.
+        /// </summary>
         internal void UpdateKeyboardPanTiltMove()
         {
             KeyboardPanTiltDirection targetDirection = GetKeyboardPanTiltDirection();
@@ -379,6 +491,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 눌린 방향키 조합을 Pan / Tilt 이동 방향으로 변환
+        /// </summary>
         internal KeyboardPanTiltDirection GetKeyboardPanTiltDirection()
         {
             bool moveLeft = _context._isKeyboardPanLeftPressed && !_context._isKeyboardPanRightPressed;
@@ -432,6 +547,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return KeyboardPanTiltDirection.None;
         }
 
+        /// <summary>
+        /// Keyboard Pan / Tilt 이동 정지
+        /// </summary>
         internal void StopKeyboardPanTiltMove()
         {
             if (!_context._isPanTiltMoveActive)
@@ -452,6 +570,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._ptzPerformanceScenario = "IDLE";
         }
 
+        /// <summary>
+        /// 2026-09-15: Web Agent Pan/Tilt 연속 이동 해제 시 마지막 이동 축에 맞는 TORUSS 위치 정지 명령을 송신한다.
+        /// 대각선은 두 축을 각각 정지하며, 방향 상태가 없을 때만 안전을 위해 기존 전체 정지 명령을 사용한다.
+        /// </summary>
         internal bool StopPanTiltMoveByDirection(KeyboardPanTiltDirection direction)
         {
             switch (direction)
@@ -516,6 +638,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return result;
         }
 
+        /// <summary>
+        /// 2026-09-17: Web Agent 합의 규격인 UI 속도 [0 ~ 60]을 그대로 사용한다. UI 0은 이동 속도로 사용하지 않으며
+        /// 정지 요청으로 처리한다.
+        /// </summary>
         internal byte ConvertPanTiltSpeedLevel(int uiSpeed)
         {
             if (uiSpeed <= 0)
@@ -526,6 +652,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return (byte)Math.Min(60, uiSpeed);
         }
 
+        /// <summary>
+        /// 2026-10-01: 현재 활성 EO/IR 카메라의 광학 줌이 커질수록 같은 PT 속도도 화면에서는 더 크게 이동해 보이므로 실제 전송
+        /// 속도를 낮춘다. UI Slider 값은 사용자가 선택한 기준 속도로 유지하며 광각(1x)에서는 기존 속도를 그대로 사용한다.
+        /// 2026-10-01 실장비 로그에서 EO 최대 줌 시 20% 하한(30→6)이 빠르게 보이는 것을 확인하여 5% 안전 하한으로 완화한다.
+        /// 실제 EO 90x 계산값은 약 10.5%이므로 기준 속도 30에서 약 3이 적용된다.
+        /// </summary>
         internal byte ApplyZoomAdaptivePanTiltSpeed(byte baseProtocolSpeed, out int standardZoom, out string activeCamera, out double opticalZoomRatio, out double speedScale)
         {
             bool isInfrared = Volatile.Read(ref _activePanTiltZoomSource) == 1;
@@ -548,6 +680,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return speed;
         }
 
+        /// <summary>
+        /// 2026-10-01: 메인 화면의 활성 EO/IR 영상 변경을 PT 감쇄 기준에 반영한다. 신규 WebAgent 프로토콜 없이 기존 PT
+        /// 이동 패킷의 속도값만 조정한다.
+        /// </summary>
         internal void SetActivePanTiltZoomSource(bool isInfrared)
         {
             int nextSource = isInfrared ? 1 : 0;
@@ -568,6 +704,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("PAN / TILT SPEED SOURCE", $"ACTIVE_CAMERA={(isInfrared ? "IR" : "EO")} / " + $"ZOOM={standardZoom}/1000");
         }
 
+        /// <summary>
+        /// Pan / Tilt 이동에 사용할 Pelco-D 속도를 조회한다. UI 속도가 0이면 이동 패킷을 보내지 않고 STOP을 송신한 뒤 남아
+        /// 있는 연속 이동 상태를 초기화한다.
+        /// </summary>
         internal bool TryGetPanTiltProtocolSpeed(out byte protocolSpeed)
         {
             byte baseProtocolSpeed = ConvertPanTiltSpeedLevel(_context.PanTiltSpeedLevel);
@@ -595,6 +735,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// [EO/IR] 주간/열상 카메라 [PAN] 좌측 연속 이동 시작 [PanTiltSpeedLevel] 값을 사용하여 좌측 방향으로 연속 이동
+        /// 명령을 송신한다.
+        /// </summary>
         internal void StartPanLeftMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -616,6 +760,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartPanLeft(protocolSpeed);
         }
 
+        /// <summary>
+        /// [EO/IR] 주간/열상 카메라 [PAN] 우측 연속 이동 시작 [PanTiltSpeedLevel] 값을 사용하여 우측 방향으로 연속 이동
+        /// 명령을 송신한다.
+        /// </summary>
         internal void StartPanRightMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -637,6 +785,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartPanRight(protocolSpeed);
         }
 
+        /// <summary>
+        /// [EO/IR] 주간/열상 카메라 [TILT] 위쪽 연속 이동 시작 [PanTiltSpeedLevel] 값을 사용하여 위쪽 방향으로 연속 이동
+        /// 명령을 송신한다.
+        /// </summary>
         internal void StartTiltUpMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -658,6 +810,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartTiltUp(protocolSpeed);
         }
 
+        /// <summary>
+        /// [EO/IR] 주간/열상 카메라 [TILT] 아래쪽 연속 이동 시작 [PanTiltSpeedLevel] 값을 사용하여 아래 방향으로 연속
+        /// 이동 명령을 송신한다.
+        /// </summary>
         internal void StartTiltDownMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -679,6 +835,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartTiltDown(protocolSpeed);
         }
 
+        /// <summary>
+        /// [EO/IR] 좌측 상단 대각선 연속 이동 시작
+        /// </summary>
         internal void StartPanLeftTiltUpMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -700,6 +859,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartPanLeftTiltUp(protocolSpeed, protocolSpeed);
         }
 
+        /// <summary>
+        /// [EO/IR] 우측 상단 대각선 연속 이동 시작
+        /// </summary>
         internal void StartPanRightTiltUpMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -721,6 +883,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartPanRightTiltUp(protocolSpeed, protocolSpeed);
         }
 
+        /// <summary>
+        /// [EO/IR] 좌측 하단 대각선 연속 이동 시작
+        /// </summary>
         internal void StartPanLeftTiltDownMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -742,6 +907,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartPanLeftTiltDown(protocolSpeed, protocolSpeed);
         }
 
+        /// <summary>
+        /// [EO/IR] 우측 하단 대각선 연속 이동 시작
+        /// </summary>
         internal void StartPanRightTiltDownMove()
         {
             if (!TryGetPanTiltProtocolSpeed(out byte protocolSpeed))
@@ -763,6 +931,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartPanRightTiltDown(protocolSpeed, protocolSpeed);
         }
 
+        /// <summary>
+        /// Pan / Tilt 연속 이동 중 Slider 값이 바뀌면 현재 방향을 유지한 채 Pelco-D Data1 / Data2 속도값만 갱신하여
+        /// 즉시 재송신한다.
+        /// </summary>
         internal void ApplyPanTiltSpeedWhileMoving()
         {
             if (_context.IsControlInputLocked)
@@ -826,11 +998,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command("PAN / TILT SPEED", $"Updated while moving / UI_SPEED={_context.PanTiltSpeedLevel} / " + $"PROTOCOL_SPEED={protocolSpeed} / " + $"DIRECTION={_context._activePanTiltMoveDirection} / RESULT={result}");
         }
 
+        /// <summary>
+        /// [EO] 주간 카메라 [ZOOM] [Tele] 연속 이동 시작 옥상 MR300 EO 카메라 선택 시: - XV-Z4850HC CTEC CGI
+        /// 직접 제어 그 외 EO 카메라 선택 시: - 기존 Control Agent 제어 유지
+        /// </summary>
         internal async void StartEoZoomInMove()
         {
             await StartEoZoomInMoveAsync();
         }
 
+        /// <summary>
+        /// EO 줌 확대 연속 이동을 시작한다.
+        /// </summary>
         internal async Task StartEoZoomInMoveAsync()
         {
             // 2026-10-01: 사용자가 조작한 Lens 채널을 PT 감쇄 기준과 UI 표시에 즉시 반영한다.
@@ -899,11 +1078,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [EO] 주간 카메라 [ZOOM] [Wide] 연속 이동 시작 선택된 EO 프리셋에 따라 CTEC CGI 직접 제어 또는 Control
+        /// Agent 제어로 분기한다.
+        /// </summary>
         internal async void StartEoZoomOutMove()
         {
             await StartEoZoomOutMoveAsync();
         }
 
+        /// <summary>
+        /// EO 줌 축소 연속 이동을 시작한다.
+        /// </summary>
         internal async Task StartEoZoomOutMoveAsync()
         {
             SetActivePanTiltZoomSource(false);
@@ -971,11 +1157,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [EO] 주간 카메라 Focus Near 연속 이동 시작 옥상 MR300 EO 선택 시: Focus Manual -&gt; Focus Near
+        /// 순서로 CTEC CGI 직접 송신한다. 그 외 EO 선택 시: 기존 Control Agent Focus Near 명령을 유지한다.
+        /// </summary>
         internal async void StartEoFocusNearMove()
         {
             await StartEoFocusNearMoveAsync();
         }
 
+        /// <summary>
+        /// EO 초점을 Near 방향으로 연속 이동하기 시작한다.
+        /// </summary>
         internal async Task StartEoFocusNearMoveAsync()
         {
             if (_context.IsAutoFocusBlockingManualFocus(false))
@@ -1042,11 +1235,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [EO] 주간 카메라 Focus Far 연속 이동 시작 옥상 MR300 EO 선택 시: Focus Manual -&gt; Focus Far 순서로
+        /// CTEC CGI 직접 송신한다. 그 외 EO 선택 시: 기존 Control Agent Focus Far 명령을 유지한다.
+        /// </summary>
         internal async void StartEoFocusFarMove()
         {
             await StartEoFocusFarMoveAsync();
         }
 
+        /// <summary>
+        /// EO 초점을 Far 방향으로 연속 이동하기 시작한다.
+        /// </summary>
         internal async Task StartEoFocusFarMoveAsync()
         {
             if (_context.IsAutoFocusBlockingManualFocus(false))
@@ -1113,6 +1313,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [EO] 주간 카메라 [One Push Focus] 요청 옥상 MR300 EO 선택 시 CTEC CGI 직접 제어, 그 외 EO 선택 시
+        /// 기존 Control Agent 명령을 사용한다.
+        /// </summary>
         internal async void StartEoAutoFocusMove()
         {
             // 기존 LENS 단발 자동 초점은 LA/WEB 공통으로 유지하고 새 AF 영역의 지원 조건과 분리한다.
@@ -1145,6 +1349,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// 현재 선택된 EO 프리셋이 CTEC CGI 직접 제어 대상인지 확인한다. EO 주소가 프리셋 외부 값으로 변경된 경우에는 잘못된 카메라로
+        /// 명령이 송신되지 않도록 기존 Control Agent 경로를 사용한다.
+        /// </summary>
         internal bool TryGetSelectedEoCtecSource(out RtspSourceOption sourceOption)
         {
             sourceOption = _context.SelectedEoRtspSource;
@@ -1152,6 +1360,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return sourceOption != null && sourceOption.ControlType == CameraControlType.CtecCgi && !string.IsNullOrWhiteSpace(sourceOption.ControlIp);
         }
 
+        /// <summary>
+        /// 현재 선택된 EO 프리셋 기준으로 CTEC Response TCP Port 9000 연결 시작 옥상 MR300 EO CTEC 직접 제어
+        /// 프리셋이 아니면 기존 Response 연결을 종료하고 별도 TCP 연결을 생성하지 않는다.
+        /// </summary>
         internal async Task StartSelectedEoCtecResponseAsync()
         {
             if (!TryGetSelectedEoCtecSource(out RtspSourceOption sourceOption))
@@ -1192,6 +1404,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             await _context._ctecCameraResponseService.StartAsync(sourceOption.ControlIp, RooftopMr300EoCtecResponsePort);
         }
 
+        /// <summary>
+        /// CTEC Response TCP 연결 상태 변경 처리 Connected 상태가 되면 현재 Zoom / Focus Position 및
+        /// Focus Mode Inquiry를 순차 송신하여 초기 상태값을 조회한다.
+        /// </summary>
         internal void OnCtecCameraResponseConnectionStatusChanged(string status)
         {
             Console.WriteLine($"[CTEC RESPONSE] STATUS : {status}");
@@ -1206,6 +1422,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _ = RequestConnectedEoCtecStatusAsync();
         }
 
+        /// <summary>
+        /// 현재 연결된 옥상 MR300 EO 카메라 상태 조회 Inquiry 명령은 CGI로 송신하고, 실제 응답은 TCP Port 9000 수신
+        /// 서비스에서 처리한다.
+        /// </summary>
         internal async Task RequestConnectedEoCtecStatusAsync()
         {
             RtspSourceOption sourceOption = _context._connectedEoCtecSource;
@@ -1226,6 +1446,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             await _context._ctecCameraCommandService.RequestFocusModeAsync(sourceOption.ControlIp, sourceOption.ControlUserName, sourceOption.ControlPassword, sourceOption.UseHttps);
         }
 
+        /// <summary>
+        /// CTEC Camera Response Packet 수신 처리 공통 Header: 0x99 0x55 Command Code: 0x47 =
+        /// Zoom Position 0x48 = Focus Position 0x38 = Focus Mode
+        /// </summary>
         internal void OnCtecCameraResponsePacketReceived(byte[] packet)
         {
             if (packet == null || packet.Length < 7 || packet[0] != 0x99 || packet[1] != 0x55 || packet[packet.Length - 1] != 0xFF)
@@ -1313,6 +1537,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [ZOOM] [Tele] 연속 이동 시작
+        /// </summary>
         internal void StartIrZoomInMove()
         {
             // 2026-10-01: IR Zoom 조작 중에는 IR 실제 줌값으로 감쇄하고 ACTIVE(IR)로 표시한다.
@@ -1337,6 +1564,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrZoom, +1, result);
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [ZOOM] [Wide] 연속 이동 시작
+        /// </summary>
         internal void StartIrZoomOutMove()
         {
             SetActivePanTiltZoomSource(true);
@@ -1360,6 +1590,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrZoom, -1, result);
         }
 
+        /// <summary>
+        /// [IR] [ZOOM] 연속 이동 정지 IR Zoom 버튼 [MouseUp] 시에만 호출한다.
+        /// </summary>
         internal void StopIrZoomMove()
         {
             _context._ptzPerformanceScenario = "IDLE";
@@ -1381,6 +1614,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._currentMoveType = ContinuousMoveType.None;
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [FOCUS] [Near] 연속 이동 시작
+        /// </summary>
         internal void StartIrFocusNearMove()
         {
             if (_context.IsAutoFocusBlockingManualFocus(true))
@@ -1405,6 +1641,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrFocus, +1, result);
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [FOCUS] [Far] 연속 이동 시작
+        /// </summary>
         internal void StartIrFocusFarMove()
         {
             if (_context.IsAutoFocusBlockingManualFocus(true))
@@ -1428,6 +1667,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             BeginEnvironmentIrManualEstimate(ContinuousMoveType.IrFocus, -1, result);
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [FOCUS] 연속 이동 정지
+        /// </summary>
         internal void StopIrFocusMove()
         {
             Console.WriteLine();
@@ -1443,6 +1685,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._currentMoveType = ContinuousMoveType.None;
         }
 
+        /// <summary>
+        /// IR 수동 이동 시작 시 위치 추정의 기준과 방향을 기록한다.
+        /// </summary>
         internal void BeginEnvironmentIrManualEstimate(ContinuousMoveType moveType, int direction, bool commandResult)
         {
             if (!commandResult || _context.SelectedEquipmentStatusMode != EquipmentStatusMode.Environment || Interlocked.Read(ref _context._irLensStatusVersion) > 0)
@@ -1455,6 +1700,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._environmentIrManualMoveStartedUtc = DateTime.UtcNow;
         }
 
+        /// <summary>
+        /// IR 수동 이동 종료 후 추정 위치와 상태 응답을 정리한다.
+        /// </summary>
         internal void CompleteEnvironmentIrManualEstimate(ContinuousMoveType moveType, bool commandResult)
         {
             if (!commandResult || _context._environmentIrManualMoveType != moveType || _context._environmentIrManualMoveStartedUtc == default(DateTime) || Interlocked.Read(ref _context._irLensStatusVersion) > 0)
@@ -1484,6 +1732,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._environmentIrManualMoveDirection = 0;
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [Digital Zoom] 확대 시작
+        /// </summary>
         internal void StartIrDigitalZoomInMove()
         {
             _context._currentMoveType = ContinuousMoveType.IrDigitalZoom;
@@ -1499,6 +1750,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartIrDigitalZoomIn();
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [Digital Zoom] 축소 시작
+        /// </summary>
         internal void StartIrDigitalZoomOutMove()
         {
             _context._currentMoveType = ContinuousMoveType.IrDigitalZoom;
@@ -1514,6 +1768,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartIrDigitalZoomOut();
         }
 
+        /// <summary>
+        /// [IR] 열상 카메라 [Auto Focus] 요청
+        /// </summary>
         internal void StartIrAutoFocusMove()
         {
             // 기존 LENS 단발 자동 초점은 LA/WEB 공통으로 유지하고 새 AF 영역의 지원 조건과 분리한다.
@@ -1535,6 +1792,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._controlCommandService.StartIrAutoFocus();
         }
 
+        /// <summary>
+        /// [CTEC EO Zoom / Focus] 실시간 Position 조회 시작 기존 Polling이 남아 있으면 먼저 종료한 뒤, 현재 이동
+        /// 종류에 맞는 Inquiry를 200ms 간격으로 반복한다. 주의: - Zoom / Focus 이동 명령을 반복 송신하지 않는다. -
+        /// Position Inquiry만 반복 송신한다. - 실제 값 갱신은 TCP Port 9000 응답 수신부에서 처리한다.
+        /// </summary>
         internal void StartCtecEoPositionPolling(ContinuousMoveType moveType, RtspSourceOption sourceOption)
         {
             StopCtecEoPositionPolling();
@@ -1557,6 +1819,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _ = PollCtecEoPositionAsync(moveType, sourceOption, operationGeneration, pollingCts.Token);
         }
 
+        /// <summary>
+        /// [CTEC EO Zoom / Focus] 실시간 Position 조회 Loop
+        /// </summary>
         internal async Task PollCtecEoPositionAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, long operationGeneration, CancellationToken cancellationToken)
         {
             try
@@ -1600,6 +1865,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [CTEC Position Inquiry] CGI 송신 후 실제 TCP 9000 Position 응답까지 기다린다. HTTP 200
+        /// OK만으로 조회 완료 처리하지 않는다. Zoom은 0x47, Focus는 0x48 응답이 도착해야 한 번의 Inquiry가 끝난다.
+        /// </summary>
         internal async Task<int?> RequestAndWaitCtecEoPositionAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, CancellationToken cancellationToken)
         {
             await _context._ctecEoPositionQueryLock.WaitAsync(cancellationToken);
@@ -1649,6 +1918,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [CTEC Stop] Stop 송신 이후 실제 Position 값이 안정될 때까지 확인한다. 단일 조회값을 최종 위치로 확정하지 않는다.
+        /// 카메라 상태 갱신이 늦으면 이전 이동 방향의 값이 뒤늦게 반환될 수 있으므로, 연속 두 값이 허용 오차 안에 들어올 때 최종 위치로
+        /// 판단한다.
+        /// </summary>
         internal async Task WaitForCtecEoPositionStableAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, long operationGeneration)
         {
             int? previousPosition = null;
@@ -1681,6 +1955,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [CTEC EO Zoom / Focus] 실시간 Position 조회 종료
+        /// </summary>
         internal void StopCtecEoPositionPolling()
         {
             CancellationTokenSource pollingCts = Interlocked.Exchange(ref _context._ctecEoPositionPollingCts, null);
@@ -1700,6 +1977,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// Pan·Tilt 연속 이동을 중지한다.
+        /// </summary>
         internal void StopPanTiltContinuousMove()
         {
             if (!_context._isPanTiltMoveActive)
@@ -1718,6 +1998,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-09-15: 화면 중앙 STOP 버튼 전용 PTZF 전체 정지. 현재 GUI 이동 상태와 관계없이 Pelco-D 전체 STOP FF
+        /// 01 00 00 00 00 01을 반드시 1회 송신한다. 옥상 CTEC EO 렌즈가 직접 제어 중이면 해당 렌즈도 함께 정지한다.
+        /// </summary>
         internal async void StopAllPtzfMove()
         {
             _context.CancelPanoramaPresets();
@@ -1817,11 +2101,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command("PTZF GLOBAL STOP", $"PACKET=FF 01 00 00 00 00 01 / TCP={tcpStopResult} / " + $"POSITION_STOP_0x4F={positionStopResult} / " + $"PREVIOUS_MOVE={moveType} / CTEC={ctecStopResult}");
         }
 
+        /// <summary>
+        /// 연속 이동 정지 버튼 [MouseUp] 또는 [MouseLeave] 시 호출된다. 옥상 MR300 EO Zoom / Focus는 CTEC
+        /// CGI 전용 Stop 명령을 송신하고, 그 외 제어는 기존 Control Agent Stop 명령을 유지한다.
+        /// </summary>
         internal async void StopContinuousMove()
         {
             await StopContinuousMoveAsync();
         }
 
+        /// <summary>
+        /// 현재 연속 이동을 중지하고 필요한 위치 응답의 안정화를 확인한다.
+        /// </summary>
         internal async Task StopContinuousMoveAsync(bool waitForStatus = true)
         {
             // HOME / ZERO 또는 AUTO SCAN 명령 이후 MouseUp/MouseLeave/Focus 이탈로
@@ -1982,6 +2273,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-27: Control Agent 연속 Zoom / Focus STOP 이후 STOP보다 나중에 수신된 실제 장비 상태
+        /// Packet을 확인한다. Control Agent 프로토콜에는 별도 Lens Inquiry 명령이 없으므로 임의 예측값을 만들지 않고 주기
+        /// 상태 Packet을 최대 600ms만 기다린다. 새 이동이 시작되면 이전 확인 작업은 즉시 종료한다.
+        /// </summary>
         internal async Task WaitForControlAgentLensStatusAfterStopAsync(ContinuousMoveType moveType)
         {
             bool isIr = moveType == ContinuousMoveType.IrZoom || moveType == ContinuousMoveType.IrFocus;

@@ -258,6 +258,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _videoFeature.Disconnect();
         }
 
+        /// <summary>
+        /// 환경변수의 정수 값을 읽고 허용 범위 밖이면 안전한 기본값 또는 제한값을 사용한다.
+        /// </summary>
         internal static int ReadBoundedEnvironmentInteger(string variableName, int defaultValue, int minimum, int maximum)
         {
             return VideoFeature.ReadBoundedEnvironmentInteger(variableName, defaultValue, minimum, maximum);

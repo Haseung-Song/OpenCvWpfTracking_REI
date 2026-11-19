@@ -43,11 +43,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.IsOperationCommandEnabled; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IGpsSettingsFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// GPS 위치·이동·수신 품질을 위치 상태에 반영한다.
+        /// </summary>
         void IGpsSettingsFeatureContext.UpdatePositionGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid)
         {
             _features._positionFeature.UpdatePositionGps(latitude, longitude, altitude, speed, course, hdop, satelliteCount, fixStatus, valid);

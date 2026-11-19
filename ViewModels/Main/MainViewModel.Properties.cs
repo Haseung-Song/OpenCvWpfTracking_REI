@@ -564,6 +564,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _propertiesFeature.TiltAbsoluteRangeLabel; }
         }
 
+        /// <summary>
+        /// 각도를 -180~180도 부호 있는 범위로 정규화한다.
+        /// </summary>
         internal static double NormalizeToSignedAngle(double angle)
         {
             return PropertiesFeature.NormalizeToSignedAngle(angle);
@@ -1652,6 +1655,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _propertiesFeature.CurrentIrFocusText; }
         }
 
+        /// <summary>
+        /// CTEC 원시 위치를 로그 확인용 현재값 / 최대값 / 퍼센트 문자열로 만든다. 화면 표시는 0~1000으로 통일하지만 수신 로그에는
+        /// 원시값을 유지한다.
+        /// </summary>
         internal static string BuildCtecPositionText(int rawPosition, int maxPosition)
         {
             return PropertiesFeature.BuildCtecPositionText(rawPosition, maxPosition);
@@ -1692,6 +1699,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _propertiesFeature.CurrentIrPowerText; }
         }
 
+        /// <summary>
+        /// 불리언 상태를 ON 또는 OFF 문구로 변환한다.
+        /// </summary>
         internal static string ToOnOff(bool isOn)
         {
             return PropertiesFeature.ToOnOff(isOn);

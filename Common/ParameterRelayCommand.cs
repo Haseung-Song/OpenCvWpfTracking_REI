@@ -22,7 +22,7 @@ namespace OpenCvWpfTracking.Common
        * @exception
        */
         /// <summary>
-        /// ParameterRelayCommand 동작 수행 함수.
+        /// 버튼 매개변수를 받을 실행 동작과 실행 가능 여부 판정 콜백을 연결한다.
         /// </summary>
         public ParameterRelayCommand(Action<object> execute) : this(execute, null)
         {
@@ -35,7 +35,7 @@ namespace OpenCvWpfTracking.Common
          * @exception
          */
         /// <summary>
-        /// ParameterRelayCommand 동작 수행 함수.
+        /// 버튼 매개변수를 받을 실행 동작과 실행 가능 여부 판정 콜백을 연결한다.
         /// </summary>
         public ParameterRelayCommand(Action<object> execute, Predicate<object> canExecute)
         {
@@ -51,7 +51,7 @@ namespace OpenCvWpfTracking.Common
        * @exception
        */
         /// <summary>
-        /// CanExecute 상태 확인 함수.
+        /// 등록된 실행 가능 여부 콜백을 평가하고, 콜백이 없으면 명령 실행을 허용한다.
         /// </summary>
         [DebuggerStepThrough]
         public bool CanExecute(object parameter)
@@ -79,7 +79,7 @@ namespace OpenCvWpfTracking.Common
          * @exception
          */
         /// <summary>
-        /// Execute 처리 함수.
+        /// 버튼에 연결된 실행 콜백을 호출한다.
         /// </summary>
         public void Execute(object parameter)
         {
@@ -93,7 +93,7 @@ namespace OpenCvWpfTracking.Common
          * @exception
          */
         /// <summary>
-        /// RaiseCanExecuteChanged 동작 수행 함수.
+        /// 명령 실행 가능 여부가 바뀌었음을 WPF 명령 갱신 경로에 알린다.
         /// </summary>
         public void RaiseCanExecuteChanged()
         {
@@ -107,7 +107,7 @@ namespace OpenCvWpfTracking.Common
         * @exception
         */
         /// <summary>
-        /// OnCanExecuteChanged 상태 및 이벤트 처리 함수.
+        /// WPF에 명령 실행 가능 여부의 재평가를 요청한다.
         /// </summary>
         protected virtual void OnCanExecuteChanged()
         {

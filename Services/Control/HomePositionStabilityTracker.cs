@@ -30,7 +30,7 @@ namespace OpenCvWpfTracking.Services.Control
         public bool IsStableSample { get; private set; }
 
         /// <summary>
-        /// HomePositionStabilityTracker 동작 수행 함수.
+        /// HomePositionStabilityTracker의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         public HomePositionStabilityTracker(double initialPan, double initialTilt, double targetTolerance, double stableTolerance, int requiredStableSamples)
         {

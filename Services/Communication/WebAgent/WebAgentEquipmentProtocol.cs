@@ -71,6 +71,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
 
         public short ReservedRaw { get; }
 
+        /// <summary>
+        /// 장비 시각과 센서별 온도 값을 하나의 응답 스냅샷으로 보관한다.
+        /// </summary>
         internal TemperatureSnapshot(double?[] values, ulong sampleTime, short reservedRaw)
         {
             _values = (double?[])values.Clone();
@@ -79,6 +82,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
             ReservedRaw = reservedRaw;
         }
 
+        /// <summary>
+        /// 지정한 센서 인덱스의 온도 값을 반환한다.
+        /// </summary>
         public double? Value(int index)
         {
             return _values[index];

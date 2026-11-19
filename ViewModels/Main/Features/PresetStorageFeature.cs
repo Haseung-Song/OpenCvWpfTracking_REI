@@ -44,6 +44,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string EoSourceAddress { get; set; }
 
+        /// <summary>
+        /// 위치 기준 변경을 등록된 화면에 알린다.
+        /// </summary>
         void InvalidatePanoramaReference();
 
         string IrSourceAddress { get; set; }
@@ -68,6 +71,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         int LaPresetSlotNumber { get; set; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         string PanoramaDeviceKey { get; }
@@ -82,6 +88,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         int PresetSlotNumber { get; set; }
 
+        /// <summary>
+        /// Config의 변경 기록을 먼저 확정하므로 CSV 저장 중 종료되어도 같은 보정을 한 번만 적용한다.
+        /// </summary>
         void RecoverPanoramaPresetReference();
 
         ControlAgentProfileOption SelectedControlAgentProfile { get; set; }
@@ -99,6 +108,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IPresetStorageFeatureContext _context;
 
+        /// <summary>
+        /// 프리셋 저장 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal PresetStorageFeature(IPresetStorageFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -173,6 +185,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 인증정보가 바뀌어도 같은 카메라는 같은 장비 자료를 사용한다.
+        /// </summary>
         internal static string PresetCameraIdentity(string address)
         {
             if (!Uri.TryCreate(address, UriKind.Absolute, out Uri uri))
@@ -183,6 +198,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.PathAndQuery, UriFormat.UriEscaped);
         }
 
+        /// <summary>
+        /// 장비 설정에 등록된 이름을 파노라마와 같은 규칙으로 준비한다.
+        /// </summary>
         internal void InitializeEquipmentPresetFolders()
         {
             int prepared = 0, attempted = 0;
@@ -216,6 +234,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("PRESET STORAGE", $"장비별 프리셋 경로 준비 / {prepared}/{attempted}개 확인");
         }
 
+        /// <summary>
+        /// 등록 장비는 고정 ID로 복원하며 직접 입력은 기존 주소 구분을 유지한다.
+        /// </summary>
         internal string ResolveEquipmentPresetDirectory(string context)
         {
             string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "EquipmentPresets");
@@ -295,11 +316,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             throw new IOException("장비별 프리셋 폴더 소유 정보를 확인하세요.");
         }
 
+        /// <summary>
+        /// 과거 표시 순번만 제외하여 이전 해시 폴더를 조회한다.
+        /// </summary>
         internal static string NormalizeLegacyPresetContext(string context)
         {
             return System.Text.RegularExpressions.Regex.Replace(context, @"^([^|]+\|)\s*\d+\.\s*", "$1");
         }
 
+        /// <summary>
+        /// 해시 이름으로 저장한 자료는 장비명 폴더로 복사하며 기존 원본은 보존한다.
+        /// </summary>
         internal static void RestoreLegacyEquipmentPresets(string legacy, string directory)
         {
             if (!Directory.Exists(legacy) || File.Exists(Path.Combine(directory, "Presets.csv")) || File.Exists(Path.Combine(directory, "Presets.tsv")))
@@ -354,6 +381,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("PRESET STORAGE", "기존 해시 폴더 자료 복원 / 장비명 폴더 사용 / 이전 원본 보존");
         }
 
+        /// <summary>
+        /// 장비를 바꾸면 이전 목록을 비우고 해당 장비의 저장값만 복원한다.
+        /// </summary>
         internal void SwitchEquipmentPresets()
         {
             if (!_presetStorageReady || _applyingPresetProfile || _context._isLoadingRtspCommunicationSettings)
@@ -443,6 +473,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.InvalidatePanoramaReference();
         }
 
+        /// <summary>
+        /// 기존 프리셋 파일과 CSV 저장 정보를 읽어 현재 프리셋 목록을 복원한다.
+        /// </summary>
         internal void LoadPresetStorage()
         {
             try
@@ -580,6 +613,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 프리셋과 순서 정보를 저장하며 기존 파일 보존 규칙을 적용한다.
+        /// </summary>
         internal bool SavePresetStorage()
         {
             // 읽기 실패한 파일을 빈 목록으로 덮어쓰지 않는다.
@@ -652,6 +688,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 저장 형식과 필드 순서에 맞춰 프리셋 행들을 추가한다.
+        /// </summary>
         internal static void AppendPresetStorageLines(ICollection<string> lines, string type, IEnumerable<PresetPointOption> presets, XElement positions)
         {
             foreach (PresetPointOption preset in presets.OrderBy(p => p.SavedOrder))
@@ -675,6 +714,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 프리셋 행의 내용을 비교할 해시 값을 만든다.
+        /// </summary>
         internal static string PresetRowHash(IEnumerable<string> fields)
         {
             string canonical = string.Join(",", fields.Take(12).Select(v => "\"" + (v ?? "").Replace("\"", "\"\"") + "\""));
@@ -685,6 +727,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 저장된 프리셋 위치 행을 해석해 프리셋 객체로 변환한다.
+        /// </summary>
         internal Dictionary<string, string[]> ReadPresetPositions()
         {
             var result = new Dictionary<string, string[]>();
@@ -742,16 +787,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return result;
         }
 
+        /// <summary>
+        /// 프리셋 저장 필드에 허용하지 않는 구분·제어 문자를 정리한다.
+        /// </summary>
         internal static string SanitizePresetStorageField(string value)
         {
             return (value ?? string.Empty).Replace("\t", " ").Replace("\r", " ").Replace("\n", " ");
         }
 
+        /// <summary>
+        /// 프리셋 추가·갱신 전에 저장에 필요한 항목을 준비한다.
+        /// </summary>
         internal void PreparePresetForUpsert(PresetPointOption newPreset, IEnumerable<PresetPointOption> presets, PresetPointOption existingPreset)
         {
             newPreset.SavedOrder = existingPreset != null ? existingPreset.SavedOrder : presets.Select(p => p.SavedOrder).DefaultIfEmpty(0).Max() + 1;
         }
 
+        /// <summary>
+        /// 저장된 순서에 맞춰 화면 프리셋 목록을 정렬한다.
+        /// </summary>
         internal void ReorderPresetCollections()
         {
             ReplacePresetOrder(_context.LaPresetPoints, _context.LaPresetPoints.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).ToArray());
@@ -759,6 +813,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ReplacePresetOrder(_context.PresetPoints, _context.PresetPoints.OrderBy(p => p.SavedOrder).ThenBy(p => p.Number).ToArray());
         }
 
+        /// <summary>
+        /// 프리셋 순서 정보를 새 목록으로 교체한다.
+        /// </summary>
         internal static void ReplacePresetOrder(System.Collections.ObjectModel.ObservableCollection<PresetPointOption> target, IEnumerable<PresetPointOption> ordered)
         {
             PresetPointOption[] snapshot = ordered.ToArray();
@@ -771,6 +828,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 프리셋과 설정된 순회 순서로 자동 감시 대기열을 만든다.
+        /// </summary>
         internal PresetPointOption[] CreatePresetScanQueue(IEnumerable<PresetPointOption> source)
         {
             PresetPointOption[] registered = source.ToArray();
@@ -795,6 +855,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return result;
         }
 
+        /// <summary>
+        /// 프리셋 순회 속도·대기 값을 허용 범위로 제한한다.
+        /// </summary>
         internal static int ClampPresetScanSetting(int value)
         {
             return Math.Max(1, Math.Min(60, value));

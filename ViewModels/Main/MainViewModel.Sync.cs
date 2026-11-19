@@ -11,7 +11,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
     public partial class MainViewModel
     {
         /// <summary>
-        /// SelectPreviousZoomSyncLevel 동작 수행 함수.
+        /// 줌 동기화 선택을 목록의 이전 단계로 이동한다.
         /// </summary>
         private void SelectPreviousZoomSyncLevel()
         {
@@ -19,7 +19,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// SelectNextZoomSyncLevel 동작 수행 함수.
+        /// 줌 동기화 선택을 목록의 다음 단계로 이동한다.
         /// </summary>
         private void SelectNextZoomSyncLevel()
         {
@@ -38,18 +38,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// StopZoomSyncAsync 중지 함수.
+        /// 진행 중인 줌 동기화를 취소하고 관련 렌즈 이동을 중지한다.
         /// </summary>
         private Task StopZoomSyncAsync()
         {
             return _syncFeature.StopZoomSyncAsync();
         }
 
+        /// <summary>
+        /// 표준 줌 위치 0~1000을 CTEC EO 줌 원시 위치 범위로 환산한다.
+        /// </summary>
         internal static int ConvertStandardZoomToCtecRaw(int standardPosition)
         {
             return SyncFeature.ConvertStandardZoomToCtecRaw(standardPosition);
         }
 
+        /// <summary>
+        /// Web Agent 표준 Focus Position 0 ~ 1000을 CTEC EO Focus Raw Position 0 ~ 32768로
+        /// 변환한다.
+        /// </summary>
         internal static int ConvertStandardFocusToCtecRaw(int standardPosition)
         {
             return SyncFeature.ConvertStandardFocusToCtecRaw(standardPosition);

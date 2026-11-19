@@ -82,6 +82,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._screenStateFeature._presetSingleMoveCts = value; }
         }
 
+        /// <summary>
+        /// EO 직접 제어 구성을 구분해 WEB AGENT AF 명령을 적용할 대상인지 확인한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IPresetLensFeatureContext.AutoFocusTargetUsesAgent(int target)
         {
             return _features._webAgentMotionFocusFeature.AutoFocusTargetUsesAgent(target);
@@ -92,26 +95,45 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IPresetLensFeatureContext.GetCurrentIrFocusStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrFocusStandardPosition();
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IPresetLensFeatureContext.GetCurrentIrZoomStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
+        /// <summary>
+        /// 현재 EO Focus 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IPresetLensFeatureContext.GetCurrentPresetStandardFocus()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardFocus();
         }
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IPresetLensFeatureContext.GetCurrentPresetStandardZoom()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardZoom();
         }
 
+        /// <summary>
+        /// AF 동작·응답 대기·상태 불명 중 해당 채널의 수동 초점 충돌을 차단한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IPresetLensFeatureContext.IsAutoFocusBlockingManualFocus(bool ir, bool logWarning)
         {
             return _features._webAgentMotionFocusFeature.IsAutoFocusBlockingManualFocus(ir, logWarning);
@@ -127,6 +149,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.IsEnvironmentStatusSelected; }
         }
 
+        /// <summary>
+        /// 2026-09-18: 화면/명령의 표준 좌표가 제공되면 장비 Raw 물리 끝점을 공통 정규화한 값으로 판정한다. Raw 좌표 전용 호출만
+        /// 기존 허용 오차를 유지한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IPresetLensFeatureContext.IsIrZoomTargetReached(int target, int actual, int standardTarget, int tolerance, bool syncCalibration)
         {
             return _features._syncFeature.IsIrZoomTargetReached(target, actual, standardTarget, tolerance, syncCalibration);
@@ -137,16 +163,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
+        /// <summary>
+        /// 2026-10-16: 환경부 장비는 신규 CMD2=0xB7 절대위치를 우선 사용하고 실제 IR 렌즈 피드백으로 도달 여부를 확인한다. 새
+        /// 피드백이 계속 수신되는데도 위치가 전혀 변하지 않을 때만 0x31 폐루프 경로로 전환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Task<bool> IPresetLensFeatureContext.MoveIrZoomToPositionAsync(int targetPosition, CancellationToken cancellationToken, int standardTarget, int tolerance, bool syncCalibration, bool explicitAbsolute)
         {
             return _features._syncFeature.MoveIrZoomToPositionAsync(targetPosition, cancellationToken, standardTarget, tolerance, syncCalibration, explicitAbsolute);
         }
 
+        /// <summary>
+        /// PRESET 1 저장값 기준 EO / IR Focus를 각각 복원한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Task<bool> IPresetLensFeatureContext.MoveLaPresetFocusDirectAsync(int eoStandardPosition, int irStandardPosition, CancellationToken cancellationToken, int eoTolerance, int irTolerance, bool? onlyIr)
         {
             return _features._moveControlFeature.MoveLaPresetFocusDirectAsync(eoStandardPosition, irStandardPosition, cancellationToken, eoTolerance, irTolerance, onlyIr);
         }
 
+        /// <summary>
+        /// PRESET 1 저장값 기준 EO / IR Zoom을 각각 복원한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Task<bool> IPresetLensFeatureContext.MoveLaPresetZoomDirectAsync(int eoStandardPosition, int irPosition, CancellationToken cancellationToken, int eoTolerance, int irTolerance, bool? onlyIr)
         {
             return _features._moveControlFeature.MoveLaPresetZoomDirectAsync(eoStandardPosition, irPosition, cancellationToken, eoTolerance, irTolerance, onlyIr);
@@ -163,6 +199,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.PresetScanDelay = value; }
         }
 
+        /// <summary>
+        /// IR 렌즈의 새 응답에서 이동이 멈춘 정착 위치를 확인한다.
+        /// </summary>
         Task<int> IPresetLensFeatureContext.WaitForIrLensSettledPositionAsync(bool zoom, CancellationToken cancellationToken)
         {
             return _features._syncFeature.WaitForIrLensSettledPositionAsync(zoom, cancellationToken);

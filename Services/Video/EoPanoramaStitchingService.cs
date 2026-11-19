@@ -28,7 +28,7 @@ namespace OpenCvWpfTracking.Services.Video
         private const double LegacyVerticalAovDegrees = 42.5;
 
         /// <summary>
-        /// StitchAndSave 동작 수행 함수.
+        /// 유효한 EO 프레임들을 CPU 기반으로 합성하고 파노라마 결과를 저장한다.
         /// </summary>
         public BitmapSource StitchAndSave(IEnumerable<BitmapSource> sourceFrames, string outputPath)
         {
@@ -427,6 +427,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 촬영 간격과 영상 화각으로 행 사이의 예상 세로 겹침량을 계산한다.
+        /// </summary>
         private static int CalculateNominalVerticalOverlap(int frameHeight, int rowCount)
         {
             // 2 Row는 현장 검증된 기존 38% Geometry를 그대로 보존한다.
@@ -444,6 +447,9 @@ namespace OpenCvWpfTracking.Services.Video
             return Math.Max(24, (int)Math.Round(frameHeight * overlapRatio));
         }
 
+        /// <summary>
+        /// 세로 촬영 행의 공통 영역을 맞춰 하나의 영상 열로 합친다.
+        /// </summary>
         private static Mat MergeTiltRowIntoColumn(Mat accumulatedUpper, Mat nextRow, int overlap, int verticalOffset)
         {
             if (accumulatedUpper == null || nextRow == null || accumulatedUpper.Empty() || nextRow.Empty() || accumulatedUpper.Width != nextRow.Width || accumulatedUpper.Type() != nextRow.Type())
@@ -702,6 +708,9 @@ namespace OpenCvWpfTracking.Services.Video
             return ComposeFixedAngleFullCircle(frames, "SHARED_SINGLE_ROW", "EXPLICIT_10_DEGREE_GEOMETRY", contributionWidth);
         }
 
+        /// <summary>
+        /// 같은 경도를 공유하는 파노라마 행들을 정렬해 합친다.
+        /// </summary>
         private static Mat MergeSharedLongitudeRows(IList<Mat> rows, IList<int> overlaps, IList<int> verticalOffsets, string outputPath)
         {
             if (rows == null || rows.Count < 2 || overlaps == null || overlaps.Count != rows.Count - 1 || verticalOffsets == null || verticalOffsets.Count != rows.Count - 1 || rows.Any(row => row == null || row.Empty() || row.Width != rows[0].Width))
@@ -740,7 +749,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// StitchMatsWithFallback 동작 수행 함수.
+        /// 각도 간격을 고려해 프레임을 합성하고 실패하면 고정 각도 대체 경로를 적용한다.
         /// </summary>
         private static Mat StitchMatsWithFallback(IList<Mat> frames, string stage, out bool usedFixedAngleFallback, bool allowFixedAngleFallback = true)
         {
@@ -882,11 +891,21 @@ namespace OpenCvWpfTracking.Services.Video
             return ComposeFixedAngleFullCircle(frames, stage, reason, 0);
         }
 
+        /// <summary>
+        /// 특징점 기반 카메라 파라미터 추정이 실패해도 10° 간격의 PTZ 촬영 순서를 이용해 전체 36개 방향을 빠짐없이 합성한다. 각 프레임의
+        /// 왜곡이 가장 작은 중앙 10° 영역을 사용하고 경계는 adaptive feathering하여 Scans 모드처럼 일부 방향만 남는 결과를
+        /// 만들지 않는다.
+        /// </summary>
         private static Mat ComposeFixedAngleFullCircle(IList<Mat> frames, string stage, string reason, int forcedContributionWidth)
         {
             return ComposeFixedAngleFullCircle(frames, stage, reason, forcedContributionWidth, null, 1.0);
         }
 
+        /// <summary>
+        /// 특징점 기반 카메라 파라미터 추정이 실패해도 10° 간격의 PTZ 촬영 순서를 이용해 전체 36개 방향을 빠짐없이 합성한다. 각 프레임의
+        /// 왜곡이 가장 작은 중앙 10° 영역을 사용하고 경계는 adaptive feathering하여 Scans 모드처럼 일부 방향만 남는 결과를
+        /// 만들지 않는다.
+        /// </summary>
         private static Mat ComposeFixedAngleFullCircle(IList<Mat> frames, string stage, string reason, int forcedContributionWidth, double[] sharedPanGains, double rowGain)
         {
             if (frames == null || frames.Count < 24)
@@ -1309,6 +1328,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 행 사이 영상 근거에서 안정적인 세로 이음선 기준을 찾는다.
+        /// </summary>
         private static int FindStableVerticalSeamAnchor(byte[] costs, int width, int height)
         {
             if (costs == null || costs.Length < width * height || width <= 2 || height <= 0)
@@ -1371,7 +1393,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// ValidateFullCircleRow 상태 확인 함수.
+        /// 360도 파노라마 행의 크기와 형상이 촬영 입력에 비해 유효한지 검사한다.
         /// </summary>
         private static void ValidateFullCircleRow(Mat panorama, IList<Mat> sourceFrames, string stage)
         {
@@ -1782,6 +1804,9 @@ namespace OpenCvWpfTracking.Services.Video
             return Math.Max(0.85, Math.Min(1.15, gains[gains.Count / 2]));
         }
 
+        /// <summary>
+        /// 중앙 행을 기준으로 각 행의 노출 보정 계수를 계산한다.
+        /// </summary>
         private static double[] BuildCenterAnchoredRowGains(IList<double> pairGains, int rowCount)
         {
             double[] result = Enumerable.Repeat(1.0, rowCount).ToArray();
@@ -1801,6 +1826,9 @@ namespace OpenCvWpfTracking.Services.Video
             return result;
         }
 
+        /// <summary>
+        /// 전체 영상에 같은 노출 보정 계수를 적용한다.
+        /// </summary>
         private static void ApplyUniformExposureGain(Mat image, double gain)
         {
             if (image == null || image.Empty() || Math.Abs(gain - 1.0) < 0.002)
@@ -1811,6 +1839,9 @@ namespace OpenCvWpfTracking.Services.Video
             image.ConvertTo(image, image.Type(), gain, 0.0);
         }
 
+        /// <summary>
+        /// 해당 파노라마 행에 계산된 노출 보정을 적용한다.
+        /// </summary>
         private static void ApplyRowExposureGain(Mat upper, Mat lower, int overlap)
         {
             if (upper == null || lower == null || upper.Empty() || lower.Empty() || overlap < 24)
@@ -1851,6 +1882,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 파노라마 중간 결과와 진단 정보를 저장할 기준 경로를 구한다.
+        /// </summary>
         private static string GetPanoramaDebugRoot(string outputPath)
         {
             string directory = Path.GetDirectoryName(outputPath);
@@ -1863,6 +1897,9 @@ namespace OpenCvWpfTracking.Services.Video
             return Path.Combine(directory, "panorama_debug");
         }
 
+        /// <summary>
+        /// 파노라마 촬영 행별 원본 프레임을 진단 이미지로 저장한다.
+        /// </summary>
         private static void SavePanoramaDebugCapture(IList<List<Mat>> rows, string outputPath)
         {
             try
@@ -1885,6 +1922,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 비어 있지 않은 파노라마 중간 영상을 진단 파일로 저장한다.
+        /// </summary>
         private static void SavePanoramaDebugMat(string outputPath, string folder, string name, Mat image)
         {
             if (image == null || image.Empty())
@@ -1906,6 +1946,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 행 간 겹침량과 위치 보정값을 기하 진단 파일로 저장한다.
+        /// </summary>
         private static void SavePanoramaDebugGeometry(string outputPath, int pairIndex, int nominalOverlap, int stableOverlap, int verticalOffset)
         {
             try
@@ -1971,6 +2014,10 @@ namespace OpenCvWpfTracking.Services.Video
             return BlendRowsMultiBand(upper, lower, seam, 6, 16);
         }
 
+        /// <summary>
+        /// 2026-09-08: Burt-Adelson multiresolution spline을 세로 Row overlap에 적용한다. 고주파
+        /// 디테일은 seam 가까이에서 전환하고 저주파 밝기 차이는 넓게 완화한다.
+        /// </summary>
         private static Mat BlendRowsMultiBand(Mat upper, Mat lower, int[] seam, int maximumLevels, int minimumPyramidSize)
         {
             maximumLevels = Math.Max(1, maximumLevels);
@@ -2154,7 +2201,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// FindLowCostSeam 조회 함수.
+        /// 행 겹침 영역의 영상 차이·윤곽 비용이 낮은 수평 이음선을 찾는다.
         /// </summary>
         private static int[] FindLowCostSeam(Mat upper, Mat lower, int overlap, string debugOutputPath = null, int debugPairIndex = -1)
         {
@@ -2371,7 +2418,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// SaveAndConvert 저장 함수.
+        /// 합성 영상을 파일에 저장한 뒤 WPF 표시용 비트맵으로 변환한다.
         /// </summary>
         private static BitmapSource SaveAndConvert(Mat panorama, string outputPath)
         {
@@ -2476,7 +2523,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// ConvertToBgrMat 생성 및 변환 함수.
+        /// WPF 원본 영상을 OpenCV에서 사용할 BGR Mat으로 복사·변환한다.
         /// </summary>
         private static Mat ConvertToBgrMat(BitmapSource source)
         {
@@ -2556,7 +2603,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// TrimIncompleteOuterEdges 동작 수행 함수.
+        /// 유효 픽셀 비율이 부족한 파노라마 바깥 테두리를 잘라낸다.
         /// </summary>
         private static Rect TrimIncompleteOuterEdges(Mat validMask, Rect initialBounds)
         {
@@ -2613,7 +2660,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// GetHorizontalValidRatio 조회 함수.
+        /// 마스크의 지정 가로줄에서 유효 픽셀 비율을 계산한다.
         /// </summary>
         private static double GetHorizontalValidRatio(Mat mask, int left, int right, int y)
         {
@@ -2624,7 +2671,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// GetVerticalValidRatio 조회 함수.
+        /// 마스크의 지정 세로줄에서 유효 픽셀 비율을 계산한다.
         /// </summary>
         private static double GetVerticalValidRatio(Mat mask, int top, int bottom, int x)
         {
@@ -2635,7 +2682,7 @@ namespace OpenCvWpfTracking.Services.Video
         }
 
         /// <summary>
-        /// DisposeAll 종료 및 자원 해제 함수.
+        /// 목록에 보관한 영상 Mat 자원을 모두 해제한다.
         /// </summary>
         private static void DisposeAll(IEnumerable<Mat> frames)
         {

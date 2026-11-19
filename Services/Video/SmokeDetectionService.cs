@@ -143,6 +143,9 @@ namespace OpenCvWpfTracking.Services.Video
             _diagnosticSnapshotLimitLogged = false;
         }
 
+        /// <summary>
+        /// 현재 진단 설정에 맞는 영상 분석 기록 객체를 만든다.
+        /// </summary>
         private SmokeDiagnosticCapture CreateDiagnosticCapture()
         {
             lock (_diagnosticSync)
@@ -231,6 +234,9 @@ namespace OpenCvWpfTracking.Services.Video
             ResetDetectionState(false);
         }
 
+        /// <summary>
+        /// 현재 프레임을 해당 탐지기로 분석하고 후보·확정 상태를 반환한다.
+        /// </summary>
         internal SmokeDetectionResult Process(Mat frame, bool isEnabled, bool isInfrared, double minimumAreaRatio, double changeThresholdRatio, Rect fireCandidateRect, IList<Rect> aiSmokeCandidates, IList<Rect> aiVehicleCandidates, int smokeBoxGroupingMode, bool compensateCameraMotion = false, bool aiDetectorAvailable = true, int zoomPosition = 0)
         {
             if (!isEnabled || frame == null || frame.Empty())
@@ -476,6 +482,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 기존 영상 탐지·추적 결과를 초기화해 새 분석을 준비한다.
+        /// </summary>
         private SmokeDetectionResult ResetDetectionState(bool isInfrared)
         {
             bool stateChanged = _isDetected;
@@ -506,6 +515,9 @@ namespace OpenCvWpfTracking.Services.Video
             return new SmokeDetectionResult(isInfrared, stateChanged, 0.0, Rect.Empty, 0, false, 0, 0, 0.0, new List<Rect>(), new List<double>());
         }
 
+        /// <summary>
+        /// 선택한 연기 묶음 표시 방식에 따라 모든 후보를 하나로 합치거나 개별 후보를 유지한다.
+        /// </summary>
         private static IList<Rect> ApplySmokeGroupingMode(IList<Rect> candidates, int mode)
         {
             if (candidates == null || candidates.Count <= 1 || mode != 1)
@@ -526,6 +538,9 @@ namespace OpenCvWpfTracking.Services.Video
             };
         }
 
+        /// <summary>
+        /// 탐지 후보의 사각형과 판정 정보를 영상 위에 그린다.
+        /// </summary>
         private static void DrawCandidates(Mat frame, IList<Rect> candidates, bool isInfrared, IList<double> visionScores)
         {
             Scalar color = isInfrared ? new Scalar(0, 215, 255) : new Scalar(255, 255, 0);
@@ -567,6 +582,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// AI 탐지와 겹치는 로컬 영상 후보를 제거해 중복 표시를 줄인다.
+        /// </summary>
         private static IList<Rect> RemoveAiOverlappingCandidates(IList<Rect> visionCandidates, IList<Rect> aiCandidates)
         {
             if (visionCandidates == null || visionCandidates.Count == 0 || aiCandidates == null || aiCandidates.Count == 0)
@@ -609,6 +627,9 @@ namespace OpenCvWpfTracking.Services.Video
             return filtered;
         }
 
+        /// <summary>
+        /// AI 차량 영역과 겹치는 연기 후보를 오탐 억제 기준에 따라 제외한다.
+        /// </summary>
         private static IList<Rect> RemoveAiVehicleOverlappingCandidates(IList<Rect> smokeCandidates, IList<Rect> vehicleCandidates)
         {
             if (smokeCandidates == null || smokeCandidates.Count == 0 || vehicleCandidates == null || vehicleCandidates.Count == 0)
@@ -663,6 +684,9 @@ namespace OpenCvWpfTracking.Services.Video
             return filtered;
         }
 
+        /// <summary>
+        /// 연기 후보를 기존 추적에 대응시키고 초기 누적 평가 구간의 영상 근거 점수를 반영한다.
+        /// </summary>
         private IList<double> AssignVisionScores(IList<Rect> candidates, int frameWidth, int frameHeight, bool isInfrared)
         {
             DateTime nowUtc = DateTime.UtcNow;
@@ -794,6 +818,9 @@ namespace OpenCvWpfTracking.Services.Video
             return Math.Max(15.0, Math.Min(95.0, score));
         }
 
+        /// <summary>
+        /// 후보 사각형의 겹침과 위치 차이를 이용해 일치 정도를 계산한다.
+        /// </summary>
         private static double CalculateRectMatch(Rect left, Rect right)
         {
             Rect intersection = left & right;
@@ -858,6 +885,9 @@ namespace OpenCvWpfTracking.Services.Video
     /// </summary>
     internal struct SmokeDetectionResult
     {
+        /// <summary>
+        /// 연기 탐지 영상과 후보·확정 결과를 반환 객체에 보관한다.
+        /// </summary>
         internal SmokeDetectionResult(bool isDetected, bool stateChanged, double candidateArea, Rect candidateRect, int candidateCount, bool isInfraredSupport, int frameWidth, int frameHeight, double visionScore, IList<Rect> candidateRects, IList<double> candidateScores)
         {
             IsDetected = isDetected;

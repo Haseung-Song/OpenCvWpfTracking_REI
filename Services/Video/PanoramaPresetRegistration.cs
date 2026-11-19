@@ -160,6 +160,9 @@ namespace OpenCvWpfTracking.Services.Video
     /// <summary>영상 비교 없이 저장된 팬·틸트를 실제 행 정합 좌표계로 변환한다.</summary>
     public static class PanoramaPresetRegistration
     {
+        /// <summary>
+        /// 각도 또는 순환 인덱스를 지정한 범위 안으로 감싼다.
+        /// </summary>
         public static double Wrap(double degrees)
         {
             return (degrees % 360 + 360) % 360;
@@ -367,6 +370,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 문자열이 기존 장비 저장 형식의 문맥 해시인지 검사한다.
+        /// </summary>
         private static bool IsContextHash(string value)
         {
             return value != null && value.Length == 64 && value.All(c => Uri.IsHexDigit(c));
@@ -402,6 +408,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 프리셋 번호·Pan·Tilt로 파노라마 연결 프리셋의 식별 해시를 만든다.
+        /// </summary>
         public static string PresetIdentity(PresetPointOption point)
         {
             return ContextIdentity(point.Number + "|" + point.Pan.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "|" + point.Tilt.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
@@ -491,11 +500,17 @@ namespace OpenCvWpfTracking.Services.Video
             metadata.StartPan = Wrap(metadata.Rows[0].FramePans[0] - (contribution * .5 + (metadata.OpticalCenterX - .5) * width) / contribution * 10);
         }
 
+        /// <summary>
+        /// 파노라마 연결 자료의 버전·합성 방식·행 정보·출력 크기가 지원 형식인지 검사한다.
+        /// </summary>
         public static bool Valid(PanoramaCoordinateMetadata data)
         {
             return data != null && data.FormatVersion == 1 && data.GeometryMode == "SHARED_LONGITUDE_ROW_FIRST" && data.Rows != null && data.Rows.Count >= 1 && data.Rows.Count <= 5 && data.ContributionWidth > 0 && data.OutputWidth == data.ContributionWidth * 36 && data.FrameHeight > 0 && data.OutputHeight > 0 && data.FrameWidth > 0 && Finite(data.ReferenceTilt) && data.CaptureRange > 0 && data.CaptureRange <= 60 && data.VerticalFov > 0 && data.VerticalFov < 180 && data.OpticalCenterX >= 0 && data.OpticalCenterX <= 1 && data.OpticalCenterY >= 0 && data.OpticalCenterY <= 1 && data.Rows.All(row => row != null && row.FramePans != null && row.FramePans.Count == 36 && row.FramePans.All(Finite) && Finite(row.ActualTilt) && Finite(row.FinalCenterY) && row.FinalCenterY >= 0 && row.FinalCenterY < data.OutputHeight && row.FramePans.Zip(row.FramePans.Skip(1), (a, b) => Wrap(b - a) > 0 && Wrap(b - a) < 20).All(value => value)) && data.Rows.Zip(data.Rows.Skip(1), (a, b) => a.ActualTilt > b.ActualTilt && a.FinalCenterY < b.FinalCenterY).All(value => value);
         }
 
+        /// <summary>
+        /// 값이 NaN이나 무한대가 아닌 유효한 실수인지 확인한다.
+        /// </summary>
         private static bool Finite(double value)
         {
             return !double.IsNaN(value) && !double.IsInfinity(value);
@@ -675,6 +690,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 장비 문맥과 영상 경로로 파노라마 프리셋 연결 설정 파일 경로를 만든다.
+        /// </summary>
         public static string ConfigPath(string context, string image)
         {
             return Path.Combine(ConfigDirectory, ContextIdentity(context + "|" + image) + ".json");
@@ -742,6 +760,9 @@ namespace OpenCvWpfTracking.Services.Video
             return null;
         }
 
+        /// <summary>
+        /// 장비별 마지막 파노라마 영상 경로를 기록할 JSON 파일 위치를 구한다.
+        /// </summary>
         public static string LastImagePath(string context)
         {
             return Path.Combine(ConfigDirectory, "last_" + ContextIdentity(context) + ".json");

@@ -6,10 +6,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>속성 변경에 따른 저장 대상 전환·계측·연관 속성 알림 순서를 담당한다.</summary>
     internal interface IPropertyChangeContext
     {
+        /// <summary>
+        /// 장비를 바꾸면 이전 목록을 비우고 해당 장비의 저장값만 복원한다.
+        /// </summary>
         void SwitchEquipmentPresets();
 
+        /// <summary>
+        /// 원래 속성 변경 알림을 등록된 화면 통지 경로로 발행한다.
+        /// </summary>
         void Publish(string propertyName);
 
+        /// <summary>
+        /// 연관 속성의 변경을 ViewModel 알림 경로로 전달한다.
+        /// </summary>
         void Notify(string propertyName);
 
         ref long _propertyChangedCount { get; }
@@ -33,6 +42,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly Action<string> _publish;
 
+        /// <summary>
+        /// 기능 객체가 사용할 상태·서비스·콜백의 전달 경로를 연결한다.
+        /// </summary>
         internal PropertyChangeContext(FeatureComposition features, Action<string> publish)
         {
             _features = features ?? throw new ArgumentNullException(nameof(features));
@@ -65,16 +77,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return ref _features._screenStateFeature._focusPropertyChangedCount; }
         }
 
+        /// <summary>
+        /// 장비를 바꾸면 이전 목록을 비우고 해당 장비의 저장값만 복원한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         public void SwitchEquipmentPresets()
         {
             _features._presetStorageFeature.SwitchEquipmentPresets();
         }
 
+        /// <summary>
+        /// 원래 속성 변경 알림을 등록된 화면 통지 경로로 발행한다.
+        /// </summary>
         public void Publish(string propertyName)
         {
             _publish(propertyName);
         }
 
+        /// <summary>
+        /// 연관 속성의 변경을 ViewModel 알림 경로로 전달한다.
+        /// </summary>
         public void Notify(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
@@ -89,6 +110,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private readonly IPropertyChangeContext _context;
 
+        /// <summary>
+        /// 속성 변경의 선행·후속 알림을 조정할 문맥 객체를 연결한다.
+        /// </summary>
         internal PropertyChangeCoordinator(IPropertyChangeContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));

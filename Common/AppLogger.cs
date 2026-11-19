@@ -16,7 +16,7 @@ namespace OpenCvWpfTracking.Common
         private static bool _isInitialized;
 
         /// <summary>
-        /// Initialize 초기화 함수.
+        /// 운용·오류·기술 진단 로그의 저장 경로와 Serilog 출력 구성을 초기화한다.
         /// </summary>
         internal static void Initialize()
         {
@@ -86,7 +86,7 @@ namespace OpenCvWpfTracking.Common
         }
 
         /// <summary>
-        /// Shutdown 동작 수행 함수.
+        /// 남은 로그를 기록하고 로깅 출력 자원을 종료한다.
         /// </summary>
         internal static void Shutdown()
         {

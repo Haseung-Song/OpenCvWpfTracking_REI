@@ -153,11 +153,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _rpySettingsFeature.RequestStoredRpyRate();
         }
 
+        /// <summary>
+        /// 바이트 배열을 진단용 16진수 문자열로 변환한다.
+        /// </summary>
         internal static string ToHex(byte[] packet)
         {
             return RpySettingsFeature.ToHex(packet);
         }
 
+        /// <summary>
+        /// UI 접근이 가능한 스레드인지 확인하고 필요한 경우 Dispatcher로 전달한다.
+        /// </summary>
         internal static void RunOnUiThread(Action action)
         {
             RpySettingsFeature.RunOnUiThread(action);

@@ -9,6 +9,9 @@ namespace OpenCvWpfTracking.Services.Position
     // 지리·깊이 투영이 아니며 미지원 렌즈나 오래된 위치에는 투영하지 않는다.
     public static class ZoneViewProjection
     {
+        /// <summary>
+        /// 고정 설치·자세·렌즈 조건을 검증하고 EO 참조 구역을 현재 시야에 투영한다.
+        /// </summary>
         public static FireSmokeScene Project(FireSmokeScene s, ZoneFrameContext f)
         {
             if (s == null || f == null || s.Camera != "EO" || s.Invalidated || !s.FixedInstallationConfirmed || s.Key != f.Key || !FireSmokeZoneService.ValidPose(f.Position, "EO") || f.HorizontalFov <= 0 || f.HorizontalFov >= 170 || double.IsNaN(f.HorizontalFov) || double.IsInfinity(f.HorizontalFov) || f.Width <= 0 || f.Height <= 0 || s.Zoom < 0 || s.Zoom > 1000 || s.FrameWidth <= 0 || s.FrameHeight <= 0 || Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) >= .005)
@@ -106,6 +109,9 @@ namespace OpenCvWpfTracking.Services.Position
             depth = -Math.Sin(t) * p + Math.Cos(t) * depth;
         }
 
+        /// <summary>
+        /// 두 사각형 또는 구역 도형의 교차 여부를 검사한다.
+        /// </summary>
         public static bool Intersects(FireSmokeZone z, double x, double y, double r, double b)
         {
             if (z.ProjectedPolygon == null)
@@ -116,6 +122,9 @@ namespace OpenCvWpfTracking.Services.Position
             return Area(Clip(z.ProjectedPolygon, x, y, r, b)) > .00000001;
         }
 
+        /// <summary>
+        /// 좌표 또는 사각형이 지정한 구역 안에 포함되는지 검사한다.
+        /// </summary>
         public static bool Contains(FireSmokeZone z, double x, double y, double r, double b)
         {
             if (z.ProjectedPolygon == null)
@@ -128,6 +137,9 @@ namespace OpenCvWpfTracking.Services.Position
             return inside >= box * .999999;
         }
 
+        /// <summary>
+        /// 구역 도형의 면적을 계산한다.
+        /// </summary>
         private static double Area(IList<Point> p)
         {
             double sum = 0;
@@ -142,6 +154,9 @@ namespace OpenCvWpfTracking.Services.Position
             return Math.Abs(sum) * .5;
         }
 
+        /// <summary>
+        /// 구역 도형 좌표를 영상의 유효 경계 안으로 제한한다.
+        /// </summary>
         internal static List<Point> Clip(IList<Point> input, double left, double top, double right, double bottom)
         {
             var p = new List<Point>(input);
@@ -179,6 +194,9 @@ namespace OpenCvWpfTracking.Services.Position
             return p;
         }
 
+        /// <summary>
+        /// 다각형 자르기 경계 방향에 맞춰 점의 X 또는 Y 좌표를 반환한다.
+        /// </summary>
         private static double Value(Point p, int edge)
         {
             if (edge < 2)

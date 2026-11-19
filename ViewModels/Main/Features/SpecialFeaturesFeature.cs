@@ -33,14 +33,27 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsSelectedControlAgentWebAgent { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 2026-08-27: 카메라 이동 또는 영상 조건 변경 뒤 EO/IR 기준 프레임과 시간축 후보를 함께 초기화하여 화면 전체 변화가 이벤트가
+        /// 되지 않게 한다.
+        /// </summary>
         void ResetFireSmokeFrameAnalysis(string reason);
 
         ControlAgentProfileOption SelectedControlAgentProfile { get; set; }
 
+        /// <summary>
+        /// 운용 잠금 검증 후 BOOLEAN 명령을 송신한다. 송신 성공을 장비 적용 확인으로 취급하지 않는다.
+        /// </summary>
         bool SetDigitalZoom(bool ir, bool on);
 
+        /// <summary>
+        /// 현재 열상 팔레트에 맞춰 선택 버튼의 강조 상태를 갱신한다.
+        /// </summary>
         void UpdateThermalPaletteButtonVisual(int paletteType);
 
         Action QuerySpecialFeatureSupportCallback { get; }
@@ -58,6 +71,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly ISpecialFeaturesFeatureContext _context;
 
+        /// <summary>
+        /// 카메라 특수 기능 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal SpecialFeaturesFeature(ISpecialFeaturesFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -180,6 +196,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 2026-10-14 규격 대상별 행을 한 번 생성한다. 기존 LENS 제어는 이동하거나 제거하지 않는다.
+        /// </summary>
         internal void EnsureSpecialFeatures()
         {
             if (_eoSpecialFeatures != null)
@@ -205,6 +224,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 연결/모드 변경 시 이전 장비 capability와 지연된 UI 응답의 적용을 무효화한다.
+        /// </summary>
         internal void ResetSpecialFeatureSession()
         {
             ++_specialFeatureEpoch;
@@ -229,6 +251,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(CanRefreshSpecialFeatures));
         }
 
+        /// <summary>
+        /// EO와 IR 기능 지원 조회를 요청하고 응답 기한을 기록한다.
+        /// </summary>
         internal void QuerySpecialFeatureSupport()
         {
             EnsureSpecialFeatures();
@@ -251,6 +276,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command("SPECIAL FEATURE", "CAPABILITY / EO_TX=" + eo + " / IR_TX=" + ir);
         }
 
+        /// <summary>
+        /// UI 큐에 넣기 전에 세션을 캡처하고 연결 변경 후 도착한 callback을 버린다.
+        /// </summary>
         internal void DispatchSpecialFeaturePacket(byte[] p, Action<byte[]> apply)
         {
             int epoch = _specialFeatureEpoch;
@@ -268,6 +296,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }));
         }
 
+        /// <summary>
+        /// 현재 연결 세션의 지원 응답을 반영하고 필요한 상태 조회를 예약한다.
+        /// </summary>
         internal void ApplySpecialFeatureCapability(byte[] p)
         {
             byte target;
@@ -308,6 +339,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CommandManager.InvalidateRequerySuggested();
         }
 
+        /// <summary>
+        /// 검증한 기능 상태 응답을 해당 채널의 행에 반영한다.
+        /// </summary>
         internal void ApplySpecialFeatureState(byte[] p)
         {
             byte target, id;
@@ -335,6 +369,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CommandManager.InvalidateRequerySuggested();
         }
 
+        /// <summary>
+        /// 기능 미지원 또는 실행 거절 응답을 해당 행에 반영한다.
+        /// </summary>
         internal void ApplySpecialFeatureUnavailable(byte[] p)
         {
             if (p.Length < 6 || p[0] != 1 || p[1] > 1 || p[4] > 1 || (p[3] != 0xE9 && p[3] != 0xE7))
@@ -353,6 +390,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CommandManager.InvalidateRequerySuggested();
         }
 
+        /// <summary>
+        /// supported/settable·지원값·운용 잠금을 재검증한 단발 E9만 전송한다.
+        /// </summary>
         internal void SendSpecialFeature(CameraSpecialFeatureRow row, int value)
         {
             if (!SpecialFeatureReady || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked || !row.CanEdit || !row.Allows(value))
@@ -411,6 +451,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CommandManager.InvalidateRequerySuggested();
         }
 
+        /// <summary>
+        /// 해당 행의 조회 가능 조건을 확인한 후 상태를 요청한다.
+        /// </summary>
         internal void QuerySpecialFeatureState(CameraSpecialFeatureRow row)
         {
             if (!row.CanQuery)
@@ -421,6 +464,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             row.QuerySent(_context._controlCommandService.RequestCameraFeatureState(row.Target, row.Id));
         }
 
+        /// <summary>
+        /// 기존 250ms UI 타이머를 사용한다. 일괄 조회도 한 틱당 한 건으로 제한한다.
+        /// </summary>
         internal void TickSpecialFeatures()
         {
             bool ready = SpecialFeatureReady;

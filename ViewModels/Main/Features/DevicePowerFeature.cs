@@ -47,10 +47,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsSelectedConnectionTarget { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 원래 표본 시각으로 경과 시간을 계산하여 캐시를 최신값으로 위장하지 않는다.
+        /// </summary>
         void RefreshWebAgentEquipmentState();
 
+        /// <summary>
+        /// 연결마다 이전 캐시 시각과 기능 협상 결과를 비운다.
+        /// </summary>
         void ResetWebAgentTelemetrySession();
 
         ControlAgentProfileOption SelectedControlAgentProfile { get; set; }
@@ -70,11 +79,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IDevicePowerFeatureContext _context;
 
+        /// <summary>
+        /// 장비 전원 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal DevicePowerFeature(IDevicePowerFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _connectedControlAgentEndpoint = "-";
@@ -312,6 +327,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 카메라별로 마지막 확인된 전원 상태와 확인 시점을 보관한다.
+        /// </summary>
         internal void RememberCameraPower(string camera, bool on)
         {
             lock (_lastCameraPower)
@@ -329,6 +347,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 대상과 전원 확인 근거를 바탕으로 제어 상태 문구를 구성한다.
+        /// </summary>
         internal string GetCameraPowerControlText(string camera)
         {
             if (!_context.IsSelectedConnectionTarget)
@@ -358,6 +379,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return "UNKNOWN";
         }
 
+        /// <summary>
+        /// 전원 확인 상태를 화면 표시 색상으로 변환한다.
+        /// </summary>
         internal static string GetPowerStatusColor(string value)
         {
             if (value == "ON")
@@ -370,6 +394,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 구형 장비 응답을 카메라 전원 표시 문구로 변환한다.
+        /// </summary>
         internal static string GetLegacyCameraPowerText(string status, string camera)
         {
             if (string.Equals(status, "[" + camera + "] Connected", StringComparison.OrdinalIgnoreCase))
@@ -385,6 +412,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return "OFF";
         }
 
+        /// <summary>
+        /// 장비 전원 제어 명령과 수신 근거의 유효성 확인을 준비한다.
+        /// </summary>
         internal void InitializeDevicePowerSettings()
         {
             EoPowerOnCommand = new RelayCommand(() => SendDevicePower(EoPowerDeviceCode, true, "EO"), () => IsEoPowerOnEnabled);
@@ -405,6 +435,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             VerifyDevicePowerProtocol();
         }
 
+        /// <summary>
+        /// 2026-10-06: 전원 요청 4종과 고정 13Byte Function 0x31 분할 수신을 시작 시 자체 검증한다. 실패 시 기능 전체를
+        /// 중단하지 않고 진단 로그를 남긴다.
+        /// </summary>
         internal static void VerifyDevicePowerProtocol()
         {
             try
@@ -456,6 +490,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 전원 제어 시험 패킷이 기대한 바이트와 일치하는지 확인한다.
+        /// </summary>
         internal static void VerifyDevicePowerPacket(string name, byte deviceCode, bool turnOn, byte[] expected)
         {
             byte[] actual = ControlCommandService.BuildDevicePowerPacket(deviceCode, turnOn);
@@ -466,6 +503,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 선택 장비와 대상 채널을 확인한 뒤 전원 명령을 송신한다.
+        /// </summary>
         internal void SendDevicePower(byte deviceCode, bool turnOn, string deviceName)
         {
             if (!_context.IsSelectedConnectionTarget)
@@ -539,6 +579,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-10-06: 0x31의 MCB/SCB 원본 상태를 보존한다. 요청 송신 여부로 상태를 추정하지 않고 이 수신값만 표시 기준으로
+        /// 사용한다.
+        /// </summary>
         internal void ApplyDevicePowerStatus(byte mcbStatus, byte scbStatus, DateTime? sourceTime = null, string sourceFunction = "0x31")
         {
             string powerResponseSession = _connectionSessionId;
@@ -614,6 +658,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }));
         }
 
+        /// <summary>
+        /// 연결 세션 변경 시 이전 전원 근거와 진행 중 명령 상태를 초기화한다.
+        /// </summary>
         internal void ResetDevicePowerStatus()
         {
             _hasDevicePowerStatus = false;
@@ -649,6 +696,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(IrPowerControlStatusText));
         }
 
+        /// <summary>
+        /// 2026-10-06: 선택 대상과 실제 연결 세션을 분리해 늦은 0x31이 새 ComboBox 프로필 소유로 기록되는 문제를 방지한다.
+        /// </summary>
         internal void BeginConnectedControlAgentSession()
         {
             if (_connectedControlAgentProfile != null)
@@ -671,6 +721,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("CONTROL SESSION", "START / SESSION=" + _connectionSessionId + " / ENDPOINT=" + _connectedControlAgentEndpoint + " / PROFILE=" + (_connectedControlAgentProfile?.DisplayName ?? "UNKNOWN"));
         }
 
+        /// <summary>
+        /// 연결 장비 세션 정보를 종료해 이전 장비 응답을 새 연결에 적용하지 않는다.
+        /// </summary>
         internal void EndConnectedControlAgentSession()
         {
             _devicePowerFreshnessTimer?.Stop();
@@ -684,6 +737,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ResetDevicePowerStatus();
         }
 
+        /// <summary>
+        /// 마지막 전원 응답의 경과 시간을 확인해 오래된 근거의 표시를 갱신한다.
+        /// </summary>
         internal void DevicePowerFreshnessTimer_Tick(object sender, EventArgs e)
         {
             _context.RefreshWebAgentEquipmentState();

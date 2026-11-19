@@ -21,8 +21,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsOperationCommandEnabled { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// GPS 위치·이동·수신 품질을 위치 상태에 반영한다.
+        /// </summary>
         void UpdatePositionGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid);
 
         Action RequestGpsTelemetryCallback { get; }
@@ -42,11 +48,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IGpsSettingsFeatureContext _context;
 
+        /// <summary>
+        /// GPS 설정 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal GpsSettingsFeature(IGpsSettingsFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _gpsAutoTxRateInput = "1";
@@ -267,6 +279,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// GPS 조회·전송 주기 명령과 현재 상태 표시를 준비한다.
+        /// </summary>
         internal void InitializeGpsSettings()
         {
             RequestGpsTelemetryCommand = new RelayCommand(_context.RequestGpsTelemetryCallback);
@@ -278,6 +293,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             VerifyGpsProtocolEncoding();
         }
 
+        /// <summary>
+        /// 현재 장비·연결·기능 지원 상태에서 GPS 설정을 사용할 수 있는지 확인한다.
+        /// </summary>
         internal bool CanUseGpsSettings(out string reason)
         {
             // 2026-10-06: HOME/ZERO, AUTO SCAN, panorama capture/processing 중에는
@@ -308,6 +326,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// 현재 연결 장비에 GPS 상태 조회를 요청한다.
+        /// </summary>
         internal void RequestGpsTelemetry()
         {
             if (!CanUseGpsSettings(out string reason))
@@ -331,6 +352,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 입력한 GPS 자동 전송 주기를 검증한 뒤 장비에 설정을 요청한다.
+        /// </summary>
         internal void ApplyGpsAutoTxRate()
         {
             if (!CanUseGpsSettings(out string reason))
@@ -367,6 +391,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비에 저장된 GPS 자동 전송 주기를 조회한다.
+        /// </summary>
         internal void RequestGpsAutoTxRate()
         {
             if (!CanUseGpsSettings(out string reason))
@@ -390,6 +417,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 새 연결의 GPS 전송 주기를 조회해 이전 세션 표시가 남지 않게 한다.
+        /// </summary>
         internal void RequestGpsAutoTxRateAfterConnection()
         {
             if (_context._laTcpService == null || !_context._laTcpService.IsConnected)
@@ -402,6 +432,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command("GPS RATE CONNECT QUERY TX", "PACKET=FF 01 00 F9 00 00 FA / SENT=" + sent);
         }
 
+        /// <summary>
+        /// GPS 응답을 해석하고 유효한 위치·방향 데이터를 반영한다.
+        /// </summary>
         internal void ParseWebAgentGps(byte[] payload)
         {
             if (!TryParseGpsPayload(payload, out GpsTelemetryData gps, out string error))
@@ -422,6 +455,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RecordGpsTelemetry(gps, receivedAt, fixValid);
         }
 
+        /// <summary>
+        /// 수신한 GPS 상태를 위치 상태 저장소와 화면 표시 근거에 기록한다.
+        /// </summary>
         internal void RecordGpsTelemetry(GpsTelemetryData gps, DateTimeOffset receivedAt, bool fixValid)
         {
             bool updateUi = false;
@@ -488,6 +524,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// GPS·IMU 수신 원시값을 방위 기준 계산에 보관한다.
+        /// </summary>
         internal void UpdateGpsImuRawReference(double yaw)
         {
             lock (_gpsTelemetrySync)
@@ -498,6 +537,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RunOnUiThread(_context.UpdateGpsHeadingReferenceDisplayCallback);
         }
 
+        /// <summary>
+        /// GPS 방위 기준과 IMU 원시값에 연결된 표시를 갱신한다.
+        /// </summary>
         internal void UpdateGpsHeadingReferenceDisplay()
         {
             string gpsText = _latestGpsCourseDegrees.HasValue ? _latestGpsCourseDegrees.Value.ToString("F2", CultureInfo.InvariantCulture) + "°" : "--";
@@ -513,6 +555,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             GpsHeadingReferenceDisplay = "GPS COURSE " + gpsText + " / IMU RAW YAW " + imuText + " / OFFSET " + offsetText + " / 진북 " + trueNorthText;
         }
 
+        /// <summary>
+        /// WebAgent API의 trueNorthHeadingDegrees 계산 의미와 동일하게 각도를 0 이상 360 미만으로 정규화한다.
+        /// </summary>
         internal static double NormalizeHeadingDegrees(double value)
         {
             double normalized = value % 360.0;
@@ -527,6 +572,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// GPS 자동 전송 주기 응답을 해석해 현재 설정 표시를 갱신한다.
+        /// </summary>
         internal void ParseGpsAutoTxRateResponse(byte[] payload)
         {
             if (payload == null || payload.Length != 2)
@@ -561,6 +609,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("GPS RATE RX", "FUNCTION=0x30 / VERSION=" + version + " / HZ=" + frequencyHz);
         }
 
+        /// <summary>
+        /// 수신한 GPS 자동 전송 주파수를 화면에 반영한다.
+        /// </summary>
         internal void UpdateGpsRateDisplay()
         {
             string configured = _gpsAutoTxRate.HasValue ? _gpsAutoTxRate.Value.ToString(CultureInfo.InvariantCulture) + " Hz" : "조회 대기";
@@ -570,6 +621,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CurrentGpsRateDisplay = "현재 설정: " + configured + " / GUI 수신 패킷률: " + measured;
         }
 
+        /// <summary>
+        /// GPS 미지원·사용 불가 응답을 설정 상태와 안내에 반영한다.
+        /// </summary>
         internal void HandleGpsUnavailable(byte[] payload)
         {
             if (payload == null || payload.Length < 6)
@@ -593,6 +647,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// GPS 조회·설정 실패 사유를 상태 안내에 반영한다.
+        /// </summary>
         internal void SetGpsFailure(string message)
         {
             RunOnUiThread(() => GpsStatusText = message);
@@ -600,6 +657,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("GPS RX", message);
         }
 
+        /// <summary>
+        /// GPS 전송 주파수 처리 실패를 상태 안내에 반영한다.
+        /// </summary>
         internal void SetGpsRateFailure(string message)
         {
             RunOnUiThread(() => GpsRateStatusText = message);
@@ -607,6 +667,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("GPS RATE RX", message);
         }
 
+        /// <summary>
+        /// GPS 응답 길이와 형식을 검사하고 위치·품질 필드를 해석한다.
+        /// </summary>
         internal static bool TryParseGpsPayload(byte[] payload, out GpsTelemetryData gps, out string error)
         {
             gps = null;
@@ -657,6 +720,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// GPS 명령의 바이트 배치와 체크섬을 자체 검증한다.
+        /// </summary>
         internal static void VerifyGpsProtocolEncoding()
         {
             try
@@ -723,6 +789,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// GPS 시험 패킷이 기대한 바이트와 일치하는지 확인한다.
+        /// </summary>
         internal static void VerifyGpsPacket(string name, byte[] packet, string expected)
         {
             string actual = ToHex(packet);

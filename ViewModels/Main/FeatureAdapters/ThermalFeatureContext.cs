@@ -37,6 +37,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
+        /// <summary>
+        /// 검출 OFF는 해당 종류의 ACTIVE만 해제한다. 이력과 다른 검출 종류는 보존한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IThermalFeatureContext.ClearDisabledVisionEvents(bool fire, bool writeAudit)
         {
             _features._fireEventsFeature.ClearDisabledVisionEvents(fire, writeAudit);
@@ -67,16 +70,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IThermalFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// 2026-08-27: 카메라 이동 또는 영상 조건 변경 뒤 EO/IR 기준 프레임과 시간축 후보를 함께 초기화하여 화면 전체 변화가 이벤트가
+        /// 되지 않게 한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IThermalFeatureContext.ResetFireSmokeFrameAnalysis(string reason)
         {
             _features._smokeFeature.ResetFireSmokeFrameAnalysis(reason);
         }
 
+        /// <summary>
+        /// 로컬 영상 후보와 기존 추적 이벤트를 대응시켜 생성·유지·해제를 반영한다.
+        /// </summary>
         void IThermalFeatureContext.UpdateVisionBBoxEvents(string camera, string detectionType, System.Collections.Generic.IList<OpenCvSharp.Rect> candidates, System.Collections.Generic.IList<double> candidateScores, string detectionSource, Services.Position.ZoneFrameContext zoneFrame)
         {
             _features._fireEventsFeature.UpdateVisionBBoxEvents(camera, detectionType, candidates, candidateScores, detectionSource, zoneFrame);

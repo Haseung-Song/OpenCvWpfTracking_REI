@@ -38,11 +38,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.IsOperationCommandEnabled; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IRpySettingsFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// GPS 방위 기준과 IMU 원시값에 연결된 표시를 갱신한다.
+        /// </summary>
         void IRpySettingsFeatureContext.UpdateGpsHeadingReferenceDisplay()
         {
             _features._gpsSettingsFeature.UpdateGpsHeadingReferenceDisplay();

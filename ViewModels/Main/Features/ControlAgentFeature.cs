@@ -77,8 +77,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         double _webAgentTiltMinimum { get; set; }
 
+        /// <summary>
+        /// 2026-10-06: 0x31의 MCB/SCB 원본 상태를 보존한다. 요청 송신 여부로 상태를 추정하지 않고 이 수신값만 표시 기준으로
+        /// 사용한다.
+        /// </summary>
         void ApplyDevicePowerStatus(byte mcbStatus, byte scbStatus, DateTime? sourceTime = null, string sourceFunction = "0x31");
 
+        /// <summary>
+        /// 2026-10-06: 선택 대상과 실제 연결 세션을 분리해 늦은 0x31이 새 ComboBox 프로필 소유로 기록되는 문제를 방지한다.
+        /// </summary>
         void BeginConnectedControlAgentSession();
 
         string ControlAgentConnectionStatusColor { get; set; }
@@ -115,6 +122,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         byte EffectivePanTiltSpeedLevel { get; }
 
+        /// <summary>
+        /// 연결 장비 세션 정보를 종료해 이전 장비 응답을 새 연결에 적용하지 않는다.
+        /// </summary>
         void EndConnectedControlAgentSession();
 
         string EnvironmentEoFocusStatusText { get; }
@@ -129,12 +139,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string EoStatusText { get; set; }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// Web Agent의 0/360도 경계를 고려한 Tilt 차이를 반환한다. ROOFTOP LA는 기존 선형 -90 ~ 90도 차이를 유지한다.
+        /// </summary>
         double GetTiltDifference(double currentTilt, double targetTilt);
 
+        /// <summary>
+        /// 새 WEB AGENT 연결의 조회·상태 관리 세션을 초기화한다.
+        /// </summary>
         void InitializeWebAgentSession();
 
         string IrSourceAddress { get; set; }
@@ -143,22 +169,43 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string LrfDistanceText { get; set; }
 
+        /// <summary>
+        /// 기존 형식의 상태 수신 시각을 기록해 오래된 상태와 구분한다.
+        /// </summary>
         void MarkLegacyWebAgentStatusReceived(ushort panRaw, ushort tiltRaw);
 
+        /// <summary>
+        /// 채널별 렌즈 응답 시각을 원자적으로 기록한다.
+        /// </summary>
         void MarkLensEvidence(bool ir);
 
+        /// <summary>
+        /// 2026-10-14 실제 수신된 유효 Zoom/Focus 증거를 축별로 보관한다. 명령 추정값은 증거가 아니다.
+        /// </summary>
         void MarkPresetLensEvidence(bool ir, bool zoom, bool focus);
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         string PanTiltCoordinateRangeText { get; }
 
         string PanTiltSpeedDisplayText { get; }
 
+        /// <summary>
+        /// WEB AGENT 텔레메트리의 명령·채널을 판별해 해당 상태 해석기로 전달한다.
+        /// </summary>
         void ParseWebAgentTelemetryPacket(LaResponsePacket packet);
 
+        /// <summary>
+        /// 입력 세대를 갱신해 대기 명령을 무효화하고 필요할 때 전체 PTZF를 정지한다.
+        /// </summary>
         void ReleaseAllControlInputs(string reason);
 
+        /// <summary>
+        /// 연결 세션의 capability·응답·요청·추정 및 클릭 증거를 초기화한다.
+        /// </summary>
         void ResetDigitalZoomSession();
 
         string RooftopEoFocusStatusText { get; }
@@ -173,18 +220,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string SessionControlPort { get; }
 
+        /// <summary>
+        /// 위치 상태 저장소에 현재 장비의 연결 여부를 반영한다.
+        /// </summary>
         void SetPositionConnectionState(bool connected);
 
+        /// <summary>
+        /// 연결 직후와 다른 탭에서도 5초마다 읽기 전용 F1 조회. SYSTEM TIME 탭은 기존 1Hz이며 응답 대기 중에는 중복 송신하지
+        /// 않는다.
+        /// </summary>
         void StartSystemTimePollingAfterConnection();
 
+        /// <summary>
+        /// 시각 자동 조회를 멈추고 진행 중 조회 표시를 초기화한다.
+        /// </summary>
         void StopSystemTimePolling(string reason);
 
         string TiltAbsoluteRangeLabel { get; }
 
         double? TiltAbsoluteValue { get; set; }
 
+        /// <summary>
+        /// IR 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         void UpdatePositionIrLens(int irZoom, int irFocus);
 
+        /// <summary>
+        /// 수신한 PTZ와 EO 렌즈 값을 위치 상태에 반영한다.
+        /// </summary>
         void UpdatePositionPtzAndEoLens(double pan, double tilt, int eoZoom, int eoFocus);
     }
 
@@ -196,6 +259,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IControlAgentFeatureContext _context;
 
+        /// <summary>
+        /// 장비 연결·응답 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal ControlAgentFeature(IControlAgentFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -229,6 +295,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// Control Agent TCP 연결 상태 UI 갱신
+        /// </summary>
         internal void SetControlAgentConnectionStatus(string statusText, string statusColor, CancellationToken token = default(CancellationToken))
         {
             if (token.IsCancellationRequested)
@@ -296,6 +365,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             });
         }
 
+        /// <summary>
+        /// [Control Agent] 제어 TCP 연결 기존 고흥 제어 구조는 유지하며, 운용 환경에 따라 연결 대상 IP / Port만 변경하여
+        /// 사용한다.
+        /// </summary>
         internal async Task<bool> ConnectLaAsync()
         {
             ConsoleLogHelper.InfoSection("CONTROL AGENT", "TCP connect workflow started", string.Empty, $"TARGET : {_context.ControlAgentIp}:{_context.ControlAgentPortText}");
@@ -423,6 +496,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 통신 설정 탭에서 선택된 EO / IR RTSP 주소 검증 선택값이 없거나 rtsp / rtsps 형식이 아닌 주소는 실제 FFmpeg 연결
+        /// 전에 차단한다.
+        /// </summary>
         internal bool TryGetRtspEndpoints(out string eoRtspAddress, out string irRtspAddress)
         {
             eoRtspAddress = _context.EoSourceAddress?.Trim();
@@ -475,6 +552,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _isEoRtspAddressValid || _isIrRtspAddressValid;
         }
 
+        /// <summary>
+        /// RTSP 주소 형식 확인 절대 URI이며 Scheme이 rtsp 또는 rtsps인 경우만 유효한 영상 주소로 처리한다.
+        /// </summary>
         internal static bool IsValidRtspAddress(string address)
         {
             if (string.IsNullOrWhiteSpace(address))
@@ -496,6 +576,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return supportedScheme && !string.IsNullOrWhiteSpace(uri.Host) && validPort;
         }
 
+        /// <summary>
+        /// 통신 설정 탭의 Control Agent IP / Port 입력값 검증 Port는 문자열로 관리한 뒤 연결 시점에 TryParse하여
+        /// 빈값이나 문자 입력으로 인한 바인딩 예외를 방지한다.
+        /// </summary>
         internal bool TryGetControlAgentEndpoint(out string ipAddress, out int port)
         {
             ipAddress = _context.SessionControlIp?.Trim();
@@ -532,6 +616,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// [Control Agent] 비정상 연결 종료 처리 현재 통신 설정 탭에 입력된 IP / Port를 사용하여 자동 재연결을 시작한다.
+        /// </summary>
         internal void OnControlAgentConnectionClosed()
         {
             // 재연결된 세션에 이전에 누른 키 입력을 재전송하지 않는다.
@@ -570,6 +657,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             StartControlAgentReconnect(targetIp, targetPort);
         }
 
+        /// <summary>
+        /// [Control Agent] 자동 재연결 Loop 시작 최초 연결 실패 또는 운용 중 연결 종료 시 연결 해제 요청 전까지 일정 간격으로
+        /// 재연결한다.
+        /// </summary>
         internal void StartControlAgentReconnect(string ipAddress, int port)
         {
             if (_context._controlAgentReconnectCts != null && !_context._controlAgentReconnectCts.IsCancellationRequested)
@@ -662,6 +753,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             });
         }
 
+        /// <summary>
+        /// [CONTROL AGENT] [TCP] 수신 데이터 처리 함수 [TcpClientService]에서 byte[] 원본 데이터를 받으면,
+        /// [LaPacketParser]를 통해 12byte [Packet] 단위로 분리한다.
+        /// </summary>
         internal void OnLaMessageReceived(byte[] data, DateTime receiveTime)
         {
             // 수신된 [byte[] 데이터]를 [CONTROL AGENT] 응답 [Packet] 목록으로 변환.
@@ -677,6 +772,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [CONTROL AGENT] 응답 [Packet] 처리 함수 [Function] 번호를 기준으로 [Status] / [Alive] /
+        /// [Extended Status Packet]을 구분한다.
+        /// </summary>
         internal void HandleLaPacket(LaResponsePacket packet)
         {
             // [Header] / [Checksum] 검증 실패 시 처리하지 않음
@@ -833,6 +932,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-09-30: WebAgent 연결마다 TILT 제한값을 한 번 조회한다. LA Agent에서는 기존 고정 범위를 사용하므로 요청하지
+        /// 않는다.
+        /// </summary>
         internal void RequestWebAgentTiltLimitsAfterConnection()
         {
             if (_context._controlCommandService == null || !_context._controlCommandService.UseUnsignedWebAgentTiltCoordinates || Interlocked.Exchange(ref _context._webAgentTiltLimitQueryRequested, 1) != 0)
@@ -850,6 +953,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// WebAgent Function 0x02 응답에서 TILT 음수/양수 한계를 해석한다. POS/NEG는 각각 unsigned LE16이며
+        /// 단위는 0.01°이다.
+        /// </summary>
         internal void ParseWebAgentTiltLimitPacket(byte[] packet)
         {
             if (_context._controlCommandService == null || !_context._controlCommandService.UseUnsignedWebAgentTiltCoordinates)
@@ -911,6 +1018,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.StateSection("WEB AGENT TILT LIMIT", "Limits updated", string.Empty, $"NEGATIVE={negativeLimit:F2}deg", $"POSITIVE={positiveLimit:F2}deg", "SOURCE=FUNCTION_0x02");
         }
 
+        /// <summary>
+        /// 연결 종료 시 이전 장비의 제한값이 다음 연결에 남지 않게 초기화한다.
+        /// </summary>
         internal void ResetWebAgentTiltLimits()
         {
             Interlocked.Exchange(ref _context._webAgentTiltLimitQueryRequested, 0);
@@ -941,6 +1051,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// [CONTROL AGENT] 상태 로그 출력 여부 확인 현재 시간과 마지막 출력 시간을 비교하여 설정된 출력 간격 이내인 경우
+        /// [Console] 출력을 생략한다. [0x01] 상태 [Packet] 로그 출력 제어용
+        /// </summary>
         internal bool CanPrintLaLog()
         {
             if ((DateTime.Now - _context._lastLaStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
@@ -953,6 +1067,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// [CONTROL AGENT] [Extended Status] 로그 출력 여부 확인 현재 시간과 마지막 출력 시간을 비교하여 설정된 출력 간격
+        /// 이내인 경우 [Console] 출력을 생략한다. [0xA1] 확장 상태 Packet 로그 출력 제어용.
+        /// </summary>
         internal bool CanPrintLaExtendedStatusLog()
         {
             if ((DateTime.Now - _context._lastLaExtendedStatusLogTime).TotalSeconds < LaLogIntervalSeconds)
@@ -965,6 +1083,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// [CONTROL AGENT] [Status Packet] 파싱 [Function] [0x01]: [Pan] / [Tilt] / [EO
+        /// Zoom] / [EO Focus] / [Power] 상태 정보 응답 Packet의 2Byte 이상 값은 Little Endian 방식으로
+        /// 처리한다.
+        /// </summary>
         internal void ParseLaStatusPacket(byte[] packet, bool printLog, bool countFunction01 = true)
         {
             const int requiredLength = 12;
@@ -1115,6 +1238,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT PAN/TILT POSITION", $"PAN_RAW={panUnsignedRaw} / PAN_SIGNED_RAW={panSignedRaw} / " + $"PAN_WEB_DEG={NormalizeUnsignedWebAgentAngle(panUnsignedRaw / 100.0):F2} / " + $"PAN_DEG={panDegree:+0.00;-0.00;0.00} / " + $"TILT_RAW={tiltUnsignedRaw} / TILT_SIGNED_RAW={tiltSignedRaw} / " + $"TILT_DEG={tiltDegree:+0.00;-0.00;0.00} / " + $"MODE={(_context._controlCommandService.UseUnsignedWebAgentPanCoordinates ? "WEB_AGENT_UNSIGNED" : "LA_SIGNED")}");
         }
 
+        /// <summary>
+        /// 2026-09-15: Web Agent의 0 ~ 360도 상태를 GUI 공통 -180 ~ 180도로 정규화한다.
+        /// </summary>
         internal static double NormalizeUnsignedWebAgentAngle(double angle)
         {
             double normalizedAngle = angle % 360.0;
@@ -1127,6 +1253,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return normalizedAngle;
         }
 
+        /// <summary>
+        /// 2026-09-16: Web Agent 원시 Pan은 우회전 시 감소하므로 GUI/파노라마/프리셋의 우회전 증가 좌표계로 변환한다.
+        /// </summary>
         internal static double ConvertWebAgentPanToGuiAngle(double webAgentAngle)
         {
             double guiAngle = NormalizeUnsignedWebAgentAngle(360.0 - webAgentAngle);
@@ -1143,6 +1272,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-09-15: Web Agent Tilt 상태는 전송 구간에서 0 ~ 360도를 사용하지만, GUI와 파노라마/프리셋 계산에서는 위쪽
+        /// 양수, 아래쪽 음수(-90 ~ 90)를 사용한다. 물리 가동범위 밖의 값은 마지막 정상값을 유지하여 잘못된 상태가 제어 계산에 섞이지 않게
+        /// 한다.
+        /// </summary>
         internal static double NormalizeUnsignedWebAgentTilt(double angle, double fallbackTilt)
         {
             double normalizedAngle = NormalizeUnsignedWebAgentAngle(angle);
@@ -1159,6 +1293,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return signedTilt;
         }
 
+        /// <summary>
+        /// EO 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         internal void NotifyEoCurrentStatusChanged(bool panChanged = true, bool tiltChanged = true, bool zoomChanged = true, bool focusChanged = true, bool powerChanged = true)
         {
             // 예상 목표값이 아니라 실제 수신한 값을 근거로 사용한다.
@@ -1199,6 +1336,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            /// <summary>
+            /// 연관 속성의 변경을 ViewModel 알림 경로로 전달한다.
+            /// </summary>
             void Notify()
             {
                 bool notifyPan = Interlocked.Exchange(ref _eoPanNotificationDirty, 0) != 0;
@@ -1304,6 +1444,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             });
         }
 
+        /// <summary>
+        /// IR 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         internal void NotifyIrCurrentStatusChanged()
         {
             Dispatcher dispatcher = System.Windows.Application.Current?.Dispatcher;
@@ -1313,6 +1456,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
                 return;
             }
 
+            /// <summary>
+            /// 연관 속성의 변경을 ViewModel 알림 경로로 전달한다.
+            /// </summary>
             void Notify()
             {
                 // 동일한 주기 상태는 IR·상태 바인딩 전체를 다시 그리지 않는다.
@@ -1383,6 +1529,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             });
         }
 
+        /// <summary>
+        /// 환경장비 Web Agent가 IR 상태 패킷을 보내지 않는 경우에만 사용하는 성공한 명령값 기반 UI 상태 보완이다. 실제 Function
+        /// 0x07 패킷이 수신되면 실측값으로 다시 덮어쓴다.
+        /// </summary>
         internal void ApplyEnvironmentIrCommandedPosition(int? zoomPosition, int? focusPosition, string reason)
         {
             // 2026-11-03 정비: 실제 상태가 이미 수신되는 장비의 현재값을 명령값으로 덮어쓰지 않는다.
@@ -1406,6 +1556,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("IR LENS STATUS", "Commanded-position fallback applied" + $" / ZOOM={_context._currentIrZoom}" + $" / FOCUS={_context._currentIrFocus}" + $" / REASON={reason}");
         }
 
+        /// <summary>
+        /// [CONTROL AGENT] [IR Camera Status Packet] 파싱 Function 0x07 열영상 카메라의 Zoom /
+        /// Focus 현재 위치값을 파싱한다. 수신 Packet 구조: [2] [3] : IR Zoom Position [4] [5] : IR
+        /// Focus Position 장비 제어 명령 문서의 Position 입력은 Big Endian이지만, 현재 CONTROL AGENT에서
+        /// 수신되는 0x07 상태 Packet은 실제 로그 기준 Little Endian으로 확인된다. 예: D6 03 → 982 E8 03 →
+        /// 1000 정상 범위: 0 ~ 1000 범위를 벗어난 값은 상태값에 반영하지 않고 원본 Packet과 함께 Console에 출력한다.
+        /// </summary>
         internal void ParseLaIrCameraStatusPacket(LaResponsePacket packet, bool printLog)
         {
             if (packet == null || packet.RawData == null || packet.RawData.Length < 12)
@@ -1501,6 +1658,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [CONTROL AGENT] [Extended Status] Packet 확인 Function 0xA1 현재 문서에서 IR Zoom /
+        /// Focus 상태 Packet으로 확인되지 않았으므로 CURRENT STATUS에는 반영하지 않는다. 의미가 확정되지 않은 Packet 값을
+        /// IR 상태에 넣으면 정상적으로 파싱된 Function 0x07 값이 잘못 덮어써질 수 있다.
+        /// </summary>
         internal void ParseLaExtendedStatusPacket(byte[] packet, bool printLog)
         {
             if (!printLog)
@@ -1523,6 +1685,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// [LRF] 거리측정 응답 [Packet] 파싱 거리값은 [8byte double] 형식이며, [Little Endian] 방식으로 저장된다.
+        /// 현재는 장비 응답 [Function] 번호 확인 전 단계이며, 실제 거리 응답 수신 시 [HandleLaPacket]의 [Function]
+        /// 분기와 함께 최종 검증 예정이다.
+        /// </summary>
         internal void ParseLrfDistancePacket(byte[] packet)
         {
             if (packet == null || packet.Length < 10)

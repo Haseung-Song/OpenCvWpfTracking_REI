@@ -33,7 +33,7 @@ namespace FireCandidateValidator
         private readonly List<TestFireTrack> _fireTracks = new List<TestFireTrack>();
 
         /// <summary>
-        /// Analyze 동작 수행 함수.
+        /// 영상의 변화·윤곽·추적 지속성을 분석해 탐지 후보와 확정 상태를 반환한다.
         /// </summary>
         internal FireCandidateAnalysis Analyze(Mat source, double thresholdRatio, double minimumAreaRatio, int confirmationFrameCount, int fireBoxGroupingMode)
         {
@@ -349,6 +349,9 @@ namespace FireCandidateValidator
             }
         }
 
+        /// <summary>
+        /// 큰 화재 후보의 움직임과 프레임 간 변화가 화염 근거로 충분한지 판단한다.
+        /// </summary>
         private static bool HasStrongLargeTemporalFlameEvidence(Rect rect, Mat motionMask, Mat candidateMask, Mat candidateChangeMask, bool hasMotionReference, bool hasCandidateReference, double globalMotionRatio)
         {
             if (!hasMotionReference || !hasCandidateReference || globalMotionRatio > 0.25 || rect.Width <= 0 || rect.Height <= 0)
@@ -531,7 +534,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// Reset 동작 수행 함수.
+        /// 화재 분석의 이전 영상·후보 마스크·고정 구조와 추적 누적 상태를 초기화한다.
         /// </summary>
         internal void Reset()
         {
@@ -697,6 +700,9 @@ namespace FireCandidateValidator
             return visible;
         }
 
+        /// <summary>
+        /// 두 사각형의 교집합 면적을 합집합 면적으로 나누어 겹침 비율을 계산한다.
+        /// </summary>
         private static double CalculateIntersectionOverUnion(Rect left, Rect right)
         {
             Rect intersection = left & right;
@@ -717,6 +723,9 @@ namespace FireCandidateValidator
 
         private sealed class TestFireTrack
         {
+            /// <summary>
+            /// 화재 후보의 시작 사각형과 추적 상태를 초기화한다.
+            /// </summary>
             internal TestFireTrack(Rect rectangle)
             {
                 Rectangle = rectangle;
@@ -742,7 +751,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// MergeCandidates 동작 수행 함수.
+        /// 인접한 탐지 사각형을 현재 묶음 표시 방식과 거리 기준으로 합친다.
         /// </summary>
         private static List<Rect> MergeCandidates(IList<Rect> source, int frameWidth, int frameHeight, int fireBoxGroupingMode)
         {
@@ -876,7 +885,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// Expand 동작 수행 함수.
+        /// 사각형에 지정 여유를 추가하고 영상 경계 안으로 제한한다.
         /// </summary>
         private static Rect Expand(Rect rect, int x, int y, int width, int height)
         {
@@ -892,7 +901,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// Intersects 동작 수행 함수.
+        /// 두 사각형 또는 구역 도형의 교차 여부를 검사한다.
         /// </summary>
         private static bool Intersects(Rect first, Rect second)
         {
@@ -900,7 +909,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// Union 동작 수행 함수.
+        /// 두 사각형을 모두 포함하는 최소 외접 사각형을 반환한다.
         /// </summary>
         private static Rect Union(Rect first, Rect second)
         {
@@ -916,7 +925,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// CreateCandidateMask 생성 및 변환 함수.
+        /// 색상·밝기·국부 대비 조건을 조합해 화재 후보 영역의 마스크를 만든다.
         /// </summary>
         private static Mat CreateCandidateMask(Mat source, int threshold)
         {
@@ -1034,7 +1043,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// EnsureBgr 동작 수행 함수.
+        /// 입력 영상을 분석·표시에 사용할 BGR 3채널 영상으로 복사·변환한다.
         /// </summary>
         private static Mat EnsureBgr(Mat source)
         {
@@ -1068,7 +1077,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// FireCandidateAnalysis 동작 수행 함수.
+        /// FireCandidateAnalysis의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         internal FireCandidateAnalysis(Mat mask, IList<Rect> candidates, bool isConfirmed, int continuousFrames, double largestAreaRatio)
         {
@@ -1090,7 +1099,7 @@ namespace FireCandidateValidator
         internal double LargestAreaRatio { get; private set; }
 
         /// <summary>
-        /// Dispose 종료 및 자원 해제 함수.
+        /// 외부 [using] / [Dispose] 호출 시 내부 [FFmpeg] 리소스 정리
         /// </summary>
         public void Dispose()
         {

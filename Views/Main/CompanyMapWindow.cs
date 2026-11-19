@@ -18,6 +18,9 @@ namespace OpenCvWpfTracking
 
         public event System.EventHandler DefaultViewReset;
 
+        /// <summary>
+        /// CompanyMapWindow 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
+        /// </summary>
         public CompanyMapWindow(double latitude, double longitude, int zoom)
         {
             Title = "GLOBAL SYSTEMS - OPENSTREETMAP";
@@ -92,6 +95,9 @@ namespace OpenCvWpfTracking
             Content = root;
         }
 
+        /// <summary>
+        /// 지도의 첫 렌더링이 끝난 뒤 초기 표시 상태를 마무리한다.
+        /// </summary>
         private void MapControl_InitialRenderCompleted(object sender, System.EventArgs e)
         {
             _mapControl.Opacity = 1.0;
@@ -102,6 +108,9 @@ namespace OpenCvWpfTracking
             Log.Information("[MAP] Expanded Map Initial View Displayed");
         }
 
+        /// <summary>
+        /// 지도에서 더블클릭한 위치를 선택·이동 작업에 전달한다.
+        /// </summary>
         private void MapControl_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             _mapControl.ResetDefaultView();
@@ -114,6 +123,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 지도 창의 이벤트 구독과 관련 자원을 정리한다.
+        /// </summary>
         private void CompanyMapWindow_Closed(object sender, System.EventArgs e)
         {
             _mapControl.InitialRenderCompleted -= MapControl_InitialRenderCompleted;

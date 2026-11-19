@@ -24,6 +24,9 @@ namespace OpenCvWpfTracking.Views.Video
 
         public event Action<int> PresetClicked;
 
+        /// <summary>
+        /// PanoramaPresetOverlay 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
+        /// </summary>
         public PanoramaPresetOverlay()
         {
             Cursor = Cursors.Hand;

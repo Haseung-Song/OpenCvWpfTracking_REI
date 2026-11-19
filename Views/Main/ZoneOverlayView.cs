@@ -58,6 +58,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 구역 목록 변경 시 이전 목록의 이벤트를 해제하고 새 목록의 변경 알림을 구독한다.
+        /// </summary>
         private static void Changed(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var v = (ZoneOverlayView)d;
@@ -73,11 +76,17 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 오버레이 항목 목록 변경에 맞춰 구독과 그리기를 갱신한다.
+        /// </summary>
         private void ItemsChanged(object s, NotifyCollectionChangedEventArgs e)
         {
             InvalidateVisual();
         }
 
+        /// <summary>
+        /// 원본 영상 비율과 표시 크기에 맞춰 구역 도형·라벨을 오버레이로 그린다.
+        /// </summary>
         protected override void OnRender(DrawingContext dc)
         {
             base.OnRender(dc);
@@ -189,6 +198,9 @@ namespace OpenCvWpfTracking
             dc.Pop();
         }
 
+        /// <summary>
+        /// 오버레이 라벨이 영상 바깥으로 나가지 않도록 표시 영역을 계산한다.
+        /// </summary>
         internal static Rect LabelBounds(Rect box, Size size, Rect viewport)
         {
             double w = Math.Min(size.Width, viewport.Width), h = Math.Min(size.Height, viewport.Height);

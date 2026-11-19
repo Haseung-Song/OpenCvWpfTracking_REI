@@ -64,11 +64,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._thermalFeature._isIrFireCandidateDetected = value; }
         }
 
+        /// <summary>
+        /// 영상 탐지 사각형과 현재 위치를 이용해 구역 판정 결과를 구한다.
+        /// </summary>
         ZoneAssessment IFireEventsFeatureContext.AssessZone(string camera, string type, double left, double top, double right, double bottom, ZoneFrameContext f)
         {
             return _features._zonesFeature.AssessZone(camera, type, left, top, right, bottom, f);
         }
 
+        /// <summary>
+        /// 현재 위치·센서·렌즈 상태를 일관된 스냅샷으로 취득한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         PositionSnapshot IFireEventsFeatureContext.CapturePositionSnapshot(string source, int? presetId)
         {
             return _features._positionFeature.CapturePositionSnapshot(source, presetId);
@@ -111,6 +117,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._eventAlertsFeature.FireDetectionEvents; }
         }
 
+        /// <summary>
+        /// AI 이벤트 명령과 테스트 프로그램 실시간 이벤트 감시를 초기화한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IFireEventsFeatureContext.InitializeEventAlertFeatures()
         {
             _features._eventAlertsFeature.InitializeEventAlertFeatures();
@@ -170,16 +179,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._thermalFeature.IsThermalFireDetectionEnabled = value; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IFireEventsFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// 2026-08-27: BBox 개수가 아닌 현재 ACTIVE FIRE/SMOKE 이벤트 행 개수를 합산한다. 실제 처리는 연결된 기능 객체에
+        /// 위임한다.
+        /// </summary>
         void IFireEventsFeatureContext.RefreshActiveFireCount()
         {
             _features._eventAlertsFeature.RefreshActiveFireCount();
         }
 
+        /// <summary>
+        /// 로컬 화재·연기 탐지의 사용 여부를 관련 상태에 반영한다.
+        /// </summary>
         void IFireEventsFeatureContext.SetLocalFireSmokeDetectionState(int rtspIndex, bool hasFire, bool hasSmoke)
         {
             _features._propertiesFeature.SetLocalFireSmokeDetectionState(rtspIndex, hasFire, hasSmoke);

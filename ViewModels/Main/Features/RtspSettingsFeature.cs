@@ -96,14 +96,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsWebAgentFocusControlEnabled { get; set; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         byte PanTiltSpeedLevel { get; set; }
 
         string PanTiltZeroRouteText { get; }
 
+        /// <summary>
+        /// IR 팔레트 버튼의 선택 표시를 초기화한다.
+        /// </summary>
         void ResetThermalPaletteButtonVisuals();
 
+        /// <summary>
+        /// 연결 세대를 변경하고 이전 장비의 AF 상태·대기 요청·실행 확인을 초기화한다.
+        /// </summary>
         void ResetWebAgentControlSession();
 
         RtspSourceOption SelectedAiEoRtspSource { get; set; }
@@ -116,10 +125,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         RtspSourceOption SelectedIrRtspSource { get; set; }
 
+        /// <summary>
+        /// 장비를 바꾸면 이전 목록을 비우고 해당 장비의 저장값만 복원한다.
+        /// </summary>
         void SwitchEquipmentPresets();
 
         string ThermalColorPaletteButtonText { get; }
 
+        /// <summary>
+        /// WEB AGENT 연결 상태에 맞춰 읽기 전용 시각 자동 조회를 시작하거나 중지한다.
+        /// </summary>
         void UpdateSystemTimePollingState();
 
         string ZoomOpticalRangeText { get; }
@@ -135,11 +150,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IRtspSettingsFeatureContext _context;
 
+        /// <summary>
+        /// RTSP 연결 설정 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal RtspSettingsFeature(IRtspSettingsFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             ControlAgentProfiles = new ObservableCollection<ControlAgentProfileOption>(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.Entries.Select(e => new ControlAgentProfileOption(e.Label + " EO/IR", e.AgentIp, e.AgentPort, e.EoLabel, e.IrLabel, agentType: e.AgentType, positionSensors: e.PositionSensors, deviceId: e.Id)).Concat(new[] { new ControlAgentProfileOption("직접 입력", null, null, null, null, isDirectInput: true) }));
@@ -361,6 +382,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 활성 세션을 변경하지 않고 중복 연결 안내만 갱신한다.
+        /// </summary>
         internal void ShowAlreadyConnected()
         {
             // 중복 연결 안내만 표시하며 실제 연결 상태나 활성 세션을 변경하지 않는다.
@@ -375,6 +399,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("DEVICE CONNECT", "Already Connected / request blocked");
         }
 
+        /// <summary>
+        /// 저장된 연결 프로필과 EO/IR 주소를 복원하고 해당 장비 제어 모드를 맞춘다.
+        /// </summary>
         internal void LoadRtspCommunicationSettings()
         {
             _isLoadingRtspCommunicationSettings = true;
@@ -526,6 +553,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 선택값을 다음 연결용 설정으로 저장하며 로그의 인증정보는 가린다.
+        /// </summary>
         internal void SaveRtspCommunicationSettings()
         {
             if (_isLoadingRtspCommunicationSettings)
@@ -565,6 +595,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비 프로필 적용 시 팬·틸트 속도 기본값을 설정하고 수신 상태와 분리한다.
+        /// </summary>
         internal void ApplyProfilePanTiltSpeedDefault(ControlAgentProfileOption profile)
         {
             // 프로필 기본값만 적용하며 수신 상태로 사용자 속도를 초기화하지 않는다.
@@ -575,6 +608,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("PTZ SPEED", "Profile default=" + speed);
         }
 
+        /// <summary>
+        /// 선택 프로필에 맞춰 LA/WEB 모드·좌표계·카메라 목록·기본 속도를 적용한다.
+        /// </summary>
         internal void ApplyControlAgentProfile(ControlAgentProfileOption profile)
         {
             // 2026-09-18: CONNECT 프로필이 LA/WEB 활성 모드의 유일한 결정점이다.
@@ -644,6 +680,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SaveRtspCommunicationSettings();
         }
 
+        /// <summary>
+        /// 장비 모드 변경으로 숨겨진 통신 탭이 선택된 경우 표시 가능한 탭으로 복귀한다.
+        /// </summary>
         internal void EnsureVisibleCommunicationSettingsTab()
         {
             // IMU/RPY 또는 SYSTEM TIME 탭을 보고 있던 중 지원하지 않는
@@ -657,6 +696,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-09-15: REI 통합본에서는 Web Agent 프로필에만 unsigned Pan 좌표를 적용한다.
+        /// </summary>
         internal void ApplyControlAgentPanCoordinateMode(ControlAgentProfileOption profile)
         {
             profile = _requestedControlProfile ?? profile;
@@ -676,6 +718,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 저장된 이름과 주소로 영상 소스를 찾아 복원하며 직접 입력 항목도 처리한다.
+        /// </summary>
         internal static string RestoreNamedRtspAddress(System.Collections.Generic.IEnumerable<RtspSourceOption> options, string savedDisplayName, string address)
         {
             var named = options.FirstOrDefault(option => !option.IsDirectInput && string.Equals(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName), OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName), StringComparison.OrdinalIgnoreCase));
@@ -683,6 +728,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return named?.Address ?? address;
         }
 
+        /// <summary>
+        /// 이전 표시 이름과 현재 주소를 비교하여 RTSP 선택 항목을 복원한다.
+        /// </summary>
         internal static RtspSourceOption ResolveRtspSource(System.Collections.Generic.IEnumerable<RtspSourceOption> options, string savedDisplayName, string address)
         {
             RtspSourceOption byName = options.FirstOrDefault(option => string.Equals(OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(option.DisplayName), OpenCvWpfTracking.Services.Configuration.DeviceCatalog.DisplayIdentity(savedDisplayName), StringComparison.OrdinalIgnoreCase));
@@ -695,6 +743,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return options.FirstOrDefault(option => !option.IsDirectInput && string.Equals(OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(option.Address), OpenCvWpfTracking.Services.Video.RtspUriNormalization.Connect(address), StringComparison.OrdinalIgnoreCase)) ?? options.First(option => option.IsDirectInput);
         }
 
+        /// <summary>
+        /// 2026-10-01: 이전 버전에 저장된 장비명도 현재 장비 프로필로 안전하게 이관한다.
+        /// </summary>
         internal ControlAgentProfileOption ResolveControlAgentProfile(string savedDisplayName)
         {
             ControlAgentProfileOption exact = ControlAgentProfiles.FirstOrDefault(item => string.Equals(item.DisplayName, savedDisplayName, StringComparison.OrdinalIgnoreCase));
@@ -736,6 +787,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return ControlAgentProfiles[0];
         }
 
+        /// <summary>
+        /// 2026-10-01: 폐기된 임시 주소와 구 환경부 프리셋을 현재 장비 주소로 변환한다. 사용자가 직접 입력한 다른 정상 RTSP 주소는
+        /// 변경하지 않는다.
+        /// </summary>
         internal static void MigrateLegacyRtspSettings(string savedEoPreset, string savedIrPreset, ref string eoAddress, ref string irAddress)
         {
             if (string.Equals(eoAddress, "rtsp://192.168.1.25:554/AVStream1_1", StringComparison.OrdinalIgnoreCase))

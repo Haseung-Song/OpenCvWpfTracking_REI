@@ -27,6 +27,9 @@ namespace OpenCvWpfTracking.Services.Control
         #endregion
 
         #region [초기화]
+        /// <summary>
+        /// 장비별 광학 중심 보정값과 저장 기준을 구성한다.
+        /// </summary>
         public OpticalCenterCalibration(string filePath)
         {
             file = filePath;

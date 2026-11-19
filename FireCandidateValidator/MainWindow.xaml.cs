@@ -72,7 +72,7 @@ namespace FireCandidateValidator
         private int _fireDiagnosticFrameIndex;
 
         /// <summary>
-        /// MainWindow 동작 수행 함수.
+        /// MainWindow 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
         /// </summary>
         public MainWindow()
         {
@@ -90,7 +90,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// OpenImage_Click 이벤트 처리 함수.
+        /// 시험 이미지 파일을 선택해 불러오고 현재 탐지 설정으로 분석한다.
         /// </summary>
         private void OpenImage_Click(object sender, RoutedEventArgs e)
         {
@@ -164,7 +164,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// OpenVideo_Click 이벤트 처리 함수.
+        /// 시험 동영상 파일을 열고 프레임 분석 재생을 시작한다.
         /// </summary>
         private void OpenVideo_Click(object sender, RoutedEventArgs e)
         {
@@ -209,7 +209,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// CreateTestPattern_Click 이벤트 처리 함수.
+        /// 탐지 동작을 확인할 합성 시험 영상을 만든다.
         /// </summary>
         private void CreateTestPattern_Click(object sender, RoutedEventArgs e)
         {
@@ -280,7 +280,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// Reset_Click 이벤트 처리 함수.
+        /// 시험 재생·저장·진단을 중지하고 입력 영상과 탐지 결과를 초기화한다.
         /// </summary>
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
@@ -307,7 +307,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// SaveResult_Click 이벤트 처리 함수.
+        /// 현재 탐지 결과 영상을 선택한 이미지 파일로 저장한다.
         /// </summary>
         private void SaveResult_Click(object sender, RoutedEventArgs e)
         {
@@ -336,7 +336,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// SaveVideo_Click 이벤트 처리 함수.
+        /// 시험 결과 동영상의 저장을 시작하거나 진행 중인 저장을 종료한다.
         /// </summary>
         private void SaveVideo_Click(object sender, RoutedEventArgs e)
         {
@@ -387,7 +387,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// Setting_ValueChanged 설정 함수.
+        /// 검증 설정 수치가 바뀌면 안내를 갱신하고 정지 영상은 다시 분석한다.
         /// </summary>
         private void Setting_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
@@ -407,7 +407,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// VideoTimer_Tick 동작 수행 함수.
+        /// 시험 동영상의 다음 프레임을 읽어 분석하고 끝에 도달하면 재생을 정리한다.
         /// </summary>
         private void VideoTimer_Tick(object sender, EventArgs e)
         {
@@ -435,7 +435,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// ProcessCurrentFrame 처리 함수.
+        /// 현재 시험 영상을 선택한 화재·연기 설정으로 분석하고 결과 영상·상태를 갱신한다.
         /// </summary>
         private void ProcessCurrentFrame(bool singleFrame)
         {
@@ -960,6 +960,9 @@ namespace FireCandidateValidator
             return scores;
         }
 
+        /// <summary>
+        /// 후보의 지속성·변화·크기 등 영상 근거를 합산해 탐지 점수를 계산한다.
+        /// </summary>
         private static double CalculateTestVisionScore(TestVisionScoreTrack track, CvRect candidate, int frameWidth, int frameHeight, bool isInfrared, double elapsedSeconds)
         {
             double frameArea = Math.Max(1.0, frameWidth * (double)frameHeight);
@@ -1077,7 +1080,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// FireBoxMode1_Click 이벤트 처리 함수.
+        /// 모든 화재 후보를 하나로 묶어 표시하는 방식을 선택한다.
         /// </summary>
         private void FireBoxMode1_Click(object sender, RoutedEventArgs e)
         {
@@ -1085,7 +1088,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// FireBoxMode2_Click 이벤트 처리 함수.
+        /// 인접한 화재 후보를 구분해 묶는 표시 방식을 선택한다.
         /// </summary>
         private void FireBoxMode2_Click(object sender, RoutedEventArgs e)
         {
@@ -1093,7 +1096,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// SetFireBoxGroupingMode 설정 함수.
+        /// 화재 후보 묶음 표시 방식을 설정하고 현재 결과를 다시 표시한다.
         /// </summary>
         private void SetFireBoxGroupingMode(int mode)
         {
@@ -1112,18 +1115,24 @@ namespace FireCandidateValidator
             SetDisplayPalette(0);
         }
 
+        /// <summary>
+        /// IR 팔레트를 White Hot으로 전환한다.
+        /// </summary>
         private void WhiteHotPalette_Click(object sender, RoutedEventArgs e)
         {
             SetDisplayPalette(1);
         }
 
+        /// <summary>
+        /// EO 원본 영상 표시로 전환한다.
+        /// </summary>
         private void EoOriginal_Click(object sender, RoutedEventArgs e)
         {
             SetDisplayPalette(-1);
         }
 
         /// <summary>
-        /// RandomPalette_Click 이벤트 처리 함수.
+        /// 색상 팔레트를 순서대로 바꾸고 선택 버튼을 강조한다.
         /// </summary>
         private void RandomPalette_Click(object sender, RoutedEventArgs e)
         {
@@ -1133,18 +1142,24 @@ namespace FireCandidateValidator
             HighlightRandomPaletteButton();
         }
 
+        /// <summary>
+        /// 시험 영상 팔레트를 이전 항목으로 바꾼다.
+        /// </summary>
         private void PreviousPalette_Click(object sender, RoutedEventArgs e)
         {
             SetDisplayPalette((_displayPaletteIndex - 1 + DisplayPaletteCount) % DisplayPaletteCount);
         }
 
+        /// <summary>
+        /// 시험 영상 팔레트를 다음 항목으로 바꾼다.
+        /// </summary>
         private void NextPalette_Click(object sender, RoutedEventArgs e)
         {
             SetDisplayPalette((_displayPaletteIndex + 1) % DisplayPaletteCount);
         }
 
         /// <summary>
-        /// SetDisplayPalette 설정 함수.
+        /// 시험 영상의 표시 팔레트를 변경하고 필요한 경우 재분석한다.
         /// </summary>
         private void SetDisplayPalette(int paletteIndex)
         {
@@ -1161,7 +1176,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// ApplySelectedPalette 설정 함수.
+        /// 시험 영상에 선택한 원본·Black Hot·White Hot·색상 팔레트를 적용한다.
         /// </summary>
         private Mat ApplySelectedPalette(Mat source)
         {
@@ -1233,7 +1248,7 @@ namespace FireCandidateValidator
 
         // 초기에는 중립 상태이며 사용자가 팔레트를 선택한 뒤에만 색상을 표시한다.
         /// <summary>
-        /// UpdatePaletteButtonVisuals 갱신 함수.
+        /// 현재 팔레트 선택에 맞춰 버튼 색상과 강조 표시를 갱신한다.
         /// </summary>
         private void UpdatePaletteButtonVisuals()
         {
@@ -1275,7 +1290,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// HighlightRandomPaletteButton 동작 수행 함수.
+        /// 색상 팔레트 선택 버튼에 무지개 강조 표시를 구성한다.
         /// </summary>
         private void HighlightRandomPaletteButton()
         {
@@ -1300,7 +1315,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// UpdateSettingText 갱신 함수.
+        /// 탐지 임계값·면적·확정 프레임 등 설정 수치를 안내 문구에 반영한다.
         /// </summary>
         private void UpdateSettingText()
         {
@@ -1338,6 +1353,9 @@ namespace FireCandidateValidator
             return new SmokeDiagnosticCapture();
         }
 
+        /// <summary>
+        /// 연기 진단 기록을 저장할 세션과 출력 경로를 준비한다.
+        /// </summary>
         private void EnsureSmokeDiagnosticSession()
         {
             if (_smokeDiagnosticWriter != null)
@@ -1365,6 +1383,9 @@ namespace FireCandidateValidator
             Console.WriteLine("[SMOKE DIAGNOSTIC] START / " + _smokeDiagnosticDirectory);
         }
 
+        /// <summary>
+        /// 현재 프레임의 연기 분석 결과와 진단 이미지를 기록한다.
+        /// </summary>
         private void WriteSmokeDiagnosticFrame(SmokeDiagnosticCapture diagnostic, bool isInfrared)
         {
             if (_smokeDiagnosticWriter == null || diagnostic == null)
@@ -1401,6 +1422,9 @@ namespace FireCandidateValidator
             }
         }
 
+        /// <summary>
+        /// 선택 상태에 따라 연기 진단 기록을 시작하거나 종료한다.
+        /// </summary>
         private void SmokeDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             if (!IsInitialized)
@@ -1438,6 +1462,9 @@ namespace FireCandidateValidator
             }
         }
 
+        /// <summary>
+        /// 연기 진단 기록을 끝내고 관련 출력 자원을 정리한다.
+        /// </summary>
         private void StopSmokeDiagnostic()
         {
             if (_smokeDiagnosticWriter != null)
@@ -1462,6 +1489,9 @@ namespace FireCandidateValidator
             _smokeDiagnosticFrameIndex = 0;
         }
 
+        /// <summary>
+        /// 화재 진단 기록을 저장할 세션과 출력 경로를 준비한다.
+        /// </summary>
         private void EnsureFireDiagnosticSession()
         {
             if (_fireDiagnosticWriter != null)
@@ -1484,6 +1514,9 @@ namespace FireCandidateValidator
             Console.WriteLine("[FIRE DIAGNOSTIC] START / " + _fireDiagnosticDirectory);
         }
 
+        /// <summary>
+        /// 현재 프레임의 화재 후보 분석 결과와 진단 이미지를 기록한다.
+        /// </summary>
         private void WriteFireDiagnosticFrame(FireCandidateAnalysis analysis, bool isInfrared, bool analyzeFire)
         {
             if (!analyzeFire || analysis == null || FireDiagnosticCheckBox == null || FireDiagnosticCheckBox.IsChecked != true)
@@ -1540,6 +1573,9 @@ namespace FireCandidateValidator
             }
         }
 
+        /// <summary>
+        /// 선택 상태에 따라 화재 진단 기록을 시작하거나 종료한다.
+        /// </summary>
         private void FireDiagnosticCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             if (!IsInitialized)
@@ -1577,6 +1613,9 @@ namespace FireCandidateValidator
             }
         }
 
+        /// <summary>
+        /// 화재 진단 기록을 끝내고 관련 출력 자원을 정리한다.
+        /// </summary>
         private void StopFireDiagnostic()
         {
             if (_fireDiagnosticWriter != null)
@@ -1622,7 +1661,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// ReplaceCurrentSource 동작 수행 함수.
+        /// 이전 입력 Mat을 해제한 뒤 새 시험 프레임을 보관한다.
         /// </summary>
         private void ReplaceCurrentSource(Mat source)
         {
@@ -1635,7 +1674,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// ReplaceRendered 동작 수행 함수.
+        /// 이전 표시 Mat을 해제한 뒤 새 결과 영상을 보관한다.
         /// </summary>
         private void ReplaceRendered(Mat rendered)
         {
@@ -1648,7 +1687,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// StopVideo 중지 함수.
+        /// 시험 동영상 재생과 추적을 중지하고 캡처 자원 및 활성 이벤트를 정리한다.
         /// </summary>
         private void StopVideo()
         {
@@ -1707,7 +1746,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// StopVideoWriter 중지 함수.
+        /// 시험 결과 영상 저장기를 닫고 저장 버튼을 대기 상태로 되돌린다.
         /// </summary>
         private void StopVideoWriter()
         {
@@ -1727,7 +1766,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// ToBitmapSource 동작 수행 함수.
+        /// OpenCV 영상을 WPF에서 안전하게 표시할 비트맵으로 복사·변환한다.
         /// </summary>
         private static BitmapSource ToBitmapSource(Mat source)
         {
@@ -1768,7 +1807,7 @@ namespace FireCandidateValidator
         }
 
         /// <summary>
-        /// Window_Closing 이벤트 처리 함수.
+        /// 시험 창 종료 전에 영상 재생·저장·진단과 Mat 자원을 정리한다.
         /// </summary>
         private void Window_Closing(object sender, CancelEventArgs e)
         {

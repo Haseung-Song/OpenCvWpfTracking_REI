@@ -1,4 +1,4 @@
-using OpenCvWpfTracking.Common;
+﻿using OpenCvWpfTracking.Common;
 using OpenCvWpfTracking.Models.Main;
 using OpenCvWpfTracking.Services.Control;
 using System;
@@ -59,24 +59,44 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         Services.Communication.WebAgent.IWebAgentZoomControlServicePort _webAgentZoomControlService { get; }
 
+        /// <summary>
+        /// 화면의 IR Focus 표준 목표값을 현재 장비가 보고하는 상태 좌표로 변환한다. LA 상태 좌표만 반대 방향이며, Web Agent 상태
+        /// 좌표는 그대로 사용한다.
+        /// </summary>
         int ConvertIrFocusStandardToStatusPosition(int standardPosition);
 
+        /// <summary>
+        /// IR 피드백을 확보하지 못하면 절대위치 성공/시간추정으로 프리셋 완료를 표시하지 않는다.
+        /// </summary>
         Task<bool> EnsurePresetIrLensFeedbackAsync(bool zoom, CancellationToken token);
 
         System.Collections.ObjectModel.ObservableCollection<ZoomSyncLevelOption> FocusSyncLevelOptions { get; }
 
         string FocusSyncStatusText { get; set; }
 
+        /// <summary>
+        /// 프리셋 렌즈 복원 판단에 사용할 응답이 최신인지 확인한다.
+        /// </summary>
         bool HasFreshPresetLens(bool ir, bool zoom);
 
+        /// <summary>
+        /// AF 동작·응답 대기·상태 불명 중 해당 채널의 수동 초점 충돌을 차단한다.
+        /// </summary>
         bool IsAutoFocusBlockingManualFocus(bool ir, bool logWarning = true);
 
         bool IsEnvironmentStatusSelected { get; }
 
         bool IsSelectedControlAgentWebAgent { get; }
 
+        /// <summary>
+        /// 채널과 축별 마지막 렌즈 응답 시간을 조회한다.
+        /// </summary>
         long PresetLensTicks(bool ir, bool zoom);
 
+        /// <summary>
+        /// [CTEC Position Inquiry] CGI 송신 후 실제 TCP 9000 Position 응답까지 기다린다. HTTP 200
+        /// OK만으로 조회 완료 처리하지 않는다. Zoom은 0x47, Focus는 0x48 응답이 도착해야 한 번의 Inquiry가 끝난다.
+        /// </summary>
         Task<int?> RequestAndWaitCtecEoPositionAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, CancellationToken cancellationToken);
 
         EquipmentStatusMode SelectedEquipmentStatusMode { get; set; }
@@ -98,6 +118,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly ISyncFeatureContext _context;
 
+        /// <summary>
+        /// EO/IR 렌즈 동기화 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal SyncFeature(ISyncFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -113,6 +136,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 줌 동기화 선택을 목록의 이전 단계로 이동한다.
+        /// </summary>
         internal void SelectPreviousZoomSyncLevel()
         {
             int currentIndex = _context.ZoomSyncLevelOptions.IndexOf(_context.SelectedZoomSyncLevel);
@@ -123,6 +149,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 줌 동기화 선택을 목록의 다음 단계로 이동한다.
+        /// </summary>
         internal void SelectNextZoomSyncLevel()
         {
             int currentIndex = _context.ZoomSyncLevelOptions.IndexOf(_context.SelectedZoomSyncLevel);
@@ -133,6 +162,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// WEB AGENT에서 선택한 11단계(LEVEL 0~10)의 실측 화각 대응 위치를 적용한다. EO/IR 렌즈별 목표 위치는 각각 계산하며
+        /// 동일한 값을 단순 복사하지 않는다. LA 구성은 동기화 탭과 실행 경로를 차단한다.
+        /// </summary>
         internal async Task ApplySelectedZoomSyncLevelAsync()
         {
             // LA 장비에는 현재 EO/IR 동기화 보정 구성을 적용하지 않는다.
@@ -252,6 +285,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 옥상장비 CTEC EO Zoom을 목표 Raw Position으로 직접 이동한다. 기존 TELE / WIDE 연속 이동 기반 Sync는 다음
+        /// 문제가 있었다. 1. TCP Position 응답이 계단식으로 늦게 반영됨 2. 프로그램이 목표 통과를 늦게 확인함 3. 다음 단계에서 반대
+        /// 방향 보정이 발생함 4. 화면이 확대 → 축소 → 확대 형태로 왕복함 현재 방식은 VISCA Zoom Direct 명령으로 목표 Raw
+        /// Position을 한 번만 송신하고, 이후 Inquiry는 도착 확인 용도로만 사용한다. 따라서 Sync 이동 중 TELE / WIDE 방향
+        /// 전환 및 재보정은 수행하지 않는다.
+        /// </summary>
         internal async Task<bool> MoveRooftopEoZoomToRawPositionAsync(RtspSourceOption ctecSource, int targetRawPosition, CancellationToken cancellationToken)
         {
             if (ctecSource == null)
@@ -335,6 +375,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 진행 중인 줌 동기화를 취소하고 관련 렌즈 이동을 중지한다.
+        /// </summary>
         internal async Task StopZoomSyncAsync()
         {
             CancellationTokenSource cts = _context._rooftopZoomSyncCts;
@@ -361,6 +404,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.ZoomSyncStatusText = "STOPPED";
         }
 
+        /// <summary>
+        /// 일반 WEB 줌은 수신·송신 위치를 그대로 사용한다. LA의 기존 방향 반전만 유지한다.
+        /// </summary>
         internal int ConvertIrZoomStandardToStatusPosition(int standardPosition)
         {
             int safe = Math.Max(0, Math.Min(1000, standardPosition));
@@ -375,6 +421,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 상태 표시·새 프리셋 저장은 SYNC 끝점 보정과 독립적인 장비 위치를 사용한다.
+        /// </summary>
         internal int NormalizeIrZoomStatusPosition(int rawPosition)
         {
             int safe = Math.Max(0, Math.Min(1000, rawPosition));
@@ -389,6 +438,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 공유 구동부에서 명시적으로 요청한 SYNC 작업에만 끝점 환산을 적용한다.
+        /// </summary>
         internal int NormalizeIrZoomControlPosition(int rawPosition, bool syncCalibration)
         {
             if (syncCalibration)
@@ -401,6 +453,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// SYNC 화각 단계에 한정해 학습된 물리 끝점을 장비 명령 위치로 환산한다.
+        /// </summary>
         internal int ConvertIrZoomSyncToStatusPosition(int standardPosition)
         {
             int safe = Math.Max(0, Math.Min(1000, standardPosition));
@@ -415,6 +470,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _context._environmentIrZoomPhysicalWideRaw + (int)Math.Round(safe * span / 1000.0);
         }
 
+        /// <summary>
+        /// IR 줌 상태 응답을 동기화에 사용하는 위치 범위로 정규화한다.
+        /// </summary>
         internal int NormalizeIrZoomSyncStatusPosition(int rawPosition)
         {
             int safeRaw = Math.Max(0, Math.Min(1000, rawPosition));
@@ -429,6 +487,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return Math.Max(0, Math.Min(1000, (int)Math.Round((safeRaw - _context._environmentIrZoomPhysicalWideRaw) * 1000.0 / span)));
         }
 
+        /// <summary>
+        /// 환경 장비 IR 줌 끝점 응답을 위치 보정 근거에 반영한다.
+        /// </summary>
         internal void UpdateEnvironmentIrZoomEndpointCalibration(int standardTarget, int settledRaw)
         {
             if (_context.SelectedEquipmentStatusMode != EquipmentStatusMode.Environment)
@@ -452,6 +513,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("IR ZOOM CALIBRATION", $"STANDARD_TARGET={standardTarget} / SETTLED_RAW={settledRaw} / " + $"PHYSICAL_WIDE={_context._environmentIrZoomPhysicalWideRaw} / PHYSICAL_TELE={_context._environmentIrZoomPhysicalTeleRaw} / " + $"STANDARD_FINAL={NormalizeIrZoomSyncStatusPosition(settledRaw)}");
         }
 
+        /// <summary>
+        /// 2026-10-16: 환경부 장비는 신규 CMD2=0xB7 절대위치를 우선 사용하고 실제 IR 렌즈 피드백으로 도달 여부를 확인한다. 새
+        /// 피드백이 계속 수신되는데도 위치가 전혀 변하지 않을 때만 0x31 폐루프 경로로 전환한다.
+        /// </summary>
         internal async Task<bool> MoveIrZoomToPositionAsync(int targetPosition, CancellationToken cancellationToken, int standardTarget = -1, int tolerance = IrZoomTargetTolerance, bool syncCalibration = false, bool explicitAbsolute = false)
         {
             int target = Math.Max(0, Math.Min(1000, targetPosition));
@@ -756,6 +821,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return finalResult;
         }
 
+        /// <summary>
+        /// true: 실제 위치 도달, false: 새 피드백이 지속되지만 이동 없음(수동 대체 가능), null: 송신 실패·피드백 단절·이동 중
+        /// 미도달(명령 중첩 금지).
+        /// </summary>
         internal async Task<bool?> TryMoveEnvironmentIrZoomAbsoluteAsync(int rawTarget, int standardTarget, CancellationToken cancellationToken, int tolerance = IrZoomTargetTolerance, bool syncCalibration = false)
         {
             const int noMovementWaitMs = 3000;
@@ -851,6 +920,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return null;
         }
 
+        /// <summary>
+        /// 2026-09-18: 화면/명령의 표준 좌표가 제공되면 장비 Raw 물리 끝점을 공통 정규화한 값으로 판정한다. Raw 좌표 전용 호출만
+        /// 기존 허용 오차를 유지한다.
+        /// </summary>
         internal bool IsIrZoomTargetReached(int target, int actual, int standardTarget = -1, int tolerance = IrZoomTargetTolerance, bool syncCalibration = false)
         {
             if (standardTarget >= 0)
@@ -861,6 +934,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return Math.Abs(actual - target) <= tolerance;
         }
 
+        /// <summary>
+        /// IR 렌즈의 새 유효 상태 응답이 들어올 때까지 제한 시간 안에서 기다린다.
+        /// </summary>
         internal async Task<bool> WaitForIrLensFeedbackAsync(long afterSequence, CancellationToken cancellationToken)
         {
             Stopwatch timeout = Stopwatch.StartNew();
@@ -880,6 +956,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// IR 렌즈의 새 응답에서 이동이 멈춘 정착 위치를 확인한다.
+        /// </summary>
         internal async Task<int> WaitForIrLensSettledPositionAsync(bool zoom, CancellationToken cancellationToken)
         {
             long sequence = Interlocked.Read(ref _context._irLensStatusVersion);
@@ -925,6 +1004,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 새 EO 렌즈 응답이 목표 허용 범위에 연속 도달할 때까지 기다린다.
+        /// </summary>
         internal async Task<bool> WaitForEnvironmentEoLensTargetAsync(int target, bool zoom, long afterSequence, CancellationToken cancellationToken)
         {
             Stopwatch timeout = Stopwatch.StartNew();
@@ -957,6 +1039,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 표준 줌 위치 0~1000을 CTEC EO 줌 원시 위치 범위로 환산한다.
+        /// </summary>
         internal static int ConvertStandardZoomToCtecRaw(int standardPosition)
         {
             int safePosition = Math.Max(0, Math.Min(1000, standardPosition));
@@ -964,192 +1049,13 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return (int)Math.Round(safePosition * CtecEoZoomPositionMax / 1000.0);
         }
 
-        internal void SelectPreviousFocusSyncLevel()
-        {
-            int currentIndex = _context.FocusSyncLevelOptions.IndexOf(_context.SelectedFocusSyncLevel);
-
-            if (currentIndex > 0)
-            {
-                _context.SelectedFocusSyncLevel = _context.FocusSyncLevelOptions[currentIndex - 1];
-            }
-        }
-
-        internal void SelectNextFocusSyncLevel()
-        {
-            int currentIndex = _context.FocusSyncLevelOptions.IndexOf(_context.SelectedFocusSyncLevel);
-
-            if (currentIndex >= 0 && currentIndex < _context.FocusSyncLevelOptions.Count - 1)
-            {
-                _context.SelectedFocusSyncLevel = _context.FocusSyncLevelOptions[currentIndex + 1];
-            }
-        }
-
-        internal async Task ApplySelectedFocusSyncLevelAsync()
-        {
-            // LA 장비는 IR 구성이 달라 동기화 명령을 실행하지 않는다.
-            if (!_context.IsEnvironmentStatusSelected)
-            {
-                return;
-            }
-
-            if (_context.IsAutoFocusBlockingManualFocus(false) || _context.IsAutoFocusBlockingManualFocus(true))
-            {
-                return;
-            }
-
-            ConsoleLogHelper.Command("FOCUS SYNC", $"Apply requested / EQUIPMENT={_context.SelectedEquipmentStatusMode} / TARGET={_context.SelectedFocusSyncLevel?.Position.ToString() ?? "NULL"}");
-
-            ZoomSyncLevelOption selectedLevel = _context.SelectedFocusSyncLevel;
-
-            if (selectedLevel == null)
-            {
-                return;
-            }
-
-            if (!await _context._lensSyncOperationLock.WaitAsync(0))
-            {
-                _context.FocusSyncStatusText = "BUSY / OTHER LENS SYNC RUNNING";
-
-                return;
-            }
-
-            // 이전 Focus Sync 확인 작업만 취소한다.
-            //
-            // 기존 구현처럼 APPLY 시작 시 StopFocusSyncAsync()를 호출하면
-            // 매 단계마다 IR Focus Stop 및 CTEC Focus Stop 명령이 먼저 송신된다.
-            // 새 명령 시작 전 불필요한 장비 명령을 보내지 않도록
-            // 기존 Token만 취소 / 정리한다.
-            //
-            CancellationTokenSource previousCts = _context._rooftopFocusSyncCts;
-
-            _context._rooftopFocusSyncCts = null;
-
-            if (previousCts != null)
-            {
-                previousCts.Cancel();
-
-                previousCts.Dispose();
-            }
-
-            short standardPosition = selectedLevel.Position;
-
-            _context.FocusSyncStatusText = $"APPLYING LEVEL {selectedLevel.Level}";
-
-            _context._ptzPerformanceScenario = "FOCUS_SYNC";
-
-            // APPLYING 문구를 먼저 화면에 반영한 뒤 Zoom Sync와 동일하게
-            // 장비별 명령 결과와 영상 연결 상태를 합쳐 최종 결과를 표시한다.
-            await Dispatcher.Yield(DispatcherPriority.Background);
-
-            bool isIrConnected = _context._irDecoder.IsOpened || _context._isIrFrameDisplayed;
-
-            CancellationTokenSource focusSyncCts = new CancellationTokenSource();
-
-            _context._rooftopFocusSyncCts = focusSyncCts;
-
-            bool eoResult = false;
-
-            bool irResult = false;
-
-            long eoStartSequence = Interlocked.Read(ref _context._eoLensStatusVersion);
-
-            bool wasCanceled = false;
-
-            try
-            {
-                // IR Focus 목표값을 현재 장비의 상태 좌표로 변환한다.
-                // LA 상태만 표준 방향과 반대이며 Web Agent 상태는 동일하다.
-                //
-                int irRawTargetPosition = _context.ConvertIrFocusStandardToStatusPosition(standardPosition);
-
-                if (!isIrConnected)
-                {
-                    ConsoleLogHelper.Command("FOCUS SYNC", "IR move skipped - camera disconnected");
-                }
-
-                if (_context.SelectedEquipmentStatusMode == EquipmentStatusMode.Environment)
-                {
-                    // 환경장비 EO Focus는 기존 Web Agent Absolute 명령을 사용한다.
-                    //
-                    eoResult = _context._controlCommandService.EoFocusGoPosition(standardPosition);
-
-                    if (!isIrConnected)
-                    {
-                        irResult = false;
-                    }
-                    else
-                    {
-                        irResult = await MoveIrFocusToPositionAsync(irRawTargetPosition, focusSyncCts.Token);
-                    }
-                }
-                else
-                {
-                    Task<bool> irMoveTask = isIrConnected ? MoveIrFocusToPositionAsync(irRawTargetPosition, focusSyncCts.Token) : Task.FromResult(false);
-
-                    RtspSourceOption ctecSource = _context._connectedEoCtecSource;
-
-                    if (ctecSource == null)
-                    {
-                        irResult = await irMoveTask;
-                    }
-                    else
-                    {
-                        int eoRawTarget = ConvertStandardFocusToCtecRaw(standardPosition);
-
-                        Task<bool> eoMoveTask = MoveRooftopEoFocusToRawPositionAsync(ctecSource, eoRawTarget, focusSyncCts.Token);
-
-                        bool[] moveResults = await Task.WhenAll(eoMoveTask, irMoveTask);
-
-                        eoResult = moveResults[0];
-
-                        irResult = moveResults[1];
-                    }
-                }
-
-                if (_context.SelectedEquipmentStatusMode == EquipmentStatusMode.Environment && eoResult)
-                {
-                    eoResult = await WaitForEnvironmentEoLensTargetAsync(standardPosition, false, eoStartSequence, focusSyncCts.Token);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                wasCanceled = true;
-
-                _context.FocusSyncStatusText = "STOPPED";
-
-                ConsoleLogHelper.State("FOCUS SYNC", "Canceled safely by STOP command");
-            }
-            catch (Exception exception)
-            {
-                _context.FocusSyncStatusText = "ERROR / " + exception.Message;
-
-                ConsoleLogHelper.Error("FOCUS SYNC", exception.ToString());
-            }
-            finally
-            {
-                if (ReferenceEquals(_context._rooftopFocusSyncCts, focusSyncCts))
-                {
-                    _context._rooftopFocusSyncCts = null;
-                }
-
-                // 실행 중인 await가 모두 종료된 뒤 실행 작업이 토큰을 해제한다.
-                focusSyncCts.Dispose();
-
-                _context._ptzPerformanceScenario = "IDLE";
-
-                _context._lensSyncOperationLock.Release();
-            }
-
-            eoResult = eoResult && (_context._eoDecoder.IsOpened || _context._isEoFrameDisplayed);
-
-            irResult = irResult && (_context._irDecoder.IsOpened || _context._isIrFrameDisplayed);
-
-            if (!wasCanceled && !_context.FocusSyncStatusText.StartsWith("ERROR", StringComparison.Ordinal))
-            {
-                _context.FocusSyncStatusText = !irResult ? "INCOMPLETE / IR FOCUS TARGET NOT CONFIRMED" : eoResult ? $"COMPLETED / LEVEL {selectedLevel.Level}" : $"COMPLETED / LEVEL {selectedLevel.Level} / EO VERIFY WARNING";
-            }
-        }
-
+        /// <summary>
+        /// IR Focus를 목표 Position으로 이동한다. 사용 명령: - Direct : Command2 0x2B / Position Big
+        /// Endian - Near Start : Command2 0x31 / Data1 0x03 - Far Start : Command2 0x31 /
+        /// Data1 0x04 - Focus Stop : Command2 0x31 / Data1 0x05 상태 확인: - Function 0x07의
+        /// IR Focus Position 0 ~ 1000 0x2B 직접 절대이동을 우선 시도한다. WEB은 명시적인 미지원 응답에만 기존 제어로
+        /// 전환하며 단순 지연·미도달에는 명령을 겹쳐 보내지 않는다.
+        /// </summary>
         internal async Task<bool> MoveIrFocusToPositionAsync(int targetPosition, CancellationToken cancellationToken, int tolerance = IrFocusSyncTolerance, bool explicitAbsolute = false)
         {
             if (targetPosition < 0 || targetPosition > 1000)
@@ -1323,6 +1229,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 장비별 IR 초점 절대 명령을 시도하고 새 응답으로 도달·정지 여부를 확인한다.
+        /// </summary>
         internal async Task<bool?> TryMoveIrFocusDirectAsync(int targetPosition, int tolerance, CancellationToken token, bool explicitAbsolute = false)
         {
             int startPosition = _context._currentIrFocus;
@@ -1441,6 +1350,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 2026-10-16: 정지 이후 새 Focus 유효 응답 3개가 안정된 경우에만 위치를 반환한다. Zoom 응답만 갱신되거나 수신이 끊기면
+        /// 정착 완료로 판단하지 않는다.
+        /// </summary>
         internal async Task<int?> WaitForIrFocusStableEvidenceAsync(CancellationToken token)
         {
             long ticks = _context.PresetLensTicks(true, false);
@@ -1491,6 +1404,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return null;
         }
 
+        /// <summary>
+        /// 옥상장비 CTEC EO Focus를 목표 Raw Position으로 직접 이동한다. VISCA Focus Direct Position 명령을
+        /// 한 번만 송신하고, TCP Port 9000 Focus Position Inquiry 응답은 목표 도착 확인 용도로만 사용한다.
+        /// </summary>
         internal async Task<bool> MoveRooftopEoFocusToRawPositionAsync(RtspSourceOption ctecSource, int targetRawPosition, CancellationToken cancellationToken)
         {
             if (ctecSource == null)
@@ -1574,6 +1491,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 진행 중인 Focus Sync 확인 작업과 장비 이동을 정지한다.
+        /// </summary>
         internal async Task StopFocusSyncAsync(bool stopEo = true, bool stopIr = true)
         {
             CancellationTokenSource cts = _context._rooftopFocusSyncCts;
@@ -1605,6 +1525,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.FocusSyncStatusText = "STOPPED";
         }
 
+        /// <summary>
+        /// Web Agent 표준 Focus Position 0 ~ 1000을 CTEC EO Focus Raw Position 0 ~ 32768로
+        /// 변환한다.
+        /// </summary>
         internal static int ConvertStandardFocusToCtecRaw(int standardPosition)
         {
             int safePosition = Math.Max(0, Math.Min(1000, standardPosition));

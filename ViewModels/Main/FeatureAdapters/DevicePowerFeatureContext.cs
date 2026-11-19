@@ -111,16 +111,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.IsSelectedConnectionTarget; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IDevicePowerFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// 원래 표본 시각으로 경과 시간을 계산하여 캐시를 최신값으로 위장하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IDevicePowerFeatureContext.RefreshWebAgentEquipmentState()
         {
             _features._webAgentEquipmentFeature.RefreshWebAgentEquipmentState();
         }
 
+        /// <summary>
+        /// 연결마다 이전 캐시 시각과 기능 협상 결과를 비운다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IDevicePowerFeatureContext.ResetWebAgentTelemetrySession()
         {
             _features._webAgentProtocolFeature.ResetWebAgentTelemetrySession();

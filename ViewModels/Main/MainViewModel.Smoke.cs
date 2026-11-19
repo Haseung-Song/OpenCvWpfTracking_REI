@@ -35,6 +35,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             private set { _smokeFeature.SmokeBoxMode2Background = value; }
         }
 
+        /// <summary>
+        /// 연기 탐지기의 이벤트·기본 설정을 연결한다.
+        /// </summary>
         private void InitializeSmokeFeatures()
         {
             _smokeFeature.InitializeSmokeFeatures();

@@ -193,11 +193,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._screenStateFeature._webAgentTiltMinimum = value; }
         }
 
+        /// <summary>
+        /// 2026-10-06: 0x31의 MCB/SCB 원본 상태를 보존한다. 요청 송신 여부로 상태를 추정하지 않고 이 수신값만 표시 기준으로
+        /// 사용한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.ApplyDevicePowerStatus(byte mcbStatus, byte scbStatus, DateTime? sourceTime, string sourceFunction)
         {
             _features._devicePowerFeature.ApplyDevicePowerStatus(mcbStatus, scbStatus, sourceTime, sourceFunction);
         }
 
+        /// <summary>
+        /// 2026-10-06: 선택 대상과 실제 연결 세션을 분리해 늦은 0x31이 새 ComboBox 프로필 소유로 기록되는 문제를 방지한다. 실제
+        /// 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.BeginConnectedControlAgentSession()
         {
             _features._devicePowerFeature.BeginConnectedControlAgentSession();
@@ -292,6 +300,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.EffectivePanTiltSpeedLevel; }
         }
 
+        /// <summary>
+        /// 연결 장비 세션 정보를 종료해 이전 장비 응답을 새 연결에 적용하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.EndConnectedControlAgentSession()
         {
             _features._devicePowerFeature.EndConnectedControlAgentSession();
@@ -329,21 +340,38 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.EoStatusText = value; }
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IControlAgentFeatureContext.GetCurrentIrFocusStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrFocusStandardPosition();
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IControlAgentFeatureContext.GetCurrentIrZoomStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
+        /// <summary>
+        /// Web Agent의 0/360도 경계를 고려한 Tilt 차이를 반환한다. ROOFTOP LA는 기존 선형 -90 ~ 90도 차이를 유지한다.
+        /// 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         double IControlAgentFeatureContext.GetTiltDifference(double currentTilt, double targetTilt)
         {
             return _features._moveControlFeature.GetTiltDifference(currentTilt, targetTilt);
         }
 
+        /// <summary>
+        /// 새 WEB AGENT 연결의 조회·상태 관리 세션을 초기화한다.
+        /// </summary>
         void IControlAgentFeatureContext.InitializeWebAgentSession()
         {
             _features._webAgentProtocolFeature.InitializeWebAgentSession();
@@ -367,21 +395,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.LrfDistanceText = value; }
         }
 
+        /// <summary>
+        /// 기존 형식의 상태 수신 시각을 기록해 오래된 상태와 구분한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.MarkLegacyWebAgentStatusReceived(ushort panRaw, ushort tiltRaw)
         {
             _features._webAgentProtocolFeature.MarkLegacyWebAgentStatusReceived(panRaw, tiltRaw);
         }
 
+        /// <summary>
+        /// 채널별 렌즈 응답 시각을 원자적으로 기록한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.MarkLensEvidence(bool ir)
         {
             _features._inputCoordinatorFeature.MarkLensEvidence(ir);
         }
 
+        /// <summary>
+        /// 2026-10-14 실제 수신된 유효 Zoom/Focus 증거를 축별로 보관한다. 명령 추정값은 증거가 아니다. 실제 처리는 연결된 기능
+        /// 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.MarkPresetLensEvidence(bool ir, bool zoom, bool focus)
         {
             _features._presetLensFeature.MarkPresetLensEvidence(ir, zoom, focus);
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
@@ -397,16 +438,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.PanTiltSpeedDisplayText; }
         }
 
+        /// <summary>
+        /// WEB AGENT 텔레메트리의 명령·채널을 판별해 해당 상태 해석기로 전달한다.
+        /// </summary>
         void IControlAgentFeatureContext.ParseWebAgentTelemetryPacket(LaResponsePacket packet)
         {
             _features._webAgentProtocolFeature.ParseWebAgentTelemetryPacket(packet);
         }
 
+        /// <summary>
+        /// 입력 세대를 갱신해 대기 명령을 무효화하고 필요할 때 전체 PTZF를 정지한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.ReleaseAllControlInputs(string reason)
         {
             _features._inputCoordinatorFeature.ReleaseAllControlInputs(reason);
         }
 
+        /// <summary>
+        /// 연결 세션의 capability·응답·요청·추정 및 클릭 증거를 초기화한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.ResetDigitalZoomSession()
         {
             _features._cameraFeatureControlFeature.ResetDigitalZoomSession();
@@ -442,16 +492,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.SessionControlPort; }
         }
 
+        /// <summary>
+        /// 위치 상태 저장소에 현재 장비의 연결 여부를 반영한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.SetPositionConnectionState(bool connected)
         {
             _features._positionFeature.SetPositionConnectionState(connected);
         }
 
+        /// <summary>
+        /// 연결 직후와 다른 탭에서도 5초마다 읽기 전용 F1 조회. SYSTEM TIME 탭은 기존 1Hz이며 응답 대기 중에는 중복 송신하지
+        /// 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.StartSystemTimePollingAfterConnection()
         {
             _features._systemDateTimeFeature.StartSystemTimePollingAfterConnection();
         }
 
+        /// <summary>
+        /// 시각 자동 조회를 멈추고 진행 중 조회 표시를 초기화한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IControlAgentFeatureContext.StopSystemTimePolling(string reason)
         {
             _features._systemDateTimeFeature.StopSystemTimePolling(reason);
@@ -468,11 +528,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.TiltAbsoluteValue = value; }
         }
 
+        /// <summary>
+        /// IR 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         void IControlAgentFeatureContext.UpdatePositionIrLens(int irZoom, int irFocus)
         {
             _features._positionFeature.UpdatePositionIrLens(irZoom, irFocus);
         }
 
+        /// <summary>
+        /// 수신한 PTZ와 EO 렌즈 값을 위치 상태에 반영한다.
+        /// </summary>
         void IControlAgentFeatureContext.UpdatePositionPtzAndEoLens(double pan, double tilt, int eoZoom, int eoFocus)
         {
             _features._positionFeature.UpdatePositionPtzAndEoLens(pan, tilt, eoZoom, eoFocus);

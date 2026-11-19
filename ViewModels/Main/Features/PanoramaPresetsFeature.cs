@@ -58,10 +58,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> LaPresetPoints { get; }
 
+        /// <summary>
+        /// PRESET 1 선택 지점으로 WPF 저장값 기준 PTZF 전체를 직접 복원한다. LA 0x05 한 번에 의존하지 않고 Pan, Tilt,
+        /// EO/IR Zoom, EO/IR Focus를 현재 프로젝트의 실제 제어 경로로 각각 실행한다.
+        /// </summary>
         Task MoveToSelectedLaPresetPointAsync();
 
+        /// <summary>
+        /// 기존 웹 프리셋 이동을 번호 클릭과 순회 연동에서 완료까지 기다릴 수 있도록 공유한다.
+        /// </summary>
         Task MoveToSelectedPresetPointAsync();
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         string PanoramaDeviceKey { get; }
@@ -82,8 +92,16 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         PresetPointOption SelectedPresetPoint { get; set; }
 
+        /// <summary>
+        /// 단일 MOVE TO PRESET 이동만 즉시 정지한다. AUTO SCAN 반복 상태에는 영향을 주지 않으며, Pan/Tilt 위치 이동 정지
+        /// 명령(0x4F)을 각각 송신한다.
+        /// </summary>
         void StopLaPresetMove();
 
+        /// <summary>
+        /// 단일 MOVE TO PRESET 이동만 즉시 정지한다. AUTO SCAN 반복 상태에는 영향을 주지 않으며, Pan/Tilt 위치 이동 정지
+        /// 명령(0x4F)을 각각 송신한다.
+        /// </summary>
         void StopPresetMove();
     }
 
@@ -95,6 +113,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IPanoramaPresetsFeatureContext _context;
 
+        /// <summary>
+        /// 파노라마 프리셋 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal PanoramaPresetsFeature(IPanoramaPresetsFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -174,11 +195,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 현재 연결 장비에 해당하는 기존 프리셋만 번호 순서로 복사한다.
+        /// </summary>
         internal PresetPointOption[] GetPanoramaPresets()
         {
             return (_context.IsSelectedControlAgentWebAgent ? _context.PresetPoints : _context.LaPresetPoints).OrderBy(point => point.Number).ToArray();
         }
 
+        /// <summary>
+        /// 시작과 종료 모두 기존 제어 잠금 속성에 알림을 보내 화면과 키 입력을 함께 잠근다.
+        /// </summary>
         internal void NotifyPanoramaPresetLock()
         {
             _context.OnPropertyChanged(nameof(IsPanoramaPresetRunning));
@@ -198,6 +225,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(_context.ControlLockMessage));
         }
 
+        /// <summary>
+        /// 번호 클릭은 기존 프리셋의 단일 PTZF 이동 경로를 사용한다. 이미지 좌표로 새로운 이동 각도를 계산하거나 별도 패킷을 만들지 않는다.
+        /// </summary>
         internal async Task<bool> MovePanoramaPresetAsync(PresetPointOption point)
         {
             if (!CanStartPanoramaPresets || point == null || !GetPanoramaPresets().Contains(point) || point.Number < 1 || point.Number > 100)
@@ -275,11 +305,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 팬·틸트 도착은 확인됐으나 기존 렌즈 복원이 제한 시간 안에 끝나지 않은 경우를 구분한다.
+        /// </summary>
         internal static bool IsPanoramaLensOnlyIncomplete(string status, bool confirmed, double panError, double tiltError)
         {
             return confirmed && status != null && status.EndsWith(" INCOMPLETE", StringComparison.Ordinal) && Math.Abs(panError) <= PresetPanTiltTargetTolerance + 1e-9 && Math.Abs(tiltError) <= PresetPanTiltTargetTolerance + 1e-9;
         }
 
+        /// <summary>
+        /// 연동 버튼과 공통 정지는 기존 단일 프리셋 이동의 취소 경로를 그대로 사용한다.
+        /// </summary>
         internal void CancelPanoramaPresets()
         {
             if (_panoramaPresetCts == null)

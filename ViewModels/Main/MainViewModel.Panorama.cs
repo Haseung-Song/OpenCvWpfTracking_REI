@@ -121,7 +121,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// SetPanoramaProcessingRunning 설정 함수.
+        /// 파노라마 영상 처리의 진행 상태를 화면과 조작 가능 상태에 반영한다.
         /// </summary>
         public void SetPanoramaProcessingRunning(bool isRunning)
         {

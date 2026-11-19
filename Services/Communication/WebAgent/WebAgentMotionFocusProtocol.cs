@@ -217,6 +217,9 @@ namespace OpenCvWpfTracking.Services.Communication
             }
         }
 
+        /// <summary>
+        /// 자동 초점 응답 바이트에서 현재 상태·단계·결과 정보를 해석한다.
+        /// </summary>
         internal AutoFocusSnapshot(byte[] payload)
         {
             Target = payload[1];

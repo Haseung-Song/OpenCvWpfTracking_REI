@@ -63,26 +63,45 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._opticalCenterFeature.CurrentPanoramaTilt; }
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IRoutesFeatureContext.GetCurrentIrFocusStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrFocusStandardPosition();
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IRoutesFeatureContext.GetCurrentIrZoomStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
+        /// <summary>
+        /// 현재 EO Focus 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IRoutesFeatureContext.GetCurrentPresetStandardFocus()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardFocus();
         }
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IRoutesFeatureContext.GetCurrentPresetStandardZoom()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardZoom();
         }
 
+        /// <summary>
+        /// 프리셋 렌즈 복원 판단에 사용할 응답이 최신인지 확인한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IRoutesFeatureContext.HasFreshPresetLens(bool ir, bool zoom)
         {
             return _features._presetLensFeature.HasFreshPresetLens(ir, zoom);
@@ -113,16 +132,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.IsPresetScanControlLocked; }
         }
 
+        /// <summary>
+        /// 저장된 PRESET 1 한 지점의 PTZF 값을 직접 복원한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Task<bool> IRoutesFeatureContext.MoveLaPresetPointDirectAsync(PresetPointOption preset, CancellationToken cancellationToken, bool scanTiming, int? routeSpeed, int? routeDelay, bool? onlyIr)
         {
             return _features._moveControlFeature.MoveLaPresetPointDirectAsync(preset, cancellationToken, scanTiming, routeSpeed, routeDelay, onlyIr);
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IRoutesFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// 보정에 필요한 렌즈와 위치 응답의 신선도를 검사한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IRoutesFeatureContext.OpticalFeedbackFresh(bool ir)
         {
             return _features._opticalCenterFeature.OpticalFeedbackFresh(ir);
@@ -138,6 +166,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._opticalCenterFeature.PanoramaPoseFresh; }
         }
 
+        /// <summary>
+        /// 지정 창/입력 소유자의 토큰만 일괄 해제한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IRoutesFeatureContext.ReleaseControlOwner(string owner)
         {
             _features._inputCoordinatorFeature.ReleaseControlOwner(owner);

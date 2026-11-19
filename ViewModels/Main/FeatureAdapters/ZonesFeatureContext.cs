@@ -63,6 +63,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.ControlAgentPortText = value; }
         }
 
+        /// <summary>
+        /// 일반 WEB 줌은 수신·송신 위치를 그대로 사용한다. LA의 기존 방향 반전만 유지한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IZonesFeatureContext.ConvertIrZoomStandardToStatusPosition(int standardPosition)
         {
             return _features._syncFeature.ConvertIrZoomStandardToStatusPosition(standardPosition);
@@ -102,11 +105,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._fireEventsFeature.FireEvents; }
         }
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IZonesFeatureContext.GetCurrentPresetStandardZoom()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardZoom();
         }
 
+        /// <summary>
+        /// EO/IR 채널별 수신·표시 성능 측정 상태를 선택한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         RtspChannelPerformance IZonesFeatureContext.GetRtspPerformance(string streamName)
         {
             return _features._videoFeature.GetRtspPerformance(streamName);
@@ -176,6 +185,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.MoveToPresetCommand; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IZonesFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
@@ -186,6 +198,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._panoramaReferenceFeature.PanoramaReference; }
         }
 
+        /// <summary>
+        /// 과거 WEB 줌 저장값은 호환 변환만 적용하고 새 프리셋은 장비 위치를 그대로 사용한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IZonesFeatureContext.PresetIrZoomPosition(PresetPointOption preset)
         {
             return _features._presetLensFeature.PresetIrZoomPosition(preset);
@@ -196,6 +211,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.PresetPoints; }
         }
 
+        /// <summary>
+        /// [CTEC Position Inquiry] CGI 송신 후 실제 TCP 9000 Position 응답까지 기다린다. HTTP 200
+        /// OK만으로 조회 완료 처리하지 않는다. Zoom은 0x47, Focus는 0x48 응답이 도착해야 한 번의 Inquiry가 끝난다. 실제
+        /// 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         System.Threading.Tasks.Task<int?> IZonesFeatureContext.RequestAndWaitCtecEoPositionAsync(ContinuousMoveType moveType, RtspSourceOption sourceOption, System.Threading.CancellationToken cancellationToken)
         {
             return _features._continuousControlFeature.RequestAndWaitCtecEoPositionAsync(moveType, sourceOption, cancellationToken);

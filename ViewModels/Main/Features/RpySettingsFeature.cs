@@ -22,8 +22,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsOperationCommandEnabled { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// GPS 방위 기준과 IMU 원시값에 연결된 표시를 갱신한다.
+        /// </summary>
         void UpdateGpsHeadingReferenceDisplay();
 
         Action ApplyRpyOffsetCallback { get; }
@@ -45,11 +51,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IRpySettingsFeatureContext _context;
 
+        /// <summary>
+        /// RPY 자세 보정 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal RpySettingsFeature(IRpySettingsFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _rpyRollOffsetInput = "0.00";
@@ -298,6 +310,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 자세 보정·전송 주기 설정 명령과 표시 상태를 준비한다.
+        /// </summary>
         internal void InitializeRpySettings()
         {
             ApplyRpyOffsetCommand = new RelayCommand(_context.ApplyRpyOffsetCallback);
@@ -313,6 +328,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             VerifyRpyPacketEncoding();
         }
 
+        /// <summary>
+        /// 연결 장비의 빌드 정보를 조회해 설정 지원 여부를 판단할 근거를 확보한다.
+        /// </summary>
         internal void BeginWebAgentBuildCheck()
         {
             _webAgentBuildNumber = null;
@@ -330,6 +348,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             UpdateRpyRateDisplay();
         }
 
+        /// <summary>
+        /// 입력한 자세 보정값을 검증하고 장비에 설정을 요청한다.
+        /// </summary>
         internal void ApplyRpyOffset()
         {
             if (!CanUseRpySettings(out string unavailableReason))
@@ -370,6 +391,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 입력한 자세 자동 전송 주기를 검증하고 장비에 설정을 요청한다.
+        /// </summary>
         internal void ApplyRpyAutoTxRate()
         {
             if (!CanUseRpySettings(out string unavailableReason))
@@ -406,6 +430,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비의 현재 자세 센서 상태를 조회한다.
+        /// </summary>
         internal void RequestRpyTelemetry()
         {
             if (!CanUseRpySettings(out string unavailableReason))
@@ -427,6 +454,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비에 저장된 자세 보정값을 조회한다.
+        /// </summary>
         internal void RequestStoredRpyOffset()
         {
             if (!CanQueryStoredRpySettings(out string unavailableReason))
@@ -450,6 +480,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비에 저장된 자세 전송 주기를 조회한다.
+        /// </summary>
         internal void RequestStoredRpyRate()
         {
             if (!CanQueryStoredRpySettings(out string unavailableReason))
@@ -473,6 +506,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 장비와 연결 상태에서 RPY 설정을 사용할 수 있는지 확인한다.
+        /// </summary>
         internal bool CanUseRpySettings(out string reason)
         {
             // 2026-10-06: 장비 운용 작업과 IMU/RPY 설정 명령이 교차 송신되지 않도록
@@ -517,6 +553,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// 현재 장비 빌드에서 저장된 RPY 설정 조회가 가능한지 확인한다.
+        /// </summary>
         internal bool CanQueryStoredRpySettings(out string reason)
         {
             if (!CanUseRpySettings(out reason))
@@ -536,6 +575,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// 수신한 WEB AGENT 빌드 번호를 지원 기능 판단에 반영한다.
+        /// </summary>
         internal void UpdateWebAgentBuild(string buildText)
         {
             int? parsedBuild = ParseBuildNumber(buildText);
@@ -566,6 +608,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// WEB AGENT의 RPY 전송 주파수 설정 응답을 읽어 성공·실패 상태에 반영한다.
+        /// </summary>
         internal void ParseWebAgentRpyRateAck(byte[] payload)
         {
             if (payload == null || payload.Length < 2)
@@ -599,6 +644,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// WEB AGENT의 RPY 보정 설정 응답을 읽어 성공·실패 상태에 반영한다.
+        /// </summary>
         internal void ParseWebAgentRpyOffsetAck(byte[] payload)
         {
             if (payload == null || payload.Length < 7)
@@ -648,6 +696,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 저장된 자세 보정값 응답을 해석해 입력·표시 상태에 반영한다.
+        /// </summary>
         internal void ParseStoredRpyOffsetResponse(byte[] payload)
         {
             if (payload == null || payload.Length < 7)
@@ -696,6 +747,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("RPY OFFSET DB RX", string.Format(CultureInfo.InvariantCulture, "FUNCTION=0x2E / VERSION={0} / ROLL={1:F2} / PITCH={2:F2} / YAW={3:F2}", version, roll, pitch, yaw));
         }
 
+        /// <summary>
+        /// 저장된 자세 전송 주기 응답을 해석해 표시 상태를 갱신한다.
+        /// </summary>
         internal void ParseStoredRpyRateResponse(byte[] payload)
         {
             if (payload == null || payload.Length < 2)
@@ -730,6 +784,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("RPY RATE DB RX", "FUNCTION=0x2F / VERSION=" + version + " / HZ=" + frequencyHz);
         }
 
+        /// <summary>
+        /// 0x24는 최대 30Hz이므로 내부 위치 상태는 즉시 갱신하되, 추가 RPY UI 문자열은 최대 10Hz로 제한하고 진단 로그는 약 1Hz로
+        /// 제한한다.
+        /// </summary>
         internal void RecordRpyTelemetry(double roll, double pitch, double yaw)
         {
             bool updateUi = false;
@@ -783,6 +841,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 수신한 RPY 전송 주파수를 설정 화면에 반영한다.
+        /// </summary>
         internal void UpdateRpyRateDisplay()
         {
             string storedText = _storedRpyAutoTxRate.HasValue ? _storedRpyAutoTxRate.Value.ToString(CultureInfo.InvariantCulture) + " Hz" : "조회 대기";
@@ -792,6 +853,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             CurrentRpyRateDisplay = "DB 저장 주파수: " + storedText + " / 실측 수신률: " + measuredText;
         }
 
+        /// <summary>
+        /// RPY 전송 주파수 처리 실패를 상태 안내에 반영한다.
+        /// </summary>
         internal void SetRpyRateFailure(string message)
         {
             RunOnUiThread(() => RpyRateStatusText = message);
@@ -799,6 +863,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("RPY RATE ACK", message);
         }
 
+        /// <summary>
+        /// RPY 보정값 처리 실패를 상태 안내에 반영한다.
+        /// </summary>
         internal void SetRpyOffsetFailure(string message)
         {
             RunOnUiThread(() => RpyOffsetStatusText = message);
@@ -806,6 +873,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("RPY OFFSET ACK", message);
         }
 
+        /// <summary>
+        /// 입력 각도 문자열을 해석하고 허용 범위를 검사한다.
+        /// </summary>
         internal static bool TryParseAngle(string text, double minimum, double maximum, out double value)
         {
             bool parsed = double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value) || double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
@@ -813,21 +883,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return parsed && !double.IsNaN(value) && !double.IsInfinity(value) && value >= minimum && value <= maximum;
         }
 
+        /// <summary>
+        /// 부호 있는 각도를 프로토콜의 0.01도 단위 정수로 변환한다.
+        /// </summary>
         internal static short ToSignedHundredths(double value)
         {
             return checked((short)Math.Round(value * 100.0, MidpointRounding.AwayFromZero));
         }
 
+        /// <summary>
+        /// 각도를 프로토콜의 부호 없는 0.01도 단위 정수로 변환한다.
+        /// </summary>
         internal static ushort ToUnsignedHundredths(double value)
         {
             return checked((ushort)Math.Round(value * 100.0, MidpointRounding.AwayFromZero));
         }
 
+        /// <summary>
+        /// 바이트 배열을 진단용 16진수 문자열로 변환한다.
+        /// </summary>
         internal static string ToHex(byte[] packet)
         {
             return string.Join(" ", packet.Select(value => value.ToString("X2")));
         }
 
+        /// <summary>
+        /// 장비 버전 문자열에서 기능 지원 판단용 빌드 번호를 추출한다.
+        /// </summary>
         internal static int? ParseBuildNumber(string buildText)
         {
             if (string.IsNullOrWhiteSpace(buildText))
@@ -840,6 +922,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out int buildNumber) ? buildNumber : (int?)null;
         }
 
+        /// <summary>
+        /// UI 접근이 가능한 스레드인지 확인하고 필요한 경우 Dispatcher로 전달한다.
+        /// </summary>
         internal static void RunOnUiThread(Action action)
         {
             Dispatcher dispatcher = System.Windows.Application.Current?.Dispatcher;
@@ -854,6 +939,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             dispatcher.BeginInvoke(action, DispatcherPriority.Background);
         }
 
+        /// <summary>
+        /// RPY 설정·조회 명령의 바이트 배치와 체크섬을 자체 검증한다.
+        /// </summary>
         internal static void VerifyRpyPacketEncoding()
         {
             byte[] offsetPacket = ControlCommandService.BuildRpyOffsetPacket(100, -200, 3000);

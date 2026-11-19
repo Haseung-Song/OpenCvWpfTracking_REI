@@ -188,6 +188,9 @@ namespace OpenCvWpfTracking.Services.Control
 
         public double IrHfov { get; }
 
+        /// <summary>
+        /// EO/IR 화각 동기화의 목표 배율과 렌즈 위치를 보관한다.
+        /// </summary>
         public ZoomFovTarget(int level, short eoPosition, short irPosition, double eoHfov, double irHfov)
         {
             Level = level;

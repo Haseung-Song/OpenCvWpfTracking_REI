@@ -189,16 +189,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.AiSettingStatusText = value; }
         }
 
+        /// <summary>
+        /// AI 연기 후보의 최근 프레임 정보를 비운다.
+        /// </summary>
         void IAiFeatureContext.ClearAiSmokeCandidateSnapshots()
         {
             _features._smokeFeature.ClearAiSmokeCandidateSnapshots();
         }
 
+        /// <summary>
+        /// 검출 OFF는 해당 종류의 ACTIVE만 해제한다. 이력과 다른 검출 종류는 보존한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IAiFeatureContext.ClearDisabledVisionEvents(bool fire, bool writeAudit)
         {
             _features._fireEventsFeature.ClearDisabledVisionEvents(fire, writeAudit);
         }
 
+        /// <summary>
+        /// 영상 연결 해제 함수 1. [CaptureLoop] 종료 요청 2. [VD__VideoCapture] 해제 3. [FFmpeg] [EO /
+        /// IR] [RTSP] Decoder 해제 4. [상태 문자열 갱신] 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IAiFeatureContext.Disconnect()
         {
             _features._videoFeature.Disconnect();
@@ -272,6 +282,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._thermalFeature.IsFireDiagnosticEnabled = value; }
         }
 
+        /// <summary>
+        /// 파노라마 촬영 이동 때문에 로컬 화재·연기 분석을 억제해야 하는지 확인한다.
+        /// </summary>
         bool IAiFeatureContext.IsPanoramaMotionDetectionSuppressed()
         {
             return _features._panoramaFeature.IsPanoramaMotionDetectionSuppressed();
@@ -295,21 +308,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._thermalFeature.IsThermalFireDetectionEnabled = value; }
         }
 
+        /// <summary>
+        /// AI 이벤트 수와 요약에 연결된 화면 속성의 변경을 알린다.
+        /// </summary>
         void IAiFeatureContext.NotifyAiEventSummaryChanged()
         {
             _features._eventAlertsFeature.NotifyAiEventSummaryChanged();
         }
 
+        /// <summary>
+        /// AI BBox 갱신·Hold 만료·연결 해제 시 계산 속성의 UI 바인딩을 갱신한다. Collection은 기존 모든 AI 클래스를 그대로
+        /// 유지하고 경고 속성만 다시 계산한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IAiFeatureContext.NotifyFireSmokeWarningStateChanged(int rtspIndex)
         {
             _features._propertiesFeature.NotifyFireSmokeWarningStateChanged(rtspIndex);
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IAiFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// 현재 선택값을 다음 연결용 설정으로 저장하며 로그의 인증정보는 가린다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IAiFeatureContext.SaveRtspCommunicationSettings()
         {
             _features._rtspSettingsFeature.SaveRtspCommunicationSettings();
@@ -327,16 +353,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.SelectedAiIrRtspSource = value; }
         }
 
+        /// <summary>
+        /// AI 연결 상태에 맞춰 로컬 화재·연기 탐지기 사용 상태를 조정한다.
+        /// </summary>
         void IAiFeatureContext.SetFireSmokeDetectorsForAiConnection(bool enabled, string reason)
         {
             _features._smokeFeature.SetFireSmokeDetectorsForAiConnection(enabled, reason);
         }
 
+        /// <summary>
+        /// AI Agent의 프레임 결과를 RTSP 채널별 이벤트 생명주기로 변환한다. 프레임마다 행을 추가하지 않고 탐지 시작과 해제만 기록한다.
+        /// 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IAiFeatureContext.UpdateAiDetectionEvent(AiDetectionResult result, DateTime receiveTime)
         {
             _features._eventAlertsFeature.UpdateAiDetectionEvent(result, receiveTime);
         }
 
+        /// <summary>
+        /// 채널별 최근 AI 연기 후보와 수신 시각을 보관한다.
+        /// </summary>
         void IAiFeatureContext.UpdateAiSmokeCandidateSnapshot(AiDetectionResult result, DateTime receiveTime)
         {
             _features._smokeFeature.UpdateAiSmokeCandidateSnapshot(result, receiveTime);

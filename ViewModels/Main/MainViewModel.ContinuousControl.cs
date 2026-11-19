@@ -318,6 +318,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _continuousControlFeature.StartIrAutoFocusMove();
         }
 
+        /// <summary>
+        /// Pan·Tilt 연속 이동을 중지한다.
+        /// </summary>
         public void StopPanTiltContinuousMove()
         {
             _continuousControlFeature.StopPanTiltContinuousMove();

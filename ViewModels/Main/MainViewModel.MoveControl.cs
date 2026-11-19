@@ -90,7 +90,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// MovePanAbsoluteFromInputAsync 이동 함수.
+        /// 입력한 Pan 각도를 검사하고 선택한 회전 방식·속도에 맞춰 절대 이동을 요청한다.
         /// </summary>
         private Task MovePanAbsoluteFromInputAsync()
         {
@@ -128,18 +128,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _moveControlFeature.MoveToSelectedLaPresetPointAsync();
         }
 
+        /// <summary>
+        /// ±180° 경계를 고려한 Pan 최단 각도 차이를 반환한다.
+        /// </summary>
         internal static double GetShortestPanDifference(double currentPan, double targetPan)
         {
             return MoveControlFeature.GetShortestPanDifference(currentPan, targetPan);
         }
 
+        /// <summary>
+        /// 프리셋 위치 문자열을 정수로 해석하고 허용 범위로 제한하며 실패하면 기본값을 사용한다.
+        /// </summary>
         internal static int ParsePresetPosition(string text, int fallback)
         {
             return MoveControlFeature.ParsePresetPosition(text, fallback);
         }
 
         /// <summary>
-        /// ClearAllLaPresetPoints 동작 수행 함수.
+        /// LA 장비의 저장 프리셋 전체 삭제를 요청한다.
         /// </summary>
         private void ClearAllLaPresetPoints()
         {
@@ -166,7 +172,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// UpdateLaPresetScan 갱신 함수.
+        /// 선택한 LA 프리셋 순회 속도와 대기 시간을 허용 범위로 제한해 장비에 반영한다.
         /// </summary>
         private void UpdateLaPresetScan()
         {
@@ -174,7 +180,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// StopLaPresetScan 중지 함수.
+        /// LA 장비의 프리셋 순회를 중지한다.
         /// </summary>
         private void StopLaPresetScan()
         {
@@ -192,7 +198,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// AddOrUpdatePresetPoint 동작 수행 함수.
+        /// 선택한 WEB 프리셋 번호에 현재 위치 저장을 요청하고 결과를 목록에 반영한다.
         /// </summary>
         private void AddOrUpdatePresetPoint()
         {
@@ -337,11 +343,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _moveControlFeature.SetFocusPositionFromInputAsync();
         }
 
+        /// <summary>
+        /// Nullable 각도 입력값 반올림
+        /// </summary>
         internal static double? RoundNullableAngle(double? angle)
         {
             return MoveControlFeature.RoundNullableAngle(angle);
         }
 
+        /// <summary>
+        /// double 범위 제한
+        /// </summary>
         internal static double Clamp(double value, double min, double max)
         {
             return MoveControlFeature.Clamp(value, min, max);

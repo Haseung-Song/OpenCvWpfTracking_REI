@@ -158,7 +158,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
         }
 
         /// <summary>
-        /// InitializeThermalFeatures 초기화 함수.
+        /// 열상 탐지 설정과 관련 이벤트를 초기화한다.
         /// </summary>
         private void InitializeThermalFeatures()
         {

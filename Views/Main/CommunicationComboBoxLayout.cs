@@ -12,16 +12,25 @@ namespace OpenCvWpfTracking
     {
         public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached("IsEnabled", typeof(bool), typeof(CommunicationComboBoxLayout), new PropertyMetadata(false, OnIsEnabledChanged));
 
+        /// <summary>
+        /// 컨트롤에 설정된 보조 레이아웃 기능의 활성 값을 읽는다.
+        /// </summary>
         public static bool GetIsEnabled(DependencyObject element)
         {
             return (bool)element.GetValue(IsEnabledProperty);
         }
 
+        /// <summary>
+        /// 컨트롤의 보조 레이아웃 기능 활성 값을 설정한다.
+        /// </summary>
         public static void SetIsEnabled(DependencyObject element, bool value)
         {
             element.SetValue(IsEnabledProperty, value);
         }
 
+        /// <summary>
+        /// 보조 레이아웃 활성 변경에 맞춰 콤보박스 이벤트 연결을 갱신한다.
+        /// </summary>
         private static void OnIsEnabledChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)
         {
             if (!(element is ComboBox combo))
@@ -37,6 +46,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 콤보박스가 열린 뒤 항목 행의 높이와 정렬을 맞춘다.
+        /// </summary>
         private static void OnDropDownOpened(object sender, EventArgs e)
         {
             var combo = (ComboBox)sender;
@@ -45,6 +57,9 @@ namespace OpenCvWpfTracking
             combo.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => AlignRows(combo)));
         }
 
+        /// <summary>
+        /// 콤보박스 목록에서 제목과 항목의 행 배치를 맞춘다.
+        /// </summary>
         private static void AlignRows(ComboBox combo)
         {
             if (!combo.IsDropDownOpen || combo.Items.Count == 0 || !(combo.Template.FindName("PART_Popup", combo) is Popup popup) || !(popup.Child is FrameworkElement root))
@@ -102,6 +117,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 시각 트리 아래에서 지정 타입의 자식 컨트롤을 찾는다.
+        /// </summary>
         private static T FindVisualChild<T>(DependencyObject parent)
             where T : DependencyObject
         {

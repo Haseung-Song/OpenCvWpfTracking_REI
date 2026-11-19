@@ -30,12 +30,23 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string AiPowerStatusText { get; set; }
 
+        /// <summary>
+        /// 검출 OFF는 해당 종류의 ACTIVE만 해제한다. 이력과 다른 검출 종류는 보존한다.
+        /// </summary>
         void ClearDisabledVisionEvents(bool fire, bool writeAudit = true);
 
         string FireAlertStatusText { get; }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
         bool IsAutoTrackingEnabled { get; set; }
@@ -46,6 +57,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsPanoramaCaptureRunning { get; set; }
 
+        /// <summary>
+        /// 파노라마 촬영 이동 때문에 로컬 화재·연기 분석을 억제해야 하는지 확인한다.
+        /// </summary>
         bool IsPanoramaMotionDetectionSuppressed();
 
         bool IsPanoramaProcessingRunning { get; }
@@ -54,8 +68,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsThermalFireDetectionEnabled { get; set; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 2026-08-26: Application/Dispatcher 종료 상태를 확인한 뒤 UI 작업을 수행한다. 종료 이후 지연
+        /// Callback이 Application.Current를 참조하여 발생하던 예외를 방지한다.
+        /// </summary>
         bool TryRunAiUiAction(Action action, string operationName);
     }
 
@@ -67,11 +88,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly ISmokeFeatureContext _context;
 
+        /// <summary>
+        /// 연기 영상 탐지 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal SmokeFeature(ISmokeFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _latestEoAiSmokeCandidateTime = DateTime.MinValue;
@@ -401,6 +428,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 연기 탐지기의 이벤트·기본 설정을 연결한다.
+        /// </summary>
         internal void InitializeSmokeFeatures()
         {
             SelectSmokeBoxMode1Command = new RelayCommand(() => SetSmokeBoxGroupingMode(1));
@@ -408,6 +438,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SelectSmokeBoxMode2Command = new RelayCommand(() => SetSmokeBoxGroupingMode(2));
         }
 
+        /// <summary>
+        /// 연기 탐지 사각형의 묶음 표시 방식을 설정한다.
+        /// </summary>
         internal void SetSmokeBoxGroupingMode(int mode)
         {
             _smokeBoxGroupingMode = mode == 1 ? 1 : 2;
@@ -421,6 +454,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("SMOKE DETECTOR", "BBox grouping mode changed / MODE=" + _smokeBoxGroupingMode);
         }
 
+        /// <summary>
+        /// 채널별 최근 AI 연기 후보와 수신 시각을 보관한다.
+        /// </summary>
         internal void UpdateAiSmokeCandidateSnapshot(AiDetectionResult result, DateTime receiveTime)
         {
             if (result == null || result.Boxes == null || (result.RtspIndex != 0 && result.RtspIndex != 1))
@@ -504,6 +540,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// AI 분류명이 차량 계열인지 확인한다.
+        /// </summary>
         internal static bool IsAiVehicleClass(string className)
         {
             if (string.IsNullOrWhiteSpace(className))
@@ -516,6 +555,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return normalized == "car" || normalized == "truck" || normalized == "bus" || normalized == "van" || normalized == "vehicle" || normalized == "motorcycle" || normalized == "motorbike" || normalized == "automobile";
         }
 
+        /// <summary>
+        /// 유효 시간 안의 AI 연기 후보 사각형을 가져온다.
+        /// </summary>
         internal IList<Rect> GetRecentAiSmokeCandidates(bool isInfrared)
         {
             lock (_aiSmokeCandidateSync)
@@ -542,6 +584,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 유효 시간 안의 AI 차량 후보 사각형을 가져온다.
+        /// </summary>
         internal IList<Rect> GetRecentAiVehicleCandidates(bool isInfrared)
         {
             lock (_aiSmokeCandidateSync)
@@ -557,6 +602,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-09-02: AI FIRE/FLAME BBox를 영상처리 FIRE 중복 억제에 사용한다. Snapshot은 오래된 좌표가 남지
+        /// 않도록 2초까지만 유효하다.
+        /// </summary>
         internal IList<Rect> GetRecentAiFireCandidates(bool isInfrared)
         {
             lock (_aiSmokeCandidateSync)
@@ -572,6 +621,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// AI 연기 후보의 최근 프레임 정보를 비운다.
+        /// </summary>
         internal void ClearAiSmokeCandidateSnapshots()
         {
             lock (_aiSmokeCandidateSync)
@@ -597,6 +649,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// AI 연결 상태에 맞춰 로컬 화재·연기 탐지기 사용 상태를 조정한다.
+        /// </summary>
         internal void SetFireSmokeDetectorsForAiConnection(bool enabled, string reason)
         {
             _context.TryRunAiUiAction(() =>
@@ -613,6 +668,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("FIRE / SMOKE", "AI connection mode changed / AI=" + (enabled ? "ON" : "OFF") + " / VIDEO_FIRE=" + _context.IsThermalFireDetectionEnabled + " / VIDEO_SMOKE=" + IsSmokeDetectionEnabled + " / REASON=" + reason);
         }
 
+        /// <summary>
+        /// 2026-08-27: 카메라 이동 또는 영상 조건 변경 뒤 EO/IR 기준 프레임과 시간축 후보를 함께 초기화하여 화면 전체 변화가 이벤트가
+        /// 되지 않게 한다.
+        /// </summary>
         internal void ResetFireSmokeFrameAnalysis(string reason)
         {
             _eoSmokeDetectionService.Reset();
@@ -626,6 +685,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("FIRE / SMOKE", "Frame analysis reset / REASON=" + reason);
         }
 
+        /// <summary>
+        /// 2026-08-28: AUTO SCAN과 파노라마 촬영 중에도 FIRE/SMOKE 분석 및 이벤트 갱신을 유지하고, 일반 수동 이동 중에만
+        /// 분석을 보류한다.
+        /// </summary>
         internal bool IsFireSmokeFrameAnalysisAllowed()
         {
             if (_context.IsPanoramaCaptureRunning)
@@ -643,11 +706,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return !_context.IsControlInputLocked && _context._currentMoveType == ContinuousMoveType.None && !_context._activePanAbsoluteTarget.HasValue && !_context._activeTiltAbsoluteTarget.HasValue;
         }
 
+        /// <summary>
+        /// 2026-08-28: 자동 운용으로 영상 전체가 이동하는 구간을 확인한다. SMOKE 분석기는 이 상태에서 전역 이동량을 먼저 보정한다.
+        /// </summary>
         internal bool IsAutomaticCameraMotionActive()
         {
             return _context.IsLaPresetScanRunning || _context.IsPresetScanRunning;
         }
 
+        /// <summary>
+        /// 현재 영상 프레임을 연기 탐지기로 분석하고 표시·이벤트 갱신에 전달한다.
+        /// </summary>
         internal SmokeDetectionResult ProcessSmokeFrame(Mat frame, string streamName, Rect fireCandidateRect)
         {
             bool isInfrared = string.Equals(streamName, "IR", StringComparison.OrdinalIgnoreCase);

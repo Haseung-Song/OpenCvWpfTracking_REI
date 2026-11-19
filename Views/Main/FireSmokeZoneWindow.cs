@@ -167,6 +167,9 @@ namespace OpenCvWpfTracking
 
         private double _displayScale = 1;
 
+        /// <summary>
+        /// FireSmokeZoneWindow 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
+        /// </summary>
         public FireSmokeZoneWindow(MainViewModel vm)
         {
             _vm = vm;
@@ -723,11 +726,17 @@ namespace OpenCvWpfTracking
             };
         }
 
+        /// <summary>
+        /// 색상 문자열로 화면에 사용할 브러시를 만든다.
+        /// </summary>
         private static SolidColorBrush Brush(string hex)
         {
             return (SolidColorBrush)new BrushConverter().ConvertFromString(hex);
         }
 
+        /// <summary>
+        /// 구역 편집 화면의 내용을 담는 카드 영역을 만든다.
+        /// </summary>
         private static Border Card(UIElement child, Thickness margin)
         {
             return new Border
@@ -742,11 +751,17 @@ namespace OpenCvWpfTracking
             };
         }
 
+        /// <summary>
+        /// 구역 편집 화면의 제목 표시 요소를 만든다.
+        /// </summary>
         private static void Heading(Panel p, string text, string color, double size = 12)
         {
             p.Children.Add(new TextBlock { Text = text, Foreground = Brush(color), FontWeight = FontWeights.Bold, FontSize = size, Margin = new Thickness(0, 0, 0, 5) });
         }
 
+        /// <summary>
+        /// 표 레이아웃의 지정 행·열에 컨트롤을 배치한다.
+        /// </summary>
         private static void AddCell(Grid g, UIElement e, int row, int col)
         {
             Grid.SetRow(e, row);
@@ -756,6 +771,9 @@ namespace OpenCvWpfTracking
             g.Children.Add(e);
         }
 
+        /// <summary>
+        /// 제목·클릭 동작·표시 속성이 연결된 버튼을 만든다.
+        /// </summary>
         private Button MakeButton(string text, Action action)
         {
             var b = new Button
@@ -786,6 +804,9 @@ namespace OpenCvWpfTracking
             return b;
         }
 
+        /// <summary>
+        /// 구역 편집 안내와 오류 여부를 상태 문구와 색상으로 표시한다.
+        /// </summary>
         private void Notice(string text, bool error = false)
         {
             _message.Text = text;
@@ -842,6 +863,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 현재 선택 상태에 맞춰 구역 연결용 프리셋 목록을 갱신한다.
+        /// </summary>
         private void RefreshPresets()
         {
             var old = _presets.SelectedItem as MainViewModel.ZonePresetOption;
@@ -860,6 +884,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 프리셋 이동 후 구역 참조를 촬영하는 절차를 시작한다.
+        /// </summary>
         private void BeginPresetCapture()
         {
             if (!IdentityValid)
@@ -890,6 +917,9 @@ namespace OpenCvWpfTracking
             Notice("프리셋 이동 / 도착·안정화 후 자동 캡처");
         }
 
+        /// <summary>
+        /// 프리셋 도달과 영상 준비 조건이 충족되면 참조 장면을 자동 촬영한다.
+        /// </summary>
         private void TryAutoCapture()
         {
             if (_pendingPreset == null)
@@ -931,6 +961,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 현재 편집·촬영 상태를 안내 문구와 버튼 활성 상태에 반영한다.
+        /// </summary>
         private void RefreshStatus()
         {
             RefreshPresets();
@@ -994,6 +1027,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 저장된 구역 장면 목록과 선택 상태를 갱신한다.
+        /// </summary>
         private void RefreshScenes()
         {
             var wanted = _scene;
@@ -1037,6 +1073,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 선택한 장면의 영상·구역·기준 정보를 편집 화면에 표시한다.
+        /// </summary>
         private void SelectScene()
         {
             if (_refreshingScenes)
@@ -1068,11 +1107,17 @@ namespace OpenCvWpfTracking
             Draw();
         }
 
+        /// <summary>
+        /// 새 구역 참조 장면에 사용할 기본 이름을 만든다.
+        /// </summary>
         private static string DefaultSceneName(string camera, int number)
         {
             return "[" + camera + "] 탐지 구역 " + Math.Max(1, number).ToString(CultureInfo.InvariantCulture);
         }
 
+        /// <summary>
+        /// 현재 영상·위치를 새 구역 편집 장면으로 가져온다.
+        /// </summary>
         private void CaptureScene(MainViewModel.ZonePresetOption preset)
         {
             if (!IdentityValid)
@@ -1113,6 +1158,9 @@ namespace OpenCvWpfTracking
             Notice("캡처 완료 / 구역을 그린 뒤 저장하세요.");
         }
 
+        /// <summary>
+        /// 편집 중인 장면의 설정을 저장 대상에 반영한다.
+        /// </summary>
         private void CommitScene()
         {
             if (_scene == null)
@@ -1128,6 +1176,9 @@ namespace OpenCvWpfTracking
             _scene.Name = _sceneName.Text.Trim();
         }
 
+        /// <summary>
+        /// 구역 편집의 고급 설정 영역을 표시하거나 숨긴다.
+        /// </summary>
         private void Advanced()
         {
             if (_scene == null)
@@ -1200,6 +1251,9 @@ namespace OpenCvWpfTracking
             w.Show();
         }
 
+        /// <summary>
+        /// 선택한 참조 장면의 이름을 변경한다.
+        /// </summary>
         private void RenameScene(FireSmokeScene scene, string name)
         {
             scene.Name = name;
@@ -1217,6 +1271,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 현재 구역 또는 영상 오버레이의 도형과 라벨을 다시 그린다.
+        /// </summary>
         private void Draw()
         {
             _canvas.Children.Clear();
@@ -1304,6 +1361,9 @@ namespace OpenCvWpfTracking
             UpdateStrokes();
         }
 
+        /// <summary>
+        /// 편집 도형의 선택 상태에 맞춰 선 색상과 두께를 갱신한다.
+        /// </summary>
         private void UpdateStrokes()
         {
             if (_view != null && _view.ActualWidth > 0 && _view.ActualHeight > 0)
@@ -1336,6 +1396,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 장면 영상을 목록 표시용 작은 이미지로 변환한다.
+        /// </summary>
         private static BitmapSource CreateThumbnail(BitmapSource source, FireSmokeZone zone)
         {
             int left = Math.Max(0, (int)(zone.X * source.PixelWidth) - 16), top = Math.Max(0, (int)(zone.Y * source.PixelHeight) - 16);
@@ -1374,6 +1437,9 @@ namespace OpenCvWpfTracking
             return image;
         }
 
+        /// <summary>
+        /// 지정한 구역을 선택하고 편집 항목과 강조 표시를 갱신한다.
+        /// </summary>
         private void SelectZone()
         {
             if (_refreshingZones)
@@ -1400,6 +1466,9 @@ namespace OpenCvWpfTracking
             _target.SelectedItem = z.Fire && z.Smoke ? "BOTH" : z.Fire ? "FIRE" : "SMOKE";
         }
 
+        /// <summary>
+        /// 현재 편집 화면의 이름·구역 종류·FIRE/SMOKE 선택값을 구역 항목에 반영한다.
+        /// </summary>
         private void SetZone(FireSmokeZone z)
         {
             z.Name = _scene.Name;
@@ -1411,6 +1480,9 @@ namespace OpenCvWpfTracking
             z.Smoke = (string)_target.SelectedItem != "FIRE";
         }
 
+        /// <summary>
+        /// 선택한 구역의 이름·종류 등 편집값을 반영한다.
+        /// </summary>
         private void EditZone()
         {
             if (!(_zones.SelectedItem is FireSmokeZone z))
@@ -1429,6 +1501,9 @@ namespace OpenCvWpfTracking
             Notice("구역 수정 완료 / 저장 필요");
         }
 
+        /// <summary>
+        /// 선택한 구역을 장면 목록과 화면에서 제거한다.
+        /// </summary>
         private void DeleteZone()
         {
             if (_scene == null || !(_zones.SelectedItem is FireSmokeZone z))
@@ -1513,11 +1588,17 @@ namespace OpenCvWpfTracking
             OpenCvWpfTracking.Common.ConsoleLogHelper.State("ZONE EDIT", (redraw ? "선택 구역 사각형 교체" : "구역 추가") + " / CAMERA=" + _scene.Camera + " / COUNT=" + _scene.Zones.Count);
         }
 
+        /// <summary>
+        /// 편집 포인터의 좌표를 구역 캔버스 안으로 제한한다.
+        /// </summary>
         private Point Clamp(Point p)
         {
             return new Point(Math.Max(0, Math.Min(_canvas.Width, p.X)), Math.Max(0, Math.Min(_canvas.Height, p.Y)));
         }
 
+        /// <summary>
+        /// 감시·제외 등 구역 종류에 맞는 색상 표시를 갱신한다.
+        /// </summary>
         private void UpdateZoneKindColor()
         {
             var color = Brush(FireSmokeZone.ColorForKind((string)_kind.SelectedItem));
@@ -1530,6 +1611,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 마우스 시작점을 기록하고 새 구역 도형 그리기를 시작한다.
+        /// </summary>
         private void StartDrawing(object s, MouseButtonEventArgs e)
         {
             if (!_drawing || _scene == null)
@@ -1553,6 +1637,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 마우스 이동에 맞춰 작성 중인 구역 도형의 크기를 갱신한다.
+        /// </summary>
         private void MoveDrawing(object s, MouseEventArgs e)
         {
             if (!_start.HasValue)
@@ -1573,6 +1660,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 작성한 도형의 유효성을 검사하고 새 구역으로 반영한다.
+        /// </summary>
         private void EndDrawing(object s, MouseButtonEventArgs e)
         {
             if (!_start.HasValue)
@@ -1603,6 +1693,9 @@ namespace OpenCvWpfTracking
             Draw();
         }
 
+        /// <summary>
+        /// 진행 중인 구역 그리기를 취소하고 임시 도형을 제거한다.
+        /// </summary>
         private void CancelDrawing()
         {
             _start = null;
@@ -1621,6 +1714,9 @@ namespace OpenCvWpfTracking
 
         private sealed class ZoneThumbnailHeightConverter : IMultiValueConverter
         {
+            /// <summary>
+            /// 목록 높이·구역 수·라벨 높이로 구역 썸네일의 표시 높이를 계산한다.
+            /// </summary>
             public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
             {
                 double height = values.Length > 0 && values[0] is double ? (double)values[0] : 0;
@@ -1633,6 +1729,9 @@ namespace OpenCvWpfTracking
                 return count == 1 ? Math.Max(20, height - label - 28) : 90;
             }
 
+            /// <summary>
+            /// 단방향 썸네일 높이 계산에는 역변환을 지원하지 않음을 알린다.
+            /// </summary>
             public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
             {
                 throw new NotSupportedException();
@@ -1659,6 +1758,9 @@ namespace OpenCvWpfTracking
             throw new InvalidOperationException("재캡처 필요: " + first.Camera + " " + first.PresetKind + " P" + first.PresetNumber.ToString("00") + " / " + first.Name + (stale.Count > 1 ? " 외 " + (stale.Count - 1) + "건" : ""));
         }
 
+        /// <summary>
+        /// 촬영 완료와 장비 식별·프리셋 참조를 확인하고 편집한 장면·구역을 저장한다.
+        /// </summary>
         private void Save()
         {
             if (_pendingPreset != null)

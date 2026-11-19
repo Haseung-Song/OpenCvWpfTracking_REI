@@ -35,6 +35,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string ControlAgentPortText { get; set; }
 
+        /// <summary>
+        /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다.
+        /// </summary>
         Services.Configuration.LensControlTuning ControlTuningFor(bool ir);
 
         string EoSourceAddress { get; set; }
@@ -52,11 +55,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IScreenStateFeatureContext _context;
 
+        /// <summary>
+        /// 화면 표시·성능 상태 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal ScreenStateFeature(IScreenStateFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _irZoomObservedStopLag = IrZoomMinimumStopLead;
@@ -470,6 +479,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// Control Agent 통신 설정 기본값 초기화 통신 설정 탭의 IP / Port 입력창에 프로그램 시작 시 표시할 기본값을 설정한다.
+        /// </summary>
         internal void InitializeControlAgentSetting()
         {
             // 1-1. 환경부 실장비 Control Agent(Web Agent) IP
@@ -488,6 +500,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.ControlAgentConnectionStatusColor = "#FF6B6B";
         }
 
+        /// <summary>
+        /// 기본 EO / IR RTSP 선택값 초기화 통신 설정 탭에서 제공하는 카메라 프리셋: [1] 옥상 MR300 카메라 - EO: 주간 카메라
+        /// - IR: 열상 카메라 [2] 옥상 MR500 카메라 - EO: 주간 PTZ 카메라 - IR: 열상 PTZ 카메라 [3] 4층 LR1000
+        /// 카메라 - EO: 주간 카메라 - IR: 열상 카메라 프로그램 시작 시에는 옥상 MR300 EO / IR 카메라를 기본 선택한다.
+        /// </summary>
         internal void InitializeDefaultSourceAddress()
         {
             /*
@@ -504,6 +521,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.IrSourceAddress = RooftopMr300IrRtspAddress;
         }
 
+        /// <summary>
+        /// [AI Detector] 설정 기본값 초기화 Viewer에서 사용하는 [EO] / [IR] 주소를 [AI Detector Agent]의
+        /// [RTSP 0] / [RTSP 1] 기본값으로 복사한다.
+        /// </summary>
         internal void InitializeAiDetectorSetting()
         {
             _context.AiRtsp0Address = _context.EoSourceAddress;

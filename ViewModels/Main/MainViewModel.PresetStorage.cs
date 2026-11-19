@@ -31,6 +31,9 @@
             _presetStorageFeature.SwitchEquipmentPresets();
         }
 
+        /// <summary>
+        /// 프리셋 저장 필드에 허용하지 않는 구분·제어 문자를 정리한다.
+        /// </summary>
         internal static string SanitizePresetStorageField(string value)
         {
             return PresetStorageFeature.SanitizePresetStorageField(value);

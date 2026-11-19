@@ -95,6 +95,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.EoSourceAddress = value; }
         }
 
+        /// <summary>
+        /// 위치 기준 변경을 등록된 화면에 알린다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPresetStorageFeatureContext.InvalidatePanoramaReference()
         {
             _features._opticalCenterFeature.InvalidatePanoramaReference();
@@ -164,6 +167,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.LaPresetSlotNumber = value; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPresetStorageFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
@@ -203,6 +209,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.PresetSlotNumber = value; }
         }
 
+        /// <summary>
+        /// Config의 변경 기록을 먼저 확정하므로 CSV 저장 중 종료되어도 같은 보정을 한 번만 적용한다. 실제 처리는 연결된 기능 객체에
+        /// 위임한다.
+        /// </summary>
         void IPresetStorageFeatureContext.RecoverPanoramaPresetReference()
         {
             _features._panoramaReferenceFeature.RecoverPanoramaPresetReference();

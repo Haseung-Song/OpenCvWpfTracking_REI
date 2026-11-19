@@ -102,6 +102,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             }
         }
 
+        /// <summary>
+        /// CSV를 읽어 같은 내용의 서식 있는 XLSX 파생 보기를 만든다.
+        /// </summary>
         public static bool Create(string csvPath)
         {
             string temp = null;
@@ -284,6 +287,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             }
         }
 
+        /// <summary>
+        /// 셀 주소·열 종류에 맞춰 값과 표시 서식을 XLSX 셀 XML로 기록한다.
+        /// </summary>
         private static void Cell(XmlWriter x, string address, string value, string header, bool title)
         {
             value = value ?? "";
@@ -370,6 +376,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             x.WriteEndElement();
         }
 
+        /// <summary>
+        /// CSV 열 이름이 숫자 표시용 열인지 구분한다.
+        /// </summary>
         private static bool NumericHeader(string key)
         {
             return new[]
@@ -400,6 +409,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             }.Contains(key);
         }
 
+        /// <summary>
+        /// 열 번호를 Excel 셀 주소에 사용하는 열 이름으로 변환한다.
+        /// </summary>
         private static string Column(int index)
         {
             string result = "";
@@ -412,6 +424,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             return result;
         }
 
+        /// <summary>
+        /// 지정한 XML 내용을 XLSX 압축 파일의 구성 항목으로 기록한다.
+        /// </summary>
         private static void Part(ZipArchive zip, string name, string xml)
         {
             using (var s = zip.CreateEntry(name, CompressionLevel.Fastest).Open())
@@ -421,6 +436,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             }
         }
 
+        /// <summary>
+        /// CSV 파생 Excel 문서의 정렬·글꼴·표시 형식 XML을 만든다.
+        /// </summary>
         private static string Styles()
         {
             string alignment = "<alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/>";
@@ -428,6 +446,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             return "<styleSheet xmlns=\"" + Ns + "\"><numFmts count=\"1\"><numFmt numFmtId=\"164\" formatCode=\"yyyy-mm-dd hh:mm:ss\"/></numFmts><fonts count=\"2\"><font><sz val=\"10\"/><name val=\"Malgun Gothic\"/></font><font><b/><sz val=\"10\"/><color rgb=\"FFFFFFFF\"/><name val=\"Malgun Gothic\"/></font></fonts><fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF344550\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"1\"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"4\">" + string.Concat(new[] { 0, 0, 164, 10 }.Select((format, i) => "<xf numFmtId=\"" + format + "\" fontId=\"" + (i == 1 ? 1 : 0) + "\" fillId=\"" + (i == 1 ? 2 : 0) + "\" borderId=\"0\" xfId=\"0\" applyAlignment=\"1\" applyNumberFormat=\"1\">" + alignment + "</xf>")) + "</cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles></styleSheet>";
         }
 
+        /// <summary>
+        /// 따옴표·쉼표·줄바꿈과 BOM을 처리해 CSV 전체 내용을 행·필드 목록으로 나눈다.
+        /// </summary>
         internal static List<List<string>> Parse(string text)
         {
             text = text.TrimStart('\uFEFF');

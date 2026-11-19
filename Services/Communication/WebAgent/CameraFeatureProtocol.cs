@@ -29,6 +29,9 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         #endregion
 
         #region [초기화]
+        /// <summary>
+        /// 기능 ID·자료형·범위·지원 채널·선택 항목으로 카메라 기능 규격을 구성한다.
+        /// </summary>
         private CameraFeatureDefinition(byte id, string name, byte type, int min, int max, int targets, params string[] options)
         {
             Id = id;

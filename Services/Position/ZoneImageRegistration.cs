@@ -9,6 +9,9 @@ namespace OpenCvWpfTracking.Services.Position
     // 특징점 대응량을 제한하며 렌즈 위치를 초점거리로 가정하지 않는다.
     public static class ZoneImageRegistration
     {
+        /// <summary>
+        /// 참조 영상과 현재 영상의 특징점을 정합해 구역 도형을 현재 영상 위치로 옮긴다.
+        /// </summary>
         public static FireSmokeScene Match(FireSmokeScene scene, BitmapSource live)
         {
             if (scene?.ReferencePng == null || live == null)
@@ -19,6 +22,9 @@ namespace OpenCvWpfTracking.Services.Position
             return Match(scene, Encode(live));
         }
 
+        /// <summary>
+        /// 참조 영상을 저장·전달할 수 있는 압축 이미지 바이트로 변환한다.
+        /// </summary>
         public static byte[] Encode(BitmapSource live)
         {
             using (var stream = new MemoryStream())
@@ -33,6 +39,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 참조 영상과 현재 영상의 특징점을 정합해 구역 도형을 현재 영상 위치로 옮긴다.
+        /// </summary>
         public static FireSmokeScene Match(FireSmokeScene scene, byte[] current)
         {
             if (scene?.ReferencePng == null || current == null)
@@ -179,6 +188,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 특징점 비교용 영상을 가로 최대 640픽셀로 축소하고 원래 비율을 유지한다.
+        /// </summary>
         private static Mat Resize(Mat image)
         {
             var result = new Mat();

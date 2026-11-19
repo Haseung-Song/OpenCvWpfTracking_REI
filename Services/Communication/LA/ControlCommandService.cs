@@ -62,7 +62,7 @@ namespace OpenCvWpfTracking.Services.Communication
         public bool UseUnsignedWebAgentTiltCoordinates { get; set; }
 
         /// <summary>
-        /// ControlCommandService 동작 수행 함수.
+        /// ControlCommandService의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         public ControlCommandService(TcpClientService tcpClientService)
         {
@@ -162,6 +162,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return SendCommand(0x00, WebAgentTelemetrySnapshotQueryCommand, category, 0x00);
         }
 
+        /// <summary>
+        /// 텔레메트리 조회 분류가 허용 범위 0~3인지 검사한다.
+        /// </summary>
         private static void ValidateTelemetryQueryCategory(byte category)
         {
             if (category > 3)
@@ -179,6 +182,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return _tcpClientService.Send(BuildGpsTelemetryQueryPacket());
         }
 
+        /// <summary>
+        /// LA GPS 텔레메트리 조회용 바이트 패킷을 만든다.
+        /// </summary>
         public static byte[] BuildGpsTelemetryQueryPacket()
         {
             return new byte[]
@@ -202,6 +208,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return _tcpClientService.Send(BuildGpsAutoTxRatePacket(frequencyHz));
         }
 
+        /// <summary>
+        /// GPS 자동 전송 주파수 범위를 검사하고 체크섬을 포함한 설정 패킷을 만든다.
+        /// </summary>
         public static byte[] BuildGpsAutoTxRatePacket(byte frequencyHz)
         {
             if (frequencyHz > 10)
@@ -234,6 +243,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return _tcpClientService.Send(BuildGpsAutoTxRateQueryPacket());
         }
 
+        /// <summary>
+        /// LA GPS 자동 전송 주파수 조회 패킷을 만든다.
+        /// </summary>
         public static byte[] BuildGpsAutoTxRateQueryPacket()
         {
             return new byte[]
@@ -373,6 +385,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return _tcpClientService.Send(BuildStoredRpyOffsetQueryPacket());
         }
 
+        /// <summary>
+        /// 저장된 RPY 보정값을 조회하는 LA 패킷을 만든다.
+        /// </summary>
         public static byte[] BuildStoredRpyOffsetQueryPacket()
         {
             return new byte[]
@@ -397,6 +412,9 @@ namespace OpenCvWpfTracking.Services.Communication
             return _tcpClientService.Send(BuildStoredRpyAutoTxRateQueryPacket());
         }
 
+        /// <summary>
+        /// 저장된 RPY 자동 전송 주파수를 조회하는 LA 패킷을 만든다.
+        /// </summary>
         public static byte[] BuildStoredRpyAutoTxRateQueryPacket()
         {
             return new byte[]
@@ -470,41 +488,66 @@ namespace OpenCvWpfTracking.Services.Communication
             return SendCommand(0x00, 0xE1, 0x00, 0x00);
         }
 
+        /// <summary>
+        /// 대상 렌즈가 지원하는 기능을 조회하는 명령을 송신한다.
+        /// </summary>
         public bool RequestLensCapability(byte target)
         {
             return SendCommand(0x00, 0xE3, target, 0x00);
         }
 
+        /// <summary>
+        /// 대상 렌즈의 현재 줌·초점 상태를 조회하는 명령을 송신한다.
+        /// </summary>
         public bool RequestLensTelemetry(byte target)
         {
             return SendCommand(0x00, 0xE3, target, 0x01);
         }
 
+        /// <summary>
+        /// 대상 렌즈의 지원 기능과 현재 상태 조회를 함께 요청한다.
+        /// </summary>
         public bool RequestLensCapabilityAndTelemetry(byte target)
         {
             return SendCommand(0x00, 0xE3, target, 0x02);
         }
 
+        /// <summary>
+        /// IMU 자세 상태를 조회하는 명령을 송신한다.
+        /// </summary>
         public bool RequestImuTelemetry()
         {
             return SendCommand(0x00, 0xE5, 0x00, 0x00);
         }
 
+        /// <summary>
+        /// 대상 카메라의 특수 기능 지원 정보를 조회한다.
+        /// </summary>
         public bool RequestCameraFeatureCapability(byte target)
         {
             return SendCommand(0x00, 0xE7, target, 0xFF);
         }
 
+        /// <summary>
+        /// 지정한 카메라 특수 기능의 현재 설정값을 조회한다.
+        /// </summary>
         public bool RequestCameraFeatureState(byte target, byte featureId)
         {
             return SendCommand(0x00, 0xE7, target, featureId);
         }
 
+        /// <summary>
+        /// 대상 카메라 특수 기능에 지정한 값을 설정한다.
+        /// </summary>
         public bool SetCameraFeature(byte featureId, byte target, byte value)
         {
             return SendCommand(featureId, 0xE9, target, value);
         }
 
+        /// <summary>
+        /// LA 실제 구현 기준 Pan / Tilt Home Position 실행. UICommandParser: Command2 = 0xB1
+        /// pm-&gt;StartHoming(); tm-&gt;StartHoming();
+        /// </summary>
         public bool MoveHomePosition(byte axis)
         {
             return SendCommand(0x00, 0xB1, axis, 0x00);
@@ -747,7 +790,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// NormalizeLaPresetId 동작 수행 함수.
+        /// LA 프리셋 번호를 지원하는 최댓값 안으로 제한한다.
         /// </summary>
         private static ushort NormalizeLaPresetId(ushort presetId)
         {
@@ -762,7 +805,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// NormalizePresetPosition 동작 수행 함수.
+        /// 프리셋 렌즈 위치를 표준 최댓값 1000 안으로 제한한다.
         /// </summary>
         private static ushort NormalizePresetPosition(ushort position)
         {
@@ -937,7 +980,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// ConvertPositionSpeed 생성 및 변환 함수.
+        /// 각속도를 허용 범위로 제한한 뒤 프로토콜의 0.01도/초 단위 정수로 변환한다.
         /// </summary>
         private static ushort ConvertPositionSpeed(double speedDegreesPerSecond)
         {
@@ -1614,7 +1657,7 @@ namespace OpenCvWpfTracking.Services.Communication
         #region [IR 열상 영상 제어]
 
         /// <summary>
-        /// SendIrImageControlCommand 송신 함수.
+        /// IR 영상 제어 동작을 0x31 계열 명령으로 송신한다.
         /// </summary>
         private bool SendIrImageControlCommand(byte operation)
         {
@@ -1712,7 +1755,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// SelectNextIrPalette 동작 수행 함수.
+        /// IR 팔레트를 다음 항목으로 전환한다.
         /// </summary>
         public bool SelectNextIrPalette()
         {
@@ -1720,7 +1763,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// SelectPreviousIrPalette 동작 수행 함수.
+        /// IR 팔레트를 이전 항목으로 전환한다.
         /// </summary>
         public bool SelectPreviousIrPalette()
         {
@@ -1728,7 +1771,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// SelectIrBlackHot 동작 수행 함수.
+        /// IR 영상의 팔레트를 Black Hot으로 설정한다.
         /// </summary>
         public bool SelectIrBlackHot()
         {
@@ -1737,7 +1780,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// SelectIrWhiteHot 동작 수행 함수.
+        /// IR 영상의 팔레트를 White Hot으로 설정한다.
         /// </summary>
         public bool SelectIrWhiteHot()
         {
@@ -1746,7 +1789,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// SelectIrRainbow 동작 수행 함수.
+        /// IR 영상의 팔레트를 Rainbow로 설정한다.
         /// </summary>
         public bool SelectIrRainbow()
         {
@@ -1755,7 +1798,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// SendEnvironmentIrPaletteCommand 송신 함수.
+        /// 팔레트 송신을 잠금으로 직렬화하고 응답 확인 상태를 초기화한다.
         /// </summary>
         private bool SendEnvironmentIrPaletteCommand(byte operation)
         {

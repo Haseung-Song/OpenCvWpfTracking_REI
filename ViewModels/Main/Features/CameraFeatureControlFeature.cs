@@ -31,6 +31,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         ControlAgentProfileOption _requestedControlProfile { get; set; }
 
+        /// <summary>
+        /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다.
+        /// </summary>
         Services.Configuration.LensControlTuning ControlTuningFor(bool ir);
 
         double CurrentMoveControlTiltMaximum { get; }
@@ -39,10 +42,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string EoStatusText { get; set; }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
+        /// <summary>
+        /// 현재 장비와 줌 위치에 대응하는 십자선 중심을 반환한다.
+        /// </summary>
         Point GetOpticalCenter(bool ir);
 
         string IrStatusText { get; set; }
@@ -53,24 +67,47 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsFovSpeedEnabled { get; set; }
 
+        /// <summary>
+        /// 연결 요청과 마지막 렌즈 응답 시간을 기준으로 유효성을 확인한다.
+        /// </summary>
         bool IsLensFresh(bool ir);
 
         bool IsOperationCommandEnabled { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         byte PanTiltSpeedLevel { get; set; }
 
+        /// <summary>
+        /// 이전 연결의 프리셋 렌즈 응답 증거를 초기화한다.
+        /// </summary>
         void ResetPresetLensEvidence();
 
+        /// <summary>
+        /// 연결/모드 변경 시 이전 장비 capability와 지연된 UI 응답의 적용을 무효화한다.
+        /// </summary>
         void ResetSpecialFeatureSession();
 
+        /// <summary>
+        /// 연결 세대를 변경하고 이전 장비의 AF 상태·대기 요청·실행 확인을 초기화한다.
+        /// </summary>
         void ResetWebAgentControlSession();
 
         ControlAgentProfileOption SelectedControlAgentProfile { get; set; }
 
+        /// <summary>
+        /// 2026-10-01: 메인 화면의 활성 EO/IR 영상 변경을 PT 감쇄 기준에 반영한다. 신규 WebAgent 프로토콜 없이 기존 PT
+        /// 이동 패킷의 속도값만 조정한다.
+        /// </summary>
         void SetActivePanTiltZoomSource(bool isInfrared);
 
+        /// <summary>
+        /// 2026-09-15: 화면 중앙 STOP 버튼 전용 PTZF 전체 정지. 현재 GUI 이동 상태와 관계없이 Pelco-D 전체 STOP FF
+        /// 01 00 00 00 00 01을 반드시 1회 송신한다. 옥상 CTEC EO 렌즈가 직접 제어 중이면 해당 렌즈도 함께 정지한다.
+        /// </summary>
         void StopAllPtzfMove();
     }
 
@@ -82,11 +119,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly ICameraFeatureControlFeatureContext _context;
 
+        /// <summary>
+        /// 카메라 특수 기능·디지털 줌 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal CameraFeatureControlFeature(ICameraFeatureControlFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _digitalEstimateTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -214,6 +257,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 단조 시계의 경과 시간을 계산해 EO/IR 디지털 추정 모델을 함께 갱신한다.
+        /// </summary>
         internal void TickDigitalEstimate()
         {
             long now = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -227,6 +273,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             AdvanceDigitalEstimate(true, elapsed);
         }
 
+        /// <summary>
+        /// 명시적으로 활성화한 추정값만 연결·상태 신선도·광학 끝점 조건으로 갱신한다.
+        /// </summary>
         internal void AdvanceDigitalEstimate(bool ir, double elapsed)
         {
             var estimate = ir ? _irDigitalEstimate : _eoDigitalEstimate;
@@ -247,6 +296,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 이전 방향의 경과 시간을 먼저 반영한 후 추정 배율의 증감 방향을 변경한다.
+        /// </summary>
         internal void SetDigitalEstimateDirection(int direction, bool ir = false)
         {
             TickDigitalEstimate();
@@ -254,11 +306,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             (ir ? _irDigitalEstimate : _eoDigitalEstimate).Direction = direction;
         }
 
+        /// <summary>
+        /// 채널의 연결·운용 잠금·요청 대기를 확인한다. IR은 지원 조회와 무관하게 수동 요청을 허용한다.
+        /// </summary>
         internal bool CanSetDigitalZoom(int i)
         {
             return CameraFeatureTransportReady && _context.IsOperationCommandEnabled && !_context.IsControlInputLocked && (i == 1 || (_digitalCapsKnown[i] && (_digitalCaps[i] & 5) == 5)) && _digitalPendingTicks[i] == 0;
         }
 
+        /// <summary>
+        /// 요청 송신과 유효한 장비 응답을 구분해 D-ZOOM 적용 확인 문구를 만든다.
+        /// </summary>
         internal string DigitalStatus(int i)
         {
             if (!CameraFeatureTransportReady)
@@ -299,6 +357,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return "D-ZOOM · 장비 상태 미수신";
         }
 
+        /// <summary>
+        /// D-ZOOM 가능 여부 및 상태 표시의 바인딩을 갱신한다.
+        /// </summary>
         internal void NotifyDigitalZoom()
         {
             foreach (string n in DigitalZoomPropertyNames)
@@ -307,6 +368,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 연결 세션의 capability·응답·요청·추정 및 클릭 증거를 초기화한다.
+        /// </summary>
         internal void ResetDigitalZoomSession()
         {
             _context.ResetWebAgentControlSession();
@@ -345,6 +409,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             NotifyDigitalZoom();
         }
 
+        /// <summary>
+        /// EO/IR 기능 지원 조회를 연결 중 최대 초당 한 번 요청한다.
+        /// </summary>
         internal void QueryDigitalZoomSupport()
         {
             if (!CameraFeatureTransportReady || DateTime.UtcNow.Ticks - _lastDigitalQueryTicks < TimeSpan.FromSeconds(1).Ticks)
@@ -362,6 +429,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command("DIGITAL ZOOM", "EO/IR support query / E7");
         }
 
+        /// <summary>
+        /// 길이와 BOOLEAN 범위를 확인한 capability 응답으로 조회/설정 지원을 갱신한다.
+        /// </summary>
         internal void ApplyDigitalZoomCapability(byte[] p)
         {
             if (p.Length < 13 || p[0] != 2 || p[1] > 1 || p.Length < 13 + 12 * p[12])
@@ -416,6 +486,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             NotifyDigitalZoom();
         }
 
+        /// <summary>
+        /// 유효한 장비 ON/OFF 응답을 적용하며 요청 확인과 추정 억제 상태를 갱신한다.
+        /// </summary>
         internal void ApplyDigitalZoomState(byte[] p)
         {
             if (p.Length < 18 || p[1] > 1 || p[2] != 0x1D)
@@ -441,6 +514,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             NotifyDigitalZoom();
         }
 
+        /// <summary>
+        /// 운용 잠금 검증 후 BOOLEAN 명령을 송신한다. 송신 성공을 장비 적용 확인으로 취급하지 않는다.
+        /// </summary>
         internal bool SetDigitalZoom(bool ir, bool on)
         {
             int i = ir ? 1 : 0;
@@ -489,6 +565,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return sent;
         }
 
+        /// <summary>
+        /// DIGITAL_ZOOM 거절 응답 시 요청·추정을 해제한다. 수동 재요청 버튼은 유지한다.
+        /// </summary>
         internal void ApplyDigitalZoomUnavailable(int target)
         {
             TickDigitalEstimate();
@@ -510,6 +589,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             NotifyDigitalZoom();
         }
 
+        /// <summary>
+        /// 클릭 이동 기한, D-ZOOM 응답 대기 및 주기 조회를 기존 간격으로 감시한다.
+        /// </summary>
         internal void TickDigitalZoom()
         {
             if (_centerDeadlineTicks != 0)
@@ -571,6 +653,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 정규화된 영상 클릭 좌표를 핀홀 광선 모델로 PT 절대 목표 각도에 환산한다.
+        /// </summary>
         internal static Tuple<double, double> VideoCenterTarget(double pan, double tilt, double nx, double ny, double hfov, double aspect)
         {
             if (new[]
@@ -597,6 +682,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return Tuple.Create(targetPan, dt);
         }
 
+        /// <summary>
+        /// 영상·렌즈·자세의 신선도와 제어 잠금을 검증한 뒤 줌 보정 PT 절대 이동을 요청한다.
+        /// </summary>
         internal async Task<bool> CenterVideoPointAsync(bool ir, double nx, double ny, double aspect, int sourceWidth = 0, int sourceHeight = 0)
         {
             var pose = Volatile.Read(ref _videoCenterPose);

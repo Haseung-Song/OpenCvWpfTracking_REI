@@ -35,6 +35,9 @@ namespace OpenCvWpfTracking.Services.Video
 
         internal int SuppressedCount { get; private set; }
 
+        /// <summary>
+        /// 고정 구조 후보 이력과 영상 크기·억제 집계를 초기화한다.
+        /// </summary>
         internal void Reset()
         {
             _samples.Clear();
@@ -44,6 +47,9 @@ namespace OpenCvWpfTracking.Services.Video
             SuppressedCount = 0;
         }
 
+        /// <summary>
+        /// 영상 후보에서 고정 구조물의 반복 패턴과 겹치는 오탐을 걸러낸다.
+        /// </summary>
         internal IList<Rect> Filter(Mat source, IList<Rect> candidates, DateTime now)
         {
             var visible = new List<Rect>();
@@ -259,6 +265,9 @@ namespace OpenCvWpfTracking.Services.Video
             return false;
         }
 
+        /// <summary>
+        /// 새 고정 구조 후보의 기준 사각형·영상 패턴·관측 시각을 초기화한다.
+        /// </summary>
         private static void Start(Sample s, Rect rect, double[] pattern, DateTime now)
         {
             s.Anchor = s.Last = rect;
@@ -270,6 +279,9 @@ namespace OpenCvWpfTracking.Services.Video
             s.Observations = 1;
         }
 
+        /// <summary>
+        /// 두 사각형의 교집합 면적을 합집합 면적으로 나누어 겹침 비율을 계산한다.
+        /// </summary>
         private static double IoU(Rect a, Rect b)
         {
             Rect c = a & b;
@@ -279,6 +291,9 @@ namespace OpenCvWpfTracking.Services.Video
             return intersection / Math.Max(1.0, a.Width * (double)a.Height + b.Width * (double)b.Height - intersection);
         }
 
+        /// <summary>
+        /// 두 후보의 크기와 위치 관계가 같은 구조를 나타내는지 검사한다.
+        /// </summary>
         private static bool SameGeometry(Rect a, Rect b)
         {
             double area = Math.Max(1, a.Width * (double)a.Height);
@@ -290,6 +305,9 @@ namespace OpenCvWpfTracking.Services.Video
             return IoU(a, b) >= .94 && Math.Abs(b.Width * (double)b.Height - area) / area <= .04 && Math.Sqrt(dx * dx + dy * dy) <= Math.Max(1.5, Math.Sqrt(area) * .006);
         }
 
+        /// <summary>
+        /// 후보 영역의 영상 패턴을 비교용 특징으로 추출한다.
+        /// </summary>
         private static double[] Pattern(Mat gray, Rect rect)
         {
             using (var roi = new Mat(gray, rect))
@@ -315,6 +333,9 @@ namespace OpenCvWpfTracking.Services.Video
             }
         }
 
+        /// <summary>
+        /// 두 영상 특징이 같은 고정 구조의 반복 패턴인지 비교한다.
+        /// </summary>
         private static bool SamePattern(double[] a, double[] b)
         {
             double sum = 0;
@@ -336,6 +357,9 @@ namespace OpenCvWpfTracking.Services.Video
             return sum / a.Length <= 2.5 && changed / (double)a.Length <= .015;
         }
 
+        /// <summary>
+        /// 후보 영역에 고정 구조물로 볼 수 있는 강한 직선·윤곽이 있는지 검사한다.
+        /// </summary>
         private static bool HasRigidEdges(double[] p)
         {
             int strong = 0, axis = 0;

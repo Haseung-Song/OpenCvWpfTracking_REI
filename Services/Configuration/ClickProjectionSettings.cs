@@ -146,6 +146,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             return (source - Left) / Width;
         }
 
+        /// <summary>
+        /// 기준 영상 높이에 맞춰 광학 중심의 Y 좌표를 구한다.
+        /// </summary>
         public double CenterY(double source)
         {
             return (source - Top) / Height;
@@ -157,6 +160,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             return WideHorizontalFov ?? (2 * Math.Atan(Math.Tan(fullSourceFov * Math.PI / 360) * Width) * 180 / Math.PI);
         }
 
+        /// <summary>
+        /// XML 설정 항목을 읽어 유효한 수치인지 검사하고 실패 시 기본값을 사용한다.
+        /// </summary>
         private static bool Read(XElement element, string name, double fallback, out double value)
         {
             string text = (string)element.Attribute(name);
@@ -166,6 +172,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             return text == null || (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && Finite(value));
         }
 
+        /// <summary>
+        /// 값이 NaN이나 무한대가 아닌 유효한 실수인지 확인한다.
+        /// </summary>
         private static bool Finite(double value)
         {
             return !double.IsNaN(value) && !double.IsInfinity(value);

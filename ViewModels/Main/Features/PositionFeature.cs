@@ -15,6 +15,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         ref int _zoneEpoch { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
     }
 
@@ -26,6 +29,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IPositionFeatureContext _context;
 
+        /// <summary>
+        /// 장비 위치 상태 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal PositionFeature(IPositionFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -76,6 +82,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 위치 상태 저장소에 현재 장비의 연결 여부를 반영한다.
+        /// </summary>
         internal void SetPositionConnectionState(bool connected)
         {
             System.Threading.Interlocked.Increment(ref _context._zoneEpoch);
@@ -85,6 +94,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueuePositionStatusNotification();
         }
 
+        /// <summary>
+        /// 수신한 PTZ와 EO 렌즈 값을 위치 상태에 반영한다.
+        /// </summary>
         internal void UpdatePositionPtzAndEoLens(double pan, double tilt, int eoZoom, int eoFocus)
         {
             _positionSnapshotService.UpdatePtzAndEoLens(pan, tilt, eoZoom, eoFocus);
@@ -92,6 +104,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueuePositionStatusNotification();
         }
 
+        /// <summary>
+        /// EO 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         internal void UpdatePositionEoLens(int eoZoom, int eoFocus)
         {
             _positionSnapshotService.UpdateEoLens(eoZoom, eoFocus);
@@ -99,6 +114,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueuePositionStatusNotification();
         }
 
+        /// <summary>
+        /// IR 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         internal void UpdatePositionIrLens(int irZoom, int irFocus)
         {
             _positionSnapshotService.UpdateIrLens(irZoom, irFocus);
@@ -106,6 +124,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueuePositionStatusNotification();
         }
 
+        /// <summary>
+        /// GPS 위치·이동·수신 품질을 위치 상태에 반영한다.
+        /// </summary>
         internal void UpdatePositionGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid)
         {
             _positionSnapshotService.UpdateGps(latitude, longitude, altitude, speed, course, hdop, satelliteCount, fixStatus, valid);
@@ -113,6 +134,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueuePositionStatusNotification();
         }
 
+        /// <summary>
+        /// IMU Roll·Pitch·Yaw 응답을 위치 상태에 반영한다.
+        /// </summary>
         internal void UpdatePositionImu(double roll, double pitch, double yaw, bool valid)
         {
             _positionSnapshotService.UpdateImu(roll, pitch, yaw, valid);
@@ -120,6 +144,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             QueuePositionStatusNotification();
         }
 
+        /// <summary>
+        /// 현재 위치·센서·렌즈 상태를 일관된 스냅샷으로 취득한다.
+        /// </summary>
         internal PositionSnapshot CapturePositionSnapshot(string source, int? presetId = null)
         {
             try
@@ -142,6 +169,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 위치 상태 알림을 화면 스레드에 예약해 수신 스레드의 직접 화면 접근을 피한다.
+        /// </summary>
         internal void QueuePositionStatusNotification(bool includeLastSnapshot = false)
         {
             Dispatcher dispatcher = System.Windows.Application.Current?.Dispatcher;
@@ -198,6 +228,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             });
         }
 
+        /// <summary>
+        /// 위치 데이터의 유효 상태를 화면 표시 문구로 변환한다.
+        /// </summary>
         internal static string ToUiStatus(PositionDataStatus status)
         {
             switch (status)
@@ -215,6 +248,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 위치 스냅샷의 자세·렌즈·GPS·IMU 값을 진단 로그로 남긴다.
+        /// </summary>
         internal static void LogPositionSnapshot(PositionSnapshot snapshot)
         {
             if (snapshot == null)
@@ -225,6 +261,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("POSITION SNAPSHOT", "SOURCE=" + snapshot.Source + " / PRESET=" + (snapshot.PresetId?.ToString(CultureInfo.InvariantCulture) ?? "-") + " / PAN=" + FormatSnapshotValue(snapshot.Pan, snapshot.PtzStatus, "F2") + " / TILT=" + FormatSnapshotValue(snapshot.Tilt, snapshot.PtzStatus, "F2") + " / EO_ZOOM=" + FormatSnapshotValue(snapshot.EoZoom, snapshot.EoLensStatus) + " / IR_ZOOM=" + FormatSnapshotValue(snapshot.IrZoom, snapshot.IrLensStatus) + " / PTZ=" + snapshot.PtzStatus + " / EO_LENS=" + snapshot.EoLensStatus + " / IR_LENS=" + snapshot.IrLensStatus + " / GPS=" + snapshot.GpsStatus + " / GPS_COURSE=" + FormatSnapshotValue(snapshot.GpsCourse, snapshot.GpsStatus, "F2") + " / GPS_HDOP=" + FormatSnapshotValue(snapshot.GpsHdop, snapshot.GpsStatus, "F2") + " / GPS_SAT=" + FormatSnapshotValue(snapshot.GpsSatelliteCount, snapshot.GpsStatus) + " / GPS_FIX=" + FormatSnapshotValue(snapshot.GpsFixStatus, snapshot.GpsStatus) + " / IMU=" + snapshot.ImuStatus + " / CONNECTED=" + snapshot.WebAgentConnected + " / CAPTURED_AT=" + snapshot.CapturedAt.ToString("O", CultureInfo.InvariantCulture));
         }
 
+        /// <summary>
+        /// 스냅샷 수치와 유효 상태를 사람이 읽을 표시 문자열로 변환한다.
+        /// </summary>
         internal static string FormatSnapshotValue(double? value, PositionDataStatus status, string format)
         {
             if (status == PositionDataStatus.Valid && value.HasValue)
@@ -237,6 +276,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 스냅샷 수치와 유효 상태를 사람이 읽을 표시 문자열로 변환한다.
+        /// </summary>
         internal static string FormatSnapshotValue(int? value, PositionDataStatus status)
         {
             if (status == PositionDataStatus.Valid && value.HasValue)

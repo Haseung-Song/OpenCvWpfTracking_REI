@@ -72,11 +72,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void ISpecialFeaturesFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// 2026-08-27: 카메라 이동 또는 영상 조건 변경 뒤 EO/IR 기준 프레임과 시간축 후보를 함께 초기화하여 화면 전체 변화가 이벤트가
+        /// 되지 않게 한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void ISpecialFeaturesFeatureContext.ResetFireSmokeFrameAnalysis(string reason)
         {
             _features._smokeFeature.ResetFireSmokeFrameAnalysis(reason);
@@ -88,11 +95,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._rtspSettingsFeature.SelectedControlAgentProfile = value; }
         }
 
+        /// <summary>
+        /// 운용 잠금 검증 후 BOOLEAN 명령을 송신한다. 송신 성공을 장비 적용 확인으로 취급하지 않는다. 실제 처리는 연결된 기능 객체에
+        /// 위임한다.
+        /// </summary>
         bool ISpecialFeaturesFeatureContext.SetDigitalZoom(bool ir, bool on)
         {
             return _features._cameraFeatureControlFeature.SetDigitalZoom(ir, on);
         }
 
+        /// <summary>
+        /// 현재 열상 팔레트에 맞춰 선택 버튼의 강조 상태를 갱신한다.
+        /// </summary>
         void ISpecialFeaturesFeatureContext.UpdateThermalPaletteButtonVisual(int paletteType)
         {
             _features._thermalFeature.UpdateThermalPaletteButtonVisual(paletteType);

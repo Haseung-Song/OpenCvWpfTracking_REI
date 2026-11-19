@@ -61,11 +61,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.AiPowerStatusText = value; }
         }
 
+        /// <summary>
+        /// AI 탐지 사각형과 현재 위치를 이용해 감시·제외 구역 포함 여부를 판정한다.
+        /// </summary>
         Services.Position.ZoneAssessment IEventAlertsFeatureContext.AssessAiZone(AiDetectionResult result, AiDetectionBox box, string type)
         {
             return _features._zonesFeature.AssessAiZone(result, box, type);
         }
 
+        /// <summary>
+        /// 현재 위치·센서·렌즈 상태를 일관된 스냅샷으로 취득한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Models.Position.PositionSnapshot IEventAlertsFeatureContext.CapturePositionSnapshot(string source, int? presetId)
         {
             return _features._positionFeature.CapturePositionSnapshot(source, presetId);
@@ -76,11 +82,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._fireEventsFeature.FireEvents; }
         }
 
+        /// <summary>
+        /// 알림 탭의 집계 Binding을 한 번에 갱신한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IEventAlertsFeatureContext.NotifyFireEventSummaryChanged()
         {
             _features._fireEventsFeature.NotifyFireEventSummaryChanged();
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IEventAlertsFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);

@@ -24,6 +24,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _panoramaReferenceFeature.PanoramaReference; }
         }
 
+        /// <summary>
+        /// 각도를 -180~180도 부호 있는 범위로 정규화한다.
+        /// </summary>
         internal static double SignedPan(double pan)
         {
             return PanoramaReferenceFeature.SignedPan(pan);

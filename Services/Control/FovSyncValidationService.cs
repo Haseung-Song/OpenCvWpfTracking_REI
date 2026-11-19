@@ -10,6 +10,9 @@ namespace OpenCvWpfTracking.Services.Control
     {
         public const double PassThresholdPercent = 10.0;
 
+        /// <summary>
+        /// EO/IR 영상의 측정 기준점으로 화각 오차와 검증 결과를 계산한다.
+        /// </summary>
         public FovSyncValidationResult Calculate(int level, double eoLeftX, double eoRightX, int eoFrameWidth, double irLeftX, double irRightX, int irFrameWidth)
         {
             if (level < 1 || level > 10)
@@ -57,6 +60,9 @@ namespace OpenCvWpfTracking.Services.Control
 
         public bool Passed { get; }
 
+        /// <summary>
+        /// 화각 실측값과 오차·판정 결과를 보관한다.
+        /// </summary>
         public FovSyncValidationResult(int level, double eoPixelWidth, double irPixelWidth, double eoNormalizedWidth, double irNormalizedWidth, double errorPercent, bool passed)
         {
             Level = level;

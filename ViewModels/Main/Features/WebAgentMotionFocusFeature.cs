@@ -37,6 +37,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
 
+        /// <summary>
+        /// 현재 RadioButton에서 선택한 Pan 회전 모드를 Pelco-D 확장 명령 0x4D로 장비에 적용한다.
+        /// </summary>
         bool ApplySelectedPanTurnMode();
 
         bool CameraFeatureTransportReady { get; }
@@ -65,12 +68,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsSelectedControlAgentWebAgent { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         double? PanAbsoluteValue { get; set; }
 
         double? TiltAbsoluteValue { get; set; }
 
+        /// <summary>
+        /// 현재 선택된 EO 프리셋이 CTEC CGI 직접 제어 대상인지 확인한다. EO 주소가 프리셋 외부 값으로 변경된 경우에는 잘못된 카메라로
+        /// 명령이 송신되지 않도록 기존 Control Agent 경로를 사용한다.
+        /// </summary>
         bool TryGetSelectedEoCtecSource(out RtspSourceOption sourceOption);
 
         Action<object> ExecuteAutoFocusCallback { get; }
@@ -86,11 +96,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IWebAgentMotionFocusFeatureContext _context;
 
+        /// <summary>
+        /// WEB 정밀 이동·자동 초점 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal WebAgentMotionFocusFeature(IWebAgentMotionFocusFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _isWebAgentFocusControlEnabled = true;
@@ -305,6 +321,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 보관된 장비 위치가 정밀 동작 판단에 사용할 만큼 최근에 수신되었는지 확인한다.
+        /// </summary>
         internal bool IsPrecisionPoseFresh()
         {
             var pose = Volatile.Read(ref _context._videoCenterPose);
@@ -312,6 +331,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return pose != null && Math.Abs(DateTime.UtcNow.Ticks - pose.Item3) < TimeSpan.FromSeconds(2).Ticks;
         }
 
+        /// <summary>
+        /// 정밀 속도 문자열을 해석하고 프로토콜·장비 상한 범위 안인지 확인한다.
+        /// </summary>
         internal bool TryPrecisionSpeed(bool tilt, out double speed)
         {
             string input = tilt ? PrecisionTiltSpeed : PrecisionPanSpeed;
@@ -337,6 +359,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 정밀 절대 이동의 보관 경로이며 현재는 상위 실행 허용값이 false여서 송신하지 않는다.
+        /// </summary>
         internal async void StartPrecisionAbsolute(string axis)
         {
             if (!CanStartPrecisionMotion || (axis != "PAN" && axis != "TILT"))
@@ -425,6 +450,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 정밀 조그의 보관 경로이며 현재는 상위 실행 허용값이 false여서 시작하지 않는다.
+        /// </summary>
         internal bool StartPrecisionJog(byte direction)
         {
             if (!CanStartPrecisionMotion || direction == 0)
@@ -480,6 +508,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 조그 방향이 현재 팬·틸트의 설정 한계를 벗어나는지 확인한다.
+        /// </summary>
         internal bool IsPrecisionJogWithinLimits(byte direction)
         {
             var pose = Volatile.Read(ref _context._videoCenterPose);
@@ -508,6 +539,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return ((direction & 2) == 0 || pose.Item1 > _context.CurrentMoveControlPanMinimum + panMargin) && ((direction & 4) == 0 || pose.Item1 < _context.CurrentMoveControlPanMaximum - panMargin) && ((direction & 8) == 0 || pose.Item2 < _context.CurrentMoveControlTiltMaximum - tiltMargin) && ((direction & 16) == 0 || pose.Item2 > _context.CurrentMoveControlTiltMinimum + tiltMargin);
         }
 
+        /// <summary>
+        /// 진행 중 정밀 동작 상태를 정리하고 필요할 때 양 축 정지를 요청한다.
+        /// </summary>
         internal void StopPrecisionMotion(string reason, bool force = false)
         {
             bool wasActive = _precisionActive;
@@ -541,6 +575,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RefreshWebAgentFocusControls();
         }
 
+        /// <summary>
+        /// 연결·지원 기능·응답 대기·제어 잠금을 확인해 대상별 AF 명령 실행 가능 여부를 판단한다.
+        /// </summary>
         internal bool CanExecuteAutoFocus(object parameter)
         {
             string text = Convert.ToString(parameter);
@@ -574,6 +611,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return state != null && state.Result == 0 && (action == 1 || action == 2 ? state.ContinuousSupported : action == 3 && state.OnePushSupported && !state.Running);
         }
 
+        /// <summary>
+        /// 선택한 EO/IR AF 버튼 인수를 조회·설정·단발 초점 요청으로 변환한다.
+        /// </summary>
         internal void ExecuteAutoFocus(object parameter)
         {
             if (!CanExecuteAutoFocus(parameter))
@@ -588,6 +628,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SendAutoFocus(text[0] - '0', action == 0 ? 0 : action == 3 ? 2 : 1, action == 1 ? 1 : 0);
         }
 
+        /// <summary>
+        /// 대상별 응답 대기 상태와 제한 시간을 설정한 뒤 AF 패킷을 송신한다.
+        /// </summary>
         internal void SendAutoFocus(int target, int operation, int value)
         {
             if (!IsWebAgentFocusControlReady || target < 0 || target > 1 || !AutoFocusTargetUsesAgent(target) || _autoFocusPending[target] >= 0 || _autoFocusUncertain[target])
@@ -613,6 +656,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RefreshWebAgentFocusControls();
         }
 
+        /// <summary>
+        /// AF 응답의 형식·세션·대상·작업을 확인하고 지원 여부와 실제 상태를 반영한다.
+        /// </summary>
         internal void ParseAutoFocusResponse(byte[] payload)
         {
             AutoFocusSnapshot state;
@@ -687,6 +733,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }));
         }
 
+        /// <summary>
+        /// 연결 시 연속 AF가 지원되는 채널만 기본 OFF로 맞춘다. 송신 성공을 OFF로 간주하지 않고 장비 응답의 모드와 실행 상태를 확인한다.
+        /// </summary>
         internal void ApplyAutoFocusDefaultOff(AutoFocusSnapshot state)
         {
             int target = state.Target;
@@ -737,6 +786,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT AF", $"기본 OFF 설정 요청 / 대상={target} / 응답 확인 전 초점 복원 대기");
         }
 
+        /// <summary>
+        /// AF 동작·응답 대기·상태 불명 중 해당 채널의 수동 초점 충돌을 차단한다.
+        /// </summary>
         internal bool IsAutoFocusBlockingManualFocus(bool ir, bool logWarning = true)
         {
             if (!IsAutoFocusPanelVisible || !_context.CameraFeatureTransportReady || !AutoFocusTargetUsesAgent(ir ? 1 : 0))
@@ -758,6 +810,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return blocked;
         }
 
+        /// <summary>
+        /// EO 직접 제어 구성을 구분해 WEB AGENT AF 명령을 적용할 대상인지 확인한다.
+        /// </summary>
         internal bool AutoFocusTargetUsesAgent(int target)
         {
             if (!IsAutoFocusPanelVisible)
@@ -775,6 +830,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return !_context.TryGetSelectedEoCtecSource(out source);
         }
 
+        /// <summary>
+        /// 지원 장비 연결 뒤 상태를 조회하고 지원 채널의 연속 AF 기본 OFF 확인을 시작한다.
+        /// </summary>
         internal void ActivateAutoFocusSession(bool refresh = false)
         {
             if (!IsWebAgentFocusControlReady || (!refresh && _autoFocusActivatedForSession) || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked)
@@ -796,6 +854,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT AF", "지원 장비 AF 제어 사용 / 상태 조회 후 연속 AF 기본 OFF 확인");
         }
 
+        /// <summary>
+        /// WEB 제어 입력의 중지·만료를 감시하는 안전 타이머를 준비한다.
+        /// </summary>
         internal void EnsureWebAgentControlSafetyTimer()
         {
             if (_webAgentControlSafetyTimer == null)
@@ -811,6 +872,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _webAgentControlSafetyTimer.Start();
         }
 
+        /// <summary>
+        /// 세션 변경·응답 시간 초과·위치 유효성·동작 한계를 주기적으로 확인한다.
+        /// </summary>
         internal void CheckWebAgentControlSafety()
         {
             if (!IsAutoFocusPanelVisible || !_context.CameraFeatureTransportReady)
@@ -893,6 +957,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 연결 세대를 변경하고 이전 장비의 AF 상태·대기 요청·실행 확인을 초기화한다.
+        /// </summary>
         internal void ResetWebAgentControlSession()
         {
             int generation = Interlocked.Increment(ref _webAgentControlSessionRevision);
@@ -949,6 +1016,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }));
         }
 
+        /// <summary>
+        /// 정밀 명령의 실행 불가 응답을 확인해 보관된 동작 상태와 정지 처리를 정리한다.
+        /// </summary>
         internal void HandlePrecisionUnavailable(byte[] payload)
         {
             if (payload.Length < 6 || payload[0] != 1 || (payload[3] != 0xC1 && payload[3] != 0xC3 && payload[3] != 0xC5))
@@ -969,6 +1039,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }));
         }
 
+        /// <summary>
+        /// 정밀 동작 진단 상태를 갱신하고 변경 알림을 보낸다.
+        /// </summary>
         internal void SetPrecisionStatus(string text)
         {
             _precisionStatus = text;
@@ -978,6 +1051,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT 정밀 이동", text);
         }
 
+        /// <summary>
+        /// AF 상태·수동 초점 잠금·명령 실행 가능 여부의 화면 알림을 갱신한다.
+        /// </summary>
         internal void RefreshWebAgentFocusControls()
         {
             _context.OnPropertyChanged(nameof(IsAutoFocusPanelVisible));

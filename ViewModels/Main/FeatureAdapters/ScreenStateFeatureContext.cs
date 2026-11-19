@@ -89,6 +89,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.ControlAgentPortText = value; }
         }
 
+        /// <summary>
+        /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Services.Configuration.LensControlTuning IScreenStateFeatureContext.ControlTuningFor(bool ir)
         {
             return _features._inputCoordinatorFeature.ControlTuningFor(ir);

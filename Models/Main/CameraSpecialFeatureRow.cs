@@ -22,6 +22,9 @@ namespace OpenCvWpfTracking.Models.Main
         #endregion
 
         #region [초기화]
+        /// <summary>
+        /// 카메라 기능 선택값과 화면 표시 이름을 보관한다.
+        /// </summary>
         public CameraFeatureOption(int value, string label)
         {
             Value = value;
@@ -338,6 +341,9 @@ namespace OpenCvWpfTracking.Models.Main
         #endregion
 
         #region [초기화]
+        /// <summary>
+        /// 카메라 특수 기능 정의·조회·송신 콜백을 연결하고 행별 편집 명령을 만든다.
+        /// </summary>
         public CameraSpecialFeatureRow(CameraFeatureDefinition definition, byte target, Func<bool> ready, Func<bool> unlocked, Action<CameraSpecialFeatureRow, int> send, Action<CameraSpecialFeatureRow> query, Func<string> connectionHint = null, Func<bool> isWebAgent = null)
         {
             Definition = definition;

@@ -61,6 +61,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 현재 항목의 이름과 주요 값을 화면 표시용 문자열로 반환한다.
+        /// </summary>
         public override string ToString()
         {
             return Name + " / " + Kind + " / " + (Fire ? "FIRE " : "") + (Smoke ? "SMOKE" : "");
@@ -111,6 +114,9 @@ namespace OpenCvWpfTracking.Services.Position
 
         public List<FireSmokeZone> Zones { get; set; } = new List<FireSmokeZone>();
 
+        /// <summary>
+        /// 현재 항목의 이름과 주요 값을 화면 표시용 문자열로 반환한다.
+        /// </summary>
         public override string ToString()
         {
             return Name + (PresetNumber > 0 ? " / " + PresetKind + " P" + PresetNumber.ToString("00") : "") + (Invalidated ? " / 재등록 필요" : "");
@@ -146,6 +152,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 구역 판정을 할 수 없는 사유가 포함된 미확인 결과를 만든다.
+        /// </summary>
         public static ZoneAssessment Unknown(string reason)
         {
             return new ZoneAssessment
@@ -177,6 +186,9 @@ namespace OpenCvWpfTracking.Services.Position
 
         public double HorizontalFov { get; set; }
 
+        /// <summary>
+        /// 참조 장면의 EO 줌 값으로 수평 화각을 구한다.
+        /// </summary>
         public double ReferenceEoFov(int zoom)
         {
             return new OpenCvWpfTracking.Services.Control.FieldOfViewSyncService().GetEoHfov((short)zoom);
@@ -197,11 +209,17 @@ namespace OpenCvWpfTracking.Services.Position
 
         private readonly Dictionary<string, Entry> _entries = new Dictionary<string, Entry>();
 
+        /// <summary>
+        /// 캐시에 보관한 참조 위치 항목을 모두 비운다.
+        /// </summary>
         public void Clear()
         {
             _entries.Clear();
         }
 
+        /// <summary>
+        /// 현재 프레임의 유효 구역 장면을 캐시에 반영하고 짧은 응답 공백의 유지 표시를 관리한다.
+        /// </summary>
         public List<FireSmokeScene> Update(string camera, ZoneFrameContext frame, IEnumerable<FireSmokeScene> current, IEnumerable<string> allowedIds, DateTimeOffset confirmedAt, bool ready, out int heldCount)
         {
             heldCount = 0;
@@ -261,6 +279,9 @@ namespace OpenCvWpfTracking.Services.Position
             return _entries.Values.Select(entry => entry.Scene).ToList();
         }
 
+        /// <summary>
+        /// 현재 자세·렌즈와 저장된 참조 장면이 같은 관측 시야인지 비교한다.
+        /// </summary>
         private static bool SameView(ZoneFrameContext previous, ZoneFrameContext current, string camera)
         {
             return previous.Key == current.Key && previous.Epoch == current.Epoch && previous.ChannelEpoch == current.ChannelEpoch && previous.Width == current.Width && previous.Height == current.Height && FireSmokeZoneService.IsCameraPoseStable(previous.Position, current.Position, camera);
@@ -340,16 +361,25 @@ namespace OpenCvWpfTracking.Services.Position
             return true;
         }
 
+        /// <summary>
+        /// 각도를 -180~180도 부호 있는 범위로 정규화한다.
+        /// </summary>
         private static double SignedAngle(double value)
         {
             return ((value + 180) % 360 + 360) % 360 - 180;
         }
 
+        /// <summary>
+        /// 렌즈 위치가 기준값과 허용 오차 안에서 일치하는지 검사한다.
+        /// </summary>
         public static bool LensWithin(int? actual, int expected, int tolerance)
         {
             return actual.HasValue && actual.Value >= 0 && actual.Value <= 1000 && expected >= 0 && expected <= 1000 && Math.Abs((long)actual.Value - expected) <= tolerance;
         }
 
+        /// <summary>
+        /// 문자열 렌즈 위치를 해석해 기준값과 허용 오차 안에서 비교한다.
+        /// </summary>
         private static bool LensTextWithin(string saved, string current, int tolerance)
         {
             int before, after;
@@ -396,6 +426,9 @@ namespace OpenCvWpfTracking.Services.Position
             return null;
         }
 
+        /// <summary>
+        /// 구역 저장 자료의 버전·장면 수·식별자·좌표·크기가 허용 형식과 범위에 맞는지 검사한다.
+        /// </summary>
         public static void Validate(FireSmokeZoneFile data)
         {
             if (data == null || data.Version != 1 || data.Scenes == null || data.Scenes.Count > 100)
@@ -422,11 +455,17 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 값이 NaN이나 무한대가 아닌 유효한 실수인지 확인한다.
+        /// </summary>
         private static bool Finite(double n)
         {
             return !double.IsNaN(n) && !double.IsInfinity(n);
         }
 
+        /// <summary>
+        /// 구역 XML 파일의 크기·형식을 검사하고 저장 장면과 도형을 읽는다.
+        /// </summary>
         public static FireSmokeZoneFile Load(string path)
         {
             if (!File.Exists(path))
@@ -449,6 +488,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 구역 자료를 검증한 뒤 임시 파일과 교체 방식으로 저장한다.
+        /// </summary>
         public static void Save(string path, FireSmokeZoneFile data)
         {
             Validate(data);
@@ -484,6 +526,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 구역 저장 자료를 직렬화해 원본과 독립된 깊은 복사본을 만든다.
+        /// </summary>
         public static FireSmokeZoneFile Clone(FireSmokeZoneFile data)
         {
             var serializer = new XmlSerializer(typeof(FireSmokeZoneFile));
@@ -498,11 +543,17 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 위치 스냅샷의 자세 데이터가 참조 비교에 사용할 수 있는지 검사한다.
+        /// </summary>
         public static bool ValidPose(PositionSnapshot p, string camera)
         {
             return p != null && p.PtzStatus == PositionDataStatus.Valid && p.Pan.HasValue && p.Tilt.HasValue && (camera == "IR" ? p.IrLensStatus == PositionDataStatus.Valid && p.IrZoom.HasValue : p.EoLensStatus == PositionDataStatus.Valid && p.EoZoom.HasValue);
         }
 
+        /// <summary>
+        /// 0도와 360도 경계를 고려해 두 Pan 각도의 최단 차이를 구한다.
+        /// </summary>
         public static double PanDistance(double a, double b)
         {
             double d = Math.Abs(a - b) % 360;
@@ -510,6 +561,9 @@ namespace OpenCvWpfTracking.Services.Position
             return Math.Min(d, 360 - d);
         }
 
+        /// <summary>
+        /// 장면 참조가 일치하지 않는 사유를 결과로 구성한다.
+        /// </summary>
         public static string MatchFailure(FireSmokeScene s, ZoneFrameContext f)
         {
             if (s == null || f == null)
@@ -568,11 +622,17 @@ namespace OpenCvWpfTracking.Services.Position
             return null;
         }
 
+        /// <summary>
+        /// 저장된 참조와 현재 관측 상태가 일치하는지 확인한다.
+        /// </summary>
         public static bool Matches(FireSmokeScene s, ZoneFrameContext f)
         {
             return f != null && !s.Invalidated && s.FixedInstallationConfirmed && s.Key == f.Key && ValidPose(f.Position, s.Camera) && PanDistance(s.Pan, f.Position.Pan.Value) <= s.AngleTolerance && Math.Abs(s.Tilt - f.Position.Tilt.Value) <= s.AngleTolerance && LensWithin(s.Camera == "IR" ? f.Position.IrZoom : f.Position.EoZoom, s.Zoom, ZoomTolerance) && f.Width > 0 && f.Height > 0 && Math.Abs(s.FrameWidth / (double)s.FrameHeight - f.Width / (double)f.Height) < 0.005;
         }
 
+        /// <summary>
+        /// 현재 위치와 탐지 영역을 참조 정보에 대조해 구역 판정 결과를 만든다.
+        /// </summary>
         public static ZoneAssessment Assess(FireSmokeZoneFile data, ZoneFrameContext f, string type, double left, double top, double right, double bottom)
         {
             bool smoke = (type ?? "").IndexOf("SMOKE", StringComparison.OrdinalIgnoreCase) >= 0;
@@ -628,6 +688,9 @@ namespace OpenCvWpfTracking.Services.Position
             };
         }
 
+        /// <summary>
+        /// 참조 영역을 현재 프레임의 크기·시야에 맞는 좌표로 변환한다.
+        /// </summary>
         public static FireSmokeScene ForFrame(FireSmokeScene scene, ZoneFrameContext frame)
         {
             if (frame?.RequireImageRegistration == true)

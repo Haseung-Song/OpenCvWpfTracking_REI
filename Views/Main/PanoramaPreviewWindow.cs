@@ -49,7 +49,7 @@ namespace OpenCvWpfTracking
         private bool _isDragging;
 
         /// <summary>
-        /// PanoramaPreviewWindow 동작 수행 함수.
+        /// PanoramaPreviewWindow 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
         /// </summary>
         public PanoramaPreviewWindow(ImageSource source, string filePath, string panoramaName)
         {
@@ -119,7 +119,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// CreatePreviewSource 생성 및 변환 함수.
+        /// 큰 파노라마는 비율을 유지하며 미리보기용 최대 폭으로 축소한다.
         /// </summary>
         private static ImageSource CreatePreviewSource(ImageSource source, string filePath)
         {
@@ -143,7 +143,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnSourceInitialized 상태 및 이벤트 처리 함수.
+        /// 미리보기 창의 렌더링 대상을 초기화하고 소프트웨어 렌더링을 설정한다.
         /// </summary>
         private void OnSourceInitialized(object sender, EventArgs e)
         {
@@ -156,7 +156,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnPreviewMouseWheel 상태 및 이벤트 처리 함수.
+        /// 포인터 위치를 기준으로 미리보기 배율을 조정하고 이동 경계를 보정한다.
         /// </summary>
         private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
@@ -183,7 +183,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnPreviewMouseLeftButtonDown 상태 및 이벤트 처리 함수.
+        /// 프리셋 번호 클릭을 처리하거나 확대 영상 이동 드래그를 시작한다.
         /// </summary>
         private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -219,7 +219,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnPreviewMouseMove 상태 및 이벤트 처리 함수.
+        /// 드래그 이동량을 미리보기 위치에 반영하고 유효 이동 범위로 제한한다.
         /// </summary>
         private void OnPreviewMouseMove(object sender, MouseEventArgs e)
         {
@@ -240,7 +240,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnPreviewMouseLeftButtonUp 상태 및 이벤트 처리 함수.
+        /// 미리보기 드래그를 끝내고 마우스 캡처를 정리한다.
         /// </summary>
         private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
@@ -248,7 +248,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnLostMouseCapture 상태 및 이벤트 처리 함수.
+        /// 마우스 캡처를 잃으면 미리보기 드래그와 커서를 초기화한다.
         /// </summary>
         private void OnLostMouseCapture(object sender, MouseEventArgs e)
         {
@@ -257,7 +257,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// EndDrag 중지 함수.
+        /// 마우스 드래그를 끝내고 포인터 캡처와 임시 상태를 정리한다.
         /// </summary>
         private void EndDrag()
         {
@@ -276,7 +276,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// ClampPanTranslation 동작 수행 함수.
+        /// 확대한 파노라마가 화면 밖으로 지나치게 밀리지 않도록 이동량을 제한한다.
         /// </summary>
         private void ClampPanTranslation()
         {
@@ -320,7 +320,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnSizeChanged 상태 및 이벤트 처리 함수.
+        /// 변경된 창 크기에 맞춰 파노라마 이동 경계를 보정한다.
         /// </summary>
         private void OnSizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -328,7 +328,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnMouseRightButtonDown 상태 및 이벤트 처리 함수.
+        /// 미리보기 배율과 이동량을 초기 상태로 되돌린다.
         /// </summary>
         private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -342,7 +342,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnMouseDoubleClick 상태 및 이벤트 처리 함수.
+        /// 미리보기 창을 최대화하거나 원래 크기로 복원한다.
         /// </summary>
         private void OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
@@ -352,7 +352,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnPreviewKeyDown 상태 및 이벤트 처리 함수.
+        /// Escape 키를 누르면 미리보기 창을 닫는다.
         /// </summary>
         private void OnPreviewKeyDown(object sender, KeyEventArgs e)
         {

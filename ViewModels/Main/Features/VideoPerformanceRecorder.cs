@@ -45,6 +45,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     {
         private readonly IVideoPerformanceContext _context;
 
+        /// <summary>
+        /// 영상 처리 구간별 성능 수치를 집계할 기록 상태를 준비한다.
+        /// </summary>
         internal VideoPerformanceRecorder(IVideoPerformanceContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));

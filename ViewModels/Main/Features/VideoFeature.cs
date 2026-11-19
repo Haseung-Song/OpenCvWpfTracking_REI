@@ -105,22 +105,45 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string AiPowerStatusText { get; set; }
 
+        /// <summary>
+        /// 2026-09-15: REI 통합본에서는 Web Agent 프로필에만 unsigned Pan 좌표를 적용한다.
+        /// </summary>
         void ApplyControlAgentPanCoordinateMode(ControlAgentProfileOption profile);
 
+        /// <summary>
+        /// 기존 VIA 0 Pan 이동 작업 취소
+        /// </summary>
         void CancelMoveControlPanOperation();
 
+        /// <summary>
+        /// 구역 참조에 사용할 채널 영상 프레임을 안전하게 복사한다.
+        /// </summary>
         Services.Position.ZoneFrameContext CaptureZoneFrame(string camera);
 
+        /// <summary>
+        /// 진행 중인 Pan / Tilt Absolute 이동 추적값을 초기화한다.
+        /// </summary>
         void ClearActivePanTiltAbsoluteMove();
 
+        /// <summary>
+        /// Keyboard 방향키 입력 상태 초기화
+        /// </summary>
         void ClearKeyboardPanTiltPressedState();
 
+        /// <summary>
+        /// [Control Agent] 제어 TCP 연결 기존 고흥 제어 구조는 유지하며, 운용 환경에 따라 연결 대상 IP / Port만 변경하여
+        /// 사용한다.
+        /// </summary>
         Task<bool> ConnectLaAsync();
 
         string ControlAgentIp { get; set; }
 
         string ControlAgentPortText { get; set; }
 
+        /// <summary>
+        /// [AI DISCONNECT] 버튼 기준 수동 연결 해제 자동 재연결 요청을 함께 중단하여 사용자가 다시 [AI CONNECT]를 누르기
+        /// 전에는 AI Agent에 재접속하지 않는다.
+        /// </summary>
         void DisconnectAiAgent();
 
         BitmapSource EOCameraImage { get; set; }
@@ -137,14 +160,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         int EoVideoWidth { get; set; }
 
+        /// <summary>
+        /// 2026-09-02: AI FIRE/FLAME BBox를 영상처리 FIRE 중복 억제에 사용한다. Snapshot은 오래된 좌표가 남지
+        /// 않도록 2초까지만 유효하다.
+        /// </summary>
         IList<Rect> GetRecentAiFireCandidates(bool isInfrared);
 
         bool HasActiveDeviceSession { get; }
 
         string HomeZeroStatusText { get; set; }
 
+        /// <summary>
+        /// 장비 연결 후 IR 기본 팔레트 Black Hot 적용을 준비한다.
+        /// </summary>
         void InitializeThermalBlackHotAfterDeviceConnected();
 
+        /// <summary>
+        /// 새 WEB AGENT 연결의 조회·상태 관리 세션을 초기화한다.
+        /// </summary>
         void InitializeWebAgentSession();
 
         BitmapSource IRCameraImage { get; set; }
@@ -165,8 +198,15 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsDeviceSettingsLocked { get; }
 
+        /// <summary>
+        /// 2026-08-28: AUTO SCAN과 파노라마 촬영 중에도 FIRE/SMOKE 분석 및 이벤트 갱신을 유지하고, 일반 수동 이동 중에만
+        /// 분석을 보류한다.
+        /// </summary>
         bool IsFireSmokeFrameAnalysisAllowed();
 
+        /// <summary>
+        /// 지정한 영상 채널과 탐지 종류가 현재 사용 대상인지 확인한다.
+        /// </summary>
         bool IsFireSourceEnabled(bool isInfrared);
 
         bool IsPanoramaCaptureRunning { get; set; }
@@ -179,22 +219,50 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsThermalFireDetectionEnabled { get; set; }
 
+        /// <summary>
+        /// 현재 설정된 Pan / Tilt 좌표계의 0°, 0° 위치로 절대 이동한다. 기존 LA 0xB1 명령은 기계식
+        /// Homing(StartHoming) 명령이므로 카메라가 홈 센서 방향으로 이동한 뒤 해당 위치를 원점으로 잡는다. UI의 HOME
+        /// POSITION은 사용자가 설정한 좌표 원점으로 복귀하는 기능이므로 Pan 0°(0x45), Tilt 0°(0x47) 절대 이동 명령을
+        /// 사용한다.
+        /// </summary>
         Task MoveHomePositionAsync();
 
+        /// <summary>
+        /// EO 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         void NotifyEoCurrentStatusChanged(bool panChanged = true, bool tiltChanged = true, bool zoomChanged = true, bool focusChanged = true, bool powerChanged = true);
 
+        /// <summary>
+        /// IR 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         void NotifyIrCurrentStatusChanged();
 
         string PresetCommandStatusText { get; set; }
 
+        /// <summary>
+        /// 현재 영상 프레임을 연기 탐지기로 분석하고 표시·이벤트 갱신에 전달한다.
+        /// </summary>
         SmokeDetectionResult ProcessSmokeFrame(Mat frame, string streamName, Rect fireCandidateRect);
 
+        /// <summary>
+        /// 연결 세션 변경 시 이전 전원 근거와 진행 중 명령 상태를 초기화한다.
+        /// </summary>
         void ResetDevicePowerStatus();
 
+        /// <summary>
+        /// 연결 세션의 capability·응답·요청·추정 및 클릭 증거를 초기화한다.
+        /// </summary>
         void ResetDigitalZoomSession();
 
+        /// <summary>
+        /// 2026-08-27: 카메라 이동 또는 영상 조건 변경 뒤 EO/IR 기준 프레임과 시간축 후보를 함께 초기화하여 화면 전체 변화가 이벤트가
+        /// 되지 않게 한다.
+        /// </summary>
         void ResetFireSmokeFrameAnalysis(string reason);
 
+        /// <summary>
+        /// 현재 선택값을 다음 연결용 설정으로 저장하며 로그의 인증정보는 가린다.
+        /// </summary>
         void SaveRtspCommunicationSettings();
 
         ControlAgentProfileOption SelectedControlAgentProfile { get; set; }
@@ -203,22 +271,51 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string SessionIrAddress { get; }
 
+        /// <summary>
+        /// Control Agent TCP 연결 상태 UI 갱신
+        /// </summary>
         void SetControlAgentConnectionStatus(string statusText, string statusColor, CancellationToken token = default(CancellationToken));
 
+        /// <summary>
+        /// 로컬 화재·연기 탐지의 사용 여부를 관련 상태에 반영한다.
+        /// </summary>
         void SetLocalFireSmokeDetectionState(int rtspIndex, bool hasFire, bool hasSmoke);
 
+        /// <summary>
+        /// 2026-08-31: 탐지 Overlay 적용 전 EO 프레임을 파노라마 전용 버퍼에 보관한다. Frozen Bitmap만 공유하여 수신
+        /// Thread와 촬영 Thread 간 접근을 안전하게 한다.
+        /// </summary>
         void SetRawEoPanoramaFrame(BitmapSource frame);
 
+        /// <summary>
+        /// 활성 세션을 변경하지 않고 중복 연결 안내만 갱신한다.
+        /// </summary>
         void ShowAlreadyConnected();
 
+        /// <summary>
+        /// 현재 선택된 EO 프리셋 기준으로 CTEC Response TCP Port 9000 연결 시작 옥상 MR300 EO CTEC 직접 제어
+        /// 프리셋이 아니면 기존 Response 연결을 종료하고 별도 TCP 연결을 생성하지 않는다.
+        /// </summary>
         Task StartSelectedEoCtecResponseAsync();
 
+        /// <summary>
+        /// [CTEC EO Zoom / Focus] 실시간 Position 조회 종료
+        /// </summary>
         void StopCtecEoPositionPolling();
 
+        /// <summary>
+        /// 진행 중인 Focus Sync 확인 작업과 장비 이동을 정지한다.
+        /// </summary>
         Task StopFocusSyncAsync(bool stopEo = true, bool stopIr = true);
 
+        /// <summary>
+        /// 경로 실행 취소를 요청하고 진행 중 이동을 정리한다.
+        /// </summary>
         void StopRoute();
 
+        /// <summary>
+        /// 진행 중인 줌 동기화를 취소하고 관련 렌즈 이동을 중지한다.
+        /// </summary>
         Task StopZoomSyncAsync();
 
         int ThermalFireBoxGroupingMode { get; }
@@ -227,12 +324,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         double ThermalMinimumAreaRatio { get; set; }
 
+        /// <summary>
+        /// 통신 설정 탭에서 선택된 EO / IR RTSP 주소 검증 선택값이 없거나 rtsp / rtsps 형식이 아닌 주소는 실제 FFmpeg 연결
+        /// 전에 차단한다.
+        /// </summary>
         bool TryGetRtspEndpoints(out string eoRtspAddress, out string irRtspAddress);
 
+        /// <summary>
+        /// 2026-09-17: 로컬 FIRE/SMOKE 분석 결과를 영상 오버레이 컬렉션에 반영한다. 이벤트 목록만 갱신되고 영상 BBox가 누락되던
+        /// 경로를 복구하며, AI Agent BBox 컬렉션은 변경하지 않는다.
+        /// </summary>
         void UpdateFireSmokeDetectionOverlay(string camera, ThermalFireDetectionResult thermalResult, SmokeDetectionResult smokeResult);
 
+        /// <summary>
+        /// 열상 화재 후보의 위치·확정 상태를 표시와 이벤트 판정에 반영한다.
+        /// </summary>
         void UpdateThermalFireCandidateState(string camera, ThermalFireDetectionResult result, Services.Position.ZoneFrameContext zoneFrame = null);
 
+        /// <summary>
+        /// 로컬 영상 후보와 기존 추적 이벤트를 대응시켜 생성·유지·해제를 반영한다.
+        /// </summary>
         void UpdateVisionBBoxEvents(string camera, string detectionType, IList<Rect> candidates, IList<double> candidateScores, string detectionSource, Services.Position.ZoneFrameContext zoneFrame = null);
     }
 
@@ -244,6 +355,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IVideoFeatureContext _context;
 
+        /// <summary>
+        /// 영상 연결·프레임 처리 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal VideoFeature(IVideoFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -251,6 +365,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _performanceRecorder = new VideoPerformanceRecorder(context);
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _eoCaptureTask = Task.CompletedTask;
@@ -287,6 +404,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 장비 연결 버튼의 진입점이다. 중복 연결·해제 요청을 확인하고 연결 생명주기 잠금 안에서 제어 TCP와 EO/IR RTSP 연결을 시작한다.
+        /// 지연될 수 있는 영상 열기는 내부 비동기 연결 경로에서 처리한다.
+        /// </summary>
         internal async void Connect()
         {
             if (Volatile.Read(ref _deviceDisconnectRequested) != 0 || _context.IsDeviceSettingsLocked || Interlocked.CompareExchange(ref _context._deviceConnectRequested, 1, 0) != 0)
@@ -322,6 +443,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 고정한 연결 대상과 세션 번호로 제어 TCP·EO/IR 영상을 연결하고 초기 동작을 시작한다.
+        /// </summary>
         internal async Task ConnectCoreAsync(long session)
         {
             if (_context.HasActiveDeviceSession)
@@ -600,6 +724,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 영상 연결 해제 함수 1. [CaptureLoop] 종료 요청 2. [VD__VideoCapture] 해제 3. [FFmpeg] [EO /
+        /// IR] [RTSP] Decoder 해제 4. [상태 문자열 갱신]
+        /// </summary>
         internal async void Disconnect()
         {
             // 중복 종료 요청을 무시하고 이전 비동기 콜백은 즉시 무효화한다.
@@ -659,6 +787,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 세션의 입력·수신·표시 작업을 정리하고 장비 연결을 해제한다.
+        /// </summary>
         internal async Task DisconnectCoreAsync(long session)
         {
             _context.StopRoute();
@@ -836,6 +967,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// 최근 표시·검출 프레임 상태를 비워 이전 세션 영상이 새 연결에 남지 않게 한다.
+        /// </summary>
         internal void ResetLatestVideoFrameState()
         {
             ResetDisplayFrameSlot(_eoDisplaySlot);
@@ -847,6 +981,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ResetDetectionFrameSlot(_irDetectionSlot);
         }
 
+        /// <summary>
+        /// 영상 취득 작업의 종료를 기다려 디코더 자원 해제와 읽기 작업의 충돌을 피한다.
+        /// </summary>
         internal async Task WaitForCaptureWorkersAsync()
         {
             Task eoDisplayWorker;
@@ -870,6 +1007,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("DEVICE DISCONNECT", $"EO_CAPTURE_STOPPED={_eoCaptureTask == null || _eoCaptureTask.IsCompleted} / " + $"IR_CAPTURE_STOPPED={_irCaptureTask == null || _irCaptureTask.IsCompleted} / " + $"EO_DISPLAY_STOPPED={eoDisplayWorker.IsCompleted} / " + $"IR_DISPLAY_STOPPED={irDisplayWorker.IsCompleted} / " + $"WAIT_TIMEOUT={completed != workers}");
         }
 
+        /// <summary>
+        /// 표시용 최신 프레임 보관 슬롯을 초기화하고 소유한 버퍼를 정리한다.
+        /// </summary>
         internal static void ResetDisplayFrameSlot(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -905,6 +1045,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 검출용 최신 프레임 보관 슬롯을 초기화하고 이전 결과를 정리한다.
+        /// </summary>
         internal static void ResetDetectionFrameSlot(DetectionFrameSlot slot)
         {
             lock (slot.Sync)
@@ -930,6 +1073,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 지정한 크기의 검은색 [BitmapSource] 생성 [Disconnect] 시 기존 마지막 프레임이 남지 않도록 [Viewer] 화면을
+        /// 검은 화면으로 초기화할 때 사용
+        /// </summary>
         internal BitmapSource CreateBlackBitmap(int width, int height)
         {
             // [BGR24] 기준 1픽셀당 [3byte]
@@ -946,6 +1093,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return bitmap;
         }
 
+        /// <summary>
+        /// [VD] / [EO] / [IR] [Viewer] 화면 초기화 [C++]에서 [Disconnect] 시 [View]를 검은 화면으로
+        /// [Clear] 하던 것과 동일한 목적
+        /// </summary>
         internal void ClearVideoView()
         {
             // 현재 [Viewer] 크기와 유사한 기본 검은 화면 생성
@@ -962,6 +1113,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 });
         }
 
+        /// <summary>
+        /// 기존 [CancellationTokenSource] 정리 후 새 영상 루프 종료 토큰을 생성한다.
+        /// </summary>
         internal void ResetCancellationToken()
         {
             _context._cts?.Cancel();
@@ -971,6 +1125,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._cts = new CancellationTokenSource();
         }
 
+        /// <summary>
+        /// [EO / IR] 영상 연결 시도 이 함수는 [Task.Run] 함수 내부에서 호출되어, [RTSP Open]으로 인한 [UI] 프리징을
+        /// 방지한다.
+        /// </summary>
         internal async Task<VideoConnectResult> OpenVideoSourcesAsync()
         {
             ConsoleLogHelper.Info("RTSP", "Sequential open started / ORDER=EO -> IR");
@@ -1103,6 +1261,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             };
         }
 
+        /// <summary>
+        /// [EO / IR] 최초 연결 실패 Stream 자동 재연결 시작 VertiportNexus의 RTSP Reconnect 흐름과 동일하게,
+        /// 장비 전원 인가 직후 Camera가 아직 Ready 상태가 아닌 경우에도 연결 해제 요청 전까지 일정 간격으로 재시도한다.
+        /// </summary>
         internal void StartVideoReconnectLoops(VideoConnectResult result)
         {
             _context._videoReconnectCts?.Cancel();
@@ -1132,6 +1294,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 개별 RTSP Stream 재연결 Loop 2026-08-18: EO / IR 중 전원이 꺼진 채널이 무한 재연결되지 않도록 채널별 최대
+        /// 재연결 시간을 5분으로 제한한다. 제한 시간이 지나면 해당 채널만 Disconnected로 전환하며 다른 영상과 장비 제어는 유지한다.
+        /// </summary>
         internal async Task ReconnectVideoAsync(IFFmpegDecoderServicePort decoder, string sourceAddress, string streamName, Action<BitmapSource> setImageAction, CancellationToken token)
         {
             long session = Interlocked.Read(ref _deviceSessionGeneration);
@@ -1286,6 +1452,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Console.WriteLine($"[{streamName}] RTSP Reconnect Timeout / " + $"ELAPSED={reconnectStopwatch.Elapsed.TotalSeconds:F1}s / " + $"COUNT={retryCount}");
         }
 
+        /// <summary>
+        /// 영상 연결 결과 [Console Log] 출력
+        /// </summary>
         internal void WriteVideoConnectLog(VideoConnectResult result)
         {
             Console.WriteLine("[EO] " + (result.EoResult ? "Connect Success" : "Connect Failure"));
@@ -1295,6 +1464,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// 해당 Stream의 Frame을 Dispatcher에 등록할 수 있는지 확인한다. 이미 이전 Frame이 UI 처리 대기 중이면 false를
+        /// 반환하여 현재 Frame을 버린다. 이를 통해 Dispatcher Queue에 과거 Frame이 누적되어 영상이 늦게 따라오는 현상을
+        /// 방지한다.
+        /// </summary>
         internal bool TryReserveFrameDispatch(string streamName)
         {
             if (streamName == "EO")
@@ -1310,6 +1484,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 해당 Stream의 Dispatcher 예약 상태를 해제한다.
+        /// </summary>
         internal void ReleaseFrameDispatch(string streamName)
         {
             if (streamName == "EO")
@@ -1325,6 +1502,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// Stream별 UI 반영 우선순위를 반환한다. EO 영상은 1920 x 1080이며 메인 화면에서 크게 표시되므로 IR보다 높은 Render
+        /// 우선순위를 적용한다.
+        /// </summary>
         internal DispatcherPriority GetFrameDispatcherPriority(string streamName)
         {
             if (streamName == "EO")
@@ -1335,6 +1516,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return DispatcherPriority.Background;
         }
 
+        /// <summary>
+        /// EO/IR 채널에 해당하는 검출 프레임 보관 슬롯을 선택한다.
+        /// </summary>
         internal DetectionFrameSlot GetDetectionSlot(string streamName)
         {
             if (streamName == "EO")
@@ -1347,6 +1531,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// EO/IR 채널에 해당하는 표시 프레임 보관 슬롯을 선택한다.
+        /// </summary>
         internal DisplayFrameSlot GetDisplaySlot(string streamName)
         {
             if (streamName == "EO")
@@ -1359,12 +1546,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// EO/IR 채널별 수신·표시 성능 측정 상태를 선택한다.
+        /// </summary>
         internal RtspChannelPerformance GetRtspPerformance(string streamName)
         { return _performanceRecorder.GetRtspPerformance(streamName); }
 
+        /// <summary>
+        /// 연속 표시 프레임 사이의 시간 간격을 성능 통계에 기록한다.
+        /// </summary>
         internal static void RecordDisplayInterval(RtspChannelPerformance performance, long intervalTicks)
         { VideoPerformanceRecorder.RecordDisplayInterval(performance, intervalTicks); }
 
+        /// <summary>
+        /// 환경변수의 정수 값을 읽고 허용 범위 밖이면 안전한 기본값 또는 제한값을 사용한다.
+        /// </summary>
         internal static int ReadBoundedEnvironmentInteger(string variableName, int defaultValue, int minimum, int maximum)
         {
             string value = Environment.GetEnvironmentVariable(variableName);
@@ -1377,6 +1573,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return Math.Max(minimum, Math.Min(maximum, parsed));
         }
 
+        /// <summary>
+        /// 표시 프레임에 필요한 크기의 버퍼를 풀에서 확보한다.
+        /// </summary>
         internal static Mat RentDisplayFrameBuffer(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1389,6 +1588,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 표시가 끝난 프레임 버퍼를 풀로 돌려 재사용한다.
+        /// </summary>
         internal static void ReturnDisplayFrameBuffer(DisplayFrameSlot slot, Mat frame)
         {
             if (frame == null)
@@ -1409,6 +1611,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 검출 프레임에 필요한 버퍼를 풀에서 확보한다.
+        /// </summary>
         internal static Mat RentDetectionFrameBuffer(DetectionFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1421,6 +1626,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 검출이 끝난 프레임 버퍼를 풀로 돌려 재사용한다.
+        /// </summary>
         internal static void ReturnDetectionFrameBuffer(DetectionFrameSlot slot, Mat frame)
         {
             if (frame == null)
@@ -1441,6 +1649,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 디코더 프레임을 표시용 버퍼에 복사해 화면 작업과 원본 버퍼 수명을 분리한다.
+        /// </summary>
         internal static void CopyDisplayFrame(string streamName, Mat sourceFrame, Mat destinationFrame)
         {
             if (streamName == "EO" && EoDisplayMaximumWidth > 0 && sourceFrame.Width > EoDisplayMaximumWidth)
@@ -1455,6 +1666,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             sourceFrame.CopyTo(destinationFrame);
         }
 
+        /// <summary>
+        /// 지연 표시 대기열에서 사용할 프레임 버퍼를 확보한다.
+        /// </summary>
         internal static Mat RentBufferedDisplayFrameBuffer(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1470,6 +1684,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 지연 표시 대기열에서 사용한 프레임 버퍼를 반환한다.
+        /// </summary>
         internal static void ReturnBufferedDisplayFrameBuffer(DisplayFrameSlot slot, Mat frame)
         {
             if (frame == null)
@@ -1490,6 +1707,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 옥상 EO 표시 전용 제한형 지터 버퍼에 Frame을 넣는다. 최대 개수를 넘으면 가장 오래된 Frame부터 폐기하므로 지연이 계속
+        /// 누적되거나 수 초 뒤의 영상이 표시되지 않는다.
+        /// </summary>
         internal void QueueEoBufferedDisplayFrame(string streamName, Mat sourceFrame, Action<BitmapSource> setImageAction, CancellationToken cancellationToken)
         {
             DisplayFrameSlot slot = GetDisplaySlot(streamName);
@@ -1566,6 +1787,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 지연 표시 대기열에 쌓인 프레임 수를 확인한다.
+        /// </summary>
         internal static int GetBufferedFrameCount(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1574,6 +1798,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// EO 표시 시작에 필요한 초기 프레임을 모으되 세션 취소를 확인한다.
+        /// </summary>
         internal async Task WaitForInitialEoDisplayBufferAsync(DisplayFrameSlot slot, CancellationToken cancellationToken)
         {
             Stopwatch wait = Stopwatch.StartNew();
@@ -1584,6 +1811,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 목표 표시 시각까지 비동기로 기다려 표시 주기를 맞춘다.
+        /// </summary>
         internal static async Task DelayUntilDisplayTickAsync(long targetTicks, CancellationToken cancellationToken)
         {
             while (true)
@@ -1601,6 +1831,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// EO 프레임 대기열을 순서대로 표시하며 취소 시 남은 버퍼를 정리한다.
+        /// </summary>
         internal async Task RunEoBufferedDisplayLoopAsync(string streamName, DisplayFrameSlot slot, Action<BitmapSource> setImageAction, CancellationToken cancellationToken)
         {
             try
@@ -1693,6 +1926,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 실제로 표시한 프레임 시각을 기록해 정지 영상과 최신 영상을 구분한다.
+        /// </summary>
         internal void ConfirmDisplayedVideoFrame(string streamName)
         {
             bool isEo = string.Equals(streamName, "EO", StringComparison.OrdinalIgnoreCase);
@@ -1719,6 +1955,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("DEVICE CONNECT", $"SESSION={Interlocked.Read(ref _deviceSessionGeneration)} / {streamName}_DISPLAY_FRAME=True / {streamName}_STREAMING=True");
         }
 
+        /// <summary>
+        /// 대기열 프레임을 화면 스레드에서 표시하고 사용한 버퍼를 반환한다.
+        /// </summary>
         internal async Task RenderBufferedDisplayFrameAsync(string streamName, DisplayFrameSlot slot, BufferedDisplayFrame bufferedFrame, Action<BitmapSource> setImageAction, CancellationToken cancellationToken)
         {
             Dispatcher dispatcher = App.Current?.Dispatcher;
@@ -1790,6 +2029,11 @@ namespace OpenCvWpfTracking.ViewModels.Main
             await operation.Task.ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// 2026-09-23: 디코더가 만든 최신 프레임 한 장과 UI Render 예약 한 건만 유지한다. 별도 시간 지연은 두지 않고 프레임 도착
+        /// 즉시 표시하며, UI가 늦어질 때만 대기 중인 과거 프레임을 최신 프레임으로 교체한다. 따라서 Dispatcher Queue나 영상 지연은
+        /// 누적되지 않는다.
+        /// </summary>
         internal void QueueLatestDisplayFrame(string streamName, Mat sourceFrame, Action<BitmapSource> setImageAction, CancellationToken cancellationToken)
         {
             DisplayFrameSlot slot = GetDisplaySlot(streamName);
@@ -1853,6 +2097,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 화면 갱신이 누적되지 않도록 최신 프레임 표시 작업을 예약한다.
+        /// </summary>
         internal void ScheduleLatestFrameRender(string streamName, DisplayFrameSlot slot, Action<BitmapSource> setImageAction, CancellationToken cancellationToken)
         {
             Dispatcher dispatcher = App.Current?.Dispatcher;
@@ -1962,6 +2209,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 예약된 프레임 표시 작업을 취소하고 사용 자원을 정리한다.
+        /// </summary>
         internal static void AbortLatestFrameRender(DisplayFrameSlot slot)
         {
             lock (slot.Sync)
@@ -1979,6 +2229,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Interlocked.Exchange(ref slot.WorkerRunning, 0);
         }
 
+        /// <summary>
+        /// 프레임 표시 완료 후 예약 상태와 버퍼 소유권을 정리한다.
+        /// </summary>
         internal void CompleteLatestFrameRender(string streamName, DisplayFrameSlot slot, Action<BitmapSource> setImageAction, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -2003,6 +2256,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 화면 스레드에 최신 검출 오버레이 갱신을 예약한다.
+        /// </summary>
         internal void QueueLatestOverlayUpdate(string streamName, DisplayFrameSlot displaySlot, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -2065,6 +2321,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }));
         }
 
+        /// <summary>
+        /// 2026-09-16: 분석은 최대 10fps의 최신 프레임만 사용한다. 밀린 과거 프레임은 즉시 폐기하여 RTSP 수신과 화면 표시를
+        /// 보호한다.
+        /// </summary>
         internal void QueueLatestDetectionFrame(string streamName, Mat sourceFrame)
         {
             DetectionFrameSlot slot = GetDetectionSlot(streamName);
@@ -2116,6 +2376,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 채널별 최신 프레임만 검출에 사용해 처리 지연과 이전 결과 누적을 줄인다.
+        /// </summary>
         internal void ProcessLatestDetectionFrames(string streamName, DetectionFrameSlot slot)
         {
             try
@@ -2204,6 +2467,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 해당 채널에 보관된 최신 검출 결과를 가져온다.
+        /// </summary>
         internal void GetLatestDetectionResult(string streamName, out ThermalFireDetectionResult thermalResult, out SmokeDetectionResult smokeResult, out long resultVersion, out OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame)
         {
             DetectionFrameSlot slot = GetDetectionSlot(streamName);
@@ -2225,12 +2491,22 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 원본 PTS/DTS, 실제 Decode 도착 간격과 8x8 표본 영상 변화를 기록한다. 전체 Frame Hash나 Resize를 수행하지
+        /// 않아 실시간 영상처리 부하를 늘리지 않는다.
+        /// </summary>
         internal static void UpdateFrameTimingDiagnostics(RtspChannelPerformance performance, FFmpegDecoderService.FrameTimingSnapshot timing, Mat frame)
         { VideoPerformanceRecorder.UpdateFrameTimingDiagnostics(performance, timing, frame); }
 
+        /// <summary>
+        /// 채널별 수신·표시 성능 요약을 진단 로그에 남긴다.
+        /// </summary>
         internal void WriteRtspPerformanceSummary(string streamName, IFFmpegDecoderServicePort decoder)
         { _performanceRecorder.WriteRtspPerformanceSummary(streamName, decoder); }
 
+        /// <summary>
+        /// 취소 또는 연결 종료 전까지 FFmpeg 프레임을 수신해 표시·탐지 처리에 전달한다.
+        /// </summary>
         internal void FFmpegCaptureLoop(IFFmpegDecoderServicePort decoder, string sourceAddress, string streamName, Action<BitmapSource> setImageAction, CancellationToken cancellationToken)
         {
             string displayMode = streamName == "EO" ? $"BOUNDED_JITTER_BUFFER / CAPACITY={EoJitterBufferCapacity} / " + $"TARGET_FPS={EoJitterDisplayFramesPerSecond}" : "DIRECT_LATEST_FRAME / NO_TIMER_DELAY";
@@ -2615,6 +2891,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-10-01: 장비 전원 차단 또는 RTSP Frame 정지 시 영상, 연결 표시, AI BBox 및 FIRE/SMOKE 상태가 서로
+        /// 다른 시점에 남지 않도록 한 번에 정리한다. Connected 복귀는 CaptureLoop에서 실제 첫 Frame을 받은 뒤에만 수행한다.
+        /// </summary>
         internal void HandleRtspFrameLossOnUiThread(string streamName)
         {
             bool isEo = string.Equals(streamName, "EO", StringComparison.OrdinalIgnoreCase);

@@ -475,26 +475,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._eventAlertsFeature.AiAlertStatusText; }
         }
 
+        /// <summary>
+        /// 2026-09-15: REI 통합본에서는 Web Agent 프로필에만 unsigned Pan 좌표를 적용한다. 실제 처리는 연결된 기능
+        /// 객체에 위임한다.
+        /// </summary>
         void IPropertiesFeatureContext.ApplyControlAgentPanCoordinateMode(ControlAgentProfileOption profile)
         {
             _features._rtspSettingsFeature.ApplyControlAgentPanCoordinateMode(profile);
         }
 
+        /// <summary>
+        /// Pan / Tilt 연속 이동 중 Slider 값이 바뀌면 현재 방향을 유지한 채 Pelco-D Data1 / Data2 속도값만 갱신하여
+        /// 즉시 재송신한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPropertiesFeatureContext.ApplyPanTiltSpeedWhileMoving()
         {
             _features._continuousControlFeature.ApplyPanTiltSpeedWhileMoving();
         }
 
+        /// <summary>
+        /// 현재 RadioButton에서 선택한 Pan 회전 모드를 Pelco-D 확장 명령 0x4D로 장비에 적용한다. 실제 처리는 연결된 기능
+        /// 객체에 위임한다.
+        /// </summary>
         bool IPropertiesFeatureContext.ApplySelectedPanTurnMode()
         {
             return _features._moveControlFeature.ApplySelectedPanTurnMode();
         }
 
+        /// <summary>
+        /// 2026-10-01: 현재 활성 EO/IR 카메라의 광학 줌이 커질수록 같은 PT 속도도 화면에서는 더 크게 이동해 보이므로 실제 전송
+        /// 속도를 낮춘다. UI Slider 값은 사용자가 선택한 기준 속도로 유지하며 광각(1x)에서는 기존 속도를 그대로 사용한다.
+        /// 2026-10-01 실장비 로그에서 EO 최대 줌 시 20% 하한(30→6)이 빠르게 보이는 것을 확인하여 5% 안전 하한으로 완화한다.
+        /// 실제 EO 90x 계산값은 약 10.5%이므로 기준 속도 30에서 약 3이 적용된다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         byte IPropertiesFeatureContext.ApplyZoomAdaptivePanTiltSpeed(byte baseProtocolSpeed, out int standardZoom, out string activeCamera, out double opticalZoomRatio, out double speedScale)
         {
             return _features._continuousControlFeature.ApplyZoomAdaptivePanTiltSpeed(baseProtocolSpeed, out standardZoom, out activeCamera, out opticalZoomRatio, out speedScale);
         }
 
+        /// <summary>
+        /// 2026-09-17: Web Agent 합의 규격인 UI 속도 [0 ~ 60]을 그대로 사용한다. UI 0은 이동 속도로 사용하지 않으며
+        /// 정지 요청으로 처리한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         byte IPropertiesFeatureContext.ConvertPanTiltSpeedLevel(int uiSpeed)
         {
             return _features._continuousControlFeature.ConvertPanTiltSpeedLevel(uiSpeed);
@@ -525,6 +547,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._devicePowerFeature.DeviceControlConnectionStatusText; }
         }
 
+        /// <summary>
+        /// 장비 모드 변경으로 숨겨진 통신 탭이 선택된 경우 표시 가능한 탭으로 복귀한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPropertiesFeatureContext.EnsureVisibleCommunicationSettingsTab()
         {
             _features._rtspSettingsFeature.EnsureVisibleCommunicationSettingsTab();
@@ -535,21 +560,37 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._devicePowerFeature.EoPowerControlStatusText; }
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IPropertiesFeatureContext.GetCurrentIrFocusStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrFocusStandardPosition();
         }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IPropertiesFeatureContext.GetCurrentIrZoomStandardPosition()
         {
             return _features._moveControlFeature.GetCurrentIrZoomStandardPosition();
         }
 
+        /// <summary>
+        /// 현재 EO Focus 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IPropertiesFeatureContext.GetCurrentPresetStandardFocus()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardFocus();
         }
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IPropertiesFeatureContext.GetCurrentPresetStandardZoom()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardZoom();
@@ -616,31 +657,49 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.IsSystemDateTimeTabVisible; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPropertiesFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// 과거 WEB 줌 저장값은 호환 변환만 적용하고 새 프리셋은 장비 위치를 그대로 사용한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         int IPropertiesFeatureContext.PresetIrZoomPosition(PresetPointOption preset)
         {
             return _features._presetLensFeature.PresetIrZoomPosition(preset);
         }
 
+        /// <summary>
+        /// EO와 IR 기능 지원 조회를 요청하고 응답 기한을 기록한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPropertiesFeatureContext.QuerySpecialFeatureSupport()
         {
             _features._specialFeaturesFeature.QuerySpecialFeatureSupport();
         }
 
+        /// <summary>
+        /// 카메라별로 마지막 확인된 전원 상태와 확인 시점을 보관한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPropertiesFeatureContext.RememberCameraPower(string camera, bool on)
         {
             _features._devicePowerFeature.RememberCameraPower(camera, on);
         }
 
+        /// <summary>
+        /// 현재 프리셋과 순서 정보를 저장하며 기존 파일 보존 규칙을 적용한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IPropertiesFeatureContext.SavePresetStorage()
         {
             return _features._presetStorageFeature.SavePresetStorage();
         }
 
+        /// <summary>
+        /// 현재 선택값을 다음 연결용 설정으로 저장하며 로그의 인증정보는 가린다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPropertiesFeatureContext.SaveRtspCommunicationSettings()
         {
             _features._rtspSettingsFeature.SaveRtspCommunicationSettings();
@@ -658,11 +717,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._eventAlertsFeature.SelectedEventAlertTabIndex = value; }
         }
 
+        /// <summary>
+        /// 선택한 영상 채널에 맞춰 구역 참조와 표시 상태를 갱신한다.
+        /// </summary>
         void IPropertiesFeatureContext.ZoneChannelChanged(string camera)
         {
             _features._zonesFeature.ZoneChannelChanged(camera);
         }
 
+        /// <summary>
+        /// 표준 줌 위치와 확인된 배율을 상태 문자열로 구성한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         string IPropertiesFeatureContext.ZoomRatioStatus(bool ir)
         {
             return _features._inputCoordinatorFeature.ZoomRatioStatus(ir);

@@ -18,12 +18,24 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
 
+        /// <summary>
+        /// 변환과 적용 번호를 같은 XML에 확정해 재시작 시 중복 보정을 방지한다.
+        /// </summary>
         void ApplyZoneReferenceRebase(PanoramaZoneRebase operation);
 
+        /// <summary>
+        /// ZERO 확인 전에는 구역을 지우지 않고 과거 프레임·정합 결과의 적용만 중지한다.
+        /// </summary>
         void BeginZoneReferenceChange();
 
+        /// <summary>
+        /// 장면 기준 변경 후 구역 참조와 표시 상태를 마무리한다.
+        /// </summary>
         void FinishZoneReferenceChange(bool notifyEditor = true);
 
+        /// <summary>
+        /// 현재 연결 장비에 해당하는 기존 프리셋만 번호 순서로 복사한다.
+        /// </summary>
         PresetPointOption[] GetPanoramaPresets();
 
         string HomeZeroStatusText { get; set; }
@@ -40,6 +52,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         System.Collections.ObjectModel.ObservableCollection<PresetPointOption> PresetPoints { get; }
 
+        /// <summary>
+        /// 현재 프리셋과 순서 정보를 저장하며 기존 파일 보존 규칙을 적용한다.
+        /// </summary>
         bool SavePresetStorage();
 
         PresetPointOption SelectedLaPresetPoint { get; set; }
@@ -57,6 +72,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IPanoramaReferenceFeatureContext _context;
 
+        /// <summary>
+        /// 파노라마 기준 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal PanoramaReferenceFeature(IPanoramaReferenceFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -123,16 +141,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 재등록한 같은 번호를 과거 영점 변경 기록으로 다시 보정하지 않도록 원본 시각도 확인한다.
+        /// </summary>
         internal static string PanoramaPresetDataKey(PresetPointOption point)
         {
             return PanoramaPresetRegistration.ContextIdentity(PanoramaPresetRegistration.PresetIdentity(point) + "|" + point.EoZoomText + "|" + point.EoFocusText + "|" + point.IrZoomText + "|" + point.IrFocusText + "|" + point.PositionSnapshot?.CapturedAt.ToString("o"));
         }
 
+        /// <summary>
+        /// 각도를 -180~180도 부호 있는 범위로 정규화한다.
+        /// </summary>
         internal static double SignedPan(double pan)
         {
             return PanoramaPresetRegistration.Wrap(pan + 180) - 180;
         }
 
+        /// <summary>
+        /// 파노라마 기준 변경에 맞춰 저장 프리셋 좌표를 새 기준으로 환산한다.
+        /// </summary>
         internal static PresetPointOption RebasePanoramaPreset(PresetPointOption point, double pan, double tilt)
         {
             return new PresetPointOption(point.Number, pan, tilt, point.EoZoomText, point.EoFocusText, point.IrZoomText, point.IrFocusText, point.Name, point.SavedOrder, point.PositionSnapshot?.WithReferenceOffset(SignedPan(pan - point.Pan), tilt - point.Tilt))
@@ -141,6 +168,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             };
         }
 
+        /// <summary>
+        /// Config의 변경 기록을 먼저 확정하므로 CSV 저장 중 종료되어도 같은 보정을 한 번만 적용한다.
+        /// </summary>
         internal void RecoverPanoramaPresetReference()
         {
             try
@@ -155,6 +185,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 저장 자료로 파노라마 프리셋의 위치 기준을 복구한다.
+        /// </summary>
         internal void RecoverPanoramaPresetReferenceCore()
         {
             var reference = PanoramaReference;
@@ -219,6 +252,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 정지 후 새 위치 세 개가 안정된 경우에만 ZERO 직전 기준을 확보한다.
+        /// </summary>
         internal async Task<PanoramaZeroTicket> PreparePanoramaZeroReferenceAsync(bool panAxis)
         {
             string context = _context.PanoramaPresetContext;
@@ -287,6 +323,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             throw new InvalidOperationException("ZERO 전 안정된 새 위치 미수신 / ZERO 미송신");
         }
 
+        /// <summary>
+        /// ZERO 송신 전에 미확정 상태를 저장해 확인 없이 이전 좌표로 이동하지 않도록 한다.
+        /// </summary>
         internal PanoramaZeroTicket BeginPanoramaZeroReference(bool panAxis)
         {
             RecoverPanoramaPresetReference();
@@ -318,6 +357,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return ticket;
         }
 
+        /// <summary>
+        /// 새 수신값으로 ZERO 적용을 확인한 경우에만 좌표 변환과 기존 프리셋 스냅샷을 함께 갱신한다.
+        /// </summary>
         internal async Task FinishPanoramaZeroReferenceAsync(PanoramaZeroTicket ticket, bool sent)
         {
             if (ticket.Context != _context.PanoramaPresetContext)

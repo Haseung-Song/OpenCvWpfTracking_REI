@@ -11,26 +11,41 @@
 
         private uint _supportedPaletteMask = 0x3F;
 
+        /// <summary>
+        /// 팔레트 명령을 송신할 장비 명령 서비스를 연결한다.
+        /// </summary>
         public WebAgentThermalPaletteService(ControlCommandService controlCommandService)
         {
             _controlCommandService = controlCommandService;
         }
 
+        /// <summary>
+        /// IR 팔레트를 이전 항목으로 전환한다.
+        /// </summary>
         public bool SelectPrevious()
         {
             return SelectRelative(-1);
         }
 
+        /// <summary>
+        /// IR 팔레트를 다음 항목으로 전환한다.
+        /// </summary>
         public bool SelectNext()
         {
             return SelectRelative(1);
         }
 
+        /// <summary>
+        /// IR 영상의 팔레트를 Black Hot으로 설정한다.
+        /// </summary>
         public bool SelectBlackHot()
         {
             return SendPalette(PolarityOperation(false));
         }
 
+        /// <summary>
+        /// IR 영상의 팔레트를 White Hot으로 설정한다.
+        /// </summary>
         public bool SelectWhiteHot()
         {
             return SendPalette(PolarityOperation(true));
@@ -53,6 +68,9 @@
             }
         }
 
+        /// <summary>
+        /// IR 영상의 팔레트를 Rainbow로 설정한다.
+        /// </summary>
         public bool SelectRainbow()
         {
             return SendPalette(0xF5);
@@ -73,6 +91,9 @@
             }
         }
 
+        /// <summary>
+        /// 장비가 보고한 팔레트 값을 화면의 선택 상태에 반영한다.
+        /// </summary>
         public void ApplyReportedPalette(int palette)
         {
             if (palette < 0 || palette >= 6)
@@ -121,6 +142,9 @@
             }
         }
 
+        /// <summary>
+        /// 지정한 팔레트 동작 코드를 장비에 송신한다.
+        /// </summary>
         private bool SendPalette(byte operation)
         {
             return _controlCommandService.SendCommand(0x00, 0x31, operation, 0x00);

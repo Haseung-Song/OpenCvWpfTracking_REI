@@ -306,6 +306,9 @@ namespace OpenCvWpfTracking
         #endregion
 
         #region [초기화]
+        /// <summary>
+        /// InlineOpticalCalibration 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
+        /// </summary>
         internal InlineOpticalCalibration(Grid host, FrameworkElement viewport, MainViewModel model, Func<bool> infrared)
         {
             image = viewport;

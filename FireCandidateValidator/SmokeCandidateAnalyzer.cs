@@ -33,6 +33,9 @@ namespace FireCandidateValidator
 
         private readonly List<SmokeCandidateTrack> _tracks = new List<SmokeCandidateTrack>();
 
+        /// <summary>
+        /// 영상의 변화·윤곽·추적 지속성을 분석해 탐지 후보와 확정 상태를 반환한다.
+        /// </summary>
         internal SmokeCandidateAnalysis Analyze(Mat source, bool isInfrared, double minimumAreaRatio, double changeThresholdRatio, int confirmationFrameCount, bool compensateCameraMotion = false, SmokeDiagnosticCapture diagnostic = null, bool highZoomMode = false, double highZoomStrength = 0.0)
         {
             if (source == null || source.Empty())
@@ -474,6 +477,9 @@ namespace FireCandidateValidator
             }
         }
 
+        /// <summary>
+        /// 연기 분석의 기준 프레임·추적 이력·오탐 억제 집계를 초기화한다.
+        /// </summary>
         internal void Reset()
         {
             _continuousCandidateFrames = 0;
@@ -1043,6 +1049,9 @@ namespace FireCandidateValidator
             return seen >= Math.Max(90, confirmationFrameCount * 3) && rectangleAreaRatio <= 0.018 && track.DynamicSamples >= seen * 0.60 && track.DynamicSamples <= seen * 0.85 && track.DeformationSamples >= seen * 0.22 && track.DeformationSamples <= seen * 0.38 && track.ExpansionSamples >= seen * 0.18 && track.UpwardSamples + track.ExpansionSamples >= seen * 0.26;
         }
 
+        /// <summary>
+        /// 후보 사각형이 영상의 가장자리에 닿는지 확인한다.
+        /// </summary>
         private static bool TouchesFrameBoundary(Rect rectangle, int frameWidth, int frameHeight)
         {
             int margin = Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
@@ -1052,6 +1061,9 @@ namespace FireCandidateValidator
             return rectangle.X <= margin || rectangle.Y <= margin || rectangle.Right >= frameWidth - margin;
         }
 
+        /// <summary>
+        /// 후보 사각형이 영상 하단 경계에 닿는지 확인한다.
+        /// </summary>
         private static bool TouchesBottomBoundary(Rect rectangle, int frameWidth, int frameHeight)
         {
             int margin = Math.Max(2, Math.Min(frameWidth, frameHeight) / 300);
@@ -1096,6 +1108,9 @@ namespace FireCandidateValidator
             return sourceSpan / frameDiagonal <= frameLimit && sourceSpan / initialDiagonal <= objectLimit;
         }
 
+        /// <summary>
+        /// 영상 종류와 탐지 설정에 맞는 오탐 억제 강도를 결정한다.
+        /// </summary>
         private static int ResolveFalsePositiveSuppressionLevel(bool isInfrared, double minimumAreaRatio, double changeThresholdRatio)
         {
             if (isInfrared)
@@ -1215,6 +1230,9 @@ namespace FireCandidateValidator
             return trajectoryIsMaterial && directionIsCoherent && rigidRatio >= 0.55 && deformationRatio <= 0.35;
         }
 
+        /// <summary>
+        /// 추적 중인 연기 발생원의 누적 이동이 이동 물체 수준인지 판단한다.
+        /// </summary>
         private static bool IsMovingSmokeSourceTrack(SmokeCandidateTrack track, int confirmationFrameCount, int frameWidth, int frameHeight)
         {
             int minimumSamples = Math.Max(8, confirmationFrameCount / 4);
@@ -1256,16 +1274,25 @@ namespace FireCandidateValidator
             return new Rect(Math.Max(0, Math.Min(x, frameWidth - 1)), Math.Max(0, Math.Min(y, frameHeight - 1)), Math.Max(1, Math.Min(width, frameWidth - Math.Max(0, x))), Math.Max(1, Math.Min(height, frameHeight - Math.Max(0, y))));
         }
 
+        /// <summary>
+        /// 사각형 중심의 영상 좌표를 반환한다.
+        /// </summary>
         private static Point GetCenter(Rect rectangle)
         {
             return new Point(rectangle.X + rectangle.Width / 2, rectangle.Y + rectangle.Height / 2);
         }
 
+        /// <summary>
+        /// 사각형 하단 중앙의 영상 좌표를 반환한다.
+        /// </summary>
         private static Point GetBottomCenter(Rect rectangle)
         {
             return new Point(rectangle.X + rectangle.Width / 2, rectangle.Bottom);
         }
 
+        /// <summary>
+        /// 두 사각형의 교집합 면적을 합집합 면적으로 나누어 겹침 비율을 계산한다.
+        /// </summary>
         private static double IntersectionOverUnion(Rect left, Rect right)
         {
             Rect intersection = left & right;
@@ -1277,6 +1304,9 @@ namespace FireCandidateValidator
             return intersectionArea / unionArea;
         }
 
+        /// <summary>
+        /// 후보 사각형을 지정한 여유만큼 넓히고 영상 경계 안으로 제한한다.
+        /// </summary>
         private static Rect ExpandRect(Rect rectangle, int horizontal, int vertical, int frameWidth, int frameHeight)
         {
             int left = Math.Max(0, rectangle.X - horizontal);
@@ -1292,6 +1322,9 @@ namespace FireCandidateValidator
 
         private sealed class SmokeCandidateTrack
         {
+            /// <summary>
+            /// 연기 후보의 최초 위치·발생원과 추적 누적 상태를 초기화한다.
+            /// </summary>
             internal SmokeCandidateTrack(Rect rectangle)
             {
                 InitialRectangle = rectangle;
@@ -1457,6 +1490,9 @@ namespace FireCandidateValidator
                 }
             }
 
+            /// <summary>
+            /// 최근 수직 이동량을 제한된 길이의 이력으로 유지한다.
+            /// </summary>
             internal void RecordRecentVerticalMotion(double value)
             {
                 _recentVerticalMotion.Enqueue(value);
@@ -1474,6 +1510,9 @@ namespace FireCandidateValidator
     /// </summary>
     internal sealed class SmokeCandidateAnalysis : IDisposable
     {
+        /// <summary>
+        /// 연기 마스크·후보 목록·확정 여부와 오탐 억제 집계를 분석 결과에 보관한다.
+        /// </summary>
         internal SmokeCandidateAnalysis(Mat mask, IList<Rect> candidates, bool isConfirmed, int continuousFrames, double largestAreaRatio, int rigidMotionSuppressedCount = 0, int movingSourceSuppressedCount = 0, int continuityHeldCount = 0, int trafficAggregateSuppressedCount = 0, int verifiedVisibleCount = 0)
         {
             Mask = mask;
@@ -1508,11 +1547,17 @@ namespace FireCandidateValidator
 
         internal int VerifiedVisibleCount { get; }
 
+        /// <summary>
+        /// 탐지 후보와 확정 상태가 없는 빈 분석 결과를 만든다.
+        /// </summary>
         internal static SmokeCandidateAnalysis Empty()
         {
             return new SmokeCandidateAnalysis(new Mat(), new List<Rect>(), false, 0, 0.0);
         }
 
+        /// <summary>
+        /// 분석 결과가 소유한 연기 마스크 Mat을 해제한다.
+        /// </summary>
         public void Dispose()
         {
             Mask?.Dispose();
@@ -1547,11 +1592,17 @@ namespace FireCandidateValidator
             get { return _records; }
         }
 
+        /// <summary>
+        /// 단계별 연기 진단 이미지의 수집 여부와 기록 저장소를 준비한다.
+        /// </summary>
         internal SmokeDiagnosticCapture(bool captureStageImages = true)
         {
             _captureStageImages = captureStageImages;
         }
 
+        /// <summary>
+        /// 진단 단계의 마스크를 복사해 저장하고 같은 단계의 이전 이미지를 해제한다.
+        /// </summary>
         internal void CaptureStage(string stage, Mat mask)
         {
             if (!_captureStageImages || mask == null || mask.Empty())
@@ -1567,6 +1618,9 @@ namespace FireCandidateValidator
             _stageMasks[stage] = mask.Clone();
         }
 
+        /// <summary>
+        /// 윤곽선의 크기·형상·판정 이유를 진단 기록에 추가한다.
+        /// </summary>
         internal void AddContour(Rect rectangle, double area, double fillRatio, double aspectRatio, double edgeDensity, string result, string reason)
         {
             // 면적 탈락 외곽선은 한 프레임에 수백~수천 개가 생길 수 있다.
@@ -1599,11 +1653,17 @@ namespace FireCandidateValidator
             _records.Add(new SmokeDiagnosticRecord { Stage = "CONTOUR", Rectangle = rectangle, Area = area, FillRatio = fillRatio, AspectRatio = aspectRatio, EdgeDensity = edgeDensity, Result = result, Reason = reason });
         }
 
+        /// <summary>
+        /// 추적 후보의 지속성·이동·팽창 등 판정 근거를 진단 기록에 추가한다.
+        /// </summary>
         internal void AddTrack(Rect rectangle, string result, string reason, int seenFrames, int missingFrames, int dynamicSamples, int upwardSamples, int expansionSamples, int deformationSamples, int stationaryFrames)
         {
             _records.Add(new SmokeDiagnosticRecord { Stage = "TRACK", Rectangle = rectangle, Result = result, Reason = reason, SeenFrames = seenFrames, MissingFrames = missingFrames, DynamicSamples = dynamicSamples, UpwardSamples = upwardSamples, ExpansionSamples = expansionSamples, DeformationSamples = deformationSamples, StationaryFrames = stationaryFrames });
         }
 
+        /// <summary>
+        /// 단계별로 복사해 보관한 진단 마스크들을 해제하고 저장소를 비운다.
+        /// </summary>
         public void Dispose()
         {
             foreach (Mat mask in _stageMasks.Values)

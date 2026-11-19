@@ -26,14 +26,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         double CurrentPanoramaTilt { get; }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// 현재 EO Focus 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardFocus();
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
+        /// <summary>
+        /// 프리셋 렌즈 복원 판단에 사용할 응답이 최신인지 확인한다.
+        /// </summary>
         bool HasFreshPresetLens(bool ir, bool zoom);
 
         bool IsControlInputLocked { get; }
@@ -46,16 +65,28 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsPresetScanControlLocked { get; }
 
+        /// <summary>
+        /// 저장된 PRESET 1 한 지점의 PTZF 값을 직접 복원한다.
+        /// </summary>
         Task<bool> MoveLaPresetPointDirectAsync(PresetPointOption preset, CancellationToken cancellationToken, bool scanTiming = false, int? routeSpeed = null, int? routeDelay = null, bool? onlyIr = null);
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 보정에 필요한 렌즈와 위치 응답의 신선도를 검사한다.
+        /// </summary>
         bool OpticalFeedbackFresh(bool ir);
 
         string PanoramaDeviceKey { get; }
 
         bool PanoramaPoseFresh { get; }
 
+        /// <summary>
+        /// 지정 창/입력 소유자의 토큰만 일괄 해제한다.
+        /// </summary>
         void ReleaseControlOwner(string owner);
     }
 
@@ -67,11 +98,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IRoutesFeatureContext _context;
 
+        /// <summary>
+        /// 자동 순회 경로 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal RoutesFeature(IRoutesFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             RouteStatus = "경로 선택 후 현재 위치 추가";
@@ -193,6 +230,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 순회 진행 상황과 상태 안내를 화면에 반영한다.
+        /// </summary>
         internal void RouteState(string text)
         {
             Action update = () =>
@@ -235,6 +275,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 편집 중인 장비·채널별 감시 경로를 저장한다.
+        /// </summary>
         internal void SaveCurrentRoute()
         {
             if (IsRouteRunning)
@@ -249,6 +292,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RouteState("경로 저장 완료 / " + CurrentRoute.Points.Count + "점");
         }
 
+        /// <summary>
+        /// 현재 위치를 선택 경로의 새 순회 지점으로 추가한다.
+        /// </summary>
         internal void AddCurrentRoutePoint()
         {
             if (IsRouteRunning || _context.IsControlInputLocked || !_context.OpticalFeedbackFresh(RouteInfrared))
@@ -292,6 +338,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SaveCurrentRoute();
         }
 
+        /// <summary>
+        /// 선택한 경로 지점을 삭제하고 화면 목록을 갱신한다.
+        /// </summary>
         internal void DeleteSelectedRoutePoint()
         {
             if (IsRouteRunning)
@@ -311,6 +360,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SaveCurrentRoute();
         }
 
+        /// <summary>
+        /// 경로 실행으로 시작한 장비 이동을 정지한다.
+        /// </summary>
         internal void StopRouteMotion()
         {
             foreach (Action stop in new Action[]
@@ -335,6 +387,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 경로 실행 취소를 요청하고 진행 중 이동을 정리한다.
+        /// </summary>
         internal void StopRoute()
         {
             var cts = routeCts;
@@ -358,6 +413,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RouteState("경로 중지 요청");
         }
 
+        /// <summary>
+        /// 경로 지점을 순회하며 이동·렌즈 복원·관측 대기와 취소를 처리한다.
+        /// </summary>
         internal async Task RunRouteAsync(bool single)
         {
             if (IsRouteRunning || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked || !_context._isDeviceConnectionRequested || !_context._laTcpService.IsConnected || !_context.PanoramaPoseFresh)

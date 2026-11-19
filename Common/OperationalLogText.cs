@@ -88,6 +88,9 @@ namespace OpenCvWpfTracking.Common
             }
             };
 
+        /// <summary>
+        /// 기술 로그 분류를 한국어 운용 분류로 변환한다.
+        /// </summary>
         internal static string Category(string category)
         {
             string name = (category ?? "").ToUpperInvariant();
@@ -150,6 +153,9 @@ namespace OpenCvWpfTracking.Common
             return category ?? "시스템";
         }
 
+        /// <summary>
+        /// 로그의 주요 문구를 운용 용어로 바꾸고 첫 줄 중심의 요약을 만든다.
+        /// </summary>
         internal static string Summary(string category, string message)
         {
             string text = (message ?? "").Trim();
@@ -199,6 +205,9 @@ namespace OpenCvWpfTracking.Common
     /// <summary>메모장·콘솔에서 이벤트와 기술 항목을 빈 줄·들여쓰기로 구분한다.</summary>
     internal static class ReadableLogLayout
     {
+        /// <summary>
+        /// 로그 본문의 줄바꿈과 불필요한 빈 줄을 정리한다.
+        /// </summary>
         internal static string Body(string message)
         {
             var result = new System.Text.StringBuilder();
@@ -244,6 +253,9 @@ namespace OpenCvWpfTracking.Common
     {
         private readonly MessageTemplateTextFormatter _technical = new MessageTemplateTextFormatter("{Message:lj}{NewLine}{Exception}", CultureInfo.InvariantCulture);
 
+        /// <summary>
+        /// 구조화된 운용 요약 또는 기본 로그 메시지를 선택해 운용 로그 형식으로 출력한다.
+        /// </summary>
         public void Format(LogEvent logEvent, TextWriter output)
         {
             LogEventPropertyValue property;
@@ -276,6 +288,9 @@ namespace OpenCvWpfTracking.Common
     {
         private readonly MessageTemplateTextFormatter _message = new MessageTemplateTextFormatter("{Message:lj}{NewLine}{Exception}", CultureInfo.InvariantCulture);
 
+        /// <summary>
+        /// 기술 로그 메시지를 렌더링한 뒤 시각·수준·분류가 있는 읽기 쉬운 블록으로 출력한다.
+        /// </summary>
         public void Format(LogEvent logEvent, TextWriter output)
         {
             using (var writer = new StringWriter(CultureInfo.InvariantCulture))
@@ -286,6 +301,9 @@ namespace OpenCvWpfTracking.Common
             }
         }
 
+        /// <summary>
+        /// 로그 시각·수준·본문을 읽기 쉬운 여러 줄 블록으로 출력한다.
+        /// </summary>
         internal static void WriteBlock(LogEvent logEvent, TextWriter output, string message)
         {
             LogEventPropertyValue level;

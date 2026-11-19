@@ -59,12 +59,21 @@ namespace OpenCvWpfTracking
             public uint Flags;
         }
 
+        /// <summary>
+        /// 창이 위치한 모니터의 Windows 핸들을 구한다.
+        /// </summary>
         [DllImport("user32.dll")]
         private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
 
+        /// <summary>
+        /// 지정한 모니터의 화면·작업 영역 정보를 Windows에서 읽는다.
+        /// </summary>
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool GetMonitorInfo(IntPtr monitorHandle, ref NativeMonitorInfo monitorInfo);
 
+        /// <summary>
+        /// Windows에 설정된 마우스 더블클릭 판정 시간을 읽는다.
+        /// </summary>
         [DllImport("user32.dll")]
         private static extern uint GetDoubleClickTime();
 
@@ -229,6 +238,9 @@ namespace OpenCvWpfTracking
             // 파노라마 추가 화면은 보관하고 기존 파노라마 화면을 유지한다.
         }
 
+        /// <summary>
+        /// 통신 설정 탭을 기본 운용 순서로 배치한다.
+        /// </summary>
         private void ApplyDefaultCommunicationTabOrder()
         {
             if (CommunicationSettingsTabControl == null)
@@ -264,6 +276,9 @@ namespace OpenCvWpfTracking
             CommunicationSettingsTabControl.SelectedIndex = 0;
         }
 
+        /// <summary>
+        /// 탭 순서 변경을 위한 누름 위치와 대상 탭을 기록한다.
+        /// </summary>
         private void ReorderableTabControl_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             TabControl tabControl = sender as TabControl;
@@ -284,6 +299,9 @@ namespace OpenCvWpfTracking
             _tabDragSource = tabControl;
         }
 
+        /// <summary>
+        /// 드래그 거리를 검사해 탭 순서 변경을 시작한다.
+        /// </summary>
         private void ReorderableTabControl_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             TabControl tabControl = sender as TabControl;
@@ -317,6 +335,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 드롭 위치에 맞춰 탭 순서를 변경하고 선택 상태를 유지한다.
+        /// </summary>
         private void ReorderableTabControl_Drop(object sender, DragEventArgs e)
         {
             TabControl tabControl = sender as TabControl;
@@ -342,6 +363,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 시각 트리를 거슬러 올라가 지정 타입의 상위 컨트롤을 찾는다.
+        /// </summary>
         private static T FindVisualAncestor<T>(DependencyObject source)
             where T : DependencyObject
         {
@@ -369,6 +393,9 @@ namespace OpenCvWpfTracking
             UpdatePcTitleBarClock();
         }
 
+        /// <summary>
+        /// PC 현재 시각을 제목 표시줄의 시계에 반영한다.
+        /// </summary>
         private void UpdatePcTitleBarClock()
         {
             if (PcTitleBarClockText == null)
@@ -389,6 +416,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 제목 표시줄 로고 위치에 맞춰 시계 배지를 정렬한다.
+        /// </summary>
         private void AlignPcClockWithLogo(object sender, EventArgs e)
         {
             if (!IsLoaded || DeviceBrandLogo.ActualWidth <= 0 || TitleBarWindowButtons.ActualWidth <= 0)
@@ -422,6 +452,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 제목 표시줄의 기준 요소에 맞는 시계 배지 위치를 계산한다.
+        /// </summary>
         private static Rect ClockBadgePlacement(double center, double buttonLeft)
         {
             // 시계 전체를 확대·축소해 한 픽셀 배지로 축소되는 현상을 피한다.
@@ -560,6 +593,9 @@ namespace OpenCvWpfTracking
             Focus();
         }
 
+        /// <summary>
+        /// 탐지 시험 프로그램을 실행하거나 이미 실행 중인 창을 안내한다.
+        /// </summary>
         private void FireDetectorTestProgram_Click(object sender, RoutedEventArgs e)
         {
             string testProgramPath = ResolveFireDetectorTestProgramPath();
@@ -647,7 +683,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// OnClosed 상태 및 이벤트 처리 함수.
+        /// 창 닫기 취소 여부를 확인해 종료 진행 상태를 기록한다.
         /// </summary>
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
@@ -656,6 +692,9 @@ namespace OpenCvWpfTracking
             _isMainWindowClosing = !e.Cancel;
         }
 
+        /// <summary>
+        /// 창 종료 시 연결된 이벤트와 창 전용 타이머·리소스를 정리한다.
+        /// </summary>
         protected override void OnClosed(EventArgs e)
         {
             vm?.CancelPanoramaPresets();
@@ -846,6 +885,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 영상 영역을 드래그해 분리 창으로 옮기는 동작을 시작한다.
+        /// </summary>
         private void BeginVideoPopoutDrag(VideoPopoutCameraType cameraType, FrameworkElement sourceElement, MouseButtonEventArgs e)
         {
             _isWindowDragPending = false;
@@ -895,6 +937,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 영상 드래그 종료를 처리하고 캡처·임시 상태를 정리한다.
+        /// </summary>
         private async void VideoBorder_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             // 분리 드래그가 아닌 클릭은 선택한 영상 지점을 중앙으로 이동한다.
@@ -1152,9 +1197,15 @@ namespace OpenCvWpfTracking
             public int Y;
         }
 
+        /// <summary>
+        /// 현재 마우스 커서의 화면 좌표를 Windows에서 읽는다.
+        /// </summary>
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out NativePoint point);
 
+        /// <summary>
+        /// 지정한 창의 화면상 위치와 크기를 Windows에서 읽는다.
+        /// </summary>
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
 
@@ -1176,6 +1227,9 @@ namespace OpenCvWpfTracking
             public uint Flags;
         }
 
+        /// <summary>
+        /// Windows에 지정한 창 영역의 다시 그리기를 요청한다.
+        /// </summary>
         [DllImport("user32.dll")]
         private static extern bool RedrawWindow(IntPtr hwnd, IntPtr updateRect, IntPtr updateRegion, uint flags);
 
@@ -1243,6 +1297,9 @@ namespace OpenCvWpfTracking
             return new IntPtr(hit);
         }
 
+        /// <summary>
+        /// 창 테두리에서 포인터 위치에 맞는 크기 조절 방향을 판별한다.
+        /// </summary>
         private static int ResizeHit(Rect rect, Point p, double sx, double sy)
         {
             if (!rect.Contains(p))
@@ -1290,7 +1347,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// WindowFrame_PreviewMouseLeftButtonDown 동작 수행 함수.
+        /// 조작 컨트롤을 제외한 창 영역에서 이동 드래그의 시작점을 기록한다.
         /// </summary>
         private void WindowFrame_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -1307,7 +1364,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// WindowFrame_PreviewMouseMove 동작 수행 함수.
+        /// 드래그 최소 거리를 넘으면 창 이동을 시작한다.
         /// </summary>
         private void WindowFrame_PreviewMouseMove(object sender, MouseEventArgs e)
         {
@@ -1336,7 +1393,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// WindowFrame_PreviewMouseLeftButtonUp 동작 수행 함수.
+        /// 창 이동 드래그를 끝내고 남은 연속 장비 조작을 중지한다.
         /// </summary>
         private void WindowFrame_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
@@ -1352,7 +1409,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// IsInteractiveWindowElement 상태 확인 함수.
+        /// 포인터 대상이 버튼·입력칸·스크롤 등 창 이동에서 제외할 조작 요소인지 확인한다.
         /// </summary>
         private static bool IsInteractiveWindowElement(DependencyObject source)
         {
@@ -1372,7 +1429,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// Window_StateChanged 동작 수행 함수.
+        /// 최소화·최대화·복원 상태에 맞춰 창 테두리 표시를 갱신한다.
         /// </summary>
         private void Window_StateChanged(object sender, EventArgs e)
         {
@@ -1380,7 +1437,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// UpdateWindowChromeState 갱신 함수.
+        /// 최대화·전체화면 상태에 맞춰 창 테두리와 최대화·복원 아이콘을 갱신한다.
         /// </summary>
         private void UpdateWindowChromeState()
         {
@@ -1976,7 +2033,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// DisplayPanoramaFile 화면 표시 함수.
+        /// 파노라마 이미지 파일을 캐시 없이 읽어 화면에 표시한다.
         /// </summary>
         private void DisplayPanoramaFile(string filePath, string logOperation)
         {
@@ -2006,7 +2063,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// GetPanoramaSequence 조회 함수.
+        /// 파노라마 파일 이름에서 저장 순번을 추출하고 형식이 다르면 -1을 반환한다.
         /// </summary>
         private static int GetPanoramaSequence(string filePath)
         {
@@ -2030,7 +2087,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// PanoramaImage_MouseLeftButtonDown 동작 수행 함수.
+        /// 완성된 파노라마를 더블클릭하면 미리보기 창을 열거나 기존 창을 활성화한다.
         /// </summary>
         private void PanoramaImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -2098,7 +2155,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// ClosePanoramaPreview 종료 및 자원 해제 함수.
+        /// 열려 있는 파노라마 미리보기 창을 닫고 참조를 정리한다.
         /// </summary>
         private void ClosePanoramaPreview()
         {
@@ -2179,6 +2236,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 현재 장비의 파노라마 영상 저장 디렉터리를 구한다.
+        /// </summary>
         private string GetPanoramaDirectory()
         {
             string directory = PanoramaPresetRegistration.DeviceDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Panoramas"), vm.IsSelectedControlAgentWebAgent, vm.PanoramaDeviceKey, vm.SelectedControlAgentProfile?.DisplayName, vm.SelectedControlAgentProfile?.DeviceId);
@@ -2441,7 +2501,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// GetHoveredCameraType 조회 함수.
+        /// 포인터가 올라간 EO/IR 영상 채널을 구하고 없으면 주 영상 채널을 사용한다.
         /// </summary>
         private VideoPopoutCameraType? GetHoveredCameraType()
         {
@@ -2461,7 +2521,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// IsLensShortcutKey 상태 확인 함수.
+        /// 입력 키가 줌·초점 조작용 공통 단축키인지 검사한다.
         /// </summary>
         private static bool IsLensShortcutKey(Key key)
         {
@@ -2469,7 +2529,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// StartHoverLensMove 시작 함수.
+        /// 메인 영상에서 선택한 EO/IR 채널과 키에 맞는 렌즈 연속 이동을 시작한다.
         /// </summary>
         private void StartHoverLensMove(VideoPopoutCameraType cameraType, Key key)
         {
@@ -2514,7 +2574,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// StopActiveHoverLensMove 중지 함수.
+        /// 메인 영상에서 키 입력으로 시작한 렌즈 이동을 해당 채널·축에 맞춰 중지한다.
         /// </summary>
         private void StopActiveHoverLensMove()
         {

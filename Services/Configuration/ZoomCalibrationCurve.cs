@@ -52,6 +52,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             }
         }
 
+        /// <summary>
+        /// 줌 실측 기준점을 정렬·보관해 위치와 배율 보간을 준비한다.
+        /// </summary>
         private ZoomCalibrationCurve(int[] positions, double[] ratios, int lastMeasuredPosition)
         {
             _positions = positions;
@@ -193,6 +196,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             return _ratios[lower] + progress * (_ratios[upper] - _ratios[lower]);
         }
 
+        /// <summary>
+        /// 주어진 배율의 보정값이 실측 범위 밖 추정값인지 판단한다.
+        /// </summary>
         public bool IsEstimated(int position)
         {
             return position > _lastMeasuredPosition;

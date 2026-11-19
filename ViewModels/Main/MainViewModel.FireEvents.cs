@@ -50,6 +50,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _isImportedFromCsv; }
         }
 
+        /// <summary>
+        /// 이벤트가 CSV에서 불러온 이력임을 표시한다.
+        /// </summary>
         internal void MarkImportedFromCsv()
         {
             _isImportedFromCsv = true;
@@ -69,6 +72,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private double _pixelArea;
 
+        /// <summary>
+        /// 화재·연기 이벤트의 시각·채널·위치·탐지 근거를 구성한다.
+        /// </summary>
         internal FireEventRecord(int eventId, DateTime detectedTime, DateTime? clearedTime, string camera, string detectionType, string confidence, int objectCount, int pixelWidth, int pixelHeight, double pixelArea, string detectionSource, string status, PositionSnapshot firstPositionSnapshot = null)
         {
             EventId = eventId;
@@ -233,6 +239,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 이벤트의 현재 구역 포함·제외 판정 정보를 갱신한다.
+        /// </summary>
         internal void UpdateZoneAssessment(ZoneAssessment assessment)
         {
             if (assessment == null)
@@ -255,6 +264,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(ZoneDetailText));
         }
 
+        /// <summary>
+        /// 저장된 구역 판정 정보를 이벤트 이력에 복원한다.
+        /// </summary>
         internal void RestoreZoneAssessment(ZoneAssessment first, ZoneAssessment current)
         {
             FirstZoneAssessment = first;
@@ -280,6 +292,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public event PropertyChangedEventHandler PropertyChanged;
 
+        /// <summary>
+        /// 이벤트를 해제 상태로 전환하고 해제 시각을 기록한다.
+        /// </summary>
         internal void MarkCleared(DateTime clearedTime)
         {
             _clearedTime = clearedTime;
@@ -323,6 +338,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(Confidence));
         }
 
+        /// <summary>
+        /// 탐지 이벤트의 영상 사각형·점수·시각을 최신 상태로 갱신한다.
+        /// </summary>
         internal void UpdateVisionSnapshot(double score, int pixelWidth, int pixelHeight)
         {
             UpdateVisionScore(score);
@@ -413,6 +431,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             OnPropertyChanged(nameof(DetectionType));
         }
 
+        /// <summary>
+        /// CSV 이력이 실제 수신 이벤트와 다시 연결되었음을 표시한다.
+        /// </summary>
         internal void MarkLiveAfterCsvLoad()
         {
             _isLiveAfterCsvLoad = true;
@@ -445,6 +466,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return percentage.ToString("F1", CultureInfo.InvariantCulture) + "%";
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -535,6 +559,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _fireEventsFeature.InitializeFireEventFeatures();
         }
 
+        /// <summary>
+        /// AI 사각형과 겹치는 로컬 사각형을 숨겨 같은 객체의 중복 표시를 줄인다.
+        /// </summary>
         internal static void SuppressLocalBoxesOverlappingAi(ObservableCollection<VisionDetectionBox> localBoxes, ObservableCollection<AiDetectionBox> aiBoxes)
         {
             FireEventsFeature.SuppressLocalBoxesOverlappingAi(localBoxes, aiBoxes);
@@ -564,21 +591,33 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _fireEventsFeature.ClearFireEvents();
         }
 
+        /// <summary>
+        /// 상태 전환을 날짜별 감사 CSV에 추가한다. XLSX 생성기의 읽기와 파일별로 직렬화한다.
+        /// </summary>
         internal static void AppendFireEventAudit(FireEventRecord fireEvent, string transition)
         {
             FireEventsFeature.AppendFireEventAudit(fireEvent, transition);
         }
 
+        /// <summary>
+        /// 화재·연기 이벤트 목록을 CSV 파일에 기록한다.
+        /// </summary>
         internal static void WriteFireEventCsv(string path, IEnumerable<FireEventRecord> events)
         {
             FireEventsFeature.WriteFireEventCsv(path, events);
         }
 
+        /// <summary>
+        /// 저장된 이벤트 CSV를 읽고 필드와 종류를 확인해 목록으로 복원한다.
+        /// </summary>
         internal static IList<FireEventRecord> ReadFireEventCsv(string path)
         {
             return FireEventsFeature.ReadFireEventCsv(path);
         }
 
+        /// <summary>
+        /// 불러올 CSV가 요청한 이벤트 종류에 맞는지 검사한다.
+        /// </summary>
         internal static void ValidateEventCsvKind(IList<FireEventRecord> records, bool ai)
         {
             FireEventsFeature.ValidateEventCsvKind(records, ai);

@@ -115,6 +115,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _gpsSettingsFeature.RequestGpsAutoTxRate();
         }
 
+        /// <summary>
+        /// GPS 방위 기준과 IMU 원시값에 연결된 표시를 갱신한다.
+        /// </summary>
         private void UpdateGpsHeadingReferenceDisplay()
         {
             _gpsSettingsFeature.UpdateGpsHeadingReferenceDisplay();
@@ -122,6 +125,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal sealed class GpsTelemetryData
         {
+            /// <summary>
+            /// GPS 응답에서 해석한 위치·이동·수신 품질을 보관한다.
+            /// </summary>
             public GpsTelemetryData(double latitude, double longitude, double altitude, double speed, double courseDegrees, double hdop, byte satelliteCount, byte fixStatus)
             {
                 Latitude = latitude;

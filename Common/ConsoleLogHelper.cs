@@ -71,6 +71,9 @@ namespace OpenCvWpfTracking.Common
         /// </summary>
         public const string LogLine = "=======================================================================================================================";
 
+        /// <summary>
+        /// 콘솔 출력 정규화 경로를 연결하고 출력 장치 사용 가능 상태를 준비한다.
+        /// </summary>
         static ConsoleLogHelper()
         {
             try
@@ -244,6 +247,9 @@ namespace OpenCvWpfTracking.Common
             Write("ERROR", category, detail);
         }
 
+        /// <summary>
+        /// 로그 분류에 맞는 운용 오류 코드를 반환한다.
+        /// </summary>
         private static string GetOperationalErrorCode(string category)
         {
             string value = (category ?? string.Empty).ToUpperInvariant();
@@ -281,6 +287,9 @@ namespace OpenCvWpfTracking.Common
             return "E-SYSTEM-001";
         }
 
+        /// <summary>
+        /// 기술 로그의 분류를 운용자가 읽을 기능 이름으로 바꾼다.
+        /// </summary>
         private static string GetFriendlyFeatureName(string category)
         {
             string value = (category ?? string.Empty).ToUpperInvariant();
@@ -330,6 +339,9 @@ namespace OpenCvWpfTracking.Common
             }
         }
 
+        /// <summary>
+        /// 예외와 오류 메시지를 분석해 운용자에게 표시할 원인을 정리한다.
+        /// </summary>
         private static string GetFriendlyCause(string message, Exception exception)
         {
             // 파일 공유·바이트 범위 잠금 오류를 AI 또는 네트워크 장애로 분류하지 않는다.
@@ -390,6 +402,9 @@ namespace OpenCvWpfTracking.Common
             }
         }
 
+        /// <summary>
+        /// 오류 분류에 맞는 연결·전원·저장 경로 확인 방법을 반환한다.
+        /// </summary>
         private static string GetRecommendedAction(string category)
         {
             string value = (category ?? string.Empty).ToUpperInvariant();
@@ -442,7 +457,7 @@ namespace OpenCvWpfTracking.Common
         }
 
         /// <summary>
-        /// Write 저장 함수.
+        /// 로그 분류·본문을 정규화하고 인증 정보를 마스킹해 운용·기술 로그 경로에 기록한다.
         /// </summary>
         private static void Write(string level, string category, string message)
         {
@@ -505,7 +520,7 @@ namespace OpenCvWpfTracking.Common
         }
 
         /// <summary>
-        /// WriteStructuredSection 저장 함수.
+        /// 시각·수준·스레드·분류가 있는 로그 제목을 만들고 여러 줄 본문을 출력한다.
         /// </summary>
         private static void WriteStructuredSection(string level, string category, params string[] lines)
         {
@@ -517,7 +532,8 @@ namespace OpenCvWpfTracking.Common
         }
 
         /// <summary>
-        /// WriteSection 저장 함수.
+        /// Console에는 사람이 읽기 좋은 Section Header를 출력하고, Serilog에는 중복 Timestamp/Level이 없는 정리된
+        /// Section을 기록한다.
         /// </summary>
         private static void WriteSection(string header, params string[] lines)
         {
@@ -630,7 +646,7 @@ namespace OpenCvWpfTracking.Common
             private bool _isDisposed;
 
             /// <summary>
-            /// ConsoleLogScope 동작 수행 함수.
+            /// ConsoleLogScope의 의존 객체와 초기 상태를 구성한다.
             /// </summary>
             public ConsoleLogScope(string category, string operation)
             {
@@ -642,7 +658,7 @@ namespace OpenCvWpfTracking.Common
             }
 
             /// <summary>
-            /// Dispose 종료 및 자원 해제 함수.
+            /// 외부 [using] / [Dispose] 호출 시 내부 [FFmpeg] 리소스 정리
             /// </summary>
             public void Dispose()
             {
@@ -679,7 +695,7 @@ namespace OpenCvWpfTracking.Common
             private bool _innerUnavailable;
 
             /// <summary>
-            /// NormalizedConsoleTextWriter 동작 수행 함수.
+            /// NormalizedConsoleTextWriter의 의존 객체와 초기 상태를 구성한다.
             /// </summary>
             public NormalizedConsoleTextWriter(TextWriter inner)
             {
@@ -692,7 +708,7 @@ namespace OpenCvWpfTracking.Common
             }
 
             /// <summary>
-            /// Write 저장 함수.
+            /// 입력 문자를 줄 단위 버퍼에 모으고 줄바꿈 시 정규화 출력한다.
             /// </summary>
             public override void Write(char value)
             {
@@ -715,7 +731,7 @@ namespace OpenCvWpfTracking.Common
             }
 
             /// <summary>
-            /// Write 저장 함수.
+            /// 입력 문자를 줄 단위 버퍼에 모으고 줄바꿈 시 정규화 출력한다.
             /// </summary>
             public override void Write(string value)
             {
@@ -746,7 +762,7 @@ namespace OpenCvWpfTracking.Common
             }
 
             /// <summary>
-            /// WriteLine 저장 함수.
+            /// 누적된 콘솔 내용을 한 줄로 마무리해 정규화 출력한다.
             /// </summary>
             public override void WriteLine(string value)
             {
@@ -759,7 +775,7 @@ namespace OpenCvWpfTracking.Common
             }
 
             /// <summary>
-            /// WriteLine 저장 함수.
+            /// 누적된 콘솔 내용을 한 줄로 마무리해 정규화 출력한다.
             /// </summary>
             public override void WriteLine()
             {
@@ -770,7 +786,7 @@ namespace OpenCvWpfTracking.Common
             }
 
             /// <summary>
-            /// Flush 동작 수행 함수.
+            /// 콘솔 쓰기 잠금을 확보한 뒤 남은 출력을 내보낸다.
             /// </summary>
             public override void Flush()
             {
@@ -781,7 +797,7 @@ namespace OpenCvWpfTracking.Common
             }
 
             /// <summary>
-            /// FlushPendingLine 동작 수행 함수.
+            /// 누적된 콘솔 한 줄을 정규화하고 인증 정보를 마스킹해 출력한다.
             /// </summary>
             private void FlushPendingLine()
             {
@@ -868,6 +884,9 @@ namespace OpenCvWpfTracking.Common
                 }
             }
 
+            /// <summary>
+            /// 내부 출력기에 남은 내용을 내보내고 출력 장치 오류는 안전하게 처리한다.
+            /// </summary>
             private void SafeFlush()
             {
                 if (_innerUnavailable)
@@ -889,6 +908,9 @@ namespace OpenCvWpfTracking.Common
                 }
             }
 
+            /// <summary>
+            /// 사용할 수 없는 콘솔 출력기를 비활성화하고 진단 메시지를 남긴다.
+            /// </summary>
             private void DisableInnerWriter(Exception exception)
             {
                 _innerUnavailable = true;

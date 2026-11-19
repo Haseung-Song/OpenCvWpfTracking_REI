@@ -35,38 +35,77 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         CancellationTokenSource _presetSingleMoveCts { get; set; }
 
+        /// <summary>
+        /// EO 직접 제어 구성을 구분해 WEB AGENT AF 명령을 적용할 대상인지 확인한다.
+        /// </summary>
         bool AutoFocusTargetUsesAgent(int target);
 
         bool CameraFeatureTransportReady { get; }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// 현재 EO Focus 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardFocus();
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
+        /// <summary>
+        /// AF 동작·응답 대기·상태 불명 중 해당 채널의 수동 초점 충돌을 차단한다.
+        /// </summary>
         bool IsAutoFocusBlockingManualFocus(bool ir, bool logWarning = true);
 
         bool IsAutoFocusPanelVisible { get; }
 
         bool IsEnvironmentStatusSelected { get; }
 
+        /// <summary>
+        /// 2026-09-18: 화면/명령의 표준 좌표가 제공되면 장비 Raw 물리 끝점을 공통 정규화한 값으로 판정한다. Raw 좌표 전용 호출만
+        /// 기존 허용 오차를 유지한다.
+        /// </summary>
         bool IsIrZoomTargetReached(int target, int actual, int standardTarget = -1, int tolerance = IrZoomTargetTolerance, bool syncCalibration = false);
 
         bool IsSelectedControlAgentWebAgent { get; }
 
+        /// <summary>
+        /// 2026-10-16: 환경부 장비는 신규 CMD2=0xB7 절대위치를 우선 사용하고 실제 IR 렌즈 피드백으로 도달 여부를 확인한다. 새
+        /// 피드백이 계속 수신되는데도 위치가 전혀 변하지 않을 때만 0x31 폐루프 경로로 전환한다.
+        /// </summary>
         Task<bool> MoveIrZoomToPositionAsync(int targetPosition, CancellationToken cancellationToken, int standardTarget = -1, int tolerance = IrZoomTargetTolerance, bool syncCalibration = false, bool explicitAbsolute = false);
 
+        /// <summary>
+        /// PRESET 1 저장값 기준 EO / IR Focus를 각각 복원한다.
+        /// </summary>
         Task<bool> MoveLaPresetFocusDirectAsync(int eoStandardPosition, int irStandardPosition, CancellationToken cancellationToken, int eoTolerance = LensSyncTargetTolerance, int irTolerance = IrFocusSyncTolerance, bool? onlyIr = null);
 
+        /// <summary>
+        /// PRESET 1 저장값 기준 EO / IR Zoom을 각각 복원한다.
+        /// </summary>
         Task<bool> MoveLaPresetZoomDirectAsync(int eoStandardPosition, int irPosition, CancellationToken cancellationToken, int eoTolerance = LensSyncTargetTolerance, int irTolerance = 1, bool? onlyIr = null);
 
         Services.Video.PanoramaReferenceState PanoramaReference { get; }
 
         int PresetScanDelay { get; set; }
 
+        /// <summary>
+        /// IR 렌즈의 새 응답에서 이동이 멈춘 정착 위치를 확인한다.
+        /// </summary>
         Task<int> WaitForIrLensSettledPositionAsync(bool zoom, CancellationToken cancellationToken);
     }
 
@@ -78,6 +117,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IPresetLensFeatureContext _context;
 
+        /// <summary>
+        /// 프리셋 렌즈 복원 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal PresetLensFeature(IPresetLensFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -128,6 +170,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 과거 WEB 줌 저장값은 호환 변환만 적용하고 새 프리셋은 장비 위치를 그대로 사용한다.
+        /// </summary>
         internal int PresetIrZoomPosition(PresetPointOption preset)
         {
             int position = ParsePresetPosition(preset.IrZoomText, _context.GetCurrentIrZoomStandardPosition());
@@ -152,6 +197,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return legacyWide + (int)Math.Round(position * (legacyTele - legacyWide) / 1000.0);
         }
 
+        /// <summary>
+        /// 프리셋에서는 자동 초점 채널의 초점만 제외하며 팬·틸트·줌 이동은 차단하지 않는다.
+        /// </summary>
         internal bool IsPresetFocusProtected(bool ir)
         {
             if (!_context.IsAutoFocusPanelVisible || !_context.CameraFeatureTransportReady || !_context.AutoFocusTargetUsesAgent(ir ? 1 : 0))
@@ -162,6 +210,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _context.IsAutoFocusBlockingManualFocus(ir, false) || (!_context._autoFocusActivatedForSession && _context._autoFocus[ir ? 1 : 0] == null);
         }
 
+        /// <summary>
+        /// 완료한 이동과 적용하지 않은 저장 초점을 화면에서 구분한다.
+        /// </summary>
         internal string FormatPresetCompletion(string completed)
         {
             if (_presetSkippedFocusMask == 0)
@@ -174,6 +225,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 선택 채널의 줌 도착을 확인한 뒤 정지 시간을 시작하고 그동안 저장 초점을 복원한다.
+        /// </summary>
         internal async Task<bool> RestorePresetLensAsync(int ez, int ef, int iz, int iff, int delaySeconds, bool scanTiming, CancellationToken token, bool? onlyIr = null)
         {
             var zoomTimer = Stopwatch.StartNew();
@@ -210,6 +264,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return scanTiming || focus;
         }
 
+        /// <summary>
+        /// 선택한 모든 채널의 최신 줌 응답이 두 번 연속 목표 범위에 들어오는지 확인한다.
+        /// </summary>
         internal async Task<bool> WaitPresetZoomArrivalAsync(int eoTarget, int irTarget, bool? onlyIr, CancellationToken token)
         {
             var timer = Stopwatch.StartNew();
@@ -260,6 +317,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 허용 시간 안에서 프리셋 렌즈 단계의 완료 여부를 확인한다.
+        /// </summary>
         internal async Task<bool> RunPresetLensStageAsync(bool zoom, int budgetMs, Func<CancellationToken, Task<bool>> move, CancellationToken token, bool? onlyIr = null)
         {
             using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(token))
@@ -314,6 +374,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 프리셋에 저장한 IR 광학 줌 위치를 복원한다.
+        /// </summary>
         internal async Task<bool> RestorePresetIrZoomAsync(int rawTarget, int standardTarget, int tolerance, CancellationToken token)
         {
             if (!await EnsurePresetIrLensFeedbackAsync(true, token))
@@ -326,6 +389,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return moved && HasFreshPresetLens(true, true) && _context.IsIrZoomTargetReached(rawTarget, _context._currentIrZoom, standardTarget, tolerance);
         }
 
+        /// <summary>
+        /// LA 프리셋·직접 입력은 기존 화각 위치 이동 0x29를 한 번 송신하고 실제 도착을 확인한다.
+        /// </summary>
         internal async Task<bool> MoveLaIrZoomAbsoluteAsync(int rawTarget, int standardTarget, int tolerance, CancellationToken token, string requestType = "PRESET")
         {
             token.ThrowIfCancellationRequested();
@@ -414,6 +480,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-10-14 실제 수신된 유효 Zoom/Focus 증거를 축별로 보관한다. 명령 추정값은 증거가 아니다.
+        /// </summary>
         internal void MarkPresetLensEvidence(bool ir, bool zoom, bool focus)
         {
             long now = DateTime.UtcNow.Ticks;
@@ -444,6 +513,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 채널과 축별 마지막 렌즈 응답 시간을 조회한다.
+        /// </summary>
         internal long PresetLensTicks(bool ir, bool zoom)
         {
             if (ir)
@@ -456,6 +528,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 프리셋 렌즈 복원 판단에 사용할 응답이 최신인지 확인한다.
+        /// </summary>
         internal bool HasFreshPresetLens(bool ir, bool zoom)
         {
             long ticks = PresetLensTicks(ir, zoom);
@@ -463,6 +538,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return ticks > 0 && DateTime.UtcNow.Ticks - ticks <= TimeSpan.FromSeconds(3).Ticks;
         }
 
+        /// <summary>
+        /// 이전 연결의 프리셋 렌즈 응답 증거를 초기화한다.
+        /// </summary>
         internal void ResetPresetLensEvidence()
         {
             Interlocked.Exchange(ref _presetEoZoomTicks, 0);
@@ -497,6 +575,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// IR 피드백을 확보하지 못하면 절대위치 성공/시간추정으로 프리셋 완료를 표시하지 않는다.
+        /// </summary>
         internal async Task<bool> EnsurePresetIrLensFeedbackAsync(bool zoom, CancellationToken token)
         {
             if (HasFreshPresetLens(true, zoom))
@@ -528,6 +609,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// EO 단발 Direct 이후 해당 축의 새 상태가 두 번 목표에 도달했는지 확인한다.
+        /// </summary>
         internal async Task<bool> WaitPresetEoLensTargetAsync(int target, bool zoom, long afterTicks, CancellationToken token, int tolerance = LensSyncTargetTolerance)
         {
             var watch = Stopwatch.StartNew();
@@ -562,6 +646,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return false;
         }
 
+        /// <summary>
+        /// 장비 저장 PRESET W도 로컬에 저장한 네 렌즈 값을 복원·검증한 뒤 완료 처리한다.
+        /// </summary>
         internal async Task<bool> RestoreStoredPresetLensAsync(PresetPointOption preset, CancellationToken token, bool scanTiming = false)
         {
             if (preset == null)
@@ -587,6 +674,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return result;
         }
 
+        /// <summary>
+        /// 프리셋의 렌즈 값을 허용 범위 안에서 읽는다.
+        /// </summary>
         internal static bool TryPresetLensValue(string text, out int value)
         {
             return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value >= 0 && value <= 1000;

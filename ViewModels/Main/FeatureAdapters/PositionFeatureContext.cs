@@ -22,6 +22,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return ref _features._zonesFeature._zoneEpoch; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPositionFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);

@@ -24,8 +24,14 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool CameraFeatureTransportReady { get; }
 
+        /// <summary>
+        /// UI 큐에 넣기 전에 세션을 캡처하고 연결 변경 후 도착한 callback을 버린다.
+        /// </summary>
         void DispatchSpecialFeaturePacket(byte[] p, Action<byte[]> apply);
 
+        /// <summary>
+        /// 2026-10-14 규격 대상별 행을 한 번 생성한다. 기존 LENS 제어는 이동하거나 제거하지 않는다.
+        /// </summary>
         void EnsureSpecialFeatures();
 
         bool IsControlInputLocked { get; }
@@ -36,12 +42,21 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsSelectedControlAgentWebAgent { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// IR 팔레트 버튼의 선택 표시를 초기화한다.
+        /// </summary>
         void ResetThermalPaletteButtonVisuals();
 
         System.Collections.Generic.IEnumerable<Models.Main.CameraSpecialFeatureRow> SpecialFeatureRows { get; }
 
+        /// <summary>
+        /// F1 장비 시간과 단조 시계를 사용하여 로컬 기준 샘플 시각으로 보정한다.
+        /// </summary>
         bool TryReadTelemetryTime(ulong milliseconds, out DateTimeOffset value, bool requireFresh = true);
 
         Action QueryEquipmentTemperatureCallback { get; }
@@ -55,11 +70,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IWebAgentEquipmentFeatureContext _context;
 
+        /// <summary>
+        /// WEB 장비 부가 기능 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal WebAgentEquipmentFeature(IWebAgentEquipmentFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _temperatureText = "PT —   EO —   IR —   SWIR —";
@@ -189,6 +210,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// GUI 타이머로 중복 정지하지 않고 구동 시간 관리를 WebAgent에 맡긴다.
+        /// </summary>
         internal void SendWebWiper(int mode)
         {
             if (!IsWebAgentEquipmentControlReady || (mode != 2 && (!_context.IsOperationCommandEnabled || _context.IsControlInputLocked)))
@@ -223,6 +247,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command("WEB 와이퍼", _wiperRequestText + Environment.NewLine + "CMD2=0x3F / MODE=" + mode + " / SECONDS=" + seconds + " / SESSION=" + _context._connectionSessionId);
         }
 
+        /// <summary>
+        /// 최신 온도 캐시 조회는 새 센서 측정이나 장비 시간 설정이 아니다.
+        /// </summary>
         internal void QueryEquipmentTemperature()
         {
             if (!IsWebAgentEquipmentControlReady)
@@ -235,6 +262,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Command("WEB 온도", sent ? "최신 온도 캐시 조회 전송" : "온도 조회 전송 실패");
         }
 
+        /// <summary>
+        /// 파서가 검증한 표본을 현재 연결의 UI에만 반영한다.
+        /// </summary>
         internal void ParseEquipmentTemperature(byte[] payload)
         {
             TemperatureSnapshot value;
@@ -261,6 +291,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }));
         }
 
+        /// <summary>
+        /// 장비 변경·재연결 시 이전 온도와 요청 상태를 남기지 않는다.
+        /// </summary>
         internal void ResetWebAgentEquipmentState()
         {
             _context._webAgentThermalPaletteService?.ResetRelativeSelection();
@@ -274,6 +307,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(WiperRequestText));
         }
 
+        /// <summary>
+        /// 원래 표본 시각으로 경과 시간을 계산하여 캐시를 최신값으로 위장하지 않는다.
+        /// </summary>
         internal void RefreshWebAgentEquipmentState()
         {
             string text = "PT —   EO —   IR —   SWIR —";
@@ -325,6 +361,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 실패 응답의 원 명령을 확인해 해당 기능의 요청 상태만 갱신한다.
+        /// </summary>
         internal void HandleWebAgentEquipmentUnavailable(byte[] payload)
         {
             if (payload == null || payload.Length != 6 || payload[0] != 1 || payload[1] > 1)

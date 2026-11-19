@@ -5,6 +5,9 @@ namespace OpenCvWpfTracking.Services.Video
     /// <summary>RTSP 인증정보만 정규화하며 호스트·경로·쿼리의 이스케이프는 그대로 유지한다.</summary>
     public static class RtspUriNormalization
     {
+        /// <summary>
+        /// RTSP 주소의 사용자 이름·비밀번호 부분을 인코딩하거나 표시용으로 복원한다.
+        /// </summary>
         private static string Transform(string input, bool encode)
         {
             if (string.IsNullOrEmpty(input))
@@ -58,11 +61,17 @@ namespace OpenCvWpfTracking.Services.Video
             return input.Substring(0, start) + component(user) + (password == null ? "" : ":" + component(password)) + input.Substring(at);
         }
 
+        /// <summary>
+        /// RTSP 인증 정보의 인코딩 문자를 입력·표시용 형태로 복원한다.
+        /// </summary>
         public static string Display(string input)
         {
             return Transform(input, false);
         }
 
+        /// <summary>
+        /// RTSP 사용자 이름·비밀번호를 연결용으로 인코딩한 주소를 반환한다.
+        /// </summary>
         public static string Connect(string input)
         {
             return Transform(input, true);

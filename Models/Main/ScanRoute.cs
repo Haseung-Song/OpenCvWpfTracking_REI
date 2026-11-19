@@ -30,6 +30,9 @@ namespace OpenCvWpfTracking.Models.Main
 
         public int Delay { get; set; } = 3;
 
+        /// <summary>
+        /// 순회 지점의 값들을 별도 객체로 복사한다.
+        /// </summary>
         public ScanRoutePoint Copy()
         {
             return (ScanRoutePoint)MemberwiseClone();
@@ -49,6 +52,9 @@ namespace OpenCvWpfTracking.Models.Main
             }
         }
 
+        /// <summary>
+        /// 순회 지점의 좌표와 렌즈 값을 프리셋 항목으로 변환한다.
+        /// </summary>
         public PresetPointOption AsPreset()
         {
             return new PresetPointOption(Order, Pan, Tilt, EoZoom.ToString(CultureInfo.InvariantCulture), EoFocus.ToString(CultureInfo.InvariantCulture), IrZoom.ToString(CultureInfo.InvariantCulture), IrFocus.ToString(CultureInfo.InvariantCulture), Name, Order);
@@ -71,6 +77,9 @@ namespace OpenCvWpfTracking.Models.Main
 
         public ObservableCollection<ScanRoutePoint> Points { get; } = new ObservableCollection<ScanRoutePoint>();
 
+        /// <summary>
+        /// 현재 지점 목록 순서에 맞춰 순번을 다시 매긴다.
+        /// </summary>
         public void Renumber()
         {
             for (int i = 0; i < Points.Count; i++)
@@ -87,6 +96,9 @@ namespace OpenCvWpfTracking.Models.Main
             }
         }
 
+        /// <summary>
+        /// 순회 설정을 검증하고 정렬·왕복 조건이 반영된 실행 지점 배열을 만든다.
+        /// </summary>
         public ScanRoutePoint[] Queue()
         {
             if (!Valid)
@@ -119,6 +131,9 @@ namespace OpenCvWpfTracking.Models.Main
             }
         }
 
+        /// <summary>
+        /// 기존 순회 지점에 거의 같은 Pan·Tilt 좌표가 있는지 확인한다.
+        /// </summary>
         public bool Near(ScanRoutePoint point)
         {
             return Points.Any(p =>
@@ -138,16 +153,25 @@ namespace OpenCvWpfTracking.Models.Main
 
         private readonly Dictionary<string, ScanRoute[]> banks = new Dictionary<string, ScanRoute[]>();
 
+        /// <summary>
+        /// 장비별 순회 경로를 읽고 저장할 파일 경로를 보관한다.
+        /// </summary>
         public ScanRouteStore(string path)
         {
             file = path;
         }
 
+        /// <summary>
+        /// 저장 자료가 없을 때 사용할 기본 경로 A~E 다섯 개를 만든다.
+        /// </summary>
         private static ScanRoute[] Empty()
         {
             return Enumerable.Range(0, 5).Select(i => new ScanRoute { Name = "경로 " + (char)('A' + i) }).ToArray();
         }
 
+        /// <summary>
+        /// 장비와 EO/IR 채널에 맞는 순회 경로를 캐시 또는 저장 파일에서 읽고 없으면 기본 경로를 만든다.
+        /// </summary>
         public ScanRoute[] Get(string device, bool ir)
         {
             string key = device + "|" + (ir ? "IR" : "EO");
@@ -227,6 +251,9 @@ namespace OpenCvWpfTracking.Models.Main
             return routes;
         }
 
+        /// <summary>
+        /// 경로의 유효성과 기존 읽기 오류를 확인한 뒤 장비·채널별 순회 경로를 파일에 저장한다.
+        /// </summary>
         public void Save(string device, bool ir)
         {
             var routes = Get(device, ir);

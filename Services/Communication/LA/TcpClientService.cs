@@ -216,7 +216,7 @@ namespace OpenCvWpfTracking.Services.Communication
         #region [송신]
 
         /// <summary>
-        /// Send 송신 함수.
+        /// 유효한 패킷과 연결 상태를 검사한 뒤 TCP 스트림에 송신하고 성공 여부를 반환한다.
         /// </summary>
         public bool Send(byte[] data)
         {
@@ -256,7 +256,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// CanSend 상태 확인 함수.
+        /// 현재 TCP 소켓과 스트림이 연결되어 쓰기 가능한지 확인한다.
         /// </summary>
         private bool CanSend()
         {
@@ -268,7 +268,9 @@ namespace OpenCvWpfTracking.Services.Communication
         #region [수신]
 
         /// <summary>
-        /// ReceiveLoopAsync 수신 함수.
+        /// [AI] [Detector Agent]로부터 데이터를 계속 수신하는 [Loop] 수신 흐름: 1.
+        /// [NetworkStream.ReadAsync()]로 [byte[]] 수신 2. [_receiveBuffer]에 누적 3. [Parser]로
+        /// 완성 [Packet] 분리 4. [PacketReceived] [Event] 발생
         /// </summary>
         private async Task ReceiveLoopAsync(CancellationToken token, long sessionGeneration)
         {
@@ -357,7 +359,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// CopyReceivedData 동작 수행 함수.
+        /// 공용 수신 버퍼에서 실제 받은 길이만 독립 배열로 복사한다.
         /// </summary>
         private byte[] CopyReceivedData(byte[] buffer, int readSize)
         {
@@ -369,7 +371,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// PrintReceiveLogIfNeeded 동작 수행 함수.
+        /// 수신 로그 출력 간격이 지났을 때만 패킷을 기록한다.
         /// </summary>
         private void PrintReceiveLogIfNeeded(byte[] receivedData)
         {
@@ -384,7 +386,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// PrintReceivePackets 동작 수행 함수.
+        /// 수신 바이트를 LA 상태 패킷 길이 단위로 나누어 진단 출력한다.
         /// </summary>
         private void PrintReceivePackets(byte[] receivedData)
         {
@@ -404,7 +406,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// RaiseMessageReceived 동작 수행 함수.
+        /// 수신 데이터와 현재 시각을 메시지 구독자에게 전달한다.
         /// </summary>
         private void RaiseMessageReceived(byte[] receivedData)
         {
@@ -416,7 +418,7 @@ namespace OpenCvWpfTracking.Services.Communication
         #region [로그]
 
         /// <summary>
-        /// PrintHexData 동작 수행 함수.
+        /// 접두어와 바이트 배열을 16진수 진단 문자열로 출력한다.
         /// </summary>
         private void PrintHexData(string prefix, byte[] data)
         {

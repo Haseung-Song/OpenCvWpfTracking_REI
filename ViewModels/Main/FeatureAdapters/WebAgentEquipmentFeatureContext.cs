@@ -57,11 +57,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._cameraFeatureControlFeature.CameraFeatureTransportReady; }
         }
 
+        /// <summary>
+        /// UI 큐에 넣기 전에 세션을 캡처하고 연결 변경 후 도착한 callback을 버린다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IWebAgentEquipmentFeatureContext.DispatchSpecialFeaturePacket(byte[] p, Action<byte[]> apply)
         {
             _features._specialFeaturesFeature.DispatchSpecialFeaturePacket(p, apply);
         }
 
+        /// <summary>
+        /// 2026-10-14 규격 대상별 행을 한 번 생성한다. 기존 LENS 제어는 이동하거나 제거하지 않는다. 실제 처리는 연결된 기능 객체에
+        /// 위임한다.
+        /// </summary>
         void IWebAgentEquipmentFeatureContext.EnsureSpecialFeatures()
         {
             _features._specialFeaturesFeature.EnsureSpecialFeatures();
@@ -87,11 +94,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IWebAgentEquipmentFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
         }
 
+        /// <summary>
+        /// IR 팔레트 버튼의 선택 표시를 초기화한다.
+        /// </summary>
         void IWebAgentEquipmentFeatureContext.ResetThermalPaletteButtonVisuals()
         {
             _features._thermalFeature.ResetThermalPaletteButtonVisuals();
@@ -102,6 +115,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._specialFeaturesFeature.SpecialFeatureRows; }
         }
 
+        /// <summary>
+        /// F1 장비 시간과 단조 시계를 사용하여 로컬 기준 샘플 시각으로 보정한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IWebAgentEquipmentFeatureContext.TryReadTelemetryTime(ulong milliseconds, out DateTimeOffset value, bool requireFresh)
         {
             return _features._webAgentProtocolFeature.TryReadTelemetryTime(milliseconds, out value, requireFresh);

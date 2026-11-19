@@ -56,6 +56,9 @@ namespace OpenCvWpfTracking
             Log.Information("[FOV VALIDATION] 측정 시작 | LEVEL={Level} | 순서=EO 좌/우, IR 좌/우", _fovValidationLevel);
         }
 
+        /// <summary>
+        /// 화각 검증의 이전 측정값과 보조선을 초기화한다.
+        /// </summary>
         private void ResetFovValidation_Click(object sender, RoutedEventArgs e)
         {
             ResetFovValidationMeasurement();
@@ -63,6 +66,9 @@ namespace OpenCvWpfTracking
             FovValidationStatusText.Text = "READY / SELECT LEVEL AND START";
         }
 
+        /// <summary>
+        /// 화각 검증의 클릭 기준점·측정값·보조선을 초기화한다.
+        /// </summary>
         private void ResetFovValidationMeasurement()
         {
             _isFovValidationActive = false;
@@ -142,6 +148,9 @@ namespace OpenCvWpfTracking
             return true;
         }
 
+        /// <summary>
+        /// 모은 측정값으로 화각 오차를 계산하고 검증 결과를 표시한다.
+        /// </summary>
         private void CompleteFovValidation()
         {
             try
@@ -175,6 +184,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 화각 검증 측정값과 오차 결과를 CSV에 저장한다.
+        /// </summary>
         private void SaveFovValidationCsv(FovSyncValidationResult result, int eoFrameWidth, int irFrameWidth)
         {
             string logDirectory = IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
@@ -193,6 +205,9 @@ namespace OpenCvWpfTracking
             File.AppendAllText(path, row + Environment.NewLine, new UTF8Encoding(true));
         }
 
+        /// <summary>
+        /// 화면 클릭 위치를 원본 영상 픽셀로 환산하고 유효 범위를 검사한다.
+        /// </summary>
         private static bool TryGetFovSourcePixel(Image image, Point viewPoint, out Point sourcePoint)
         {
             sourcePoint = new Point();
@@ -224,6 +239,9 @@ namespace OpenCvWpfTracking
             return true;
         }
 
+        /// <summary>
+        /// 화각 측정 기준에 해당하는 보조선을 영상 위에 추가한다.
+        /// </summary>
         private static void AddFovBoundaryLine(Canvas overlay, double x, int index)
         {
             Line line = new Line

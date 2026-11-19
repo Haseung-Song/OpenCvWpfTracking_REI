@@ -19,6 +19,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         internal const int PresetFocusRestoreTimeoutMs = 15000;
 
+        /// <summary>
+        /// 프리셋의 렌즈 값을 허용 범위 안에서 읽는다.
+        /// </summary>
         internal static bool TryPresetLensValue(string text, out int value)
         {
             return PresetLensFeature.TryPresetLensValue(text, out value);

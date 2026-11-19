@@ -18,6 +18,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool CameraFeatureTransportReady { get; }
 
+        /// <summary>
+        /// 검출 OFF는 해당 종류의 ACTIVE만 해제한다. 이력과 다른 검출 종류는 보존한다.
+        /// </summary>
         void ClearDisabledVisionEvents(bool fire, bool writeAudit = true);
 
         string FireAlertStatusText { get; }
@@ -30,10 +33,20 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsSelectedControlAgentWebAgent { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 2026-08-27: 카메라 이동 또는 영상 조건 변경 뒤 EO/IR 기준 프레임과 시간축 후보를 함께 초기화하여 화면 전체 변화가 이벤트가
+        /// 되지 않게 한다.
+        /// </summary>
         void ResetFireSmokeFrameAnalysis(string reason);
 
+        /// <summary>
+        /// 로컬 영상 후보와 기존 추적 이벤트를 대응시켜 생성·유지·해제를 반영한다.
+        /// </summary>
         void UpdateVisionBBoxEvents(string camera, string detectionType, System.Collections.Generic.IList<OpenCvSharp.Rect> candidates, System.Collections.Generic.IList<double> candidateScores, string detectionSource, Services.Position.ZoneFrameContext zoneFrame = null);
     }
 
@@ -45,11 +58,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IThermalFeatureContext _context;
 
+        /// <summary>
+        /// 열상 표시·팔레트 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal ThermalFeature(IThermalFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _thermalHotThresholdRatio = 0.76;
@@ -472,11 +491,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 지정한 영상 채널과 탐지 종류가 현재 사용 대상인지 확인한다.
+        /// </summary>
         internal bool IsFireSourceEnabled(bool isInfrared)
         {
             return FireDetectionSourceIndex == 0 || (FireDetectionSourceIndex == 1 && !isInfrared) || (FireDetectionSourceIndex == 2 && isInfrared);
         }
 
+        /// <summary>
+        /// 열상 탐지 설정과 관련 이벤트를 초기화한다.
+        /// </summary>
         internal void InitializeThermalFeatures()
         {
             PreviousThermalPaletteCommand = new RelayCommand(() => ChangeThermalPalette(-1));
@@ -497,6 +522,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SelectThermalFireBoxMode2Command = new RelayCommand(() => SetThermalFireBoxGroupingMode(2));
         }
 
+        /// <summary>
+        /// 열상 화재 후보 사각형의 묶음 표시 방식을 설정한다.
+        /// </summary>
         internal void SetThermalFireBoxGroupingMode(int mode)
         {
             _thermalFireBoxGroupingMode = mode == 1 ? 1 : 2;
@@ -510,6 +538,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("THERMAL FIRE", "BBox grouping mode=" + _thermalFireBoxGroupingMode);
         }
 
+        /// <summary>
+        /// 현재 연결·잠금 상태를 검사한 뒤 장비 종류에 맞는 IR 팔레트 명령을 송신한다.
+        /// </summary>
         internal void SendThermalPaletteDirectCommand(string paletteName, int paletteType)
         {
             // 표시 중인 상태 탭이 아니라 실제 선택·연결된 제어 장비로 경로를 정한다.
@@ -530,6 +561,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 연결·잠금 상태를 검사한 뒤 장비 종류에 맞는 IR NUC 보정 명령을 송신한다.
+        /// </summary>
         internal void SendThermalNucCommand()
         {
             if (!_context.CameraFeatureTransportReady || !_context.IsSelectedConnectionTarget || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked)
@@ -554,6 +588,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.ResetFireSmokeFrameAnalysis("NUC");
         }
 
+        /// <summary>
+        /// 장비 연결 후 IR 기본 팔레트 Black Hot 적용을 준비한다.
+        /// </summary>
         internal void InitializeThermalBlackHotAfterDeviceConnected()
         {
             // IR 카메라에 남아 있는 이전 실행의 팔레트를 재사용하지 않는다.
@@ -561,6 +598,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             SendThermalPaletteDirectCommand("INITIAL BLACK HOT", 0);
         }
 
+        /// <summary>
+        /// WEB NEXT·PREV는 기존 E9 번호 선택 경로, LA는 기존 상대 명령 경로를 유지한다. 직접 색상 선택과 번호 순회를 분리한다.
+        /// </summary>
         internal void ChangeThermalPalette(int offset, bool highlightRandomButton = false)
         {
             if (!_context.CameraFeatureTransportReady || !_context.IsSelectedConnectionTarget || !_context.IsOperationCommandEnabled || _context.IsControlInputLocked)
@@ -610,6 +650,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 열상 팔레트에 맞춰 선택 버튼의 강조 상태를 갱신한다.
+        /// </summary>
         internal void UpdateThermalPaletteButtonVisual(int paletteType)
         {
             ResetThermalPaletteButtonVisuals();
@@ -646,6 +689,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// IR 팔레트 버튼의 선택 표시를 초기화한다.
+        /// </summary>
         internal void ResetThermalPaletteButtonVisuals()
         {
             Brush neutralForeground = new SolidColorBrush(Color.FromRgb(32, 38, 45));
@@ -658,6 +704,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ThermalRainbowButtonForeground = neutralForeground;
         }
 
+        /// <summary>
+        /// IR 팔레트·NUC 제어 요청의 송신 결과를 로그에 기록한다.
+        /// </summary>
         internal static void LogThermalControlCommandResult(string commandName, bool result)
         {
             if (result)
@@ -670,6 +719,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 열상 제어 콜백을 실행하고 TCP 쓰기 결과를 장비 적용 확인과 구분해 기록한다.
+        /// </summary>
         internal static void SendThermalCommand(string commandName, System.Func<bool> sendCommand)
         {
             bool result = sendCommand();
@@ -684,6 +736,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 열상 화재 후보의 위치·확정 상태를 표시와 이벤트 판정에 반영한다.
+        /// </summary>
         internal void UpdateThermalFireCandidateState(string camera, ThermalFireDetectionResult result, OpenCvWpfTracking.Services.Position.ZoneFrameContext zoneFrame = null)
         {
             if (!IsThermalFireDetectionEnabled)

@@ -82,6 +82,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return ref _features._cameraFeatureControlFeature._videoCenterPose; }
         }
 
+        /// <summary>
+        /// 현재 RadioButton에서 선택한 Pan 회전 모드를 Pelco-D 확장 명령 0x4D로 장비에 적용한다. 실제 처리는 연결된 기능
+        /// 객체에 위임한다.
+        /// </summary>
         bool IWebAgentMotionFocusFeatureContext.ApplySelectedPanTurnMode()
         {
             return _features._moveControlFeature.ApplySelectedPanTurnMode();
@@ -152,6 +156,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._rtspSettingsFeature.IsSelectedControlAgentWebAgent; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IWebAgentMotionFocusFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
@@ -169,6 +176,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.TiltAbsoluteValue = value; }
         }
 
+        /// <summary>
+        /// 현재 선택된 EO 프리셋이 CTEC CGI 직접 제어 대상인지 확인한다. EO 주소가 프리셋 외부 값으로 변경된 경우에는 잘못된 카메라로
+        /// 명령이 송신되지 않도록 기존 Control Agent 경로를 사용한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         bool IWebAgentMotionFocusFeatureContext.TryGetSelectedEoCtecSource(out RtspSourceOption sourceOption)
         {
             return _features._continuousControlFeature.TryGetSelectedEoCtecSource(out sourceOption);

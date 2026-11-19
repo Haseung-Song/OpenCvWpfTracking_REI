@@ -17,7 +17,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         private readonly ControlCommandService _controlCommandService;
 
         /// <summary>
-        /// WebAgentZoomControlService 동작 수행 함수.
+        /// WebAgentZoomControlService의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         public WebAgentZoomControlService(ControlCommandService controlCommandService)
         {
@@ -109,7 +109,7 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
         }
 
         /// <summary>
-        /// ClampPosition 동작 수행 함수.
+        /// 렌즈 위치를 표준 범위 0~1000으로 제한한다.
         /// </summary>
         private static short ClampPosition(short position)
         {

@@ -98,6 +98,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _eventAlertsFeature.EventAlertHeaderText; }
         }
 
+        /// <summary>
+        /// 채널과 추적 ID를 조합해 AI 이벤트의 고유 키를 만든다.
+        /// </summary>
         internal static string GetAiEventKey(int rtspIndex, AiDetectionBox box)
         {
             return EventAlertsFeature.GetAiEventKey(rtspIndex, box);
@@ -119,11 +122,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _eventAlertsFeature.LoadAiEvents();
         }
 
+        /// <summary>
+        /// 기존 AI 활성 이벤트를 비우고 목록·요약 표시를 갱신한다.
+        /// </summary>
         private void ClearAiEvents()
         {
             _eventAlertsFeature.ClearAiEvents();
         }
 
+        /// <summary>
+        /// 이벤트 목록이 보존 한도를 넘지 않도록 오래된 항목을 정리한다.
+        /// </summary>
         internal static void TrimEventCollection(ObservableCollection<FireEventRecord> events)
         {
             EventAlertsFeature.TrimEventCollection(events);

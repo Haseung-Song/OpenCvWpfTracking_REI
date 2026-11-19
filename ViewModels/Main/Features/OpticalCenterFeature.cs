@@ -36,20 +36,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string ControlAgentPortText { get; set; }
 
+        /// <summary>
+        /// 연결 요청 중인 프로파일을 우선하여 해당 채널의 조정값을 가져온다.
+        /// </summary>
         Services.Configuration.LensControlTuning ControlTuningFor(bool ir);
 
         string EoConnectionStatusText { get; }
 
         string EoSourceAddress { get; set; }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
         string IrConnectionStatusText { get; }
 
         string IrSourceAddress { get; set; }
 
+        /// <summary>
+        /// 연결 요청과 마지막 렌즈 응답 시간을 기준으로 유효성을 확인한다.
+        /// </summary>
         bool IsLensFresh(bool ir);
 
         ControlAgentProfileOption SelectedControlAgentProfile { get; set; }
@@ -63,6 +77,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IOpticalCenterFeatureContext _context;
 
+        /// <summary>
+        /// 광학 중심 보정 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal OpticalCenterFeature(IOpticalCenterFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -150,6 +167,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 인증정보를 제외한 카메라 주소로 보정 저장 키를 구성한다.
+        /// </summary>
         internal static string CameraIdentity(string address)
         {
             Uri uri;
@@ -164,16 +184,25 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 이전 보정값 이전에 사용할 주소 기준 키를 유지한다.
+        /// </summary>
         internal string LegacyOpticalCenterKey(bool ir)
         {
             return OpenCvWpfTracking.Services.Configuration.DeviceCatalog.StorageDisplayName((_context._requestedControlProfile ?? _context.SelectedControlAgentProfile)?.DisplayName ?? "DIRECT") + "|" + _context.ControlAgentIp + ":" + _context.ControlAgentPortText + "|" + CameraIdentity(ir ? _context.IrSourceAddress : _context.EoSourceAddress) + "|" + (ir ? "IR" : "EO");
         }
 
+        /// <summary>
+        /// 현재 채널의 보정 저장 대상 키를 반환한다.
+        /// </summary>
         internal string OpticalDeviceKey(bool ir)
         {
             return OpticalCenterKey(ir);
         }
 
+        /// <summary>
+        /// 등록 장비는 IP 변경과 무관하게 보정값을 유지하고 EO·IR 및 LA·WEB은 분리한다.
+        /// </summary>
         internal string OpticalCenterKey(bool ir)
         {
             var profile = _context._requestedControlProfile ?? _context.SelectedControlAgentProfile;
@@ -197,11 +226,18 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _opticalResolvedKeys[channel];
         }
 
+        /// <summary>
+        /// 현재 채널의 표준 광학 줌 위치를 반환한다.
+        /// </summary>
         internal int OpticalZoom(bool ir)
         {
             return ir ? _context.GetCurrentIrZoomStandardPosition() : _context.GetCurrentPresetStandardZoom();
         }
 
+        /// <summary>
+        /// 성공한 D-ZOOM ON 요청 또는 장비 ON 응답이 있는 채널의 4점 보정을 막는다. 미수신을 ON으로 취급하지 않으며 D-ZOOM 미지원
+        /// IR의 보정은 허용한다.
+        /// </summary>
         internal bool IsOpticalCalibrationBlockedByDigitalZoom(bool ir)
         {
             int channel = ir ? 1 : 0;
@@ -214,11 +250,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return (ir ? _context._irDigitalEstimate : _context._eoDigitalEstimate).Enabled || _context._digitalState[channel] == 1;
         }
 
+        /// <summary>
+        /// 현재 장비와 줌 위치에 대응하는 십자선 중심을 반환한다.
+        /// </summary>
         internal Point GetOpticalCenter(bool ir)
         {
             return OpticalCenters.Get(OpticalCenterKey(ir), OpticalZoom(ir));
         }
 
+        /// <summary>
+        /// 보정에 필요한 렌즈와 위치 응답의 신선도를 검사한다.
+        /// </summary>
         internal bool OpticalFeedbackFresh(bool ir)
         {
             var pose = Volatile.Read(ref _context._videoCenterPose);
@@ -228,6 +270,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return _context.IsLensFresh(ir) && age >= 0 && age < TimeSpan.FromSeconds(2).Ticks;
         }
 
+        /// <summary>
+        /// 영상 저장에 사용할 실제 프레임의 연결 상태와 수신 시간을 확인한다.
+        /// </summary>
         internal bool SnapshotFrameFresh(bool ir)
         {
             long age = DateTime.UtcNow.Ticks - Interlocked.Read(ref _context._videoCenterFrameTicks[ir ? 1 : 0]);
@@ -235,6 +280,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return age >= 0 && age < TimeSpan.FromSeconds(1).Ticks && (ir ? _context.IrConnectionStatusText : _context.EoConnectionStatusText) == "Connected";
         }
 
+        /// <summary>
+        /// 현재 광학 줌과 채널 비율에 따른 파노라마 화각 정보를 반환한다.
+        /// </summary>
         internal Tuple<double, double> ControlTuningForPanorama(bool ir)
         {
             var tuning = _context.ControlTuningFor(ir);
@@ -246,6 +294,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return Tuple.Create(hfov, ir ? 5.0 / 4 : 16.0 / 9);
         }
 
+        /// <summary>
+        /// 최신 위치와 렌즈 증거를 확인한 후 채널 보정값을 저장한다.
+        /// </summary>
         internal void SaveOpticalCenter(bool ir, Point center)
         {
             if (!OpticalFeedbackFresh(ir))
@@ -260,6 +311,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Common.ConsoleLogHelper.State("OPTICAL CENTER", (ir ? "IR" : "EO") + " / ZOOM=" + OpticalZoom(ir) + " / NORMALIZED=" + center);
         }
 
+        /// <summary>
+        /// 선택 채널의 보정값을 기본 중심으로 복원한다.
+        /// </summary>
         internal void ResetOpticalCenter(bool ir)
         {
             OpticalCenters.Reset(OpticalCenterKey(ir));
@@ -267,6 +321,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             InvalidatePanoramaReference();
         }
 
+        /// <summary>
+        /// 위치 기준 변경을 등록된 화면에 알린다.
+        /// </summary>
         internal void InvalidatePanoramaReference()
         {
             PositionReferenceChanged?.Invoke();

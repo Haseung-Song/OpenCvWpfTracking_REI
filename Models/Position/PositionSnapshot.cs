@@ -80,6 +80,9 @@ namespace OpenCvWpfTracking.Models.Position
 
         public bool WebAgentConnected { get; }
 
+        /// <summary>
+        /// 수집 시각과 자세·렌즈·GPS·IMU 수치 및 유효 상태를 불변 스냅샷에 보관한다.
+        /// </summary>
         public PositionSnapshot(DateTimeOffset capturedAt, string source, int? presetId, double? pan, double? tilt, int? eoZoom, int? eoFocus, int? irZoom, int? irFocus, double? latitude, double? longitude, double? altitude, double? gpsSpeed, double? gpsCourse, double? gpsHdop, int? gpsSatelliteCount, int? gpsFixStatus, double? roll, double? pitch, double? yaw, PositionDataStatus ptzStatus, PositionDataStatus eoLensStatus, PositionDataStatus irLensStatus, PositionDataStatus gpsStatus, PositionDataStatus imuStatus, bool webAgentConnected)
         {
             CapturedAt = capturedAt;
@@ -130,6 +133,9 @@ namespace OpenCvWpfTracking.Models.Position
             }
         }
 
+        /// <summary>
+        /// 위치 스냅샷의 시각·좌표·렌즈·GPS·IMU 값을 내보내기 필드 순서로 변환한다.
+        /// </summary>
         public string[] ToExportFields()
         {
             return new[]
@@ -162,6 +168,9 @@ namespace OpenCvWpfTracking.Models.Position
             };
         }
 
+        /// <summary>
+        /// 저장된 필드 배열을 검사해 위치 스냅샷으로 복원하고 성공 여부를 반환한다.
+        /// </summary>
         public static bool TryParseExportFields(IList<string> fields, int startIndex, out PositionSnapshot snapshot)
         {
             snapshot = null;
@@ -227,21 +236,33 @@ namespace OpenCvWpfTracking.Models.Position
             return true;
         }
 
+        /// <summary>
+        /// 문자열을 위치 데이터 유효 상태 열거값으로 변환한다.
+        /// </summary>
         private static bool TryParseStatus(string value, out PositionDataStatus status)
         {
             return Enum.TryParse(value, true, out status);
         }
 
+        /// <summary>
+        /// 정수 문자열을 변환하고 해석할 수 없으면 null을 반환한다.
+        /// </summary>
         private static int? ParseNullableInt(string value)
         {
             return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) ? parsed : (int?)null;
         }
 
+        /// <summary>
+        /// 실수 문자열을 고정 문화권 형식으로 변환하고 실패하면 null을 반환한다.
+        /// </summary>
         private static double? ParseNullableDouble(string value)
         {
             return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed) ? parsed : (double?)null;
         }
 
+        /// <summary>
+        /// 유효 상태인 정수만 내보내기 문자열로 변환하고 나머지는 빈칸으로 남긴다.
+        /// </summary>
         private static string FormatExportInt(int? value, PositionDataStatus status)
         {
             if (status == PositionDataStatus.Valid && value.HasValue)
@@ -254,6 +275,9 @@ namespace OpenCvWpfTracking.Models.Position
             }
         }
 
+        /// <summary>
+        /// 유효 상태인 실수만 내보내기 문자열로 변환하고 나머지는 빈칸으로 남긴다.
+        /// </summary>
         private static string FormatExportDouble(double? value, PositionDataStatus status)
         {
             if (status == PositionDataStatus.Valid && value.HasValue)
@@ -266,6 +290,9 @@ namespace OpenCvWpfTracking.Models.Position
             }
         }
 
+        /// <summary>
+        /// 유효한 각도 값을 지정 형식과 단위로 표시하고 미확인 값은 N/A로 표시한다.
+        /// </summary>
         private static string FormatDouble(double? value, PositionDataStatus status, string format)
         {
             if (status == PositionDataStatus.Valid && value.HasValue)

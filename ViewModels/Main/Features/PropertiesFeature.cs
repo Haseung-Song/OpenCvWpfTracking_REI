@@ -169,14 +169,34 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string AiAlertStatusText { get; }
 
+        /// <summary>
+        /// 2026-09-15: REI 통합본에서는 Web Agent 프로필에만 unsigned Pan 좌표를 적용한다.
+        /// </summary>
         void ApplyControlAgentPanCoordinateMode(ControlAgentProfileOption profile);
 
+        /// <summary>
+        /// Pan / Tilt 연속 이동 중 Slider 값이 바뀌면 현재 방향을 유지한 채 Pelco-D Data1 / Data2 속도값만 갱신하여
+        /// 즉시 재송신한다.
+        /// </summary>
         void ApplyPanTiltSpeedWhileMoving();
 
+        /// <summary>
+        /// 현재 RadioButton에서 선택한 Pan 회전 모드를 Pelco-D 확장 명령 0x4D로 장비에 적용한다.
+        /// </summary>
         bool ApplySelectedPanTurnMode();
 
+        /// <summary>
+        /// 2026-10-01: 현재 활성 EO/IR 카메라의 광학 줌이 커질수록 같은 PT 속도도 화면에서는 더 크게 이동해 보이므로 실제 전송
+        /// 속도를 낮춘다. UI Slider 값은 사용자가 선택한 기준 속도로 유지하며 광각(1x)에서는 기존 속도를 그대로 사용한다.
+        /// 2026-10-01 실장비 로그에서 EO 최대 줌 시 20% 하한(30→6)이 빠르게 보이는 것을 확인하여 5% 안전 하한으로 완화한다.
+        /// 실제 EO 90x 계산값은 약 10.5%이므로 기준 속도 30에서 약 3이 적용된다.
+        /// </summary>
         byte ApplyZoomAdaptivePanTiltSpeed(byte baseProtocolSpeed, out int standardZoom, out string activeCamera, out double opticalZoomRatio, out double speedScale);
 
+        /// <summary>
+        /// 2026-09-17: Web Agent 합의 규격인 UI 속도 [0 ~ 60]을 그대로 사용한다. UI 0은 이동 속도로 사용하지 않으며
+        /// 정지 요청으로 처리한다.
+        /// </summary>
         byte ConvertPanTiltSpeedLevel(int uiSpeed);
 
         string CurrentEoPowerStatusColor { get; }
@@ -189,16 +209,35 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string DeviceControlConnectionStatusText { get; }
 
+        /// <summary>
+        /// 장비 모드 변경으로 숨겨진 통신 탭이 선택된 경우 표시 가능한 탭으로 복귀한다.
+        /// </summary>
         void EnsureVisibleCommunicationSettingsTab();
 
         string EoPowerControlStatusText { get; }
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Focus 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Far)
+        /// -&gt; Standard 0(Far) Raw 0(Near) -&gt; Standard 1000(Near) ENVIRONMENT / WEB AGENT:
+        /// 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrFocusStandardPosition();
 
+        /// <summary>
+        /// 현재 장비 구성에 맞춰 IR Zoom 상태값을 0~1000 위치로 반환한다. ROOFTOP / LA AGENT: Raw 1000(Wide)
+        /// -&gt; Standard 0(Wide) Raw 0(Tele) -&gt; Standard 1000(Tele) ENVIRONMENT / WEB
+        /// AGENT: 장비 상태값과 화면 Position 방향이 같으므로 역변환하지 않는다.
+        /// </summary>
         int GetCurrentIrZoomStandardPosition();
 
+        /// <summary>
+        /// 현재 EO Focus 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardFocus();
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다.
+        /// </summary>
         ushort GetCurrentPresetStandardZoom();
 
         string IrPowerControlStatusText { get; }
@@ -225,24 +264,48 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsSystemDateTimeTabVisible { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
+        /// <summary>
+        /// 과거 WEB 줌 저장값은 호환 변환만 적용하고 새 프리셋은 장비 위치를 그대로 사용한다.
+        /// </summary>
         int PresetIrZoomPosition(PresetPointOption preset);
 
+        /// <summary>
+        /// EO와 IR 기능 지원 조회를 요청하고 응답 기한을 기록한다.
+        /// </summary>
         void QuerySpecialFeatureSupport();
 
+        /// <summary>
+        /// 카메라별로 마지막 확인된 전원 상태와 확인 시점을 보관한다.
+        /// </summary>
         void RememberCameraPower(string camera, bool on);
 
+        /// <summary>
+        /// 현재 프리셋과 순서 정보를 저장하며 기존 파일 보존 규칙을 적용한다.
+        /// </summary>
         bool SavePresetStorage();
 
+        /// <summary>
+        /// 현재 선택값을 다음 연결용 설정으로 저장하며 로그의 인증정보는 가린다.
+        /// </summary>
         void SaveRtspCommunicationSettings();
 
         ControlAgentProfileOption SelectedControlAgentProfile { get; set; }
 
         int SelectedEventAlertTabIndex { get; set; }
 
+        /// <summary>
+        /// 선택한 영상 채널에 맞춰 구역 참조와 표시 상태를 갱신한다.
+        /// </summary>
         void ZoneChannelChanged(string camera);
 
+        /// <summary>
+        /// 표준 줌 위치와 확인된 배율을 상태 문자열로 구성한다.
+        /// </summary>
         string ZoomRatioStatus(bool ir);
     }
 
@@ -254,11 +317,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IPropertiesFeatureContext _context;
 
+        /// <summary>
+        /// 화면 상태·속성 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal PropertiesFeature(IPropertiesFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             LaPresetSlotOptions = new ObservableCollection<int>(Enumerable.Range(1, 100));
@@ -2599,6 +2668,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// ROOFTOP / ENVIRONMENT 전환 직후에도 현재값과 입력값이 새 좌표계로 즉시 표시되게 한다. 실제 장비 상태는 다음 수신
+        /// 패킷에서 다시 갱신된다.
+        /// </summary>
         internal void ConvertPanTiltValuesForSelectedCoordinateMode()
         {
             _context._currentPan = NormalizeToSignedAngle(_context._currentPan);
@@ -2614,6 +2687,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(CurrentTiltText));
         }
 
+        /// <summary>
+        /// 각도를 0~360도 범위로 정규화한다.
+        /// </summary>
         internal static double NormalizeToUnsignedAngle(double angle)
         {
             double normalized = angle % 360.0;
@@ -2628,6 +2704,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 각도를 -180~180도 부호 있는 범위로 정규화한다.
+        /// </summary>
         internal static double NormalizeToSignedAngle(double angle)
         {
             double normalized = NormalizeToUnsignedAngle(angle);
@@ -2642,6 +2721,12 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 영상 화면 상태 문자열을 통신 설정 화면용 RTSP 연결 상태 문자열로 변환 실제 영상 상태 문자열에는 재연결 횟수 또는 부가 문구가 포함될
+        /// 수 있으므로 완전 일치가 아닌 상태 키워드 포함 여부를 기준으로 판단한다. 예시: "[EO] Connected" -&gt; "Connected"
+        /// "[EO] Connecting..." -&gt; "Connecting" "[EO] Reconnecting... (4)" -&gt;
+        /// "Reconnecting" "[IR] Disconnected" -&gt; "Disconnected"
+        /// </summary>
         internal static string GetRtspConnectionStatusText(string statusText, string cameraPrefix)
         {
             if (string.IsNullOrWhiteSpace(statusText))
@@ -2679,6 +2764,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return "Disconnected";
         }
 
+        /// <summary>
+        /// RTSP 연결 상태 문자열에 맞는 화면 표시 색상 반환 Control Agent 연결 상태와 동일한 색상 기준을 사용한다.
+        /// </summary>
         internal static string GetRtspConnectionStatusColor(string connectionStatusText)
         {
             switch (connectionStatusText)
@@ -2694,6 +2782,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// CTEC 원시 위치를 로그 확인용 현재값 / 최대값 / 퍼센트 문자열로 만든다. 화면 표시는 0~1000으로 통일하지만 수신 로그에는
+        /// 원시값을 유지한다.
+        /// </summary>
         internal static string BuildCtecPositionText(int rawPosition, int maxPosition)
         {
             if (maxPosition <= 0)
@@ -2708,6 +2800,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return $"{rawPosition} / {maxPosition} ({percent:F1}%)";
         }
 
+        /// <summary>
+        /// 불리언 상태를 ON 또는 OFF 문구로 변환한다.
+        /// </summary>
         internal static string ToOnOff(bool isOn)
         {
             if (isOn)
@@ -2720,6 +2815,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 해당 채널에 현재 표시할 AI 탐지가 있는지 확인한다.
+        /// </summary>
         internal static bool HasAiDetection(IEnumerable<AiDetectionBox> boxes, params string[] alarmClasses)
         {
             if (boxes == null || alarmClasses == null || alarmClasses.Length == 0)
@@ -2730,6 +2828,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return boxes.Any(box => box != null && alarmClasses.Any(alarmClass => string.Equals(box.ClassName?.Trim(), alarmClass, StringComparison.OrdinalIgnoreCase)));
         }
 
+        /// <summary>
+        /// AI BBox 갱신·Hold 만료·연결 해제 시 계산 속성의 UI 바인딩을 갱신한다. Collection은 기존 모든 AI 클래스를 그대로
+        /// 유지하고 경고 속성만 다시 계산한다.
+        /// </summary>
         internal void NotifyFireSmokeWarningStateChanged(int rtspIndex)
         {
             bool isInfrared = rtspIndex == 1;
@@ -2768,6 +2870,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(isInfrared ? nameof(IsIrSmokeWarningVisible) : nameof(IsEoSmokeWarningVisible));
         }
 
+        /// <summary>
+        /// 탐지 경고 상태가 바뀐 순간에만 전환 로그를 남긴다.
+        /// </summary>
         internal static void LogDetectionWarningTransition(string detectionType, string channel, bool current, bool local, bool ai, ref bool previous)
         {
             if (current == previous)
@@ -2780,6 +2885,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State(detectionType + " ALERT", (current ? "Warning displayed" : "Warning cleared") + " / CHANNEL=" + channel + " / LOCAL=" + local + " / AI=" + ai);
         }
 
+        /// <summary>
+        /// 로컬 화재·연기 탐지의 사용 여부를 관련 상태에 반영한다.
+        /// </summary>
         internal void SetLocalFireSmokeDetectionState(int rtspIndex, bool hasFire, bool hasSmoke)
         {
             if (rtspIndex == 1)

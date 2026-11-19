@@ -124,46 +124,7 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
             StopZoomSyncCommand = new AsyncRelayCommand(StopZoomSyncAsync);
 
-            // 2026-09-21: Focus Sync는 현재 운용 UI에서 제외한다.
-            // 아래 초기화 코드는 향후 요구가 생기면 #if를 제거해 즉시 복구한다.
-#if false
-            /// <summary>
-            /// [EO / IR 초점 동기화]
-            ///
-            /// Focus 역시 Web Agent 표준 범위 0 ~ 1000을 사용하며,
-            /// Zoom Sync와 동일하게 LEVEL 0 ~ LEVEL 10으로 구성한다.
-            /// </summary>
-            FocusSyncLevelOptions =
-                new ObservableCollection<ZoomSyncLevelOption>(
-                    Enumerable.Range(
-                            0,
-                            11)
-                        .Select(level =>
-                            new ZoomSyncLevelOption(
-                                level,
-                                (short)(
-                                    level *
-                                    100))));
-
-            SelectedFocusSyncLevel =
-                FocusSyncLevelOptions[0];
-
-            PreviousFocusSyncLevelCommand =
-                new RelayCommand(
-                    SelectPreviousFocusSyncLevel);
-
-            NextFocusSyncLevelCommand =
-                new RelayCommand(
-                    SelectNextFocusSyncLevel);
-
-            ApplyFocusSyncCommand =
-                new AsyncRelayCommand(
-                    ApplySelectedFocusSyncLevelAsync);
-
-            StopFocusSyncCommand =
-                new AsyncRelayCommand(
-                    StopFocusSyncAsync);
-#endif
+            // Focus Sync는 현재 운용 UI에서 제외되어 명령을 구성하지 않는다.
         }
 
         /// <summary>

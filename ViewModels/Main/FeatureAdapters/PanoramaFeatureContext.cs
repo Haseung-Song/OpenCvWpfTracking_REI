@@ -84,6 +84,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.ControlLockTitle; }
         }
 
+        /// <summary>
+        /// 현재 광학 줌과 채널 비율에 따른 파노라마 화각 정보를 반환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Tuple<double, double> IPanoramaFeatureContext.ControlTuningForPanorama(bool ir)
         {
             return _features._opticalCenterFeature.ControlTuningForPanorama(ir);
@@ -101,16 +104,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.EoStatusText = value; }
         }
 
+        /// <summary>
+        /// 현재 EO Zoom 값을 프리셋 공통 범위 0~1000으로 변환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         ushort IPanoramaFeatureContext.GetCurrentPresetStandardZoom()
         {
             return _features._moveControlFeature.GetCurrentPresetStandardZoom();
         }
 
+        /// <summary>
+        /// 현재 장비와 줌 위치에 대응하는 십자선 중심을 반환한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         System.Windows.Point IPanoramaFeatureContext.GetOpticalCenter(bool ir)
         {
             return _features._opticalCenterFeature.GetOpticalCenter(ir);
         }
 
+        /// <summary>
+        /// Web Agent의 0/360도 경계를 고려한 Tilt 차이를 반환한다. ROOFTOP LA는 기존 선형 -90 ~ 90도 차이를 유지한다.
+        /// 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         double IPanoramaFeatureContext.GetTiltDifference(double currentTilt, double targetTilt)
         {
             return _features._moveControlFeature.GetTiltDifference(currentTilt, targetTilt);
@@ -151,6 +164,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.IsRooftopStatusSelected; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPanoramaFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);

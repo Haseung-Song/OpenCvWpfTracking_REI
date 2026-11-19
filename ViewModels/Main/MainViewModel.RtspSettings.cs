@@ -24,6 +24,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         public ControlAgentType AgentType { get; }
 
+        /// <summary>
+        /// 장비 연결 프로필의 종류와 표시 이름을 보관한다.
+        /// </summary>
         public ControlAgentProfileOption(string displayName, string ipAddress, string port, string eoPresetName, string irPresetName, bool isDirectInput = false, ControlAgentType agentType = ControlAgentType.WebAgent, bool positionSensors = false, string deviceId = null)
         {
             DeviceId = deviceId;

@@ -7,6 +7,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
     /// <summary>감시 순서 계산에 필요한 협력 기능만 받는 경계입니다. 화면 객체의 내부 구현을 알지 않습니다.</summary>
     internal interface IScanTraversalFeatureContext
     {
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
     }
 
@@ -18,6 +21,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IScanTraversalFeatureContext _context;
 
+        /// <summary>
+        /// 프리셋 순회 방식 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal ScanTraversalFeature(IScanTraversalFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -91,6 +97,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 저장된 순회 설정을 복원해 현재 자동 감시 구성에 반영한다.
+        /// </summary>
         internal void LoadTraversal()
         {
             if (traversalLoaded)
@@ -117,6 +126,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 순회 설정을 저장한다.
+        /// </summary>
         internal void SaveTraversal()
         {
             try

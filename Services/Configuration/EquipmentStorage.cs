@@ -53,6 +53,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             return Resolve(root, deviceId, web, displayName, false, new string[0]);
         }
 
+        /// <summary>
+        /// 장비 식별·Agent 종류·기존 저장 이력을 대조해 프리셋 또는 파노라마 저장 경로를 결정한다.
+        /// </summary>
         private static string Resolve(string root, string deviceId, bool web, string displayName, bool presets, string[] legacyHashes)
         {
             root = Path.GetFullPath(root);
@@ -155,11 +158,17 @@ namespace OpenCvWpfTracking.Services.Configuration
             }
         }
 
+        /// <summary>
+        /// 저장 경로가 사용할 수 있는 일반 디렉터리인지 검사한다.
+        /// </summary>
         private static bool IsRegularDirectory(string path)
         {
             return (File.GetAttributes(path) & FileAttributes.ReparsePoint) == 0;
         }
 
+        /// <summary>
+        /// 장비별 저장 디렉터리의 소유 장비 식별 정보를 읽는다.
+        /// </summary>
         private static string ReadOwner(string path)
         {
             string marker = Path.Combine(path, OwnerFile);
@@ -174,6 +183,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             }
         }
 
+        /// <summary>
+        /// 장비 표시 이름에서 파일·폴더 이름에 부적합한 문자를 정리한다.
+        /// </summary>
         private static string SafeLabel(string value)
         {
             string label = new string((value ?? "DEVICE").Select(c => char.IsLetterOrDigit(c) || c == '-' ? c : '_').ToArray());
@@ -190,6 +202,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             }
         }
 
+        /// <summary>
+        /// 장비 이름과 Agent 종류를 반영한 저장 폴더 이름을 만든다.
+        /// </summary>
         private static string FolderName(string displayName, bool web)
         {
             string name = Regex.Replace(displayName ?? "DEVICE", @"^\s*\d+\.\s*", "");
@@ -199,21 +214,33 @@ namespace OpenCvWpfTracking.Services.Configuration
             return (web ? "WEB_" : "LA_") + SafeLabel(name);
         }
 
+        /// <summary>
+        /// 장비 저장 폴더 이름이 과거 번호·주소·해시 접미사 형식과 일치하는지 확인한다.
+        /// </summary>
         private static bool MatchesLegacyName(string name, string stem)
         {
             return string.Equals(name, stem, StringComparison.OrdinalIgnoreCase) || Regex.IsMatch(name, "^" + Regex.Escape(stem) + @"_(?:\d+|[0-9.]+_\d+|[0-9A-F]{12})(?:_\d+)?$", RegexOptions.IgnoreCase);
         }
 
+        /// <summary>
+        /// 장비 디렉터리에 프리셋 저장 파일이 있는지 확인한다.
+        /// </summary>
         private static bool HasPresetFile(string directory)
         {
             return File.Exists(Path.Combine(directory, "Presets.csv")) || File.Exists(Path.Combine(directory, "Presets.tsv"));
         }
 
+        /// <summary>
+        /// 장비 프리셋 저장 파일의 마지막 수정 시각을 구한다.
+        /// </summary>
         private static DateTime LastPresetWrite(string directory)
         {
             return File.GetLastWriteTimeUtc(Path.Combine(directory, File.Exists(Path.Combine(directory, "Presets.csv")) ? "Presets.csv" : "Presets.tsv"));
         }
 
+        /// <summary>
+        /// 장비 파노라마 저장 자료의 마지막 수정 시각을 구한다.
+        /// </summary>
         private static DateTime LastPanoramaWrite(string directory)
         {
             return Directory.EnumerateFiles(directory, "Panorama *.jpg").Where(path => !string.Equals(Path.GetFileName(path), "Panorama 0.jpg", StringComparison.OrdinalIgnoreCase)).Select(File.GetLastWriteTimeUtc).DefaultIfEmpty(DateTime.MinValue).Max();
@@ -308,6 +335,9 @@ namespace OpenCvWpfTracking.Services.Configuration
             File.Delete(journal);
         }
 
+        /// <summary>
+        /// 임시 저장 파일을 대상 파일로 교체해 저장 결과를 반영한다.
+        /// </summary>
         private static void ReplaceFile(string path, byte[] contents)
         {
             string temporary = path + ".importing";

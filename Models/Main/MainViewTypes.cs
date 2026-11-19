@@ -100,7 +100,7 @@ namespace OpenCvWpfTracking.Models.Main
         }
 
         /// <summary>
-        /// ZoomSyncLevelOption 동작 수행 함수.
+        /// ZoomSyncLevelOption의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         public ZoomSyncLevelOption(int level, short position)
         {
@@ -194,7 +194,7 @@ namespace OpenCvWpfTracking.Models.Main
         }
 
         /// <summary>
-        /// PresetPointOption 동작 수행 함수.
+        /// PresetPointOption의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         public PresetPointOption(int number, double pan, double tilt, string eoZoomText, string eoFocusText, string irZoomText, string irFocusText, string name = null, int savedOrder = 0, PositionSnapshot positionSnapshot = null)
         {

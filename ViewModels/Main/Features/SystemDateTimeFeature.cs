@@ -23,6 +23,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         bool IsSelectedControlAgentWebAgent { get; }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         int SelectedCommunicationSettingsTabIndex { get; set; }
@@ -44,11 +47,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly ISystemDateTimeFeatureContext _context;
 
+        /// <summary>
+        /// 장비 시각 설정 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal SystemDateTimeFeature(ISystemDateTimeFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _webAgentUtcDateTimeText = "장비 UTC: 조회 대기";
@@ -183,6 +192,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 장비 시각 조회·설정 명령과 자동 조회 타이머를 준비한다.
+        /// </summary>
         internal void InitializeSystemDateTimeSettings()
         {
             RequestSystemDateTimeCommand = new RelayCommand(_context.RequestSystemDateTimeCommandCallback);
@@ -201,6 +213,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             VerifySystemDateTimePacketEncoding();
         }
 
+        /// <summary>
+        /// 중복 조회를 방지하며 장비 UTC 시각을 요청하고 왕복 지연 측정 시점을 기록한다.
+        /// </summary>
         internal void RequestSystemDateTime()
         {
             if (!CanUseSystemDateTime(out string reason))
@@ -255,6 +270,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 운용자의 명시적 요청으로만 PC UTC 시각을 장비에 설정한다.
+        /// </summary>
         internal void SetSystemDateTimeFromPc()
         {
             if (!CanUseSystemDateTime(out string reason))
@@ -286,6 +304,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 현재 연결과 선택 프로필이 장비 시각 명령을 사용할 수 있는 상태인지 확인한다.
+        /// </summary>
         internal bool CanUseSystemDateTime(out string reason)
         {
             // 2026-10-06: 파노라마/AUTO SCAN/HOME/ZERO 수행 중에는
@@ -316,6 +337,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return true;
         }
 
+        /// <summary>
+        /// 장비 UTC 응답을 읽어 화면과 상태 유효성 판정용 시각 기준을 갱신한다.
+        /// </summary>
         internal void ParseWebAgentSystemDateTime(byte[] payload)
         {
             double receivedAt = TelemetryClock.MonotonicMilliseconds;
@@ -396,6 +420,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 연결 직후와 다른 탭에서도 5초마다 읽기 전용 F1 조회. SYSTEM TIME 탭은 기존 1Hz이며 응답 대기 중에는 중복 송신하지
+        /// 않는다.
+        /// </summary>
         internal void StartSystemTimePollingAfterConnection()
         {
             if (!_context.IsSelectedControlAgentWebAgent)
@@ -414,6 +442,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RequestSystemDateTimeAutomatically();
         }
 
+        /// <summary>
+        /// WEB AGENT 연결 상태에 맞춰 읽기 전용 시각 자동 조회를 시작하거나 중지한다.
+        /// </summary>
         internal void UpdateSystemTimePollingState()
         {
             if (_systemTimePollTimer == null)
@@ -431,6 +462,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 시각 자동 조회를 멈추고 진행 중 조회 표시를 초기화한다.
+        /// </summary>
         internal void StopSystemTimePolling(string reason)
         {
             if (_systemTimePollTimer?.IsEnabled == true)
@@ -444,6 +478,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _manualSystemTimeQueryPending = false;
         }
 
+        /// <summary>
+        /// 조회 간격·응답 대기·시간 초과를 확인한 뒤 읽기 전용 시각 조회를 진행한다.
+        /// </summary>
         internal void SystemTimePollTimer_Tick(object sender, EventArgs e)
         {
             UpdatePcDateTimePreview();
@@ -488,6 +525,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             RequestSystemDateTimeAutomatically();
         }
 
+        /// <summary>
+        /// 수동 조회 응답을 기다리는 동안 자동 요청이 끼어들지 않게 한다.
+        /// </summary>
         internal void RequestSystemDateTimeAutomatically()
         {
             // 수동 조회 응답을 기다리는 동안에는 자동 요청을 끼워 넣지 않는다.
@@ -508,6 +548,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// PC 로컬·UTC 시각의 화면 미리보기를 갱신한다.
+        /// </summary>
         internal void UpdatePcDateTimePreview()
         {
             DateTime local = DateTime.Now;
@@ -515,6 +558,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             UpdatePcDateTimePreview(local, local.ToUniversalTime());
         }
 
+        /// <summary>
+        /// PC 로컬·UTC 시각의 화면 미리보기를 갱신한다.
+        /// </summary>
         internal void UpdatePcDateTimePreview(DateTime local, DateTime utc)
         {
             PcLocalDateTimeText = "PC 로컬: " + FormatDateTime(local);
@@ -522,6 +568,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             PcUtcDateTimeText = "PC UTC: " + FormatDateTime(utc);
         }
 
+        /// <summary>
+        /// 장비 시각 명령 실패 내용을 화면 상태에 반영한다.
+        /// </summary>
         internal void SetSystemDateTimeFailure(string message)
         {
             RunOnUiThread(() => SystemDateTimeStatusText = message);
@@ -529,6 +578,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("SYSTEM TIME RX", message);
         }
 
+        /// <summary>
+        /// 장비 시각 처리 결과 번호를 표시 문구로 변환한다.
+        /// </summary>
         internal static string GetSystemDateTimeStatusText(byte status)
         {
             switch (status)
@@ -544,11 +596,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 장비 시각 값을 화면과 로그의 날짜·시간 형식으로 변환한다.
+        /// </summary>
         internal static string FormatDateTime(DateTime value)
         {
             return value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         }
 
+        /// <summary>
+        /// 장비 시각 명령의 필드 구성과 체크섬을 오프라인으로 확인한다.
+        /// </summary>
         internal static void VerifySystemDateTimePacketEncoding()
         {
             DateTime sample = new DateTime(2026, 10, 1, 3, 4, 5, DateTimeKind.Utc);

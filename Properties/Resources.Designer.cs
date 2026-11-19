@@ -26,7 +26,7 @@ namespace OpenCvWpfTracking.Properties
         private static System.Resources.ResourceManager resourceMan;
         private static System.Globalization.CultureInfo resourceCulture;
         /// <summary>
-        /// Resources 동작 수행 함수.
+        /// Resources의 의존 객체와 초기 상태를 구성한다.
         /// </summary>
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources()

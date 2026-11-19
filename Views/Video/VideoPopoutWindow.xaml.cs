@@ -90,7 +90,7 @@ namespace OpenCvWpfTracking
         #region [생성자]
 
         /// <summary>
-        /// VideoPopoutWindow 동작 수행 함수.
+        /// VideoPopoutWindow 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
         /// </summary>
         public VideoPopoutWindow(MainViewModel viewModel, VideoPopoutCameraType cameraType, double eoViewportAspectRatio, double irViewportAspectRatio, Visual eoRenderedVideo, Visual irRenderedVideo)
         {
@@ -156,6 +156,9 @@ namespace OpenCvWpfTracking
             ((Grid)Content).Children.Add(_directionHints);
         }
 
+        /// <summary>
+        /// ViewModel 속성 변경을 영상 창의 크기·상태·오버레이에 반영한다.
+        /// </summary>
         private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName != "IsVideoClickCenterEnabled")
@@ -189,7 +192,8 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// Window_Loaded 이벤트 처리 함수.
+        /// [MainWindow] Loaded 처리 방향키 입력을 Window에서 받을 수 있도록 초기 Keyboard Focus를
+        /// MainWindow에 설정한다.
         /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -218,6 +222,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 분리 영상 창을 떼어 이동하는 마우스 드래그를 시작한다.
+        /// </summary>
         public void BeginTearOffDrag(Rect sourceScreenBounds, Point dragAnchor)
         {
             _initialWindowBounds = sourceScreenBounds;
@@ -242,6 +249,9 @@ namespace OpenCvWpfTracking
             Dispatcher.BeginInvoke(new Action(TryBeginDragMove), System.Windows.Threading.DispatcherPriority.Input);
         }
 
+        /// <summary>
+        /// 영상 비율과 화면 작업 영역에 맞춰 분리 창의 초기 크기·위치를 설정한다.
+        /// </summary>
         private void ApplyInitialWindowBounds()
         {
             if (_initialWindowBounds.IsEmpty)
@@ -257,6 +267,9 @@ namespace OpenCvWpfTracking
             Height = Math.Max(MinHeight, _initialWindowBounds.Height);
         }
 
+        /// <summary>
+        /// 드래그 조건을 검사한 뒤 창 이동을 시작한다.
+        /// </summary>
         private void TryBeginDragMove()
         {
             if (Mouse.LeftButton != MouseButtonState.Pressed)
@@ -365,6 +378,9 @@ namespace OpenCvWpfTracking
             _centerClickPending = true;
         }
 
+        /// <summary>
+        /// 영상 포인터 이동을 조작 상태와 위치 안내에 반영한다.
+        /// </summary>
         private void VideoPointerMove(object sender, MouseEventArgs e)
         {
             if (!_centerClickPending || e.LeftButton != MouseButtonState.Pressed)
@@ -397,6 +413,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 영상 포인터 누름 해제에 맞춰 드래그·조작 상태를 정리한다.
+        /// </summary>
         private async void VideoPointerUp(object sender, MouseButtonEventArgs e)
         {
             bool pending = _centerClickPending;
@@ -564,6 +583,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 영상 뷰포트가 선택한 가로세로 비율을 유지하도록 크기를 맞춘다.
+        /// </summary>
         private void ApplyViewportAspectRatio()
         {
             if (_isApplyingViewportAspectRatio || _currentViewportAspectRatio <= 0.0 || CameraImage.ActualWidth <= 0.0 || CameraImage.ActualHeight <= 0.0)
@@ -600,6 +622,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 화면 비율 입력을 유효한 양수 범위로 정리한다.
+        /// </summary>
         private static double NormalizeAspectRatio(double aspectRatio, double fallbackAspectRatio)
         {
             if (double.IsNaN(aspectRatio) || double.IsInfinity(aspectRatio) || aspectRatio <= 0.0)
@@ -612,6 +637,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 영상 창의 카메라 정보 표시 영역을 열거나 닫는다.
+        /// </summary>
         private void CameraInfoToggleButton_Click(object sender, RoutedEventArgs e)
         {
             bool showInfo = CameraInfoBorder.Visibility != Visibility.Visible;
@@ -748,7 +776,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// Window_PreviewKeyUp 동작 수행 함수.
+        /// 분리 영상의 키 해제를 통합 입력 경로에 전달하고 남은 방향·렌즈 연속 조작을 갱신한다.
         /// </summary>
         private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
         {
@@ -815,7 +843,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// Window_Closing 이벤트 처리 함수.
+        /// 분리 영상 창의 구독과 입력 소유권을 해제하고 남은 연속 조작을 중지한다.
         /// </summary>
         private void Window_Closing(object sender, CancelEventArgs e)
         {
@@ -876,6 +904,9 @@ namespace OpenCvWpfTracking
             ConsoleLogHelper.PrintLine();
         }
 
+        /// <summary>
+        /// 선택한 영상 채널의 카메라 표시 이름을 구한다.
+        /// </summary>
         private string GetCameraName()
         {
             if (_cameraType == VideoPopoutCameraType.Eo)
@@ -1151,7 +1182,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// IsLensShortcutKey 상태 확인 함수.
+        /// 입력 키가 줌·초점 조작용 공통 단축키인지 검사한다.
         /// </summary>
         private static bool IsLensShortcutKey(Key key)
         {
@@ -1159,7 +1190,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// IsTextInputFocused 상태 확인 함수.
+        /// 현재 키보드 포커스가 텍스트 입력칸에 있는지 확인한다.
         /// </summary>
         private static bool IsTextInputFocused()
         {
@@ -1167,7 +1198,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// StartLensMove 시작 함수.
+        /// 분리 영상의 EO/IR 채널과 키에 맞는 줌·초점 연속 이동을 시작한다.
         /// </summary>
         private void StartLensMove(Key key)
         {
@@ -1210,7 +1241,7 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// StopActiveLensMove 중지 함수.
+        /// 분리 영상 창의 활성 렌즈 키 상태를 비우고 해당 축의 연속 이동을 중지한다.
         /// </summary>
         private void StopActiveLensMove()
         {

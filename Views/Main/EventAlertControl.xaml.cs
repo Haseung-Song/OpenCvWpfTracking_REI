@@ -34,6 +34,9 @@ namespace OpenCvWpfTracking
 
         private bool _hadActiveFireEvent;
 
+        /// <summary>
+        /// EventAlertControl 화면의 컨트롤·이벤트와 전달받은 데이터 문맥을 초기화한다.
+        /// </summary>
         public EventAlertControl()
         {
             InitializeComponent();
@@ -424,6 +427,9 @@ namespace OpenCvWpfTracking
 
             private EventRecordComparer _activeComparer = new EventRecordComparer("DetectedTime", ListSortDirection.Descending);
 
+            /// <summary>
+            /// 이벤트 목록의 페이지 이동·선택 상태를 관리할 문맥을 연결한다.
+            /// </summary>
             internal EventPageController(DataGrid grid, TextBlock totalText, TextBlock selectedText, TextBlock pageText, RepeatButton previousButton, RepeatButton nextButton)
             {
                 _grid = grid ?? throw new ArgumentNullException(nameof(grid));
@@ -822,6 +828,9 @@ namespace OpenCvWpfTracking
                 #endregion
 
                 #region [초기화]
+                /// <summary>
+                /// 이벤트 정렬에 사용할 열과 정렬 방향을 보관한다.
+                /// </summary>
                 internal EventRecordComparer(string sortMemberPath, ListSortDirection direction)
                 {
                     _sortMemberPath = sortMemberPath;

@@ -258,6 +258,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._webAgentMotionFocusFeature.IsWebAgentFocusControlEnabled = value; }
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IRtspSettingsFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
@@ -274,11 +277,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.PanTiltZeroRouteText; }
         }
 
+        /// <summary>
+        /// IR 팔레트 버튼의 선택 표시를 초기화한다.
+        /// </summary>
         void IRtspSettingsFeatureContext.ResetThermalPaletteButtonVisuals()
         {
             _features._thermalFeature.ResetThermalPaletteButtonVisuals();
         }
 
+        /// <summary>
+        /// 연결 세대를 변경하고 이전 장비의 AF 상태·대기 요청·실행 확인을 초기화한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IRtspSettingsFeatureContext.ResetWebAgentControlSession()
         {
             _features._webAgentMotionFocusFeature.ResetWebAgentControlSession();
@@ -314,6 +323,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.SelectedIrRtspSource = value; }
         }
 
+        /// <summary>
+        /// 장비를 바꾸면 이전 목록을 비우고 해당 장비의 저장값만 복원한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IRtspSettingsFeatureContext.SwitchEquipmentPresets()
         {
             _features._presetStorageFeature.SwitchEquipmentPresets();
@@ -324,6 +336,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._webAgentEquipmentFeature.ThermalColorPaletteButtonText; }
         }
 
+        /// <summary>
+        /// WEB AGENT 연결 상태에 맞춰 읽기 전용 시각 자동 조회를 시작하거나 중지한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IRtspSettingsFeatureContext.UpdateSystemTimePollingState()
         {
             _features._systemDateTimeFeature.UpdateSystemTimePollingState();

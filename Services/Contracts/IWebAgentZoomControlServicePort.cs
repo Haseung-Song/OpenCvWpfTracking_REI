@@ -5,8 +5,14 @@ namespace OpenCvWpfTracking.Services.Communication.WebAgent
     internal interface IWebAgentZoomControlServicePort
     {
 
+        /// <summary>
+        /// 환경장비 EO Zoom Position 이동
+        /// </summary>
         bool SetEoZoomPosition(short position);
 
+        /// <summary>
+        /// 환경장비 IR Zoom Position 이동
+        /// </summary>
         bool SetIrZoomPosition(short position);
     }
 }

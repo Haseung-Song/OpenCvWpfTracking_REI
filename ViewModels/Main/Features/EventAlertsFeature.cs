@@ -32,14 +32,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         string AiPowerStatusText { get; set; }
 
+        /// <summary>
+        /// AI 탐지 사각형과 현재 위치를 이용해 감시·제외 구역 포함 여부를 판정한다.
+        /// </summary>
         Services.Position.ZoneAssessment AssessAiZone(AiDetectionResult result, AiDetectionBox box, string type);
 
+        /// <summary>
+        /// 현재 위치·센서·렌즈 상태를 일관된 스냅샷으로 취득한다.
+        /// </summary>
         Models.Position.PositionSnapshot CapturePositionSnapshot(string source, int? presetId = null);
 
         ObservableCollection<FireEventRecord> FireEvents { get; }
 
+        /// <summary>
+        /// 알림 탭의 집계 Binding을 한 번에 갱신한다.
+        /// </summary>
         void NotifyFireEventSummaryChanged();
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림
+        /// </summary>
         void OnPropertyChanged([global::System.Runtime.CompilerServices.CallerMemberName] string propertyName = null);
 
         Action SaveAiEventsCallback { get; }
@@ -57,11 +69,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IEventAlertsFeatureContext _context;
 
+        /// <summary>
+        /// 이벤트 알림 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal EventAlertsFeature(IEventAlertsFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _nextAiEventId = 1;
@@ -236,6 +254,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// AI 이벤트 명령과 테스트 프로그램 실시간 이벤트 감시를 초기화한다.
+        /// </summary>
         internal void InitializeEventAlertFeatures()
         {
             SaveAiEventsCommand = new RelayCommand(_context.SaveAiEventsCallback);
@@ -265,6 +286,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _testProgramEventTimer.Start();
         }
 
+        /// <summary>
+        /// AI Agent의 프레임 결과를 RTSP 채널별 이벤트 생명주기로 변환한다. 프레임마다 행을 추가하지 않고 탐지 시작과 해제만 기록한다.
+        /// </summary>
         internal void UpdateAiDetectionEvent(AiDetectionResult result, DateTime receiveTime)
         {
             List<AiDetectionBox> boxes = result.Boxes.Where(box => box.NormalizedConfidence >= _context.AiDisplayConfidenceThreshold).ToList();
@@ -345,11 +369,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
             NotifyAiEventSummaryChanged();
         }
 
+        /// <summary>
+        /// 채널과 추적 ID를 조합해 AI 이벤트의 고유 키를 만든다.
+        /// </summary>
         internal static string GetAiEventKey(int rtspIndex, AiDetectionBox box)
         {
             return rtspIndex.ToString(CultureInfo.InvariantCulture) + ":" + box.ObjectId.ToString(CultureInfo.InvariantCulture) + ":" + box.ClassIndex.ToString(CultureInfo.InvariantCulture);
         }
 
+        /// <summary>
+        /// FireCandidateValidator가 기록한 상태 전환을 실시간으로 읽는다.
+        /// </summary>
         internal void PollTestProgramEvents()
         {
             string bridgePath = GetTestProgramEventBridgePath();
@@ -381,6 +411,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 테스트 프로그램의 한 줄 이벤트를 FIRE 목록에 반영한다.
+        /// </summary>
         internal void ProcessTestProgramEventLine(string line)
         {
             string[] fields = (line ?? string.Empty).Split('|');
@@ -469,6 +502,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-27: BBox 개수가 아닌 현재 ACTIVE FIRE/SMOKE 이벤트 행 개수를 합산한다.
+        /// </summary>
         internal void RefreshActiveFireCount()
         {
             _context.ActiveFireCount = _activeTestFireEvents.Count + _context._activeVisionBBoxEvents.Count;
@@ -476,6 +512,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(EventAlertHeaderText));
         }
 
+        /// <summary>
+        /// 2026-08-24: AI 이벤트 CSV 저장 결과를 로그와 알림창으로 안내한다.
+        /// </summary>
         internal void SaveAiEvents()
         {
             SaveFileDialog dialog = new SaveFileDialog
@@ -506,6 +545,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// FIRE/SMOKE CSV와 동일하게 AI CSV 불러오기 성공 건수도 즉시 안내한다.
+        /// </summary>
         internal void LoadAiEvents()
         {
             OpenFileDialog dialog = new OpenFileDialog
@@ -557,6 +599,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 2026-08-31: AI 이벤트 TYPE은 Agent 모델의 실제 클래스명을 사용한다. 매칭되지 않은 Class Index는 공백 없는
+        /// CLASS20 형식으로 유지한다.
+        /// </summary>
         internal static string GetAiEventDetectionType(AiDetectionBox box)
         {
             string className = (box?.ClassName ?? string.Empty).Trim();
@@ -576,6 +622,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 기존 AI 활성 이벤트를 비우고 목록·요약 표시를 갱신한다.
+        /// </summary>
         internal void ClearAiEvents()
         {
             AiDetectionEvents.Clear();
@@ -593,6 +642,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("AI EVENT", "Event list cleared / NEXT_ID=1");
         }
 
+        /// <summary>
+        /// AI 이벤트 수와 요약에 연결된 화면 속성의 변경을 알린다.
+        /// </summary>
         internal void NotifyAiEventSummaryChanged()
         {
             _context.OnPropertyChanged(nameof(LastAiEventTimeText));
@@ -606,6 +658,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.OnPropertyChanged(nameof(EventAlertHeaderBrush));
         }
 
+        /// <summary>
+        /// 이벤트 목록이 보존 한도를 넘지 않도록 오래된 항목을 정리한다.
+        /// </summary>
         internal static void TrimEventCollection(ObservableCollection<FireEventRecord> events)
         {
             int removedCount = 0;
@@ -624,6 +679,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// 외부 탐지 시험 프로그램과 이벤트를 주고받을 파일 경로를 구한다.
+        /// </summary>
         internal static string GetTestProgramEventBridgePath()
         {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "OpenCvWpfTracking", "FireEvents", "TestProgramLiveEvents.txt");

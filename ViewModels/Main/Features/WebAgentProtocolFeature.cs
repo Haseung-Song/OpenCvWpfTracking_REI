@@ -52,84 +52,200 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         ref global::System.Tuple<double, double, long> _videoCenterPose { get; }
 
+        /// <summary>
+        /// 2026-10-06: 0x31의 MCB/SCB 원본 상태를 보존한다. 요청 송신 여부로 상태를 추정하지 않고 이 수신값만 표시 기준으로
+        /// 사용한다.
+        /// </summary>
         void ApplyDevicePowerStatus(byte mcbStatus, byte scbStatus, DateTime? sourceTime = null, string sourceFunction = "0x31");
 
+        /// <summary>
+        /// 길이와 BOOLEAN 범위를 확인한 capability 응답으로 조회/설정 지원을 갱신한다.
+        /// </summary>
         void ApplyDigitalZoomCapability(byte[] p);
 
+        /// <summary>
+        /// 유효한 장비 ON/OFF 응답을 적용하며 요청 확인과 추정 억제 상태를 갱신한다.
+        /// </summary>
         void ApplyDigitalZoomState(byte[] p);
 
+        /// <summary>
+        /// DIGITAL_ZOOM 거절 응답 시 요청·추정을 해제한다. 수동 재요청 버튼은 유지한다.
+        /// </summary>
         void ApplyDigitalZoomUnavailable(int target);
 
+        /// <summary>
+        /// 현재 연결 세션의 지원 응답을 반영하고 필요한 상태 조회를 예약한다.
+        /// </summary>
         void ApplySpecialFeatureCapability(byte[] p);
 
+        /// <summary>
+        /// 검증한 기능 상태 응답을 해당 채널의 행에 반영한다.
+        /// </summary>
         void ApplySpecialFeatureState(byte[] p);
 
+        /// <summary>
+        /// 기능 미지원 또는 실행 거절 응답을 해당 행에 반영한다.
+        /// </summary>
         void ApplySpecialFeatureUnavailable(byte[] p);
 
+        /// <summary>
+        /// 연결 장비의 빌드 정보를 조회해 설정 지원 여부를 판단할 근거를 확보한다.
+        /// </summary>
         void BeginWebAgentBuildCheck();
 
         bool CameraFeatureTransportReady { get; }
 
+        /// <summary>
+        /// UI 큐에 넣기 전에 세션을 캡처하고 연결 변경 후 도착한 callback을 버린다.
+        /// </summary>
         void DispatchSpecialFeaturePacket(byte[] p, Action<byte[]> apply);
 
+        /// <summary>
+        /// Web Agent의 0/360도 경계를 고려한 Tilt 차이를 반환한다. ROOFTOP LA는 기존 선형 -90 ~ 90도 차이를 유지한다.
+        /// </summary>
         double GetTiltDifference(double currentTilt, double targetTilt);
 
+        /// <summary>
+        /// GPS 미지원·사용 불가 응답을 설정 상태와 안내에 반영한다.
+        /// </summary>
         void HandleGpsUnavailable(byte[] payload);
 
+        /// <summary>
+        /// 정밀 명령의 실행 불가 응답을 확인해 보관된 동작 상태와 정지 처리를 정리한다.
+        /// </summary>
         void HandlePrecisionUnavailable(byte[] payload);
 
+        /// <summary>
+        /// 실패 응답의 원 명령을 확인해 해당 기능의 요청 상태만 갱신한다.
+        /// </summary>
         void HandleWebAgentEquipmentUnavailable(byte[] payload);
 
         bool IsEnvironmentStatusSelected { get; }
 
+        /// <summary>
+        /// 채널별 렌즈 응답 시각을 원자적으로 기록한다.
+        /// </summary>
         void MarkLensEvidence(bool ir);
 
+        /// <summary>
+        /// 2026-10-14 실제 수신된 유효 Zoom/Focus 증거를 축별로 보관한다. 명령 추정값은 증거가 아니다.
+        /// </summary>
         void MarkPresetLensEvidence(bool ir, bool zoom, bool focus);
 
+        /// <summary>
+        /// EO 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         void NotifyEoCurrentStatusChanged(bool panChanged = true, bool tiltChanged = true, bool zoomChanged = true, bool focusChanged = true, bool powerChanged = true);
 
+        /// <summary>
+        /// IR 현재 줌·초점·배율 표시의 변경을 화면에 알린다.
+        /// </summary>
         void NotifyIrCurrentStatusChanged();
 
+        /// <summary>
+        /// AF 응답의 형식·세션·대상·작업을 확인하고 지원 여부와 실제 상태를 반영한다.
+        /// </summary>
         void ParseAutoFocusResponse(byte[] payload);
 
+        /// <summary>
+        /// 파서가 검증한 표본을 현재 연결의 UI에만 반영한다.
+        /// </summary>
         void ParseEquipmentTemperature(byte[] payload);
 
+        /// <summary>
+        /// GPS 자동 전송 주기 응답을 해석해 현재 설정 표시를 갱신한다.
+        /// </summary>
         void ParseGpsAutoTxRateResponse(byte[] payload);
 
+        /// <summary>
+        /// 저장된 자세 보정값 응답을 해석해 입력·표시 상태에 반영한다.
+        /// </summary>
         void ParseStoredRpyOffsetResponse(byte[] payload);
 
+        /// <summary>
+        /// 저장된 자세 전송 주기 응답을 해석해 표시 상태를 갱신한다.
+        /// </summary>
         void ParseStoredRpyRateResponse(byte[] payload);
 
+        /// <summary>
+        /// GPS 응답을 해석하고 유효한 위치·방향 데이터를 반영한다.
+        /// </summary>
         void ParseWebAgentGps(byte[] payload);
 
+        /// <summary>
+        /// WEB AGENT의 RPY 보정 설정 응답을 읽어 성공·실패 상태에 반영한다.
+        /// </summary>
         void ParseWebAgentRpyOffsetAck(byte[] payload);
 
+        /// <summary>
+        /// WEB AGENT의 RPY 전송 주파수 설정 응답을 읽어 성공·실패 상태에 반영한다.
+        /// </summary>
         void ParseWebAgentRpyRateAck(byte[] payload);
 
+        /// <summary>
+        /// 장비 UTC 응답을 읽어 화면과 상태 유효성 판정용 시각 기준을 갱신한다.
+        /// </summary>
         void ParseWebAgentSystemDateTime(byte[] payload);
 
+        /// <summary>
+        /// 최신 온도 캐시 조회는 새 센서 측정이나 장비 시간 설정이 아니다.
+        /// </summary>
         void QueryEquipmentTemperature();
 
+        /// <summary>
+        /// 위치 상태 알림을 화면 스레드에 예약해 수신 스레드의 직접 화면 접근을 피한다.
+        /// </summary>
         void QueuePositionStatusNotification(bool includeLastSnapshot = false);
 
+        /// <summary>
+        /// 0x24는 최대 30Hz이므로 내부 위치 상태는 즉시 갱신하되, 추가 RPY UI 문자열은 최대 10Hz로 제한하고 진단 로그는 약 1Hz로
+        /// 제한한다.
+        /// </summary>
         void RecordRpyTelemetry(double roll, double pitch, double yaw);
 
+        /// <summary>
+        /// 새 연결의 GPS 전송 주기를 조회해 이전 세션 표시가 남지 않게 한다.
+        /// </summary>
         void RequestGpsAutoTxRateAfterConnection();
 
+        /// <summary>
+        /// 연결 세션의 capability·응답·요청·추정 및 클릭 증거를 초기화한다.
+        /// </summary>
         void ResetDigitalZoomSession();
 
+        /// <summary>
+        /// 연결 세대를 변경하고 이전 장비의 AF 상태·대기 요청·실행 확인을 초기화한다.
+        /// </summary>
         void ResetWebAgentControlSession();
 
+        /// <summary>
+        /// 장비 변경·재연결 시 이전 온도와 요청 상태를 남기지 않는다.
+        /// </summary>
         void ResetWebAgentEquipmentState();
 
+        /// <summary>
+        /// GPS·IMU 수신 원시값을 방위 기준 계산에 보관한다.
+        /// </summary>
         void UpdateGpsImuRawReference(double yaw);
 
+        /// <summary>
+        /// EO 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         void UpdatePositionEoLens(int eoZoom, int eoFocus);
 
+        /// <summary>
+        /// IMU Roll·Pitch·Yaw 응답을 위치 상태에 반영한다.
+        /// </summary>
         void UpdatePositionImu(double roll, double pitch, double yaw, bool valid);
 
+        /// <summary>
+        /// IR 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         void UpdatePositionIrLens(int irZoom, int irFocus);
 
+        /// <summary>
+        /// 수신한 WEB AGENT 빌드 번호를 지원 기능 판단에 반영한다.
+        /// </summary>
         void UpdateWebAgentBuild(string buildText);
 
         Action<byte[]> ApplySpecialFeatureCapabilityCallback { get; }
@@ -147,11 +263,17 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         private readonly IWebAgentProtocolFeatureContext _context;
 
+        /// <summary>
+        /// WEB 상태 패킷 해석 기능에서 사용할 협력 객체를 연결하고 초기 상태를 준비한다.
+        /// </summary>
         internal WebAgentProtocolFeature(IWebAgentProtocolFeatureContext context)
         {
             _context = context ?? throw new System.ArgumentNullException(nameof(context));
         }
 
+        /// <summary>
+        /// 기능 객체가 사용하는 초기 상태·목록·타이머를 준비한다.
+        /// </summary>
         internal void InitializeState()
         {
             _lastWebAgentPanRaw = -1;
@@ -203,6 +325,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
 
         #region [동작 처리]
 
+        /// <summary>
+        /// 지연 수신된 WEB 텔레메트리의 종류와 시각을 진단 로그에 기록한다.
+        /// </summary>
         internal void LogDeferredWebAgentTelemetry(string channel, ulong sample)
         {
             double now = TelemetryClock.MonotonicMilliseconds;
@@ -217,6 +342,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT TELEMETRY DEFERRED", "CHANNEL=" + channel + " / SOURCE_TIMESTAMP=" + sample + " / Clock reference pending, invalid time, or stale sample; packet is not used for control");
         }
 
+        /// <summary>
+        /// 연결마다 이전 캐시 시각과 기능 협상 결과를 비운다.
+        /// </summary>
         internal void ResetWebAgentTelemetrySession()
         {
             _context.ResetWebAgentControlSession();
@@ -247,6 +375,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context._irFocusDirectUnavailableSession = null;
         }
 
+        /// <summary>
+        /// F1 장비 시간과 단조 시계를 사용하여 로컬 기준 샘플 시각으로 보정한다.
+        /// </summary>
         internal bool TryReadTelemetryTime(ulong milliseconds, out DateTimeOffset value, bool requireFresh = true)
         {
             int generation;
@@ -272,6 +403,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return valid;
         }
 
+        /// <summary>
+        /// 새 WEB AGENT 연결의 조회·상태 관리 세션을 초기화한다.
+        /// </summary>
         internal void InitializeWebAgentSession()
         {
             if (!_context.IsEnvironmentStatusSelected)
@@ -307,6 +441,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT V2.9", "Identity, EO/IR lens, feature, IMU, GPS rate and separated telemetry capability queries sent");
         }
 
+        /// <summary>
+        /// WEB AGENT 텔레메트리의 명령·채널을 판별해 해당 상태 해석기로 전달한다.
+        /// </summary>
         internal void ParseWebAgentTelemetryPacket(LaResponsePacket packet)
         {
             byte[] payload = packet.Payload;
@@ -380,6 +517,10 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// v2.9 Function 0x32 PAN/TILT 분리 텔레메트리를 기존 상태에 반영한다. Payload의 각도와 시각은 Little
+        /// Endian이다.
+        /// </summary>
         internal void ParseWebAgentPanTiltTelemetry(byte[] p)
         {
             if (p == null || p.Length != 22 || p[0] != 0x01)
@@ -494,6 +635,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// v2.9 Function 0x33 MCB/SCB 전원 상태 이벤트를 반영한다. 미수신 Valid=0은 실제 OFF로 해석하지 않는다.
+        /// </summary>
         internal void ParseWebAgentPowerTelemetry(byte[] p)
         {
             if (p == null || p.Length != 12 || p[0] != 0x01)
@@ -523,6 +667,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT TELEMETRY", $"FUNCTION=0x33 / VALID=0x{validFlags:X2} / MCB=0x{mcbStatus:X2} / SCB=0x{scbStatus:X2} / UPDATED_AT={updatedAt}");
         }
 
+        /// <summary>
+        /// v2.9 Function 0x34 설정/지원 응답을 처리한다. 구형 서버는 BB에 응답하지 않으므로 기존 호환 모드를 그대로 유지한다.
+        /// </summary>
         internal void ParseWebAgentTelemetrySetting(byte[] p)
         {
             if (p == null || p.Length != 6 || p[0] != 0x01 || p[1] > 3)
@@ -585,6 +732,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             }
         }
 
+        /// <summary>
+        /// WEB AGENT의 관성 센서 응답을 해석해 현재 센서 상태를 갱신한다.
+        /// </summary>
         internal void ParseWebAgentImu(byte[] p)
         {
             if (p.Length < 12)
@@ -607,6 +757,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             _context.UpdateGpsImuRawReference(yaw);
         }
 
+        /// <summary>
+        /// 장비가 응답한 지원 기능을 반영해 사용 가능한 제어 기능을 구분한다.
+        /// </summary>
         internal void ParseWebAgentCapability(byte[] p)
         {
             if (p.Length < 13)
@@ -629,6 +782,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT CAPABILITY", string.Format("SCHEMA={0} / TARGET=0x{1:X2} / LENS_FLAGS=0x{2:X4} / FEATURES={3}", p[0], p[1], BitConverter.ToUInt16(p, 2), p[12]));
         }
 
+        /// <summary>
+        /// 장비 식별 응답을 읽어 연결 장비 정보를 갱신한다.
+        /// </summary>
         internal void ParseWebAgentIdentity(byte[] p)
         {
             if (p.Length < 2)
@@ -659,6 +815,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT IDENTITY", "VERSION=" + version + " / BUILD=" + build);
         }
 
+        /// <summary>
+        /// 채널별 렌즈 위치와 유효 시각을 확인해 수신한 줌·초점 상태를 반영한다.
+        /// </summary>
         internal void ParseWebAgentLensTelemetry(byte[] p)
         {
             if (p.Length != 16 || p[0] != 1 || p[1] > 1)
@@ -762,6 +921,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT LENS", string.Format("TARGET=0x{0:X2} / VALID=0x{1:X2} / ZOOM={2} / FOCUS={3}", target, flags, zoom, focus));
         }
 
+        /// <summary>
+        /// 기존 형식의 상태 수신 시각을 기록해 오래된 상태와 구분한다.
+        /// </summary>
         internal void MarkLegacyWebAgentStatusReceived(ushort panRaw, ushort tiltRaw)
         {
             if (!_context.IsEnvironmentStatusSelected)
@@ -806,6 +968,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("WEB AGENT PAN/TILT", "Movement command was sent, but Function 0x01 position is unchanged" + " / PAN_RAW=" + panRaw + " / TILT_RAW=" + tiltRaw + " / CHECK=WebAgent PT status publisher");
         }
 
+        /// <summary>
+        /// 팬·틸트 이동 명령 시점을 기록해 이전 수신 위치를 새 이동의 완료로 오인하지 않는다.
+        /// </summary>
         internal void MarkPanTiltMoveCommandIssued()
         {
             switch (_context._activePanTiltMoveDirection)
@@ -842,6 +1007,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             Interlocked.Exchange(ref _lastPanTiltMoveCommandUtcTicks, DateTime.UtcNow.Ticks);
         }
 
+        /// <summary>
+        /// 기존 형식 EO 렌즈 상태가 최근 수신되어 비교에 사용할 수 있는지 확인한다.
+        /// </summary>
         internal bool HasRecentLegacyEoLensStatus()
         {
             long receivedTicks = Interlocked.Read(ref _lastLegacyEoLensStatusUtcTicks);
@@ -849,6 +1017,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             return receivedTicks > 0 && DateTime.UtcNow.Ticks - receivedTicks <= LegacyEoLensAuthorityTicks;
         }
 
+        /// <summary>
+        /// 신규·기존 EO 렌즈 상태가 충돌할 때 진단 로그를 남긴다.
+        /// </summary>
         internal void LogWebAgentEoLensConflict(ushort zoom, ushort focus, byte flags)
         {
             long nowTicks = DateTime.UtcNow.Ticks;
@@ -865,6 +1036,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.Warning("WEB AGENT EO LENS", "Conflicting Function 0x28 value ignored; recent Function 0x01 retained" + " / FLAGS=0x" + flags.ToString("X2") + " / 0x28_ZOOM=" + zoom + " / 0x28_FOCUS=" + focus + " / ACTIVE_ZOOM=" + _context._currentEoZoom + " / ACTIVE_FOCUS=" + _context._currentEoFocus);
         }
 
+        /// <summary>
+        /// 장비 기능 상태 응답을 해석해 현재 기능 상태를 갱신한다.
+        /// </summary>
         internal void ParseWebAgentFeatureState(byte[] p)
         {
             if (p.Length < 18)
@@ -900,6 +1074,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             // 카메라별 원시 번호는 색 이름이나 직접 버튼 선택 상태로 해석하지 않는다.
         }
 
+        /// <summary>
+        /// 홈 동작 응답을 해석해 진행 상태를 반영한다.
+        /// </summary>
         internal static void ParseWebAgentHoming(byte[] p)
         {
             if (p.Length < 7)
@@ -910,6 +1087,9 @@ namespace OpenCvWpfTracking.ViewModels.Main
             ConsoleLogHelper.State("WEB AGENT HOMING", string.Format("TYPE={0} / AXIS={1} / STATE=0x{2:X2} / FLAGS=0x{3:X2} / STATUS=0x{4:X4}", p[1], p[2], p[3], p[4], BitConverter.ToUInt16(p, 5)));
         }
 
+        /// <summary>
+        /// 장비의 명령 미지원·실행 불가 응답을 처리한다.
+        /// </summary>
         internal void ParseWebAgentUnavailable(byte[] p)
         {
             if (p.Length < 6)

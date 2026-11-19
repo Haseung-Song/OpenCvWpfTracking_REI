@@ -83,7 +83,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// SendPacketsAsync 송신 함수.
+        /// 지정한 장비에 연결해 여러 유지보수 패킷을 순서대로 비동기 송신한다.
         /// </summary>
         private async Task<bool> SendPacketsAsync(string ipAddress, int port, byte[][] packets, string commandName, int interPacketDelayMs = InterPacketDelayMs, int postSendDelayMs = 0)
         {
@@ -194,7 +194,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// BuildTextPacket 생성 및 변환 함수.
+        /// ASCII 명령 문자열에 헤더·길이·XOR 체크섬을 붙여 MCB 패킷을 만든다.
         /// </summary>
         private static byte[] BuildTextPacket(byte command1, string commandText)
         {
@@ -225,7 +225,7 @@ namespace OpenCvWpfTracking.Services.Communication
         }
 
         /// <summary>
-        /// PrintPacket 동작 수행 함수.
+        /// MCB 직접 제어 명령 이름과 송신 바이트를 진단 출력한다.
         /// </summary>
         private static void PrintPacket(string commandName, byte[] packet)
         {

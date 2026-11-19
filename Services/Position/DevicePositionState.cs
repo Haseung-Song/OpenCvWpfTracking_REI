@@ -61,6 +61,9 @@ namespace OpenCvWpfTracking.Services.Position
 
         private bool _imuValueValid;
 
+        /// <summary>
+        /// 장비 연결 상태를 위치 데이터 유효성 관리에 반영한다.
+        /// </summary>
         public void SetConnected(bool connected)
         {
             lock (_sync)
@@ -86,6 +89,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 수신한 PTZ와 EO 렌즈 값을 위치 상태에 반영한다.
+        /// </summary>
         public void UpdatePtzAndEoLens(double pan, double tilt, int eoZoom, int eoFocus, DateTimeOffset receivedAt)
         {
             lock (_sync)
@@ -112,6 +118,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// EO 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         public void UpdateEoLens(int eoZoom, int eoFocus, DateTimeOffset receivedAt)
         {
             lock (_sync)
@@ -122,6 +131,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// IR 줌·초점 응답과 수신 시각을 위치 상태에 반영한다.
+        /// </summary>
         public void UpdateIrLens(int irZoom, int irFocus, DateTimeOffset receivedAt)
         {
             lock (_sync)
@@ -132,6 +144,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// GPS 위치·이동·수신 품질을 위치 상태에 반영한다.
+        /// </summary>
         public void UpdateGps(double latitude, double longitude, double altitude, double speed, double course, double hdop, int satelliteCount, int fixStatus, bool valid, DateTimeOffset receivedAt)
         {
             lock (_sync)
@@ -149,6 +164,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// IMU Roll·Pitch·Yaw 응답을 위치 상태에 반영한다.
+        /// </summary>
         public void UpdateImu(double roll, double pitch, double yaw, bool valid, DateTimeOffset receivedAt)
         {
             lock (_sync)
@@ -161,6 +179,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 현재 시각의 좌표·렌즈·GPS·IMU 값과 유효 상태를 하나의 위치 스냅샷으로 만든다.
+        /// </summary>
         public PositionSnapshot Capture(string source, int? presetId, TimeSpan maximumPtzLensAge, TimeSpan maximumTelemetryAge, DateTimeOffset capturedAt)
         {
             lock (_sync)
@@ -179,6 +200,9 @@ namespace OpenCvWpfTracking.Services.Position
             }
         }
 
+        /// <summary>
+        /// 연결 여부와 마지막 수신 시각을 바탕으로 데이터 유효 상태를 결정한다.
+        /// </summary>
         private PositionDataStatus ResolveStatus(DateTimeOffset? updatedAt, bool valueValid, TimeSpan maximumAge, DateTimeOffset now)
         {
             if (!_connected)

@@ -150,16 +150,26 @@ namespace OpenCvWpfTracking.ViewModels.Main
             get { return _features._propertiesFeature.LaPresetPoints; }
         }
 
+        /// <summary>
+        /// PRESET 1 선택 지점으로 WPF 저장값 기준 PTZF 전체를 직접 복원한다. LA 0x05 한 번에 의존하지 않고 Pan, Tilt,
+        /// EO/IR Zoom, EO/IR Focus를 현재 프로젝트의 실제 제어 경로로 각각 실행한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Task IPanoramaPresetsFeatureContext.MoveToSelectedLaPresetPointAsync()
         {
             return _features._moveControlFeature.MoveToSelectedLaPresetPointAsync();
         }
 
+        /// <summary>
+        /// 기존 웹 프리셋 이동을 번호 클릭과 순회 연동에서 완료까지 기다릴 수 있도록 공유한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         Task IPanoramaPresetsFeatureContext.MoveToSelectedPresetPointAsync()
         {
             return _features._moveControlFeature.MoveToSelectedPresetPointAsync();
         }
 
+        /// <summary>
+        /// 바인딩 속성 변경 알림 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPanoramaPresetsFeatureContext.OnPropertyChanged(string propertyName)
         {
             _features.Callbacks.Notify(propertyName);
@@ -214,11 +224,19 @@ namespace OpenCvWpfTracking.ViewModels.Main
             set { _features._propertiesFeature.SelectedPresetPoint = value; }
         }
 
+        /// <summary>
+        /// 단일 MOVE TO PRESET 이동만 즉시 정지한다. AUTO SCAN 반복 상태에는 영향을 주지 않으며, Pan/Tilt 위치 이동 정지
+        /// 명령(0x4F)을 각각 송신한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPanoramaPresetsFeatureContext.StopLaPresetMove()
         {
             _features._moveControlFeature.StopLaPresetMove();
         }
 
+        /// <summary>
+        /// 단일 MOVE TO PRESET 이동만 즉시 정지한다. AUTO SCAN 반복 상태에는 영향을 주지 않으며, Pan/Tilt 위치 이동 정지
+        /// 명령(0x4F)을 각각 송신한다. 실제 처리는 연결된 기능 객체에 위임한다.
+        /// </summary>
         void IPanoramaPresetsFeatureContext.StopPresetMove()
         {
             _features._moveControlFeature.StopPresetMove();

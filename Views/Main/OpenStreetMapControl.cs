@@ -105,6 +105,9 @@ namespace OpenCvWpfTracking
         /// </summary>
         public event EventHandler InitialRenderCompleted;
 
+        /// <summary>
+        /// 지도 화면과 입력 이벤트·타일 렌더링 예약 타이머를 준비한다.
+        /// </summary>
         public OpenStreetMapControl()
         {
             _centerLatitude = DefaultLatitude;
@@ -231,6 +234,9 @@ namespace OpenCvWpfTracking
             SetView(DefaultLatitude, DefaultLongitude, DefaultZoom);
         }
 
+        /// <summary>
+        /// 지도의 중심 위도·경도와 확대 수준을 설정한다.
+        /// </summary>
         public void SetView(double latitude, double longitude, int zoom)
         {
             _centerLatitude = ClampLatitude(latitude);
@@ -242,6 +248,9 @@ namespace OpenCvWpfTracking
             RequestRender();
         }
 
+        /// <summary>
+        /// 지도 타일 요청에 사용할 HTTP 클라이언트와 요청 헤더를 준비한다.
+        /// </summary>
         private static HttpClient CreateHttpClient()
         {
             HttpClient client = new HttpClient();
@@ -387,6 +396,9 @@ namespace OpenCvWpfTracking
             Canvas.SetTop(_companyMarker, markerScreenY - (22.0 * markerScale));
         }
 
+        /// <summary>
+        /// 지도 컨트롤이 표시되면 초기 타일 렌더링을 요청한다.
+        /// </summary>
         private void OpenStreetMapControl_Loaded(object sender, RoutedEventArgs e)
         {
             Log.Information("[MAP] OpenStreetMap Loaded / CENTER=({Latitude:F6}, {Longitude:F6}) / ZOOM={Zoom}", _centerLatitude, _centerLongitude, _zoom);
@@ -394,11 +406,17 @@ namespace OpenCvWpfTracking
             RequestRender();
         }
 
+        /// <summary>
+        /// 변경된 지도 표시 크기에 맞춰 타일 배치를 다시 예약한다.
+        /// </summary>
         private void OpenStreetMapControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             RequestRender();
         }
 
+        /// <summary>
+        /// 포인터 위치를 기준으로 지도 확대·축소 수준을 조정한다.
+        /// </summary>
         private void OpenStreetMapControl_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             int delta = e.Delta > 0 ? 1 : -1;
@@ -421,6 +439,9 @@ namespace OpenCvWpfTracking
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 지도 이동 드래그의 시작 위치를 기록하고 마우스를 캡처한다.
+        /// </summary>
         private void OpenStreetMapControl_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount > 1)
@@ -440,6 +461,9 @@ namespace OpenCvWpfTracking
             CaptureMouse();
         }
 
+        /// <summary>
+        /// 드래그 이동량에 맞춰 지도의 중심 좌표를 갱신한다.
+        /// </summary>
         private void OpenStreetMapControl_MouseMove(object sender, MouseEventArgs e)
         {
             if (!_isDragging || e.LeftButton != MouseButtonState.Pressed)
@@ -467,11 +491,17 @@ namespace OpenCvWpfTracking
             RequestRender();
         }
 
+        /// <summary>
+        /// 지도 이동 드래그를 끝내고 마우스 캡처를 해제한다.
+        /// </summary>
         private void OpenStreetMapControl_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             EndDrag();
         }
 
+        /// <summary>
+        /// 지도에서 포인터가 벗어났을 때 남은 드래그 상태를 정리한다.
+        /// </summary>
         private void OpenStreetMapControl_MouseLeave(object sender, MouseEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed)
@@ -480,6 +510,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 마우스 드래그를 끝내고 포인터 캡처와 임시 상태를 정리한다.
+        /// </summary>
         private void EndDrag()
         {
             if (!_isDragging)
@@ -506,6 +539,9 @@ namespace OpenCvWpfTracking
             RequestRenderImmediate();
         }
 
+        /// <summary>
+        /// 지도 상태 변경에 따른 다시 그리기를 지연 예약한다.
+        /// </summary>
         private void RequestRender()
         {
             if (!IsLoaded || ActualWidth < 1 || ActualHeight < 1)
@@ -523,6 +559,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 휠 확대·축소 입력을 병합해 지도 다시 그리기를 예약한다.
+        /// </summary>
         private void RequestWheelRender()
         {
             if (!IsLoaded || ActualWidth < 1 || ActualHeight < 1)
@@ -544,6 +583,9 @@ namespace OpenCvWpfTracking
             _renderDebounceTimer.Start();
         }
 
+        /// <summary>
+        /// 지연 없이 현재 지도 상태의 렌더링을 요청한다.
+        /// </summary>
         private void RequestRenderImmediate()
         {
             if (!IsLoaded || ActualWidth < 1 || ActualHeight < 1)
@@ -556,6 +598,9 @@ namespace OpenCvWpfTracking
             StartLatestRender();
         }
 
+        /// <summary>
+        /// 연속 지도 입력의 지연 시간이 끝나면 최신 렌더링을 시작한다.
+        /// </summary>
         private void RenderDebounceTimer_Tick(object sender, EventArgs e)
         {
             _renderDebounceTimer.Stop();
@@ -563,6 +608,9 @@ namespace OpenCvWpfTracking
             StartLatestRender();
         }
 
+        /// <summary>
+        /// 이전 지도 그리기를 취소하고 최신 화면 상태의 렌더링을 시작한다.
+        /// </summary>
         private void StartLatestRender()
         {
             // 새 Drag/Zoom View가 확정되면 이전 HTTP/Cache 작업도 취소하여
@@ -576,6 +624,9 @@ namespace OpenCvWpfTracking
             RenderTilesAsync(++_renderVersion, _renderCancellation.Token);
         }
 
+        /// <summary>
+        /// 지도 컨트롤이 사라지면 타이머와 진행 중 렌더링을 중지한다.
+        /// </summary>
         private void OpenStreetMapControl_Unloaded(object sender, RoutedEventArgs e)
         {
             _renderDebounceTimer.Stop();
@@ -585,6 +636,9 @@ namespace OpenCvWpfTracking
             ++_renderVersion;
         }
 
+        /// <summary>
+        /// 현재 화면 범위에 필요한 지도 타일을 계산하고 비동기로 배치한다.
+        /// </summary>
         private async void RenderTilesAsync(long version, CancellationToken cancellationToken)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -729,6 +783,9 @@ namespace OpenCvWpfTracking
             }
         }
 
+        /// <summary>
+        /// 지도 타일을 가져와 대상 이미지 컨트롤에 표시한다.
+        /// </summary>
         private async Task<bool> LoadTileIntoImageAsync(Image image, int zoom, int x, int y, long version, CancellationToken cancellationToken)
         {
             try
@@ -776,6 +833,9 @@ namespace OpenCvWpfTracking
             return false;
         }
 
+        /// <summary>
+        /// 지도 타일을 캐시 또는 타일 서버에서 바이트로 가져온다.
+        /// </summary>
         private async Task<byte[]> GetTileBytesAsync(int zoom, int x, int y, CancellationToken cancellationToken)
         {
             string cachePath = System.IO.Path.Combine(_tileCacheRoot, zoom.ToString(CultureInfo.InvariantCulture), x.ToString(CultureInfo.InvariantCulture), y.ToString(CultureInfo.InvariantCulture) + ".png");
@@ -833,6 +893,9 @@ namespace OpenCvWpfTracking
             return bytes;
         }
 
+        /// <summary>
+        /// 영상 바이트를 WPF에서 표시할 비트맵으로 변환한다.
+        /// </summary>
         private static BitmapImage CreateBitmap(byte[] bytes)
         {
             BitmapImage bitmap = new BitmapImage();
@@ -852,6 +915,9 @@ namespace OpenCvWpfTracking
             return bitmap;
         }
 
+        /// <summary>
+        /// 위도·경도를 지도 확대 수준에 맞는 전역 픽셀 좌표로 변환한다.
+        /// </summary>
         private static void LatLonToWorldPixel(double latitude, double longitude, int zoom, out double worldX, out double worldY)
         {
             double safeLatitude = ClampLatitude(latitude);
@@ -869,6 +935,9 @@ namespace OpenCvWpfTracking
             worldY = normalizedY * scale;
         }
 
+        /// <summary>
+        /// 지도 전역 픽셀 좌표를 위도·경도로 역변환한다.
+        /// </summary>
         private static void WorldPixelToLatLon(double worldX, double worldY, int zoom, out double latitude, out double longitude)
         {
             double scale = TileSize * (1 << zoom);
@@ -884,6 +953,9 @@ namespace OpenCvWpfTracking
             longitude = NormalizeLongitude(longitude);
         }
 
+        /// <summary>
+        /// 지도 투영에서 사용할 수 있는 위도 범위로 제한한다.
+        /// </summary>
         private static double ClampLatitude(double latitude)
         {
             const double maximumMercatorLatitude = 85.05112878;
@@ -891,6 +963,9 @@ namespace OpenCvWpfTracking
             return Math.Max(-maximumMercatorLatitude, Math.Min(maximumMercatorLatitude, latitude));
         }
 
+        /// <summary>
+        /// 경도를 지도에서 사용할 순환 범위로 정규화한다.
+        /// </summary>
         private static double NormalizeLongitude(double longitude)
         {
             double normalized = longitude;
@@ -908,6 +983,9 @@ namespace OpenCvWpfTracking
             return normalized;
         }
 
+        /// <summary>
+        /// 음수도 양의 순환 범위로 돌려주는 나머지 값을 계산한다.
+        /// </summary>
         private static int Mod(int value, int modulus)
         {
             int result = value % modulus;
