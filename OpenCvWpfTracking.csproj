@@ -467,7 +467,7 @@
     <Compile Include="Services\Contracts\ILAPacketParserPort.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="리팩터링_통합안내_261118.txt">
+    <Content Include="리팩터링_통합안내_261119.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
