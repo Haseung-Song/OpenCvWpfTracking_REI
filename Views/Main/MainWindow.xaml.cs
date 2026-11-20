@@ -1,4 +1,5 @@
 ﻿using OpenCvWpfTracking.Common;
+using OpenCvWpfTracking.Services.Configuration;
 using Microsoft.Win32;
 using OpenCvWpfTracking.ViewModels.Main;
 using OpenCvWpfTracking.Services.Video;
@@ -84,6 +85,14 @@ namespace OpenCvWpfTracking
                 return (int)Math.Max(1u, GetDoubleClickTime());
             }
         }
+
+        /// <summary>저장된 물리 화면 영역을 받아 현재 연결된 가장 가까운 모니터를 선택한다.</summary>
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromRect(ref NativeRect bounds, uint flags);
+
+        private WindowState _lastVisibleMainWindowState = WindowState.Normal;
+
+        private bool _windowPlacementRestored;
 
         private bool _isMainWindowFullScreen;
 
@@ -690,6 +699,11 @@ namespace OpenCvWpfTracking
             base.OnClosing(e);
 
             _isMainWindowClosing = !e.Cancel;
+
+            if (!e.Cancel && _windowPlacementRestored)
+            {
+                SaveMainWindowPlacement();
+            }
         }
 
         /// <summary>
@@ -1236,6 +1250,11 @@ namespace OpenCvWpfTracking
         // 서로 충돌하던 창 크기 조절 루프 대신 네이티브 적중 검사 경로 하나를 사용한다.
         private IntPtr WindowResizeMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if ((message == 0x007E || message == 0x02E0) && _windowPlacementRestored && !_isMainWindowClosing)
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ReconcileMainWindowDisplay));
+            }
+
             if (message == 0x0231)
             {
                 _isNativeWindowSizing = true;
@@ -1433,6 +1452,25 @@ namespace OpenCvWpfTracking
         /// </summary>
         private void Window_StateChanged(object sender, EventArgs e)
         {
+            if (WindowState != WindowState.Minimized)
+            {
+                _lastVisibleMainWindowState = WindowState;
+            }
+
+            if (_windowPlacementRestored && !_isMainWindowFullScreen)
+            {
+                if (WindowState == WindowState.Maximized)
+                {
+                    MaxWidth = double.PositiveInfinity;
+
+                    MaxHeight = double.PositiveInfinity;
+                }
+                else if (WindowState == WindowState.Normal)
+                {
+                    FitWindowToWorkingArea();
+                }
+            }
+
             UpdateWindowChromeState();
         }
 
@@ -1649,6 +1687,8 @@ namespace OpenCvWpfTracking
                 Width = _mainWindowRestoreBounds.Width;
                 Height = _mainWindowRestoreBounds.Height;
 
+                FitWindowToWorkingArea();
+
                 if (_mainWindowRestoreState == WindowState.Maximized)
                 {
                     WindowState = WindowState.Maximized;
@@ -1678,7 +1718,7 @@ namespace OpenCvWpfTracking
         {
             InitializeControlInputUi();
 
-            FitWindowToWorkingArea();
+            RestoreMainWindowPlacement();
 
             UpdateWindowChromeState();
 
@@ -1686,29 +1726,216 @@ namespace OpenCvWpfTracking
         }
 
         /// <summary>
-        /// 2026-09-16: 1920 x 1080 고정 설계 창을 실제 작업영역에 맞춰
-        /// 하단이 화면 밖으로 잘리지 않도록 크기와 위치를 보정한다.
+        /// 현재 창의 모니터 또는 저장된 물리 모니터 영역을 받아 작업영역을 WPF 좌표로 반환한다.
+        /// 분리된 모니터는 가장 가까운 현재 모니터로 대체한다.
+        /// </summary>
+        private Rect GetMainWindowWorkArea(Rect? savedMonitor, out Rect physicalMonitor)
+        {
+            IntPtr monitor;
+
+            if (savedMonitor.HasValue && !savedMonitor.Value.IsEmpty)
+            {
+                Rect saved = savedMonitor.Value;
+
+                var native = new NativeRect
+                {
+                    Left = checked((int)saved.Left),
+                    Top = checked((int)saved.Top),
+                    Right = checked((int)saved.Right),
+                    Bottom = checked((int)saved.Bottom)
+                };
+
+                monitor = MonitorFromRect(ref native, MonitorDefaultToNearest);
+            }
+            else
+            {
+                monitor = MonitorFromWindow(new WindowInteropHelper(this).Handle, MonitorDefaultToNearest);
+            }
+
+            var info = new NativeMonitorInfo { Size = Marshal.SizeOf(typeof(NativeMonitorInfo)) };
+
+            if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref info))
+            {
+                throw new InvalidOperationException("현재 모니터의 작업영역을 조회할 수 없습니다.");
+            }
+
+            physicalMonitor = new Rect(info.Monitor.Left, info.Monitor.Top,
+                info.Monitor.Right - info.Monitor.Left, info.Monitor.Bottom - info.Monitor.Top);
+
+            var target = PresentationSource.FromVisual(this)?.CompositionTarget;
+
+            Matrix fromDevice = target?.TransformFromDevice ?? Matrix.Identity;
+
+            return new Rect(fromDevice.Transform(new Point(info.Work.Left, info.Work.Top)),
+                fromDevice.Transform(new Point(info.Work.Right, info.Work.Bottom)));
+        }
+
+        /// <summary>
+        /// 작업영역과 보정된 일반 창 위치를 받아 작은 화면에서도 전체화면과 구별되는 크기로 배치한다.
+        /// </summary>
+        private void ApplyMainWindowBounds(Rect workArea, Rect bounds)
+        {
+            MinWidth = Math.Min(960, workArea.Width * WindowPlacementStore.MaximumNormalRatio);
+
+            MinHeight = Math.Min(540, workArea.Height * WindowPlacementStore.MaximumNormalRatio);
+
+            MaxWidth = workArea.Width * WindowPlacementStore.MaximumNormalRatio;
+
+            MaxHeight = workArea.Height * WindowPlacementStore.MaximumNormalRatio;
+
+            Width = bounds.Width;
+
+            Height = bounds.Height;
+
+            Left = bounds.Left;
+
+            Top = bounds.Top;
+        }
+
+        /// <summary>
+        /// 해상도·DPI 변경 후 일반 창은 작업영역 안으로, 전체화면은 현재 모니터 전체 영역으로 다시 맞춘다.
+        /// 전체화면 진입 전 저장한 일반 창 복원 영역은 유지한다.
+        /// </summary>
+        private void ReconcileMainWindowDisplay()
+        {
+            if (!_isMainWindowFullScreen)
+            {
+                FitWindowToWorkingArea();
+
+                return;
+            }
+
+            try
+            {
+                Rect monitor;
+
+                GetMainWindowWorkArea(null, out monitor);
+
+                var target = PresentationSource.FromVisual(this)?.CompositionTarget;
+
+                Matrix fromDevice = target?.TransformFromDevice ?? Matrix.Identity;
+
+                Rect bounds = new Rect(fromDevice.Transform(monitor.TopLeft), fromDevice.Transform(monitor.BottomRight));
+
+                MinWidth = Math.Min(MinWidth, bounds.Width);
+
+                MinHeight = Math.Min(MinHeight, bounds.Height);
+
+                Left = bounds.Left;
+
+                Top = bounds.Top;
+
+                Width = bounds.Width;
+
+                Height = bounds.Height;
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Warning("MAIN WINDOW", "전체화면 보정을 보류합니다. / " + ex.GetType().Name);
+            }
+        }
+
+        /// <summary>
+        /// 사용자별 마지막 일반 창 위치·크기를 복원하고 마지막 최대화 상태를 다시 적용한다.
+        /// 최초 실행이나 손상된 설정은 현재 작업영역의 80% 일반 창으로 시작한다.
+        /// </summary>
+        private void RestoreMainWindowPlacement()
+        {
+            SavedWindowPlacement saved = WindowPlacementStore.Load(WindowPlacementStore.DefaultPath);
+
+            Rect monitor;
+
+            Rect workArea;
+
+            try
+            {
+                workArea = GetMainWindowWorkArea(saved?.MonitorBounds, out monitor);
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Warning("MAIN WINDOW", "저장된 화면 위치를 사용할 수 없어 현재 화면에서 시작합니다. / " + ex.GetType().Name);
+
+                saved = null;
+
+                workArea = GetMainWindowWorkArea(null, out monitor);
+            }
+
+            WindowState = WindowState.Normal;
+
+            ApplyMainWindowBounds(workArea, WindowPlacementStore.ResolveBounds(workArea, saved));
+
+            _windowPlacementRestored = true;
+
+            if (saved?.FullScreen == true)
+            {
+                EnterMainWindowFullScreen();
+            }
+            else if (saved?.Maximized == true)
+            {
+                MaxWidth = double.PositiveInfinity;
+
+                MaxHeight = double.PositiveInfinity;
+
+                WindowState = WindowState.Maximized;
+            }
+        }
+
+        /// <summary>
+        /// 최소화는 마지막 표시 상태로 해석하고 일반 창 복원 영역과 전체화면 여부를 사용자 폴더에 저장한다.
+        /// 저장 실패는 경고로 남기며 장비 종료 처리를 방해하지 않는다.
+        /// </summary>
+        private void SaveMainWindowPlacement()
+        {
+            try
+            {
+                Rect monitor;
+
+                Rect workArea = GetMainWindowWorkArea(null, out monitor);
+
+                Rect bounds = _isMainWindowFullScreen ? _mainWindowRestoreBounds :
+                    WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+
+                if (bounds.IsEmpty)
+                {
+                    bounds = WindowPlacementStore.ResolveBounds(workArea, null);
+                }
+
+                WindowState visibleState = WindowState == WindowState.Minimized ? _lastVisibleMainWindowState : WindowState;
+
+                WindowPlacementStore.Save(WindowPlacementStore.DefaultPath,
+                    WindowPlacementStore.Capture(bounds, workArea, monitor, _isMainWindowFullScreen,
+                        !_isMainWindowFullScreen && visibleState == WindowState.Maximized));
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Warning("MAIN WINDOW", "창 상태 저장 실패 / " + ex.GetType().Name);
+            }
+        }
+
+        /// <summary>
+        /// 변경된 현재 작업영역 안으로 일반 창 크기·위치를 보정하며 사용자가 지정한 상대 위치를 유지한다.
         /// </summary>
         private void FitWindowToWorkingArea()
         {
-            Rect workArea = SystemParameters.WorkArea;
-
-            MaxWidth = Math.Max(MinWidth, workArea.Width);
-
-            MaxHeight = Math.Max(MinHeight, workArea.Height);
-
-            if (WindowState != WindowState.Normal)
+            if (_isMainWindowFullScreen || WindowState != WindowState.Normal)
             {
                 return;
             }
 
-            Width = Math.Min(Width, workArea.Width);
+            try
+            {
+                Rect monitor;
 
-            Height = Math.Min(Height, workArea.Height);
+                Rect workArea = GetMainWindowWorkArea(null, out monitor);
 
-            Left = workArea.Left + Math.Max(0, (workArea.Width - Width) / 2);
+                var saved = WindowPlacementStore.Capture(new Rect(Left, Top, Width, Height), workArea, monitor, false, false);
 
-            Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
+                ApplyMainWindowBounds(workArea, WindowPlacementStore.ResolveBounds(workArea, saved));
+            }
+            catch (Exception ex)
+            {
+                ConsoleLogHelper.Warning("MAIN WINDOW", "화면 전환 중 창 크기 보정을 보류합니다. / " + ex.GetType().Name);
+            }
         }
 
         /// <summary>
